@@ -86,6 +86,17 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     )
     shutil.copyfile(path / EXPEDITION, download_folder / EXPEDITION)
 
+    #!
+    #### TODO
+    # ++ new logic here where iterates (?) through available instruments and determines whether download is required:
+    # ++ by conditions of:
+    #       1) whether it's in the schedule (and from this be able to call the right classes from the instruments directory?) and
+    #!      2) is there a clever way of not unnecessarily duplicating data downloads if instruments use the same?!
+    #               (try with a version first where does them all in tow and then try and optimise...?)
+
+    #!
+    ## TODO: move to generic bathymetry download which is done for all expeditions
+
     if (
         (
             {"XBT", "CTD", "CDT_BGC", "SHIP_UNDERWATER_ST"}
