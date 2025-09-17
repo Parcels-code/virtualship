@@ -14,6 +14,7 @@ import yaml
 from virtualship.errors import ScheduleError
 from virtualship.instruments.master import InstrumentType
 
+from .instruments import InstrumentType
 from .location import Location
 from .space_time_region import SpaceTimeRegion
 

@@ -1,3 +1,5 @@
+"""CTD_BGC instrument."""
+
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
