@@ -179,18 +179,20 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     )
 
     # keep only instruments in INTSTRUMENTS which are in schedule
-    filtered_instruments = {
+    filter_instruments = {
         k: v for k, v in INSTRUMENTS.items() if k in instruments_in_schedule
     }
 
     # iterate across instruments and download data based on space_time_region
-    for _, instrument in filtered_instruments.items():
+    for _, instrument in filter_instruments.items():
         try:
-            instrument["input_class"](
+            input_dataset = instrument["input_class"](
                 data_dir=download_folder,
                 credentials=credentials,
                 space_time_region=space_time_region,
             )
+            input_dataset.download_data()
+
         except InvalidUsernameOrPassword as e:
             shutil.rmtree(download_folder)
             raise e
