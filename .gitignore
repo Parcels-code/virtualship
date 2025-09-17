@@ -178,8 +178,3 @@ src/virtualship/_version_setup.py
 
 .vscode/
 .DS_Store
-
-
-# Ignore temporary notes files for refactoring
-# TODO: remove when finished with v1 dev!
-_refactoring_notes/

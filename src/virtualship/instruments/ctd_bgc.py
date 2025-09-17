@@ -1,3 +1,83 @@
+# from dataclasses import dataclass
+# from typing import ClassVar
+
+# from virtualship.models import Spacetime, instruments
+
+# MYINSTRUMENT = "CTD_BGC"
+
+
+# @dataclass
+# class CTD_BGC:
+#     """CTD_BGC configuration."""
+
+#     spacetime: Spacetime
+#     min_depth: float
+#     max_depth: float
+
+
+# # ---------------
+# # TODO: KERNELS
+# # ---------------
+
+
+# class CTD_BGCInputDataset(instruments.InputDataset):
+#     """Input dataset object for CTD_BGC instrument."""
+
+#     DOWNLOAD_BUFFERS: ClassVar[dict] = {
+#         "latlon_degrees": 0.0,
+#         "days": 0.0,
+#     }  # CTD_BGC data requires no buffers
+
+#     def __init__(self, data_dir, credentials, space_time_region):
+#         """Initialise with instrument's name."""
+#         super().__init__(
+#             MYINSTRUMENT,
+#             self.DOWNLOAD_BUFFERS["latlon_degrees"],
+#             self.DOWNLOAD_BUFFERS["days"],
+#             data_dir,
+#             credentials,
+#             space_time_region,
+#         )
+
+#     def datasets_dir(self) -> dict:
+#         """Variable specific args for instrument."""
+#         return {
+#             "o2data": {
+#                 "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+#                 "variables": ["o2"],
+#                 "output_filename": "ctd_bgc_o2.nc",
+#             },
+#             "chlorodata": {
+#                 "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+#                 "variables": ["chl"],
+#                 "output_filename": "ctd_bgc_chloro.nc",
+#             },
+#         }
+
+
+# class CTD_BGCInstrument(instruments.Instrument):
+#     """CTD_BGC instrument class."""
+
+#     def __init__(
+#         self,
+#         config,
+#         input_dataset,
+#         kernels,
+#     ):
+#         """Initialise with instrument's name."""
+#         super().__init__(MYINSTRUMENT, config, input_dataset, kernels)
+
+#     def simulate(self):
+#         """Simulate measurements."""
+#         ...
+
+
+# # # [PSEUDO-CODE] example implementation for reference
+# # ctd = CTD_BGCInstrument(config=CTD_BGC, data_dir=..., kernels=...)
+
+# # ctd.simulate(...)
+
+
 """CTD_BGC instrument."""
 
 from dataclasses import dataclass

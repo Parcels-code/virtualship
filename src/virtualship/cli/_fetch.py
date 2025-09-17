@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import copernicusmarine
+from copernicusmarine.core_functions.credentials_utils import InvalidUsernameOrPassword
 from pydantic import BaseModel
 
 from virtualship.errors import IncompleteDownloadError
@@ -19,11 +21,10 @@ if TYPE_CHECKING:
     from virtualship.models import SpaceTimeRegion
 
 import click
-import copernicusmarine
-from copernicusmarine.core_functions.credentials_utils import InvalidUsernameOrPassword
 
 import virtualship.cli._creds as creds
 from virtualship.utils import EXPEDITION
+from virtualship.instruments.master import INSTRUMENTS
 
 DOWNLOAD_METADATA = "download_metadata.yaml"
 
@@ -38,15 +39,13 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     be provided on prompt, via command line arguments, or via a YAML config file. Run
     `virtualship fetch` on an expedition for more info.
     """
-    from virtualship.models import InstrumentType
-
     if sum([username is None, password is None]) == 1:
         raise ValueError("Both username and password must be provided when using CLI.")
 
     path = Path(path)
 
-    data_folder = path / "data"
-    data_folder.mkdir(exist_ok=True)
+    data_dir = path / "data"
+    data_dir.mkdir(exist_ok=True)
 
     expedition = _get_expedition(path)
 
@@ -61,7 +60,8 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         expedition.schedule.space_time_region
     )
 
-    existing_download = get_existing_download(data_folder, space_time_region_hash)
+    # TODO: this (below) probably needs updating!
+    existing_download = get_existing_download(data_dir, space_time_region_hash)
     if existing_download is not None:
         click.echo(
             f"Data download for space-time region already completed ('{existing_download}')."
@@ -69,7 +69,10 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         return
 
     creds_path = path / creds.CREDENTIALS_FILE
-    username, password = creds.get_credentials_flow(username, password, creds_path)
+    credentials = {}
+    credentials["username"], credentials["password"] = creds.get_credentials_flow(
+        username, password, creds_path
+    )
 
     # Extract space_time_region details from the schedule
     spatial_range = expedition.schedule.space_time_region.spatial_range
@@ -79,13 +82,46 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     instruments_in_schedule = expedition.schedule.get_instruments()
 
     # Create download folder and set download metadata
-    download_folder = data_folder / hash_to_filename(space_time_region_hash)
+    download_folder = data_dir / hash_to_filename(space_time_region_hash)
     download_folder.mkdir()
     DownloadMetadata(download_complete=False).to_yaml(
         download_folder / DOWNLOAD_METADATA
     )
     shutil.copyfile(path / EXPEDITION, download_folder / EXPEDITION)
 
+    # bathymetry (required for all expeditions)
+    copernicusmarine.subset(
+        dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
+        variables=["deptho"],
+        minimum_longitude=space_time_region.spatial_range.minimum_longitude,
+        maximum_longitude=space_time_region.spatial_range.maximum_longitude,
+        minimum_latitude=space_time_region.spatial_range.minimum_latitude,
+        maximum_latitude=space_time_region.spatial_range.maximum_latitude,
+        start_datetime=space_time_region.time_range.start_time,
+        end_datetime=space_time_region.time_range.start_time,
+        minimum_depth=abs(space_time_region.spatial_range.minimum_depth),
+        maximum_depth=abs(space_time_region.spatial_range.maximum_depth),
+        output_filename="bathymetry.nc",
+        output_directory=download_folder,
+        username=credentials["username"],
+        password=credentials["password"],
+        overwrite=True,
+        coordinates_selection_method="outside",
+    )
+
+    # keep only instruments in INTSTRUMENTS which are in schedule
+    filtered_instruments = {
+        k: v for k, v in INSTRUMENTS.items() if k in instruments_in_schedule
+    }
+
+    # iterate across instruments and download data based on space_time_region
+    for _, instrument in filtered_instruments.items():
+        try:
+            instrument["input_class"](
+                data_dir=download_folder,
+                credentials=credentials,
+                space_time_region=space_time_region,
+            )
     #!
     #### TODO
     # ++ new logic here where iterates (?) through available instruments and determines whether download is required:
@@ -198,127 +234,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
             shutil.rmtree(download_folder)
             raise e
 
-        click.echo("Drifter data download based on space-time region completed.")
-
-    if InstrumentType.ARGO_FLOAT in instruments_in_schedule:
-        print("Argo float data will be downloaded. Please wait...")
-        argo_download_dict = {
-            "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-                "variables": ["uo", "vo"],
-                "output_filename": "argo_float_uv.nc",
-            },
-            "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
-                "variables": ["so"],
-                "output_filename": "argo_float_s.nc",
-            },
-            "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
-                "variables": ["thetao"],
-                "output_filename": "argo_float_t.nc",
-            },
-        }
-
-        # Iterate over all datasets and download each based on space_time_region
-        try:
-            for dataset in argo_download_dict.values():
-                copernicusmarine.subset(
-                    dataset_id=dataset["dataset_id"],
-                    variables=dataset["variables"],
-                    minimum_longitude=spatial_range.minimum_longitude - 3.0,
-                    maximum_longitude=spatial_range.maximum_longitude + 3.0,
-                    minimum_latitude=spatial_range.minimum_latitude - 3.0,
-                    maximum_latitude=spatial_range.maximum_latitude + 3.0,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime + timedelta(days=21),
-                    minimum_depth=abs(1),
-                    maximum_depth=abs(spatial_range.maximum_depth),
-                    output_filename=dataset["output_filename"],
-                    output_directory=download_folder,
-                    username=username,
-                    password=password,
-                    overwrite=True,
-                    coordinates_selection_method="outside",
-                )
-        except InvalidUsernameOrPassword as e:
-            shutil.rmtree(download_folder)
-            raise e
-
-        click.echo("Argo_float data download based on space-time region completed.")
-
-    if InstrumentType.CTD_BGC in instruments_in_schedule:
-        print("CTD_BGC data will be downloaded. Please wait...")
-
-        ctd_bgc_download_dict = {
-            "o2data": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-                "variables": ["o2"],
-                "output_filename": "ctd_bgc_o2.nc",
-            },
-            "chlorodata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-                "variables": ["chl"],
-                "output_filename": "ctd_bgc_chl.nc",
-            },
-            "nitratedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-                "variables": ["no3"],
-                "output_filename": "ctd_bgc_no3.nc",
-            },
-            "phosphatedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-                "variables": ["po4"],
-                "output_filename": "ctd_bgc_po4.nc",
-            },
-            "phdata": {
-                "dataset_id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-                "variables": ["ph"],
-                "output_filename": "ctd_bgc_ph.nc",
-            },
-            "phytoplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-                "variables": ["phyc"],
-                "output_filename": "ctd_bgc_phyc.nc",
-            },
-            "zooplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m",
-                "variables": ["zooc"],
-                "output_filename": "ctd_bgc_zooc.nc",
-            },
-            "primaryproductiondata": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-                "variables": ["nppv"],
-                "output_filename": "ctd_bgc_nppv.nc",
-            },
-        }
-
-        # Iterate over all datasets and download each based on space_time_region
-        try:
-            for dataset in ctd_bgc_download_dict.values():
-                copernicusmarine.subset(
-                    dataset_id=dataset["dataset_id"],
-                    variables=dataset["variables"],
-                    minimum_longitude=spatial_range.minimum_longitude - 3.0,
-                    maximum_longitude=spatial_range.maximum_longitude + 3.0,
-                    minimum_latitude=spatial_range.minimum_latitude - 3.0,
-                    maximum_latitude=spatial_range.maximum_latitude + 3.0,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime + timedelta(days=21),
-                    minimum_depth=abs(1),
-                    maximum_depth=abs(spatial_range.maximum_depth),
-                    output_filename=dataset["output_filename"],
-                    output_directory=download_folder,
-                    username=username,
-                    password=password,
-                    overwrite=True,
-                    coordinates_selection_method="outside",
-                )
-        except InvalidUsernameOrPassword as e:
-            shutil.rmtree(download_folder)
-            raise e
-
-        click.echo("CTD_BGC data download based on space-time region completed.")
+        click.echo(f"{instrument.name} data download completed.")  # TODO
 
     complete_download(download_folder)
 
@@ -386,11 +302,9 @@ class DownloadMetadata(BaseModel):
         return _generic_load_yaml(file_path, cls)
 
 
-def get_existing_download(
-    data_folder: Path, space_time_region_hash: str
-) -> Path | None:
+def get_existing_download(data_dir: Path, space_time_region_hash: str) -> Path | None:
     """Check if a download has already been completed. If so, return the path for existing download."""
-    for download_path in data_folder.rglob("*"):
+    for download_path in data_dir.rglob("*"):
         try:
             hash = filename_to_hash(download_path.name)
         except ValueError:
