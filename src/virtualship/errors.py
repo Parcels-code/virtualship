@@ -38,3 +38,9 @@ class UnexpectedError(Exception):
     """Error raised when there is an unexpected problem."""
 
     pass
+
+
+class CopernicusTimeRangeError(Exception):
+    """Error raised when start and end times in a schedule span different Copernicus Marine products."""
+
+    pass

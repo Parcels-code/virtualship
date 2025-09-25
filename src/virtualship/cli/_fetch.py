@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel
 
-from virtualship.errors import IncompleteDownloadError
+from virtualship.errors import CopernicusTimeRangeError, IncompleteDownloadError
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
@@ -100,7 +100,8 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
         phys_product_id = select_product_id(
             physical=True,
-            scheduled_time=end_datetime,
+            schedule_start=start_datetime,
+            schedule_end=end_datetime,
             username=username,
             password=password,
         )
@@ -250,7 +251,8 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
         bgc_args = {
             "physical": False,
-            "scheduled_time": end_datetime,
+            "schedule_start": start_datetime,
+            "schedule_end": end_datetime,
             "username": username,
             "password": password,
         }
@@ -430,7 +432,8 @@ def complete_download(download_path: Path) -> None:
 
 def select_product_id(
     physical: bool,
-    scheduled_time: datetime,
+    schedule_start: datetime,
+    schedule_end: datetime,
     username: str,
     password: str,
     variable: str | None = None,  # only needed for BGC datasets
@@ -495,7 +498,7 @@ def select_product_id(
                 password=password,
             )
             time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(scheduled_time) <= time_end_monthly:
+            if np.datetime64(schedule_end) <= time_end_monthly:
                 pid = monthly_pid
         # for BGC reanalysis_interim, check if requires monthly product
         if (
@@ -508,13 +511,13 @@ def select_product_id(
                 monthly_pid, username=username, password=password
             )
             time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(scheduled_time) <= time_end_monthly:
+            if np.datetime64(schedule_end) <= time_end_monthly:
                 pid = monthly_pid
         if pid is None:
             continue
         ds = copernicusmarine.open_dataset(pid, username=username, password=password)
         time_end = ds["time"][-1].values
-        if np.datetime64(scheduled_time) <= time_end:
+        if np.datetime64(schedule_end) <= time_end:
             selected_id = pid
             break
 
@@ -523,4 +526,37 @@ def select_product_id(
             "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
         )
 
+    # confirm full schedule (start and end) is in the selected product's time range
+    schedule_in_product_timerange(
+        selected_id, schedule_start, schedule_end, username, password
+    )
+
     return selected_id
+
+
+def schedule_in_product_timerange(
+    selected_id: str,
+    schedule_start: datetime,
+    schedule_end: datetime,
+    username: str,
+    password: str,
+) -> None:
+    """Raise error if schedule_start and schedule_end are not both within a selected Copernicus product's time range."""
+    ds_selected = copernicusmarine.open_dataset(
+        selected_id, username=username, password=password
+    )
+    time_values = ds_selected["time"].values
+    time_min = np.min(time_values)
+    time_max = np.max(time_values)
+
+    if not (
+        np.datetime64(schedule_start) >= time_min
+        and np.datetime64(schedule_end) <= time_max
+    ):
+        raise CopernicusTimeRangeError(
+            f"\n\n⚠️  Schedule start ({schedule_start}) and end ({schedule_end}) span different product IDs from the Copernicus Marine Catalogue.  ⚠️"
+            "\n\nUnfortunately, this rare situation is not currently supported in VirtualShip."
+            "\n\nSee the following link for more information and guidance on how to fix: [<<< INSERT LINK >>>]"  # TODO: ADD LINK when written the documentation!
+            f"\n\nSelected product '{selected_id}' covers {time_min} to {time_max}."
+            "\n\nPlease use the 'virtualship plan` tool to re-adjust your schedule, or manually edit the schedule.yaml and ship_config.yaml files."
+        )
