@@ -41,6 +41,6 @@ class UnexpectedError(Exception):
 
 
 class CopernicusCatalogueError(Exception):
-    """Error raised when start and end times in a schedule span different Copernicus Marine products."""
+    """Error raised when a relevant product is not found in the Copernicus Catalogue."""
 
     pass
