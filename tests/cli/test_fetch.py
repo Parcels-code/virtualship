@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 from pydantic import BaseModel
 
@@ -21,13 +22,35 @@ from virtualship.utils import get_example_config, get_example_schedule
 
 
 @pytest.fixture
-def copernicus_subset_no_download(monkeypatch):
-    """Mock the download function."""
+def copernicus_no_download(monkeypatch):
+    """Mock the download and open_dataset functions."""
 
+    # mock for copernicusmarine.subset
     def fake_download(output_filename, output_directory, **_):
         Path(output_directory).joinpath(output_filename).touch()
 
+    # mock for copernicusmarine.open_dataset
+    class DummyTime:
+        def __getitem__(self, idx):
+            return self
+
+        @property
+        def values(self):
+            return np.datetime64("2023-02-01")
+
+    class DummyDS(dict):
+        def __getitem__(self, key):
+            if key == "time":
+                return DummyTime()
+            raise KeyError(key)
+
+    def fake_open_dataset(*args, **kwargs):
+        return DummyDS()
+
     monkeypatch.setattr("virtualship.cli._fetch.copernicusmarine.subset", fake_download)
+    monkeypatch.setattr(
+        "virtualship.cli._fetch.copernicusmarine.open_dataset", fake_open_dataset
+    )
     yield
 
 
@@ -55,9 +78,9 @@ def ship_config(tmpdir):
     return ship_config
 
 
-@pytest.mark.usefixtures("copernicus_subset_no_download")
+@pytest.mark.usefixtures("copernicus_no_download")
 def test_fetch(schedule, ship_config, tmpdir):
-    """Test the fetch command, but mock the download."""
+    """Test the fetch command, but mock the download and dataset metadata interrogation."""
     _fetch(Path(tmpdir), "test", "test")
 
 
@@ -87,6 +110,16 @@ def test_complete_download(tmp_path):
     complete_download(tmp_path)
 
     assert_complete_download(tmp_path)
+
+
+def test_select_product_id():
+    ...
+    # TODO
+
+
+def test_start_end_in_product_timerange():
+    ...
+    # TODO
 
 
 def test_assert_complete_download_complete(tmp_path):

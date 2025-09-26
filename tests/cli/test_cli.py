@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 from click.testing import CliRunner
 
@@ -8,13 +9,35 @@ from virtualship.utils import SCHEDULE, SHIP_CONFIG
 
 
 @pytest.fixture
-def copernicus_subset_no_download(monkeypatch):
-    """Mock the download function."""
+def copernicus_no_download(monkeypatch):
+    """Mock the download and open_dataset functions."""
 
+    # mock for copernicusmarine.subset
     def fake_download(output_filename, output_directory, **_):
         Path(output_directory).joinpath(output_filename).touch()
 
+    # mock for copernicusmarine.open_dataset
+    class DummyTime:
+        def __getitem__(self, idx):
+            return self
+
+        @property
+        def values(self):
+            return np.datetime64("2023-02-01")
+
+    class DummyDS(dict):
+        def __getitem__(self, key):
+            if key == "time":
+                return DummyTime()
+            raise KeyError(key)
+
+    def fake_open_dataset(*args, **kwargs):
+        return DummyDS()
+
     monkeypatch.setattr("virtualship.cli._fetch.copernicusmarine.subset", fake_download)
+    monkeypatch.setattr(
+        "virtualship.cli._fetch.copernicusmarine.open_dataset", fake_open_dataset
+    )
     yield
 
 
@@ -68,15 +91,15 @@ def test_init_existing_schedule():
         [".", "--password", "test"],
     ],
 )
-@pytest.mark.usefixtures("copernicus_subset_no_download")
+@pytest.mark.usefixtures("copernicus_no_download")
 def test_fetch_both_creds_via_cli(runner, fetch_args):
     result = runner.invoke(fetch, fetch_args)
     assert result.exit_code == 1
     assert "Both username and password" in result.exc_info[1].args[0]
 
 
-@pytest.mark.usefixtures("copernicus_subset_no_download")
+@pytest.mark.usefixtures("copernicus_no_download")
 def test_fetch(runner):
-    """Test the fetch command, but mock the download."""
+    """Test the fetch command, but mock the downloads (and metadata interrogation)."""
     result = runner.invoke(fetch, [".", "--username", "test", "--password", "test"])
     assert result.exit_code == 0
