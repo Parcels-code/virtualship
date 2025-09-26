@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel
 
-from virtualship.errors import CopernicusTimeRangeError, IncompleteDownloadError
+from virtualship.errors import CopernicusCatalogueError, IncompleteDownloadError
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
@@ -522,41 +522,42 @@ def select_product_id(
             break
 
     if selected_id is None:
-        raise ValueError(
+        raise CopernicusCatalogueError(
             "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
         )
 
-    # confirm full schedule (start and end) is in the selected product's time range
-    schedule_in_product_timerange(
+    # handle the rare situation where start time and end time span different products, which is possible for reanalysis and reanalysis_interim
+    # in this case, return the analysis product which spans far back enough
+    if start_end_in_product_timerange(
         selected_id, schedule_start, schedule_end, username, password
-    )
+    ):
+        return selected_id
 
-    return selected_id
+    else:
+        return (
+            product_ids["phys"]["analysis"] if physical else bgc_analysis_ids[variable]
+        )
 
 
-def schedule_in_product_timerange(
+def start_end_in_product_timerange(
     selected_id: str,
     schedule_start: datetime,
     schedule_end: datetime,
     username: str,
     password: str,
-) -> None:
-    """Raise error if schedule_start and schedule_end are not both within a selected Copernicus product's time range."""
+) -> bool:
+    """Check schedule_start and schedule_end are both within a selected Copernicus product's time range."""
     ds_selected = copernicusmarine.open_dataset(
         selected_id, username=username, password=password
     )
     time_values = ds_selected["time"].values
-    time_min = np.min(time_values)
-    time_max = np.max(time_values)
+    time_min, time_max = np.min(time_values), np.max(time_values)
 
-    if not (
+    if (
         np.datetime64(schedule_start) >= time_min
         and np.datetime64(schedule_end) <= time_max
     ):
-        raise CopernicusTimeRangeError(
-            f"\n\n⚠️  Schedule start ({schedule_start}) and end ({schedule_end}) span different product IDs from the Copernicus Marine Catalogue.  ⚠️"
-            "\n\nUnfortunately, this rare situation is not currently supported in VirtualShip."
-            "\n\nSee the following link for more information and guidance on how to fix: [<<< INSERT LINK >>>]"  # TODO: ADD LINK when written the documentation!
-            f"\n\nSelected product '{selected_id}' covers {time_min} to {time_max}."
-            "\n\nPlease use the 'virtualship plan` tool to re-adjust your schedule, or manually edit the schedule.yaml and ship_config.yaml files."
-        )
+        return True
+
+    else:
+        return False

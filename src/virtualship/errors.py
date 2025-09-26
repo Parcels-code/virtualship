@@ -40,7 +40,7 @@ class UnexpectedError(Exception):
     pass
 
 
-class CopernicusTimeRangeError(Exception):
+class CopernicusCatalogueError(Exception):
     """Error raised when start and end times in a schedule span different Copernicus Marine products."""
 
     pass
