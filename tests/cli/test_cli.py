@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import xarray as xr
 from click.testing import CliRunner
 
 from virtualship.cli.commands import fetch, init
@@ -10,29 +11,24 @@ from virtualship.utils import SCHEDULE, SHIP_CONFIG
 
 @pytest.fixture
 def copernicus_no_download(monkeypatch):
-    """Mock the download and open_dataset functions."""
+    """Mock the copernicusmarine `subset` and `open_dataset` functions, approximating the reanalysis products."""
 
     # mock for copernicusmarine.subset
     def fake_download(output_filename, output_directory, **_):
         Path(output_directory).joinpath(output_filename).touch()
 
-    # mock for copernicusmarine.open_dataset
-    class DummyTime:
-        def __getitem__(self, idx):
-            return self
-
-        @property
-        def values(self):
-            return np.datetime64("2023-02-01")
-
-    class DummyDS(dict):
-        def __getitem__(self, key):
-            if key == "time":
-                return DummyTime()
-            raise KeyError(key)
-
     def fake_open_dataset(*args, **kwargs):
-        return DummyDS()
+        return xr.Dataset(
+            coords={
+                "time": (
+                    "time",
+                    [
+                        np.datetime64("1993-01-01"),
+                        np.datetime64("2022-01-01"),
+                    ],  # mock up rough renanalysis period
+                )
+            }
+        )
 
     monkeypatch.setattr("virtualship.cli._fetch.copernicusmarine.subset", fake_download)
     monkeypatch.setattr(
