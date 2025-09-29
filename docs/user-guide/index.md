@@ -6,4 +6,5 @@
 quickstart
 tutorials/index
 assignments/index
+additional_information
 ```
