@@ -22,58 +22,47 @@ env:
 
 jobs:
   tests:
-    name: tests (${{ matrix.runs-on }} | Python ${{ matrix.python-version }})
+    name: "Unit tests: ${{ matrix.runs-on }} | pixi run -e ${{ matrix.pixi-environment }} tests"
     runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        pixi-environment: ["test-py310", "test-py312"]
         runs-on: [ubuntu-latest, windows-latest, macos-14]
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          environment-name: ship
-          environment-file: environment.yml
-          create-args: >-
-            python=${{matrix.python-version}}
-
-      - run: pip install . --no-deps
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
       - name: Test package
-        run: >-
-          python -m pytest -ra --cov --cov-report=xml --cov-report=term
-          --durations=20
+        run: pixi run -e ${{ matrix.pixi-environment }} tests
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-  # typechecking:
-  #   name: mypy
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: mamba-org/setup-micromamba@v2
-  #       with:
-  #         environment-name: ship
-  #         environment-file: environment.yml
-  #         create-args: >-
-  #           python=3.12
-
-  #     - run: pip install . --no-deps
-  #     - run: conda install lxml # dep for report generation
-  #     - name: Typechecking
-  #       run: |
-  #         mypy --install-types --non-interactive src/virtualship --html-report mypy-report
-  #     - name: Upload test results
-  #       if: ${{ always() }} # Upload even on mypy error
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: Mypy report
-  #         path: mypy-report
+  typechecking:
+    name: "TypeChecking: pixi run typing"
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - name: Typechecking
+        run: pixi run typing --non-interactive --html-report mypy-report
+      - name: Upload test results
+        if: ${{ always() }} # Upload even on mypy error
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mypy report
+          path: mypy-report
