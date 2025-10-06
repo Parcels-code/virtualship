@@ -15,27 +15,14 @@ class InstrumentType(Enum):
     """Types of the instruments."""
 
     CTD = "CTD"
-    # CTD_BGC = "CTD_BGC"
-    # DRIFTER = "DRIFTER"
-    # ARGO_FLOAT = "ARGO_FLOAT"
-    # XBT = "XBT"
+    CTD_BGC = "CTD_BGC"
+    DRIFTER = "DRIFTER"
+    ARGO_FLOAT = "ARGO_FLOAT"
+    XBT = "XBT"
 
     # # TODO: should underway also be handled here?!
     # ADCP = "ADCP"
     # UNDERWAY_ST = "UNDERWAY_ST"
-
-
-# replace with imports instead...
-class CTDInputDataset:
-    """Input dataset class for CTD instrument."""
-
-    pass
-
-
-class CTDInstrument:
-    """Instrument class for CTD instrument."""
-
-    pass
 
 
 INSTRUMENTS = {
@@ -47,20 +34,3 @@ INSTRUMENTS = {
     if f"{inst.value}InputDataset" in globals()
     and f"{inst.value}Instrument" in globals()
 }
-
-
-# INSTRUMENTS = {
-#     InstrumentType.CTD: {
-#         "input_class": CTDInputDataset,
-#         "instrument_class": CTDInstrument,
-#     }
-#     # and so on for other instruments...
-# }
-
-# INSTRUMENTS = {
-#     "InstrumentType.CTD": {
-#         "input_class": "test",
-#         "instrument_class": "test",
-#     }
-#     # and so on for other instruments...
-# }

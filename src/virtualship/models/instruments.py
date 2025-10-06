@@ -31,6 +31,8 @@ class InputDataset(abc.ABC):
         name: str,
         latlon_buffer: float,
         datetime_buffer: float,
+        min_depth: float,
+        max_depth: float,
         data_dir: str,
         credentials: dict,
         space_time_region: SpaceTimeRegion,
@@ -39,6 +41,8 @@ class InputDataset(abc.ABC):
         self.name = name
         self.latlon_buffer = latlon_buffer
         self.datetime_buffer = datetime_buffer
+        self.min_depth = min_depth
+        self.max_depth = max_depth
         self.data_dir = data_dir
         self.credentials = credentials
         self.space_time_region = space_time_region
@@ -62,8 +66,8 @@ class InputDataset(abc.ABC):
             start_datetime=self.space_time_region.time_range.start_time,
             end_datetime=self.space_time_region.time_range.end_time
             + timedelta(days=self.datetime_buffer),
-            minimum_depth=abs(self.space_time_region.spatial_range.minimum_depth),
-            maximum_depth=abs(self.space_time_region.spatial_range.maximum_depth),
+            minimum_depth=abs(self.min_depth),
+            maximum_depth=abs(self.max_depth),
             output_directory=self.data_dir,
             username=self.credentials["username"],
             password=self.credentials["password"],
@@ -76,11 +80,6 @@ class InputDataset(abc.ABC):
         for dataset in datasets_args.values():
             download_args = {**parameter_args, **dataset}
             copernicusmarine.subset(**download_args)
-
-    # def get_fieldset_paths(self) -> list:
-    #     """List of paths for instrument's (downloaded) input data."""
-
-    #     ...
 
 
 class Instrument(abc.ABC):
