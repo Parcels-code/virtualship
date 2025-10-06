@@ -37,6 +37,8 @@ class CTDInputDataset(instruments.InputDataset):
             CTD.name,
             self.DOWNLOAD_BUFFERS["latlon_degrees"],
             self.DOWNLOAD_BUFFERS["days"],
+            space_time_region.spatial_range.minimum_depth,
+            space_time_region.spatial_range.maximum_depth,
             data_dir,
             credentials,
             space_time_region,
@@ -73,9 +75,3 @@ class CTDInstrument(instruments.Instrument):
     def simulate(self):
         """Simulate measurements."""
         ...
-
-
-# # [PSEUDO-CODE] example implementation for reference
-# ctd = CTDInstrument(config=CTD, data_dir=..., kernels=...)
-
-# ctd.simulate(...)

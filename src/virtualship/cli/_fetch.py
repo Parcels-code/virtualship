@@ -158,7 +158,10 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     #!
     ## TODO: move to generic bathymetry download which is done for all expeditions
 
-    # bathymetry (required for all expeditions)
+    # bathymetry
+    # TODO: this logic means it is downloaded for all expeditions but is only needed for CTD, CTD_BGC and XBT...
+    # TODO: to discuss: fine to still download for all expeditions because small size and then less duplication
+    # TODO: or add as var in each of InputDataset objects per instrument because will be overwritten to disk anyway and therefore not duplicate?
     copernicusmarine.subset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
         variables=["deptho"],
