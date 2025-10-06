@@ -6,10 +6,11 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [package]
 name = "virtualship"
-version = "dynamic"
+version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
+license = "MIT" # can remove this once https://github.com/prefix-dev/pixi-build-backends/issues/397 is resolved
 
 [package.build]
-backend = { name = "pixi-build-python", version = "==0.3.2" }
+backend = { name = "pixi-build-python", version = "==0.4.0" }
 
 [package.host-dependencies]
 setuptools = "*"
@@ -38,6 +39,7 @@ pyyaml = "*"
 copernicusmarine = ">=2.2.2"
 yaspin = "*"
 textual = "*"
+virtualship = { path = "." }
 
 [feature.py310.dependencies]
 python = "3.10.*"
