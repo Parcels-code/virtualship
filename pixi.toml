@@ -58,7 +58,7 @@ seabird = "*"
 openpyxl = "*"
 
 [feature.test.tasks]
-tests = "pytest -ra --cov --cov-report=xml --cov-report=term --durations=20"
+tests = "pytest"
 
 [feature.notebooks.dependencies]
 nbval = "*"
