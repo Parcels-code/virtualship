@@ -25,8 +25,11 @@ import click
 import virtualship.cli._creds as creds
 from virtualship.utils import EXPEDITION
 from virtualship.instruments.master import INSTRUMENTS
+from virtualship.instruments.master import InstrumentType, get_instruments_registry
 
 DOWNLOAD_METADATA = "download_metadata.yaml"
+
+INSTRUMENTS = get_instruments_registry()
 
 
 def _fetch(path: str | Path, username: str | None, password: str | None) -> None:
@@ -81,6 +84,20 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     end_datetime = time_range.end_time
     instruments_in_schedule = expedition.schedule.get_instruments()
 
+    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
+    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
+    if ship_config.adcp_config is not None:
+        instruments_in_schedule.add(InstrumentType.ADCP)
+    if ship_config.ship_underwater_st_config is not None:
+        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
+
+    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
+    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
+    if ship_config.adcp_config is not None:
+        instruments_in_schedule.add(InstrumentType.ADCP)
+    if ship_config.ship_underwater_st_config is not None:
+        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
+
     # Create download folder and set download metadata
     download_folder = data_dir / hash_to_filename(space_time_region_hash)
     download_folder.mkdir()
@@ -118,7 +135,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     }
 
     # iterate across instruments and download data based on space_time_region
-    for _, instrument in filter_instruments.items():
+    for itype, instrument in filter_instruments.items():
         try:
             input_dataset = instrument["input_class"](
                 data_dir=download_folder,
@@ -237,7 +254,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
             shutil.rmtree(download_folder)
             raise e
 
-        click.echo(f"{instrument.name} data download completed.")  # TODO
+        click.echo(f"{itype.value} data download completed.")
 
     complete_download(download_folder)
 

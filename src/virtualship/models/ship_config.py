@@ -10,7 +10,7 @@ import pydantic
 import yaml
 
 from virtualship.errors import ConfigError
-from virtualship.models.instruments import InstrumentType
+from virtualship.instruments.master import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
 
 if TYPE_CHECKING:

@@ -121,10 +121,3 @@ class Instrument(abc.ABC):
     def simulate(self):
         """Simulate instrument measurements."""
         ...
-
-
-# e.g. pseudo-code ...
-# TODO: (necessary?) how to dynamically assemble list of all instruments defined so that new instruments can be added only by changes in one place...?
-available_instruments: list = ...
-# for instrument in available_instruments:
-#     MyInstrument(instrument)

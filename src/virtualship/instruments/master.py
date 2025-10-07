@@ -1,36 +1,46 @@
-#
-
-# TODO: temporary measure so as not to have to overhaul the InstrumentType class logic in one go
-#! And also to avoid breaking other parts of the codebase which rely on InstrumentType when for now just working on fetch
-# TODO: ideally this can evaporate...
-# TODO: discuss to see if there's a better option...!
-
 from enum import Enum
-
-# and so on ...
-# from virtualship.instruments.ctd import CTDInputDataset, CTDInstrument
 
 
 class InstrumentType(Enum):
     """Types of the instruments."""
+
+    # TODO: temporary measure so as not to have to overhaul the InstrumentType class logic in one go
+    #! And also to avoid breaking other parts of the codebase which rely on InstrumentType when for now just working on fetch
+    # TODO: ideally this can evaporate in a future PR...
 
     CTD = "CTD"
     CTD_BGC = "CTD_BGC"
     DRIFTER = "DRIFTER"
     ARGO_FLOAT = "ARGO_FLOAT"
     XBT = "XBT"
-
-    # # TODO: should underway also be handled here?!
-    # ADCP = "ADCP"
-    # UNDERWAY_ST = "UNDERWAY_ST"
+    ADCP = "ADCP"
+    UNDERWATER_ST = "UNDERWATER_ST"
 
 
-INSTRUMENTS = {
-    inst: {
-        "input_class": globals()[f"{inst.value}InputDataset"],
-        "instrument_class": globals()[f"{inst.value}Instrument"],
+def get_instruments_registry():
+    # local imports to avoid circular import issues
+    from virtualship.instruments.adcp import ADCPInputDataset
+    from virtualship.instruments.argo_float import ArgoFloatInputDataset
+    from virtualship.instruments.ctd import CTDInputDataset
+    from virtualship.instruments.ctd_bgc import CTD_BGCInputDataset
+    from virtualship.instruments.drifter import DrifterInputDataset
+    from virtualship.instruments.ship_underwater_st import Underwater_STInputDataset
+    from virtualship.instruments.xbt import XBTInputDataset
+
+    _input_class_map = {
+        "CTD": CTDInputDataset,
+        "CTD_BGC": CTD_BGCInputDataset,
+        "DRIFTER": DrifterInputDataset,
+        "ARGO_FLOAT": ArgoFloatInputDataset,
+        "XBT": XBTInputDataset,
+        "ADCP": ADCPInputDataset,
+        "UNDERWATER_ST": Underwater_STInputDataset,
     }
-    for inst in InstrumentType
-    if f"{inst.value}InputDataset" in globals()
-    and f"{inst.value}Instrument" in globals()
-}
+
+    return {
+        inst: {
+            "input_class": _input_class_map.get(inst.value),
+        }
+        for inst in InstrumentType
+        if _input_class_map.get(inst.value) is not None
+    }
