@@ -35,6 +35,7 @@ DOWNLOAD_METADATA = "download_metadata.yaml"
 INSTRUMENTS = get_instruments_registry()
 
 
+
 def _fetch(path: str | Path, username: str | None, password: str | None) -> None:
     """
     Download input data for an expedition.
@@ -86,6 +87,20 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     start_datetime = time_range.start_time
     end_datetime = time_range.end_time
     instruments_in_schedule = expedition.schedule.get_instruments()
+
+    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
+    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
+    if ship_config.adcp_config is not None:
+        instruments_in_schedule.add(InstrumentType.ADCP)
+    if ship_config.ship_underwater_st_config is not None:
+        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
+
+    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
+    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
+    if ship_config.adcp_config is not None:
+        instruments_in_schedule.add(InstrumentType.ADCP)
+    if ship_config.ship_underwater_st_config is not None:
+        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
 
     # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
     # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
@@ -187,13 +202,14 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     }
 
     # iterate across instruments and download data based on space_time_region
-    for _, instrument in filter_instruments.items():
+    for itype, instrument in filter_instruments.items():
         try:
             input_dataset = instrument["input_class"](
                 data_dir=download_folder,
                 credentials=credentials,
                 space_time_region=space_time_region,
             )
+
             input_dataset.download_data()
 
         except InvalidUsernameOrPassword as e:
