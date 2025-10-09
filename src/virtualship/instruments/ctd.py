@@ -4,9 +4,6 @@ from typing import ClassVar
 from virtualship.models import Spacetime, instruments
 from virtualship.models.spacetime import Spacetime
 
-## TODO: __init__.py will also need updating!
-# + therefore instructions for adding new instruments will also involve adding to __init__.py as well as the new instrument script + update InstrumentType in instruments.py
-
 
 @dataclass
 class CTD:
