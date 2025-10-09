@@ -63,7 +63,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         expedition.schedule.space_time_region
     )
 
-    # TODO: this (below) probably needs updating!
+    # TODO: needs updating?
     existing_download = get_existing_download(data_dir, space_time_region_hash)
     if existing_download is not None:
         click.echo(
@@ -106,9 +106,11 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     )
     shutil.copyfile(path / EXPEDITION, download_folder / EXPEDITION)
 
+    # TODO: enhance CLI output for users?
+
     # bathymetry
     # TODO: this logic means it is downloaded for all expeditions but is only needed for CTD, CTD_BGC and XBT...
-    # TODO: to discuss: fine to still download for all expeditions because small size and then less duplication
+    # TODO: to discuss: fine to still download for all expeditions because small size and then less duplication?
     # TODO: or add as var in each of InputDataset objects per instrument because will be overwritten to disk anyway and therefore not duplicate?
     copernicusmarine.subset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_static",

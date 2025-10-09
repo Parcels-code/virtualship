@@ -9,18 +9,10 @@ from yaspin import yaspin
 from virtualship.models.space_time_region import SpaceTimeRegion
 from virtualship.utils import ship_spinner
 
-# TODO list START
-# how much detail needs to be fed into InputDataset (i.e. how much it differs per instrument)
-# may impact whether need a child class (e.g. CTDInputDataset) as well as just InputDataset
-# or whether it could just be fed a `name` ... ?
-
-# ++ abc.abstractmethods could be useful for testing purposes...e.g. will fail if an instrumnet implementation doesn't adhere to the `Instrument` class standards
-
-# ++ discussion point with others, do we think it's okay to overhaul the data downloading so that each instrument has it's own files, rather than sharing data?
-# ++ it's a cleaner way of making the whole repo more modular, i.e. have higher order logic for defining data downloads and housing all instrument logic in one place...
-# ++ may even not matter so much considering working towards cloud integration... + we are not looking to optimise performance...?
-# ++ OR, for now work on it in this way and then at the end make some clever changes to consolidate to minimum number of files dependent on instrument selections...?
-# TODO list END
+# TODO:
+# Discussion: Should each instrument manage its own data files for modularity,
+# or should we consolidate downloads to minimize file duplication across instruments?
+# Consider starting with per-instrument files for simplicity, and refactor later if needed.
 
 
 class InputDataset(abc.ABC):

@@ -7,9 +7,6 @@ from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
 from virtualship.models import Spacetime, instruments
 
-## TODO: __init__.py will also need updating!
-# + therefore instructions for adding new instruments will also involve adding to __init__.py as well as the new instrument script + update InstrumentType in instruments.py
-
 
 @dataclass
 class Underwater_ST:

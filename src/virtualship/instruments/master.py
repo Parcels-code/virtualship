@@ -6,7 +6,7 @@ class InstrumentType(Enum):
 
     # TODO: temporary measure so as not to have to overhaul the InstrumentType class logic in one go
     #! And also to avoid breaking other parts of the codebase which rely on InstrumentType when for now just working on fetch
-    # TODO: ideally this can evaporate in a future PR...
+    # TODO: ideally this can evaporate in the future...
 
     CTD = "CTD"
     CTD_BGC = "CTD_BGC"
