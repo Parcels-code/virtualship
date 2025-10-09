@@ -1,6 +1,6 @@
-# Aligned\* learning outcomes
+# Aligned learning outcomes
 
-\* Using the revised version of Blooms taxonomy (Anderson et al. 2001)
+Aligned using the revised version of Blooms taxonomy (Anderson et al. 2001)
 
 1. Identify practical challenges of planning sea-based research, such as:
 

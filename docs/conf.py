@@ -76,5 +76,11 @@ nbsphinx_thumbnails = {
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/sciencecommunication_assignment": "user-guide/_images/marine_ss.jpg",
     "user-guide/assignments/Sail_the_ship": "user-guide/_images/vessel.jpg",
+    "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
 }
+
+sphinx_gallery_conf = {
+    'default_thumb_file': "./docs/_static/virtual_ship_logo.png"
+}
+
 nbsphinx_execute = "never"
