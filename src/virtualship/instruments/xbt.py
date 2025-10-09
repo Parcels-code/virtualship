@@ -8,9 +8,6 @@ from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
 from virtualship.models import Spacetime, instruments
 
-## TODO: __init__.py will also need updating!
-# + therefore instructions for adding new instruments will also involve adding to __init__.py as well as the new instrument script + update InstrumentType in instruments.py
-
 
 @dataclass
 class XBT:
@@ -18,8 +15,10 @@ class XBT:
 
     name: ClassVar[str] = "XBT"
     spacetime: Spacetime
-    depth: float  # depth at which it floats and samples
-    lifetime: timedelta | None  # if none, lifetime is infinite
+    min_depth: float
+    max_depth: float
+    fall_speed: float
+    deceleration_coefficient: float
 
 
 _XBTParticle = JITParticle.add_variables(
@@ -165,6 +164,7 @@ def simulate_xbt(
 
     # XBT depth can not be too shallow, because kernel would break.
     # This shallow is not useful anyway, no need to support.
+    # TODO: should this be more informative? Is "maximum" right? Should tell user can't use XBT here?
     for max_depth, fall_speed in zip(max_depths, initial_fall_speeds, strict=False):
         if not max_depth <= -DT * fall_speed:
             raise ValueError(

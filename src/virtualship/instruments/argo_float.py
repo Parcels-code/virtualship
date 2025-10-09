@@ -16,9 +16,6 @@ from parcels import (
 
 from virtualship.models import Spacetime, instruments
 
-## TODO: __init__.py will also need updating!
-# + therefore instructions for adding new instruments will also involve adding to __init__.py as well as the new instrument script + update InstrumentType in instruments.py
-
 
 @dataclass
 class ArgoFloat:
@@ -26,8 +23,12 @@ class ArgoFloat:
 
     name: ClassVar[str] = "ArgoFloat"
     spacetime: Spacetime
-    depth: float  # depth at which it floats and samples
-    lifetime: timedelta | None  # if none, lifetime is infinite
+    min_depth: float
+    max_depth: float
+    drift_depth: float
+    vertical_speed: float
+    cycle_days: float
+    drift_days: float
 
 
 _ArgoParticle = JITParticle.add_variables(
