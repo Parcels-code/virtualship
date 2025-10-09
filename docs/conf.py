@@ -79,6 +79,6 @@ nbsphinx_thumbnails = {
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
 }
 
-sphinx_gallery_conf = {"default_thumb_file": "./docs/_static/virtual_ship_logo.png"}
+sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
 
 nbsphinx_execute = "never"

@@ -14,7 +14,7 @@ The 360 videos are available on our YouTube channel [**_@VirtualShip Classroom_*
 
 The VSC design focuses on creating didactically sound, authentic learning experiences grounded in established learning theories in science education, such as constructivism [(Piaget 1954)](https://doi.org/10.4324/9781315009650) and constructionism [(Papert 1980)](https://worrydream.com/refs/Papert_1980_-_Mindstorms,_1st_ed.pdf). By integrating realistic tasks and a gamified narrative approach within Jupyter notebooks, students learn within a digital replica of the real world, constructing knowledge through ‘learning by doing’ and ‘trial and error’ as they explore oceanography concepts, research methods, and analysis tools.
 
-We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced self-efficacy and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
+We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced confidence and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
 
 ```{nbgallery}
 ---
