@@ -8,7 +8,7 @@ Home <self>
 user-guide/index
 api/index
 contributing/index
-OceanParcels <https://oceanparcels.org>
+VirtualShip Website <https://virtualship.parcels-code.org/>
 ```
 
 ```{include} ../README.md

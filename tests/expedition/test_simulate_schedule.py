@@ -2,13 +2,12 @@ from datetime import datetime, timedelta
 
 import pyproj
 
-from virtualship import Location
-from virtualship.expedition import Schedule, ShipConfig, Waypoint
 from virtualship.expedition.simulate_schedule import (
     ScheduleOk,
     ScheduleProblem,
     simulate_schedule,
 )
+from virtualship.models import Location, Schedule, ShipConfig, Waypoint
 
 
 def test_simulate_schedule_feasible() -> None:
@@ -53,4 +52,5 @@ def test_time_in_minutes_in_ship_schedule() -> None:
     ship_config = ShipConfig.from_yaml("expedition_dir/ship_config.yaml")
     assert ship_config.adcp_config.period == timedelta(minutes=5)
     assert ship_config.ctd_config.stationkeeping_time == timedelta(minutes=20)
+    assert ship_config.ctd_bgc_config.stationkeeping_time == timedelta(minutes=20)
     assert ship_config.ship_underwater_st_config.period == timedelta(minutes=5)

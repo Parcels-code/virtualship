@@ -2,6 +2,8 @@
 
 All contributions are welcome no matter your background or experience! We collaborate on GitHub using issues to track bugs, features, and discuss future development. We use pull requests to collaborate on changes to the codebase (and modifications to the tutorials).
 
+We have a design document providing a conceptual overview of VirtualShip. This document can be found [here](https://github.com/OceanParcels/virtualship/blob/main/design-doc.md). Suggested features will be worked on in a way that is consistent with the design document - but if you have suggestions on how we can improve the design of VirtualShip (e.g., to enable other features) please let us know!
+
 ## For developers
 
 ### Development installation

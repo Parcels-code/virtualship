@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from virtualship.expedition.schedule import Schedule
-from virtualship.expedition.ship_config import ConfigError, ShipConfig
+from virtualship.errors import ConfigError
+from virtualship.models import Schedule, ShipConfig
 from virtualship.utils import get_example_config, get_example_schedule
 
 expedition_dir = Path("expedition_dir")
@@ -51,6 +51,12 @@ def ship_config_no_ctd(ship_config):
 
 
 @pytest.fixture
+def ship_config_no_ctd_bgc(ship_config):
+    delattr(ship_config, "ctd_bgc_config")
+    return ship_config
+
+
+@pytest.fixture
 def ship_config_no_argo_float(ship_config):
     delattr(ship_config, "argo_float_config")
     return ship_config
@@ -90,6 +96,12 @@ def test_verify_ship_config_no_instrument(ship_config, schedule_no_xbt) -> None:
             ConfigError,
             "Planning has a waypoint with CTD instrument, but configuration does not configure CTD.",
             id="ShipConfigNoCTD",
+        ),
+        pytest.param(
+            "ship_config_no_ctd_bgc",
+            ConfigError,
+            "Planning has a waypoint with CTD_BGC instrument, but configuration does not configure CTD_BGCs.",
+            id="ShipConfigNoCTD_BGC",
         ),
         pytest.param(
             "ship_config_no_argo_float",

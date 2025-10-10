@@ -8,9 +8,10 @@ from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
+from yaspin import Spinner
+
 if TYPE_CHECKING:
-    from virtualship.expedition.schedule import Schedule
-    from virtualship.expedition.ship_config import ShipConfig
+    from virtualship.models import Schedule, ShipConfig
 
 import pandas as pd
 import yaml
@@ -75,15 +76,10 @@ def load_coordinates(file_path):
 
 def validate_coordinates(coordinates_data):
     # Expected column headers
-    expected_columns = {"Station Type", "Name", "Latitude", "Longitude", "Instrument"}
+    expected_columns = {"Station Type", "Name", "Latitude", "Longitude"}
 
     # Check if the headers match the expected ones
     actual_columns = set(coordinates_data.columns)
-
-    if "Instrument" not in actual_columns:
-        raise ValueError(
-            "Error: Missing column 'Instrument'. Have you added this column after exporting from MFP?"
-        )
 
     missing_columns = expected_columns - actual_columns
     if missing_columns:
@@ -138,13 +134,13 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     4. returns the yaml information.
 
     """
-    # Importing Schedule and related models from expedition module
-    from virtualship.expedition.schedule import Location, Schedule, Waypoint
-    from virtualship.expedition.ship_config import InstrumentType
-    from virtualship.expedition.space_time_region import (
+    from virtualship.models import (
+        Location,
+        Schedule,
         SpaceTimeRegion,
         SpatialRange,
         TimeRange,
+        Waypoint,
     )
 
     # Read data from file
@@ -156,20 +152,10 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     instrument_max_depths = {
         "XBT": 2000,
         "CTD": 5000,
+        "CTD_BGC": 5000,
         "DRIFTER": 1,
         "ARGO_FLOAT": 2000,
     }
-
-    unique_instruments = set()
-
-    for instrument_list in coordinates_data["Instrument"]:
-        instruments = instrument_list.split(", ")
-        unique_instruments |= set(instruments)
-
-    # Determine the maximum depth based on the unique instruments
-    maximum_depth = max(
-        instrument_max_depths.get(instrument, 0) for instrument in unique_instruments
-    )
 
     spatial_range = SpatialRange(
         minimum_longitude=coordinates_data["Longitude"].min(),
@@ -177,7 +163,7 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         minimum_latitude=coordinates_data["Latitude"].min(),
         maximum_latitude=coordinates_data["Latitude"].max(),
         minimum_depth=0,
-        maximum_depth=maximum_depth,
+        maximum_depth=max(instrument_max_depths.values()),
     )
 
     # Create space-time region object
@@ -189,21 +175,9 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     # Generate waypoints
     waypoints = []
     for _, row in coordinates_data.iterrows():
-        try:
-            instruments = [
-                InstrumentType(instrument)
-                for instrument in row["Instrument"].split(", ")
-            ]
-        except ValueError as err:
-            raise ValueError(
-                f"Error: Invalid instrument type in row {row.name}. "
-                "Please ensure that the instrument type is one of: "
-                f"{[instrument.name for instrument in InstrumentType]}. "
-                "Also be aware that these are case-sensitive."
-            ) from err
         waypoints.append(
             Waypoint(
-                instrument=instruments,
+                instrument=None,  # instruments blank, to be built by user using `virtualship plan` UI or by interacting directly with YAML files
                 location=Location(latitude=row["Latitude"], longitude=row["Longitude"]),
             )
         )
@@ -227,7 +201,7 @@ def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timed
 
 def _get_schedule(expedition_dir: Path) -> Schedule:
     """Load Schedule object from yaml config file in `expedition_dir`."""
-    from virtualship.expedition.schedule import Schedule
+    from virtualship.models import Schedule
 
     file_path = expedition_dir.joinpath(SCHEDULE)
     try:
@@ -237,7 +211,7 @@ def _get_schedule(expedition_dir: Path) -> Schedule:
 
 
 def _get_ship_config(expedition_dir: Path) -> ShipConfig:
-    from virtualship.expedition.ship_config import ShipConfig
+    from virtualship.models import ShipConfig
 
     file_path = expedition_dir.joinpath(SHIP_CONFIG)
     try:
@@ -246,3 +220,21 @@ def _get_ship_config(expedition_dir: Path) -> ShipConfig:
         raise FileNotFoundError(
             f'Ship config not found. Save it to "{file_path}".'
         ) from e
+
+
+# custom ship spinner
+ship_spinner = Spinner(
+    interval=240,
+    frames=[
+        " 🚢    ",
+        "  🚢   ",
+        "   🚢  ",
+        "    🚢 ",
+        "     🚢",
+        "    🚢 ",
+        "   🚢  ",
+        "  🚢   ",
+        " 🚢    ",
+        "🚢     ",
+    ],
+)

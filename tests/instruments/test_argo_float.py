@@ -6,8 +6,8 @@ import numpy as np
 import xarray as xr
 from parcels import FieldSet
 
-from virtualship import Location, Spacetime
 from virtualship.instruments.argo_float import ArgoFloat, simulate_argo_floats
+from virtualship.models import Location, Spacetime
 
 
 def test_simulate_argo_floats(tmpdir) -> None:

@@ -4,9 +4,9 @@ from pathlib import Path
 import pyproj
 import pytest
 
-from virtualship import Location
+from virtualship.errors import ScheduleError
 from virtualship.expedition.do_expedition import _load_input_data
-from virtualship.expedition.schedule import Schedule, ScheduleError, Waypoint
+from virtualship.models import Location, Schedule, Waypoint
 from virtualship.utils import _get_ship_config
 
 projection = pyproj.Geod(ellps="WGS84")
@@ -103,7 +103,7 @@ def test_get_instruments() -> None:
             ),
             False,
             ScheduleError,
-            "Each waypoint should be timed after all previous waypoints",
+            "Waypoint\\(s\\) : each waypoint should be timed after all previous waypoints",
             id="SequentialWaypoints",
         ),
         pytest.param(

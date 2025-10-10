@@ -2,9 +2,6 @@
 
 from importlib.metadata import version as _version
 
-from .location import Location
-from .spacetime import Spacetime
-
 try:
     __version__ = _version("virtualship")
 except Exception:
@@ -12,7 +9,5 @@ except Exception:
     __version__ = "unknown"
 
 __all__ = [
-    "Location",
-    "Spacetime",
     "__version__",
 ]

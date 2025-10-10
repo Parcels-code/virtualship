@@ -12,6 +12,7 @@ space_time_region:
 waypoints:
   - instrument:
       - CTD
+      - CTD_BGC
     location:
       latitude: 0
       longitude: 0

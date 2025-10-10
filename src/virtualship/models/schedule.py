@@ -5,16 +5,22 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pydantic
 import pyproj
 import yaml
-from parcels import FieldSet
 
-from ..location import Location
-from .input_data import InputData
+from virtualship.errors import ScheduleError
+
+from .location import Location
 from .ship_config import InstrumentType
 from .space_time_region import SpaceTimeRegion
+
+if TYPE_CHECKING:
+    from parcels import FieldSet
+
+    from virtualship.expedition.input_data import InputData
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
 
@@ -115,6 +121,8 @@ class Schedule(pydantic.BaseModel):
         :raises NotImplementedError: If an instrument in the schedule is not implemented.
         :return: None. The method doesn't return a value but raises exceptions if verification fails.
         """
+        print("\nVerifying route... ")
+
         if check_space_time_region and self.space_time_region is None:
             raise ScheduleError(
                 "space_time_region not found in schedule, please define it to fetch the data."
@@ -129,17 +137,17 @@ class Schedule(pydantic.BaseModel):
 
         # check waypoint times are in ascending order
         timed_waypoints = [wp for wp in self.waypoints if wp.time is not None]
-        if not all(
-            [next.time >= cur.time for cur, next in itertools.pairwise(timed_waypoints)]
-        ):
+        checks = [
+            next.time >= cur.time for cur, next in itertools.pairwise(timed_waypoints)
+        ]
+        if not all(checks):
+            invalid_i = [i for i, c in enumerate(checks) if c]
             raise ScheduleError(
-                "Each waypoint should be timed after all previous waypoints"
+                f"Waypoint(s) {', '.join(f'#{i + 1}' for i in invalid_i)}: each waypoint should be timed after all previous waypoints",
             )
 
         # check if all waypoints are in water
         # this is done by picking an arbitrary provided fieldset and checking if UV is not zero
-
-        print("Verifying all waypoints are on water..")
 
         # get all available fieldsets
         available_fieldsets = []
@@ -178,7 +186,6 @@ class Schedule(pydantic.BaseModel):
                 raise ScheduleError(
                     f"The following waypoints are on land: {['#' + str(wp_i) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}"
                 )
-            print("Good, all waypoints are on water.")
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = self.waypoints[0].time
@@ -209,11 +216,7 @@ class Schedule(pydantic.BaseModel):
             else:
                 time = wp_next.time
 
-
-class ScheduleError(RuntimeError):
-    """An error in the schedule."""
-
-    pass
+        print("... All good to go!")
 
 
 def _is_on_land_zero_uv(fieldset: FieldSet, waypoint: Waypoint) -> bool:

@@ -3,8 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from virtualship.expedition.schedule import Schedule
-from virtualship.expedition.ship_config import InstrumentType
+from virtualship.models import Schedule
 from virtualship.utils import mfp_to_yaml
 
 
@@ -15,7 +14,6 @@ def valid_mfp_data():
             "Name": ["Station1", "Station2", "Station3"],
             "Latitude": [30.8, 31.2, 32.5],
             "Longitude": [-44.3, -45.1, -46.7],
-            "Instrument": ["CTD, DRIFTER", "ARGO_FLOAT", "XBT, CTD, DRIFTER"],
         }
     )
 
@@ -67,13 +65,6 @@ def nonexistent_mfp_file(tmp_path):
 
 
 @pytest.fixture
-def missing_instruments_column_mfp_file(tmp_path):
-    path = tmp_path / "file.xlsx"
-    valid_mfp_data().drop(columns=["Instrument"]).to_excel(path, index=False)
-    return path
-
-
-@pytest.fixture
 def missing_columns_mfp_file(tmp_path):
     path = tmp_path / "file.xlsx"
     valid_mfp_data().drop(columns=["Longitude"]).to_excel(path, index=False)
@@ -109,13 +100,6 @@ def test_mfp_to_yaml_success(request, fixture_name, tmp_path):
     data = Schedule.from_yaml(yaml_output_path)
 
     assert len(data.waypoints) == 3
-    assert data.waypoints[0].instrument == [InstrumentType.CTD, InstrumentType.DRIFTER]
-    assert data.waypoints[1].instrument == [InstrumentType.ARGO_FLOAT]
-    assert data.waypoints[2].instrument == [
-        InstrumentType.XBT,
-        InstrumentType.CTD,
-        InstrumentType.DRIFTER,
-    ]
 
 
 @pytest.mark.parametrize(
@@ -135,22 +119,16 @@ def test_mfp_to_yaml_success(request, fixture_name, tmp_path):
         ),
         pytest.param(
             "invalid_mfp_file",
-            RuntimeError,
-            "Could not read coordinates data from the provided file. Ensure it is either a csv or excel file.",
-            id="InvalidFile",
-        ),
-        pytest.param(
-            "missing_instruments_column_mfp_file",
             ValueError,
-            "Error: Missing column 'Instrument'. Have you added this column after exporting from MFP?",
-            id="MissingInstruments",
+            r"Error: Found columns \['Station Type\|Name\|Latitude\|Longitude'\], but expected columns \[.*('Station Type'|'Longitude'|'Latitude'|'Name').*\]. Are you sure that you're using the correct export from MFP\?",
+            id="InvalidFile",
         ),
         pytest.param(
             "missing_columns_mfp_file",
             ValueError,
             (
-                r"Error: Found columns \[.*?('Station Type'| 'Name'| 'Latitude'| 'Instrument').*?\], "
-                r"but expected columns \[.*?('Station Type'| 'Name'| 'Latitude'| 'Instrument'| 'Longitude').*?\]."
+                r"Error: Found columns \[.*?('Station Type'| 'Name'| 'Latitude').*?\], "
+                r"but expected columns \[.*?('Station Type'| 'Name'| 'Latitude'| 'Longitude').*?\]."
             ),
             id="MissingColumns",
         ),
@@ -172,23 +150,3 @@ def test_mfp_to_yaml_extra_headers(unexpected_header_mfp_file, tmp_path):
 
     with pytest.warns(UserWarning, match="Found additional unexpected columns.*"):
         mfp_to_yaml(unexpected_header_mfp_file, yaml_output_path)
-
-
-def test_mfp_to_yaml_instrument_conversion(valid_excel_mfp_file, tmp_path):
-    """Test that instruments are correctly converted into InstrumentType enums."""
-    yaml_output_path = tmp_path / "schedule.yaml"
-
-    # Run function
-    mfp_to_yaml(valid_excel_mfp_file, yaml_output_path)
-
-    # Load the generated YAML
-    data = Schedule.from_yaml(yaml_output_path)
-
-    assert isinstance(data.waypoints[0].instrument, list)
-    assert data.waypoints[0].instrument == [InstrumentType.CTD, InstrumentType.DRIFTER]
-    assert data.waypoints[1].instrument == [InstrumentType.ARGO_FLOAT]
-    assert data.waypoints[2].instrument == [
-        InstrumentType.XBT,
-        InstrumentType.CTD,
-        InstrumentType.DRIFTER,
-    ]

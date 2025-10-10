@@ -7,8 +7,8 @@ from pathlib import Path
 import pydantic
 import yaml
 
-from .schedule import Schedule
-from .ship_config import InstrumentType
+from virtualship.errors import CheckpointError
+from virtualship.models import InstrumentType, Schedule
 
 
 class _YamlDumper(yaml.SafeDumper):
@@ -71,9 +71,3 @@ class Checkpoint(pydantic.BaseModel):
             raise CheckpointError(
                 "Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints."
             )
-
-
-class CheckpointError(RuntimeError):
-    """An error in the checkpoint."""
-
-    pass

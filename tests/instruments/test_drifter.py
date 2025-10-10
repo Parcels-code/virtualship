@@ -6,8 +6,8 @@ import numpy as np
 import xarray as xr
 from parcels import FieldSet
 
-from virtualship import Location, Spacetime
 from virtualship.instruments.drifter import Drifter, simulate_drifters
+from virtualship.models import Location, Spacetime
 
 
 def test_simulate_drifters(tmpdir) -> None:

@@ -11,8 +11,8 @@ import numpy as np
 import xarray as xr
 from parcels import Field, FieldSet
 
-from virtualship import Location, Spacetime
 from virtualship.instruments.xbt import XBT, simulate_xbt
+from virtualship.models import Location, Spacetime
 
 
 def test_simulate_xbts(tmpdir) -> None:
