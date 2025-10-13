@@ -5,7 +5,7 @@
 :hidden:
 
 Home <self>
-User Guide & Documation <user-guide/index>
+User Guide & Documentation <user-guide/index>
 api/index
 contributing/index
 VirtualShip Website <https://virtualship.oceanparcels.org/>
