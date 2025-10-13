@@ -1,8 +1,4 @@
-# Additional information
-
-This file contains additional technical information and guidance not covered in the [Quickstart](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) guide or in the [Tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html).
-
-### Copernicus Marine products
+# Copernicus Marine products
 
 VirtualShip supports running experiments anywhere in the global ocean from 1993 through to the present day (and approximately two weeks into the future), using the suite of products available from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 
@@ -23,7 +19,7 @@ The ethos for automated dataset selection in `virtualship fetch` is to prioritis
 ```
 
 ```{warning}
-In the rare situation where the start and end times of an expedition schedule span different products, which is possible in the case of the end time being in the **Reanalysis_interim** period and the start time in the **Reanalysis** period, the **Analysis & Forecast** product will be automatically selected, as this spans back enough in time for this niche case.
+In the rare situation where the start and end times of an expedition schedule span different products *and* there is no overlap in the respective dataset timeseries, which is possible in the case of the end time being in the **Reanalysis_interim** period and the start time in the **Reanalysis** period, the **Analysis & Forecast** product will be automatically selected, as this spans back enough in time for this niche case.
 ```
 
 ### Data availability

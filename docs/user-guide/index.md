@@ -6,5 +6,12 @@
 quickstart
 tutorials/index
 assignments/index
-additional_information
+```
+
+# Documentation
+
+```{toctree}
+:maxdepth: 1
+
+documentation/copernicus_products.md
 ```
