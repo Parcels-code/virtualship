@@ -14,7 +14,8 @@ from parcels import (
     Variable,
 )
 
-from virtualship.models import Spacetime, instruments
+from virtualship.models.instruments import InputDataset
+from virtualship.models.spacetime import Spacetime
 
 
 @dataclass
@@ -115,7 +116,7 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
-class ArgoFloatInputDataset(instruments.InputDataset):
+class ArgoFloatInputDataset(InputDataset):
     """Input dataset for ArgoFloat instrument."""
 
     DOWNLOAD_BUFFERS: ClassVar[dict] = {

@@ -6,7 +6,8 @@ from typing import ClassVar
 import numpy as np
 from parcels import AdvectionRK4, FieldSet, JITParticle, ParticleSet, Variable
 
-from virtualship.models import Spacetime, instruments
+from virtualship.models.instruments import InputDataset
+from virtualship.models.spacetime import Spacetime
 
 
 @dataclass
@@ -40,7 +41,7 @@ def _check_lifetime(particle, fieldset, time):
             particle.delete()
 
 
-class DrifterInputDataset(instruments.InputDataset):
+class DrifterInputDataset(InputDataset):
     """Input dataset for Drifter instrument."""
 
     DOWNLOAD_BUFFERS: ClassVar[dict] = {

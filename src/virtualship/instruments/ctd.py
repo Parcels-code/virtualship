@@ -6,7 +6,8 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
-from virtualship.models import Spacetime, instruments
+from virtualship.models.instruments import InputDataset
+from virtualship.models.spacetime import Spacetime
 
 
 @dataclass
@@ -53,7 +54,7 @@ def _ctd_cast(particle, fieldset, time):
             particle.delete()
 
 
-class CTDInputDataset(instruments.InputDataset):
+class CTDInputDataset(InputDataset):
     """Input dataset for CTD instrument."""
 
     DOWNLOAD_BUFFERS: ClassVar[dict] = {

@@ -5,7 +5,8 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
-from virtualship.models import Spacetime, instruments
+from virtualship.models.instruments import InputDataset
+from virtualship.models.spacetime import Spacetime
 
 ## TODO: __init__.py will also need updating!
 # + therefore instructions for adding new instruments will also involve adding to __init__.py as well as the new instrument script + update InstrumentType in instruments.py
@@ -34,7 +35,7 @@ def _sample_velocity(particle, fieldset, time):
     )
 
 
-class ADCPInputDataset(instruments.InputDataset):
+class ADCPInputDataset(InputDataset):
     """Input dataset for ADCP instrument."""
 
     DOWNLOAD_BUFFERS: ClassVar[dict] = {

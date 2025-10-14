@@ -5,7 +5,8 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
-from virtualship.models import Spacetime, instruments
+from virtualship.models.instruments import InputDataset
+from virtualship.models.spacetime import Spacetime
 
 
 @dataclass
@@ -33,7 +34,7 @@ def _sample_temperature(particle, fieldset, time):
     particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
-class Underwater_STInputDataset(instruments.InputDataset):
+class Underwater_STInputDataset(InputDataset):
     """Input dataset for Underwater_ST instrument."""
 
     DOWNLOAD_BUFFERS: ClassVar[dict] = {
