@@ -6,7 +6,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 
@@ -81,16 +81,6 @@ class XBTInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Get variable specific args for instrument."""
         return {
-            "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-                "variables": ["uo", "vo"],
-                "output_filename": "ship_uv.nc",
-            },
-            "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
-                "variables": ["so"],
-                "output_filename": "ship_s.nc",
-            },
             "Tdata": {
                 "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
                 "variables": ["thetao"],
@@ -99,21 +89,33 @@ class XBTInputDataset(InputDataset):
         }
 
 
-# class XBTInstrument(instruments.Instrument):
-#     """XBT instrument class."""
+class XBTInstrument(Instrument):
+    """XBT instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(XBT.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize XBTInstrument."""
+        filenames = {
+            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+        }
+        variables = {"T": "thetao"}
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=True,
+            allow_time_extrapolation=True,
+        )
+
+    def simulate(self):
+        """Simulate measurements."""
+        ...
+
+
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_xbt(

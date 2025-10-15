@@ -1,9 +1,9 @@
 import abc
 from collections.abc import Callable
 from datetime import timedelta
-from pathlib import Path
 
 import copernicusmarine
+from parcels import Field, FieldSet
 from yaspin import yaspin
 
 from virtualship.models.space_time_region import SpaceTimeRegion
@@ -67,6 +67,7 @@ class InputDataset(abc.ABC):
             coordinates_selection_method="outside",
         )
 
+        # TODO: this step could be achieved just at the init stage of each child class? Doesn't need to be a function...
         datasets_args = self.get_datasets_dict()
 
         for dataset in datasets_args.values():
@@ -75,29 +76,64 @@ class InputDataset(abc.ABC):
 
 
 class Instrument(abc.ABC):
-    """Base class for instruments."""
+    """Base class for instruments and their simulation."""
 
     def __init__(
         self,
-        name: str,
         config,
+        schedule,
         input_dataset: InputDataset,
         kernels: list[Callable],
+        filenames: dict,
+        variables: dict,
+        add_bathymetry: bool,
+        allow_time_extrapolation: bool,
+        bathymetry_file: str = "bathymetry.nc",
     ):
         """Initialise instrument."""
-        self.name = name
         self.config = config
+        self.schedule = schedule
         self.input_data = input_dataset
         self.kernels = kernels
+        self.name = input_dataset.name
+        self.directory = input_dataset.data_dir
+        self.filenames = filenames
+        self.variables = variables
+        self.dimensions = {
+            "lon": "longitude",
+            "lat": "latitude",
+            "time": "time",
+            "depth": "depth",
+        }  # same dimensions for all instruments
+        self.bathymetry_file = self.directory.joinpath(bathymetry_file)
+        self.add_bathymetry = add_bathymetry
+        self.allow_time_extrapolation = allow_time_extrapolation
 
-    # def load_fieldset(self):
-    #     """Load fieldset for simulation."""
-    #     # paths = self.input_data.get_fieldset_paths()
-    #     ...
-
-    def get_output_path(self, output_dir: Path) -> Path:
-        """Get output path for results."""
-        return output_dir / f"{self.name}.zarr"
+    def load_input_data(self) -> FieldSet:
+        """Load and return the input data as a FieldSet for the instrument."""
+        fieldset = FieldSet.from_netcdf(
+            self.filenames,
+            self.variables,
+            self.dimensions,
+            allow_time_extrapolation=self.allow_time_extrapolation,
+        )
+        # interpolation methods
+        for var in self.variables:
+            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+        # depth negative
+        for g in fieldset.gridset.grids:
+            g.negate_depth()
+        # bathymetry data
+        if self.add_bathymetry:
+            bathymetry_field = Field.from_netcdf(
+                self.bathymetry_file,
+                self.bathymetry_variables,
+                self.bathymetry_dimensions,
+            )
+            bathymetry_field.data = -bathymetry_field.data
+            fieldset.add_field(bathymetry_field)
+        fieldset.computeTimeChunk(0, 1)  # read in data already
+        return fieldset
 
     def run(self):
         """Run instrument simulation."""

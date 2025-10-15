@@ -14,7 +14,7 @@ from parcels import (
     Variable,
 )
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 
@@ -160,21 +160,36 @@ class ArgoFloatInputDataset(InputDataset):
         }
 
 
-# class ArgoFloatInstrument(instruments.Instrument):
-#     """ArgoFloat instrument class."""
+class ArgoFloatInstrument(Instrument):
+    """ArgoFloat instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(ArgoFloat.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize ArgoFloatInstrument."""
+        filenames = {
+            "U": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "V": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "S": input_dataset.data_dir.joinpath(f"{input_dataset.name}_s.nc"),
+            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+        }
+        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=False,
+        )
+
+    def simulate(self):
+        """Simulate measurements."""
+        ...
+
+
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_argo_floats(

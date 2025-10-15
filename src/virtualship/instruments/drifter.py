@@ -6,7 +6,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import AdvectionRK4, FieldSet, JITParticle, ParticleSet, Variable
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 
@@ -80,21 +80,35 @@ class DrifterInputDataset(InputDataset):
         }
 
 
-# class DrifterInstrument(instruments.Instrument):
-#     """Drifter instrument class."""
+class DrifterInstrument(Instrument):
+    """Drifter instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(Drifter.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize DrifterInstrument."""
+        filenames = {
+            "U": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "V": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+        }
+        variables = {"U": "uo", "V": "vo", "T": "thetao"}
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=False,
+        )
+
+    def simulate(self):
+        """Simulate measurements."""
+        ...
+
+
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_drifters(

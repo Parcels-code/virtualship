@@ -1,5 +1,7 @@
 """InputData class."""
 
+# TODO: this whole file can be removed?!
+
 from __future__ import annotations
 
 from dataclasses import dataclass

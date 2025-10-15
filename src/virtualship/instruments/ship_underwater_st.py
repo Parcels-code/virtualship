@@ -5,7 +5,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 
@@ -73,21 +73,34 @@ class Underwater_STInputDataset(InputDataset):
         }
 
 
-# class Underwater_STInstrument(instruments.Instrument):
-#     """Underwater_ST instrument class."""
+class Underwater_STInstrument(Instrument):
+    """Underwater_ST instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(Underwater_ST.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize Underwater_STInstrument."""
+        filenames = {
+            "S": input_dataset.data_dir.joinpath(f"{input_dataset.name}_s.nc"),
+            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+        }
+        variables = {"S": "so", "T": "thetao"}
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=True,
+        )
+
+    def simulate(self):
+        """Simulate measurements."""
+        ...
+
+
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_ship_underwater_st(

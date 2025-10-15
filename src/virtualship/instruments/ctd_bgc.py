@@ -8,7 +8,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 
@@ -153,21 +153,45 @@ class CTD_BGCInputDataset(InputDataset):
         }
 
 
-# class CTD_BGCInstrument(instruments.Instrument):
-#     """CTD_BGC instrument class."""
+class CTD_BGCInstrument(Instrument):
+    """CTD_BGC instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(CTD_BGC.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize CTD_BGCInstrument."""
+        filenames = {
+            "o2": input_dataset.data_dir.joinpath("ctd_bgc_o2.nc"),
+            "chl": input_dataset.data_dir.joinpath("ctd_bgc_chl.nc"),
+            "no3": input_dataset.data_dir.joinpath("ctd_bgc_no3.nc"),
+            "po4": input_dataset.data_dir.joinpath("ctd_bgc_po4.nc"),
+            "ph": input_dataset.data_dir.joinpath("ctd_bgc_ph.nc"),
+            "phyc": input_dataset.data_dir.joinpath("ctd_bgc_phyc.nc"),
+            "zooc": input_dataset.data_dir.joinpath("ctd_bgc_zooc.nc"),
+            "nppv": input_dataset.data_dir.joinpath("ctd_bgc_nppv.nc"),
+        }
+        variables = {
+            "o2": "o2",
+            "chl": "chl",
+            "no3": "no3",
+            "po4": "po4",
+            "ph": "ph",
+            "phyc": "phyc",
+            "zooc": "zooc",
+            "nppv": "nppv",
+        }
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=True,
+            allow_time_extrapolation=True,
+        )
+
+
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_ctd_bgc(

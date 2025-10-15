@@ -5,7 +5,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
-from virtualship.models.instruments import InputDataset
+from virtualship.models.instruments import InputDataset, Instrument
 from virtualship.models.spacetime import Spacetime
 
 ## TODO: __init__.py will also need updating!
@@ -69,26 +69,34 @@ class ADCPInputDataset(InputDataset):
         }
 
 
-# TODO: uncomment when ready for new simulation logic!
-# class ADCPInstrument(instruments.Instrument):
-#     """ADCP instrument class."""
+class ADCPInstrument(Instrument):
+    """ADCP instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(ADCP.name, config, input_dataset, kernels)
+    def __init__(self, config, schedule, input_dataset, kernels):
+        """Initialize ADCPInstrument."""
+        filenames = {
+            "U": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "V": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+        }
+        variables = {"U": "uo", "V": "vo"}
 
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
+        super().__init__(
+            config,
+            schedule,
+            input_dataset,
+            kernels,
+            filenames,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=True,
+        )
+
+    def simulate(self):
+        """Simulate measurements."""
+        ...
 
 
-# TODO: to be replaced with new simulation logic
-## -- old simulation code
+### ---------------------------------------------------------------------------------------
 
 
 def simulate_adcp(
