@@ -19,13 +19,19 @@ class InstrumentType(Enum):
 
 def get_instruments_registry():
     # local imports to avoid circular import issues
-    from virtualship.instruments.adcp import ADCPInputDataset
-    from virtualship.instruments.argo_float import ArgoFloatInputDataset
-    from virtualship.instruments.ctd import CTDInputDataset
-    from virtualship.instruments.ctd_bgc import CTD_BGCInputDataset
-    from virtualship.instruments.drifter import DrifterInputDataset
-    from virtualship.instruments.ship_underwater_st import Underwater_STInputDataset
-    from virtualship.instruments.xbt import XBTInputDataset
+    from virtualship.instruments.adcp import ADCPInputDataset, ADCPInstrument
+    from virtualship.instruments.argo_float import (
+        ArgoFloatInputDataset,
+        ArgoFloatInstrument,
+    )
+    from virtualship.instruments.ctd import CTDInputDataset, CTDInstrument
+    from virtualship.instruments.ctd_bgc import CTD_BGCInputDataset, CTD_BGCInstrument
+    from virtualship.instruments.drifter import DrifterInputDataset, DrifterInstrument
+    from virtualship.instruments.ship_underwater_st import (
+        Underwater_STInputDataset,
+        Underwater_STInstrument,
+    )
+    from virtualship.instruments.xbt import XBTInputDataset, XBTInstrument
 
     _input_class_map = {
         "CTD": CTDInputDataset,
@@ -37,10 +43,22 @@ def get_instruments_registry():
         "UNDERWATER_ST": Underwater_STInputDataset,
     }
 
+    _instrument_class_map = {
+        "CTD": CTDInstrument,
+        "CTD_BGC": CTD_BGCInstrument,
+        "DRIFTER": DrifterInstrument,
+        "ARGO_FLOAT": ArgoFloatInstrument,
+        "XBT": XBTInstrument,
+        "ADCP": ADCPInstrument,
+        "UNDERWATER_ST": Underwater_STInstrument,
+    }
+
     return {
         inst: {
             "input_class": _input_class_map.get(inst.value),
+            "instrument_class": _instrument_class_map.get(inst.value),
         }
         for inst in InstrumentType
         if _input_class_map.get(inst.value) is not None
+        and _instrument_class_map.get(inst.value) is not None
     }

@@ -175,10 +175,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
     # TODO: enhance CLI output for users?
 
-    # bathymetry
-    # TODO: this logic means it is downloaded for all expeditions but is only needed for CTD, CTD_BGC and XBT...
-    # TODO: to discuss: fine to still download for all expeditions because small size and then less duplication?
-    # TODO: or add as var in each of InputDataset objects per instrument because will be overwritten to disk anyway and therefore not duplicate?
+    # bathymetry (fetched for all expeditions, used by CTD(_BGC) and instruments + waypoint is-on-land verification methods)
     copernicusmarine.subset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
         variables=["deptho"],

@@ -7,7 +7,8 @@ from pathlib import Path
 import pyproj
 
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.models import Expedition, Schedule
+from virtualship.instruments.master import InstrumentType, get_instruments_registry
+from virtualship.models import Schedule
 from virtualship.utils import (
     CHECKPOINT,
     _get_expedition,
@@ -15,12 +16,12 @@ from virtualship.utils import (
 
 from .checkpoint import Checkpoint
 from .expedition_cost import expedition_cost
-from .input_data import InputData
-from .simulate_measurements import simulate_measurements
 from .simulate_schedule import ScheduleProblem, simulate_schedule
 
 # projection used to sail between waypoints
 projection = pyproj.Geod(ellps="WGS84")
+
+INSTRUMENTS = get_instruments_registry()
 
 
 def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) -> None:
@@ -50,6 +51,18 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     # verify that schedule and checkpoint match
     checkpoint.verify(expedition.schedule)
 
+    # instruments
+    instruments_in_schedule = expedition.schedule.get_instruments()
+
+    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
+    if expedition.ship_config.adcp_config is not None:
+        instruments_in_schedule.add(InstrumentType.ADCP)
+    if expedition.ship_config.ship_underwater_st_config is not None:
+        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
+
+    filter_instruments = {
+        k: v for k, v in INSTRUMENTS.items() if k in instruments_in_schedule
+    }  # keep only instruments in INTSTRUMENTS which are in schedule
     # load fieldsets
     loaded_input_data = _load_input_data(
         expedition_dir=expedition_dir,
@@ -58,6 +71,14 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     )
 
     print("\n---- WAYPOINT VERIFICATION ----")
+
+    if input_data is None:
+        space_time_region_hash = get_space_time_region_hash(schedule.space_time_region)
+        input_data = get_existing_download(expedition_dir, space_time_region_hash)
+
+    assert input_data is not None, (
+        "Input data hasn't been found. Have you run the `virtualship fetch` command?"
+    )
 
     # verify schedule is valid
     expedition.schedule.verify(
@@ -104,14 +125,33 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
 
-    # simulate measurements
-    print("\nSimulating measurements. This may take a while...\n")
-    simulate_measurements(
-        expedition_dir,
-        expedition.instruments_config,
-        loaded_input_data,
-        schedule_results.measurements_to_simulate,
-    )
+    # TODO: then from here just execute the instrument simulations... Instrument.run(), will self-call the data loading
+    #! Pseudo code...
+    for instrument in filter_instruments.items():
+        try:
+            input_dataset = instrument["instrument_class"](...)
+
+            input_dataset.download_data()
+
+        except Exception:
+            ...
+
+    # # load fieldsets
+    # loaded_input_data = _load_input_data(
+    #     expedition_dir=expedition_dir,
+    #     schedule=schedule,
+    #     ship_config=ship_config,
+    #     input_data=input_data,
+    # )
+
+    # # simulate measurements
+    # print("\nSimulating measurements. This may take a while...\n")
+    # simulate_measurements(
+    #     expedition_dir,
+    #     ship_config,
+    #     loaded_input_data,
+    #     schedule_results.measurements_to_simulate,
+    # )
     print("\nAll measurement simulations are complete.")
 
     print("\n----- EXPEDITION RESULTS ------")
@@ -122,40 +162,33 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\n------------- END -------------\n")
 
 
-def _load_input_data(
-    expedition_dir: Path,
-    expedition: Expedition,
-    input_data: Path | None,
-) -> InputData:
-    """
-    Load the input data.
+# def _load_input_data(
+#     expedition_dir: Path,
+#     schedule: Schedule,
+#     ship_config: ShipConfig,
+#     input_data: Path | None,
+# ) -> InputData:
+#     """
+#     Load the input data.
+#     """
+#     if input_data is None:
+#         space_time_region_hash = get_space_time_region_hash(schedule.space_time_region)
+#         input_data = get_existing_download(expedition_dir, space_time_region_hash)
 
-    :param expedition_dir: Directory of the expedition.
-    :param expedition: Expedition object.
-    :param input_data: Folder containing input data.
-    :return: InputData object.
-    """
-    if input_data is None:
-        space_time_region_hash = get_space_time_region_hash(
-            expedition.schedule.space_time_region
-        )
-        input_data = get_existing_download(expedition_dir, space_time_region_hash)
+#     assert input_data is not None, (
+#         "Input data hasn't been found. Have you run the `virtualship fetch` command?"
+#     )
 
-    assert input_data is not None, (
-        "Input data hasn't been found. Have you run the `virtualship fetch` command?"
-    )
-
-    return InputData.load(
-        directory=input_data,
-        load_adcp=expedition.instruments_config.adcp_config is not None,
-        load_argo_float=expedition.instruments_config.argo_float_config is not None,
-        load_ctd=expedition.instruments_config.ctd_config is not None,
-        load_ctd_bgc=expedition.instruments_config.ctd_bgc_config is not None,
-        load_drifter=expedition.instruments_config.drifter_config is not None,
-        load_xbt=expedition.instruments_config.xbt_config is not None,
-        load_ship_underwater_st=expedition.instruments_config.ship_underwater_st_config
-        is not None,
-    )
+#     return InputData.load(
+#         directory=input_data,
+#         load_adcp=ship_config.adcp_config is not None,
+#         load_argo_float=ship_config.argo_float_config is not None,
+#         load_ctd=ship_config.ctd_config is not None,
+#         load_ctd_bgc=ship_config.ctd_bgc_config is not None,
+#         load_drifter=ship_config.drifter_config is not None,
+#         load_xbt=ship_config.xbt_config is not None,
+#         load_ship_underwater_st=ship_config.ship_underwater_st_config is not None,
+#     )
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:

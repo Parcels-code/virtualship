@@ -135,6 +135,11 @@ class Instrument(abc.ABC):
         fieldset.computeTimeChunk(0, 1)  # read in data already
         return fieldset
 
+    @abc.abstractmethod
+    def simulate(self):
+        """Simulate instrument measurements."""
+        ...
+
     def run(self):
         """Run instrument simulation."""
         with yaspin(
@@ -144,8 +149,3 @@ class Instrument(abc.ABC):
         ) as spinner:
             self.simulate()
             spinner.ok("✅")
-
-    @abc.abstractmethod
-    def simulate(self):
-        """Simulate instrument measurements."""
-        ...
