@@ -10,8 +10,7 @@ from virtualship.cli._fetch import get_existing_download, get_space_time_region_
 from virtualship.models import Schedule, ShipConfig
 from virtualship.utils import (
     CHECKPOINT,
-    _get_schedule,
-    _get_ship_config,
+    _get_expedition,
 )
 
 from .checkpoint import Checkpoint
@@ -38,8 +37,9 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     if isinstance(expedition_dir, str):
         expedition_dir = Path(expedition_dir)
 
-    ship_config = _get_ship_config(expedition_dir)
-    schedule = _get_schedule(expedition_dir)
+    expedition_config = _get_expedition(expedition_dir)
+    ship_config = expedition_config.ship_config
+    schedule = expedition_config.schedule
 
     # Verify ship_config file is consistent with schedule
     ship_config.verify(schedule)

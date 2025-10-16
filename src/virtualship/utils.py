@@ -8,17 +8,15 @@ from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
-from yaspin import Spinner
-
 if TYPE_CHECKING:
-    from virtualship.models import Schedule, ShipConfig
+    from virtualship.models import Expedition
 
 import pandas as pd
 import yaml
 from pydantic import BaseModel
+from yaspin import Spinner
 
-SCHEDULE = "schedule.yaml"
-SHIP_CONFIG = "ship_config.yaml"
+EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
 
 
@@ -28,15 +26,10 @@ def load_static_file(name: str) -> str:
 
 
 @lru_cache(None)
-def get_example_config() -> str:
-    """Get the example configuration file."""
-    return load_static_file(SHIP_CONFIG)
-
-
 @lru_cache(None)
-def get_example_schedule() -> str:
-    """Get the example schedule file."""
-    return load_static_file(SCHEDULE)
+def get_example_expedition() -> str:
+    """Get the example unified expedition configuration file."""
+    return load_static_file(EXPEDITION)
 
 
 def _dump_yaml(model: BaseModel, stream: TextIO) -> str | None:
@@ -121,7 +114,7 @@ def validate_coordinates(coordinates_data):
 
 def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
     """
-    Generates a YAML file with spatial and temporal information based on instrument data from MFP excel file.
+    Generates an expedition.yaml file with spatial and temporal information based on instrument data from MFP excel file. Ship config portion of the YAML file is sourced from static version.
 
     Parameters
     ----------
@@ -134,9 +127,12 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     4. returns the yaml information.
 
     """
+    # avoid circular imports
     from virtualship.models import (
+        Expedition,
         Location,
         Schedule,
+        ShipConfig,
         SpaceTimeRegion,
         SpatialRange,
         TimeRange,
@@ -188,8 +184,16 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         space_time_region=space_time_region,
     )
 
+    # extract ship config object from static
+    config = ShipConfig.model_validate(
+        yaml.safe_load(get_example_expedition()).get("ship_config")
+    )
+
+    # combine to Expedition object
+    expedition = Expedition(schedule=schedule, ship_config=config)
+
     # Save to YAML file
-    schedule.to_yaml(yaml_output_path)
+    expedition.to_yaml(yaml_output_path)
 
 
 def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timedelta:
@@ -199,26 +203,16 @@ def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timed
     return timedelta(minutes=value)
 
 
-def _get_schedule(expedition_dir: Path) -> Schedule:
-    """Load Schedule object from yaml config file in `expedition_dir`."""
-    from virtualship.models import Schedule
+def _get_expedition(expedition_dir: Path) -> Expedition:
+    """Load Expedition object from yaml config file in `expedition_dir`."""
+    from virtualship.models import Expedition
 
-    file_path = expedition_dir.joinpath(SCHEDULE)
+    file_path = expedition_dir.joinpath(EXPEDITION)
     try:
-        return Schedule.from_yaml(file_path)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f'Schedule not found. Save it to "{file_path}".') from e
-
-
-def _get_ship_config(expedition_dir: Path) -> ShipConfig:
-    from virtualship.models import ShipConfig
-
-    file_path = expedition_dir.joinpath(SHIP_CONFIG)
-    try:
-        return ShipConfig.from_yaml(file_path)
+        return Expedition.from_yaml(file_path)
     except FileNotFoundError as e:
         raise FileNotFoundError(
-            f'Ship config not found. Save it to "{file_path}".'
+            f'{EXPEDITION} not found. Save it to "{file_path}".'
         ) from e
 
 
