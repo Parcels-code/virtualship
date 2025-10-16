@@ -12,8 +12,7 @@ from virtualship.errors import IncompleteDownloadError
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
-    _get_schedule,
-    _get_ship_config,
+    _get_expedition,
 )
 
 if TYPE_CHECKING:
@@ -24,7 +23,7 @@ import copernicusmarine
 from copernicusmarine.core_functions.credentials_utils import InvalidUsernameOrPassword
 
 import virtualship.cli._creds as creds
-from virtualship.utils import SCHEDULE
+from virtualship.utils import EXPEDITION
 
 DOWNLOAD_METADATA = "download_metadata.yaml"
 
@@ -49,17 +48,18 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     data_folder = path / "data"
     data_folder.mkdir(exist_ok=True)
 
-    schedule = _get_schedule(path)
-    ship_config = _get_ship_config(path)
+    expedition = _get_expedition(path)
 
-    schedule.verify(
-        ship_config.ship_speed_knots,
+    expedition.schedule.verify(
+        expedition.ship_config.ship_speed_knots,
         input_data=None,
         check_space_time_region=True,
         ignore_missing_fieldsets=True,
     )
 
-    space_time_region_hash = get_space_time_region_hash(schedule.space_time_region)
+    space_time_region_hash = get_space_time_region_hash(
+        expedition.schedule.space_time_region
+    )
 
     existing_download = get_existing_download(data_folder, space_time_region_hash)
     if existing_download is not None:
@@ -72,11 +72,11 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     username, password = creds.get_credentials_flow(username, password, creds_path)
 
     # Extract space_time_region details from the schedule
-    spatial_range = schedule.space_time_region.spatial_range
-    time_range = schedule.space_time_region.time_range
+    spatial_range = expedition.schedule.space_time_region.spatial_range
+    time_range = expedition.schedule.space_time_region.time_range
     start_datetime = time_range.start_time
     end_datetime = time_range.end_time
-    instruments_in_schedule = schedule.get_instruments()
+    instruments_in_schedule = expedition.schedule.get_instruments()
 
     # Create download folder and set download metadata
     download_folder = data_folder / hash_to_filename(space_time_region_hash)
@@ -84,15 +84,15 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     DownloadMetadata(download_complete=False).to_yaml(
         download_folder / DOWNLOAD_METADATA
     )
-    shutil.copyfile(path / SCHEDULE, download_folder / SCHEDULE)
+    shutil.copyfile(path / EXPEDITION, download_folder / EXPEDITION)
 
     if (
         (
             {"XBT", "CTD", "CDT_BGC", "SHIP_UNDERWATER_ST"}
             & set(instrument.name for instrument in instruments_in_schedule)
         )
-        or ship_config.ship_underwater_st_config is not None
-        or ship_config.adcp_config is not None
+        or expedition.ship_config.ship_underwater_st_config is not None
+        or expedition.ship_config.adcp_config is not None
     ):
         print("Ship data will be downloaded. Please wait...")
 

@@ -37,12 +37,10 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     if isinstance(expedition_dir, str):
         expedition_dir = Path(expedition_dir)
 
-    expedition_config = _get_expedition(expedition_dir)
-    ship_config = expedition_config.ship_config
-    schedule = expedition_config.schedule
+    expedition = _get_expedition(expedition_dir)
 
     # Verify ship_config file is consistent with schedule
-    ship_config.verify(schedule)
+    expedition.ship_config.verify(expedition.schedule)
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
@@ -50,24 +48,28 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match
-    checkpoint.verify(schedule)
+    checkpoint.verify(expedition.schedule)
 
     # load fieldsets
     loaded_input_data = _load_input_data(
         expedition_dir=expedition_dir,
-        schedule=schedule,
-        ship_config=ship_config,
+        schedule=expedition.schedule,
+        ship_config=expedition.ship_config,
         input_data=input_data,
     )
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
-    schedule.verify(ship_config.ship_speed_knots, loaded_input_data)
+    expedition.schedule.verify(
+        expedition.ship_config.ship_speed_knots, loaded_input_data
+    )
 
     # simulate the schedule
     schedule_results = simulate_schedule(
-        projection=projection, ship_config=ship_config, schedule=schedule
+        projection=projection,
+        ship_config=expedition.ship_config,
+        schedule=expedition.schedule,
     )
     if isinstance(schedule_results, ScheduleProblem):
         print(
@@ -76,7 +78,9 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         _save_checkpoint(
             Checkpoint(
                 past_schedule=Schedule(
-                    waypoints=schedule.waypoints[: schedule_results.failed_waypoint_i]
+                    waypoints=expedition.schedule.waypoints[
+                        : schedule_results.failed_waypoint_i
+                    ]
                 )
             ),
             expedition_dir,
@@ -91,10 +95,10 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\n----- EXPEDITION SUMMARY ------")
 
     # calculate expedition cost in US$
-    assert schedule.waypoints[0].time is not None, (
+    assert expedition.schedule.waypoints[0].time is not None, (
         "First waypoint has no time. This should not be possible as it should have been verified before."
     )
-    time_past = schedule_results.time - schedule.waypoints[0].time
+    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
     cost = expedition_cost(schedule_results, time_past)
     with open(expedition_dir.joinpath("results", "cost.txt"), "w") as file:
         file.writelines(f"cost: {cost} US$")
@@ -106,7 +110,7 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\nSimulating measurements. This may take a while...\n")
     simulate_measurements(
         expedition_dir,
-        ship_config,
+        expedition.ship_config,
         loaded_input_data,
         schedule_results.measurements_to_simulate,
     )

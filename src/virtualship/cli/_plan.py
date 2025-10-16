@@ -30,9 +30,7 @@ from virtualship.cli.validator_utils import (
     type_to_textual,
 )
 from virtualship.errors import UnexpectedError, UserError
-from virtualship.models.location import Location
-from virtualship.models.schedule import Schedule, Waypoint
-from virtualship.models.ship_config import (
+from virtualship.models import (
     ADCPConfig,
     ArgoFloatConfig,
     CTD_BGCConfig,
@@ -41,12 +39,20 @@ from virtualship.models.ship_config import (
     InstrumentType,
     ShipConfig,
     ShipUnderwaterSTConfig,
+    Waypoint,
     XBTConfig,
 )
+from virtualship.models.expedition import Expedition
+from virtualship.models.location import Location
 from virtualship.models.space_time_region import (
     SpatialRange,
     TimeRange,
 )
+
+#! WORK IN PROGRESS
+# TODO: this whole file can be more aggressively refactored if consolidating schedule and ship_config YAMLs!
+# TODO: for example, ScheduleEditor and ConfigEditor classes could be consolidated? Expedition.yaml only needs to be read in (and written to) once.
+
 
 UNEXPECTED_MSG_ONSAVE = (
     "Please ensure that:\n"
@@ -296,9 +302,12 @@ class ScheduleEditor(Static):
 
     def compose(self) -> ComposeResult:
         try:
-            self.schedule = Schedule.from_yaml(f"{self.path}/schedule.yaml")
+            expedition = Expedition.from_yaml(f"{self.path}/expedition.yaml")
+            self.schedule = expedition.schedule
         except Exception as e:
-            raise UserError(f"There is an issue in schedule.yaml:\n\n{e}") from None
+            raise UserError(
+                f"There is an issue in expedition.yaml (schedule section):\n\n{e}"
+            ) from None
 
         try:
             yield Label("[b]Schedule Editor[/b]", id="title", markup=True)
@@ -584,7 +593,7 @@ class ScheduleEditor(Static):
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def save_changes(self) -> bool:
-        """Save changes to schedule.yaml."""
+        """Save changes to expedition.yaml (schedule section)."""
         try:
             ## spacetime region
             spatial_range = SpatialRange(
@@ -652,7 +661,9 @@ class ScheduleEditor(Static):
                         wp.instrument.append(instrument)
 
             # save
-            self.schedule.to_yaml(f"{self.path}/schedule.yaml")
+            expedition = Expedition.from_yaml(f"{self.path}/expedition.yaml")
+            expedition.schedule = self.schedule
+            expedition.to_yaml(f"{self.path}/expedition.yaml")
             return True
 
         except Exception as e:
@@ -747,9 +758,12 @@ class ConfigEditor(Container):
 
     def compose(self) -> ComposeResult:
         try:
-            self.config = ShipConfig.from_yaml(f"{self.path}/ship_config.yaml")
+            expedition = Expedition.from_yaml(f"{self.path}/expedition.yaml")
+            self.config = expedition.ship_config
         except Exception as e:
-            raise UserError(f"There is an issue in ship_config.yaml:\n\n{e}") from None
+            raise UserError(
+                f"There is an issue in expedition.yaml (ship_config section):\n\n{e}"
+            ) from None
 
         try:
             ## SECTION: "Ship Speed & Onboard Measurements"
@@ -958,7 +972,7 @@ class ConfigEditor(Container):
             deep.value = False
 
     def save_changes(self) -> bool:
-        """Save changes to ship_config.yaml."""
+        """Save changes to expedition.yaml (ship_config section)."""
         try:
             # ship speed
             attr = "ship_speed_knots"
@@ -1010,7 +1024,9 @@ class ConfigEditor(Container):
                 setattr(self.config, instrument_name, config_class(**kwargs))
 
             # save
-            self.config.to_yaml(f"{self.path}/ship_config.yaml")
+            expedition = Expedition.from_yaml(f"{self.path}/expedition.yaml")
+            expedition.ship_config = self.config
+            expedition.to_yaml(f"{self.path}/expedition.yaml")
             return True
 
         except Exception as e:
