@@ -1,34 +1,3 @@
-ship_config:
-  ship_speed_knots: 10.0
-  adcp_config:
-    num_bins: 40
-    max_depth_meter: -1000.0
-    period_minutes: 5.0
-  argo_float_config:
-    cycle_days: 10.0
-    drift_days: 9.0
-    drift_depth_meter: -1000.0
-    max_depth_meter: -2000.0
-    min_depth_meter: 0.0
-    vertical_speed_meter_per_second: -0.1
-  ctd_config:
-    max_depth_meter: -2000.0
-    min_depth_meter: -11.0
-    stationkeeping_time_minutes: 20.0
-  ctd_bgc_config:
-    max_depth_meter: -2000.0
-    min_depth_meter: -11.0
-    stationkeeping_time_minutes: 20.0
-  drifter_config:
-    depth_meter: 0.0
-    lifetime_minutes: 60480.0
-  xbt_config:
-    max_depth_meter: -285.0
-    min_depth_meter: -2.0
-    fall_speed_meter_per_second: 6.7
-    deceleration_coefficient: 0.00225
-  ship_underwater_st_config:
-    period_minutes: 5.0
 schedule:
   space_time_region:
     spatial_range:
@@ -72,3 +41,34 @@ schedule:
         latitude: 0.03
         longitude: 0.03
       time: 2023-01-01 03:00:00
+ship_config:
+  ship_speed_knots: 10.0
+  adcp_config:
+    num_bins: 40
+    max_depth_meter: -1000.0
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 20.0
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 20.0
+  drifter_config:
+    depth_meter: 0.0
+    lifetime_minutes: 60480.0
+  xbt_config:
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+    fall_speed_meter_per_second: 6.7
+    deceleration_coefficient: 0.00225
+  ship_underwater_st_config:
+    period_minutes: 5.0
