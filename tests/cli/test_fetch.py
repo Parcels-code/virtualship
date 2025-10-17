@@ -16,8 +16,8 @@ from virtualship.cli._fetch import (
     hash_model,
     hash_to_filename,
 )
-from virtualship.models import Schedule, ShipConfig
-from virtualship.utils import get_example_config, get_example_schedule
+from virtualship.models import Expedition
+from virtualship.utils import EXPEDITION, get_example_expedition
 
 
 @pytest.fixture
@@ -32,31 +32,19 @@ def copernicus_subset_no_download(monkeypatch):
 
 
 @pytest.fixture
-def schedule(tmpdir):
-    out_path = tmpdir.join("schedule.yaml")
+def expedition(tmpdir):
+    out_path = tmpdir.join(EXPEDITION)
 
     with open(out_path, "w") as file:
-        file.write(get_example_schedule())
+        file.write(get_example_expedition())
 
-    schedule = Schedule.from_yaml(out_path)
+    expedition = Expedition.from_yaml(out_path)
 
-    return schedule
-
-
-@pytest.fixture
-def ship_config(tmpdir):
-    out_path = tmpdir.join("ship_config.yaml")
-
-    with open(out_path, "w") as file:
-        file.write(get_example_config())
-
-    ship_config = ShipConfig.from_yaml(out_path)
-
-    return ship_config
+    return expedition
 
 
 @pytest.mark.usefixtures("copernicus_subset_no_download")
-def test_fetch(schedule, ship_config, tmpdir):
+def test_fetch(expedition, tmpdir):
     """Test the fetch command, but mock the download."""
     _fetch(Path(tmpdir), "test", "test")
 

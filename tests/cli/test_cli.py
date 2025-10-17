@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from virtualship.cli.commands import fetch, init
-from virtualship.utils import SCHEDULE, SHIP_CONFIG
+from virtualship.utils import EXPEDITION
 
 
 @pytest.fixture
@@ -32,29 +32,16 @@ def test_init():
     with runner.isolated_filesystem():
         result = runner.invoke(init, ["."])
         assert result.exit_code == 0
-        config = Path(SHIP_CONFIG)
-        schedule = Path(SCHEDULE)
+        expedition = Path(EXPEDITION)
 
-        assert config.exists()
-        assert schedule.exists()
+        assert expedition.exists()
 
 
-def test_init_existing_config():
+def test_init_existing_expedition():
     runner = CliRunner()
     with runner.isolated_filesystem():
-        config = Path(SHIP_CONFIG)
-        config.write_text("test")
-
-        with pytest.raises(FileExistsError):
-            result = runner.invoke(init, ["."])
-            raise result.exception
-
-
-def test_init_existing_schedule():
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        schedule = Path(SCHEDULE)
-        schedule.write_text("test")
+        expedition = Path(EXPEDITION)
+        expedition.write_text("test")
 
         with pytest.raises(FileExistsError):
             result = runner.invoke(init, ["."])
