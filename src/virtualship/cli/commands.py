@@ -43,7 +43,7 @@ def init(path, from_mfp):
 
     if from_mfp:
         mfp_file = Path(from_mfp)
-        # Generate schedule.yaml from the MPF file
+        # Generate expedition.yaml from the MPF file
         click.echo(f"Generating schedule from {mfp_file}...")
         mfp_to_yaml(mfp_file, expedition)
         click.echo(

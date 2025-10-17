@@ -68,8 +68,7 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     # simulate the schedule
     schedule_results = simulate_schedule(
         projection=projection,
-        ship_config=expedition.ship_config,
-        schedule=expedition.schedule,
+        expedition=expedition,
     )
     if isinstance(schedule_results, ScheduleProblem):
         print(
