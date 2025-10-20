@@ -114,7 +114,7 @@ def validate_coordinates(coordinates_data):
 
 def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
     """
-    Generates an expedition.yaml file with spatial and temporal information based on instrument data from MFP excel file. Ship config portion of the YAML file is sourced from static version.
+    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship speed and instrument configurations entries in the YAML file are sourced from the static version.
 
     Parameters
     ----------
