@@ -16,7 +16,7 @@ def test_simulate_schedule_feasible() -> None:
 
     projection = pyproj.Geod(ellps="WGS84")
     expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
-    expedition.ship_config.ship_speed_knots = 10.0
+    expedition.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
             Waypoint(location=Location(0, 0), time=base_time),
@@ -35,7 +35,7 @@ def test_simulate_schedule_too_far() -> None:
 
     projection = pyproj.Geod(ellps="WGS84")
     expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
-    expedition.ship_config.ship_speed_knots = 10.0
+    expedition.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
             Waypoint(location=Location(0, 0), time=base_time),
@@ -50,8 +50,12 @@ def test_simulate_schedule_too_far() -> None:
 
 def test_time_in_minutes_in_ship_schedule() -> None:
     """Test whether the pydantic serializer picks up the time *in minutes* in the ship schedule."""
-    ship_config = Expedition.from_yaml("expedition_dir/expedition.yaml").ship_config
-    assert ship_config.adcp_config.period == timedelta(minutes=5)
-    assert ship_config.ctd_config.stationkeeping_time == timedelta(minutes=20)
-    assert ship_config.ctd_bgc_config.stationkeeping_time == timedelta(minutes=20)
-    assert ship_config.ship_underwater_st_config.period == timedelta(minutes=5)
+    instruments_config = Expedition.from_yaml(
+        "expedition_dir/expedition.yaml"
+    ).instruments_config
+    assert instruments_config.adcp_config.period == timedelta(minutes=5)
+    assert instruments_config.ctd_config.stationkeeping_time == timedelta(minutes=20)
+    assert instruments_config.ctd_bgc_config.stationkeeping_time == timedelta(
+        minutes=20
+    )
+    assert instruments_config.ship_underwater_st_config.period == timedelta(minutes=5)

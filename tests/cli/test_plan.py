@@ -106,7 +106,7 @@ async def test_UI_changes():
         with open(expedition_path) as f:
             saved_expedition = yaml.safe_load(f)
 
-        assert saved_expedition["ship_config"]["ship_speed_knots"] == float(NEW_SPEED)
+        assert saved_expedition["ship_speed_knots"] == float(NEW_SPEED)
 
         # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"

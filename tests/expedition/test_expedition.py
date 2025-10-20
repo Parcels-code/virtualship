@@ -30,8 +30,12 @@ def test_import_export_expedition(tmpdir) -> None:
             ),
         ]
     )
-    ship_config = _get_expedition(expedition_dir).ship_config
-    expedition = Expedition(schedule=schedule, ship_config=ship_config)
+    get_expedition = _get_expedition(expedition_dir)
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=get_expedition.instruments_config,
+        ship_speed_knots=get_expedition.ship_speed_knots,
+    )
     expedition.to_yaml(out_path)
 
     expedition2 = Expedition.from_yaml(out_path)
@@ -46,9 +50,9 @@ def test_verify_schedule() -> None:
         ]
     )
 
-    ship_config = _get_expedition(expedition_dir).ship_config
+    ship_speed_knots = _get_expedition(expedition_dir).ship_speed_knots
 
-    schedule.verify(ship_config.ship_speed_knots, None)
+    schedule.verify(ship_speed_knots, None)
 
 
 def test_get_instruments() -> None:
@@ -145,18 +149,16 @@ def test_get_instruments() -> None:
 def test_verify_schedule_errors(
     schedule: Schedule, check_space_time_region: bool, error, match
 ) -> None:
-    ship_config = _get_expedition(expedition_dir).ship_config
-
+    expedition = _get_expedition(expedition_dir)
     input_data = _load_input_data(
         expedition_dir,
-        schedule,
-        ship_config,
+        expedition,
         input_data=Path("expedition_dir/input_data"),
     )
 
     with pytest.raises(error, match=match):
         schedule.verify(
-            ship_config.ship_speed_knots,
+            expedition.ship_speed_knots,
             input_data,
             check_space_time_region=check_space_time_region,
         )
@@ -185,89 +187,91 @@ def schedule_no_xbt(schedule):
 
 
 @pytest.fixture
-def ship_config(tmp_file):
+def instruments_config(tmp_file):
     with open(tmp_file, "w") as file:
         file.write(get_example_expedition())
-    return Expedition.from_yaml(tmp_file).ship_config
+    return Expedition.from_yaml(tmp_file).instruments_config
 
 
 @pytest.fixture
-def ship_config_no_xbt(ship_config):
-    delattr(ship_config, "xbt_config")
-    return ship_config
+def instruments_config_no_xbt(instruments_config):
+    delattr(instruments_config, "xbt_config")
+    return instruments_config
 
 
 @pytest.fixture
-def ship_config_no_ctd(ship_config):
-    delattr(ship_config, "ctd_config")
-    return ship_config
+def instruments_config_no_ctd(instruments_config):
+    delattr(instruments_config, "ctd_config")
+    return instruments_config
 
 
 @pytest.fixture
-def ship_config_no_ctd_bgc(ship_config):
-    delattr(ship_config, "ctd_bgc_config")
-    return ship_config
+def instruments_config_no_ctd_bgc(instruments_config):
+    delattr(instruments_config, "ctd_bgc_config")
+    return instruments_config
 
 
 @pytest.fixture
-def ship_config_no_argo_float(ship_config):
-    delattr(ship_config, "argo_float_config")
-    return ship_config
+def instruments_config_no_argo_float(instruments_config):
+    delattr(instruments_config, "argo_float_config")
+    return instruments_config
 
 
 @pytest.fixture
-def ship_config_no_drifter(ship_config):
-    delattr(ship_config, "drifter_config")
-    return ship_config
+def instruments_config_no_drifter(instruments_config):
+    delattr(instruments_config, "drifter_config")
+    return instruments_config
 
 
-def test_verify_ship_config(ship_config, schedule) -> None:
-    ship_config.verify(schedule)
+def test_verify_instruments_config(instruments_config, schedule) -> None:
+    instruments_config.verify(schedule)
 
 
-def test_verify_ship_config_no_instrument(ship_config, schedule_no_xbt) -> None:
-    ship_config.verify(schedule_no_xbt)
+def test_verify_instruments_config_no_instrument(
+    instruments_config, schedule_no_xbt
+) -> None:
+    instruments_config.verify(schedule_no_xbt)
 
 
 @pytest.mark.parametrize(
-    "ship_config_fixture,error,match",
+    "instruments_config_fixture,error,match",
     [
         pytest.param(
-            "ship_config_no_xbt",
+            "instruments_config_no_xbt",
             ConfigError,
-            "Schedule includes instrument 'XBT', but ship_config does not provide configuration for it.",
+            "Schedule includes instrument 'XBT', but instruments_config does not provide configuration for it.",
             id="ShipConfigNoXBT",
         ),
         pytest.param(
-            "ship_config_no_ctd",
+            "instruments_config_no_ctd",
             ConfigError,
-            "Schedule includes instrument 'CTD', but ship_config does not provide configuration for it.",
+            "Schedule includes instrument 'CTD', but instruments_config does not provide configuration for it.",
             id="ShipConfigNoCTD",
         ),
         pytest.param(
-            "ship_config_no_ctd_bgc",
+            "instruments_config_no_ctd_bgc",
             ConfigError,
-            "Schedule includes instrument 'CTD_BGC', but ship_config does not provide configuration for it.",
+            "Schedule includes instrument 'CTD_BGC', but instruments_config does not provide configuration for it.",
             id="ShipConfigNoCTD_BGC",
         ),
         pytest.param(
-            "ship_config_no_argo_float",
+            "instruments_config_no_argo_float",
             ConfigError,
-            "Schedule includes instrument 'ARGO_FLOAT', but ship_config does not provide configuration for it.",
+            "Schedule includes instrument 'ARGO_FLOAT', but instruments_config does not provide configuration for it.",
             id="ShipConfigNoARGO_FLOAT",
         ),
         pytest.param(
-            "ship_config_no_drifter",
+            "instruments_config_no_drifter",
             ConfigError,
-            "Schedule includes instrument 'DRIFTER', but ship_config does not provide configuration for it.",
+            "Schedule includes instrument 'DRIFTER', but instruments_config does not provide configuration for it.",
             id="ShipConfigNoDRIFTER",
         ),
     ],
 )
-def test_verify_ship_config_errors(
-    request, schedule, ship_config_fixture, error, match
+def test_verify_instruments_config_errors(
+    request, schedule, instruments_config_fixture, error, match
 ) -> None:
-    ship_config = request.getfixturevalue(ship_config_fixture)
+    instruments_config = request.getfixturevalue(instruments_config_fixture)
 
     with pytest.raises(error, match=match):
-        ship_config.verify(schedule)
+        instruments_config.verify(schedule)
