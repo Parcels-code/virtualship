@@ -17,8 +17,7 @@ schedule:
         latitude: 0.02
         longitude: 0.01
       time: 2023-01-02 03:00:00
-ship_config:
-  ship_speed_knots: 10.0
+instruments_config:
   adcp_config:
     num_bins: 40
     max_depth_meter: -1000.0
@@ -43,3 +42,4 @@ ship_config:
     lifetime_minutes: 40320.0
   ship_underwater_st_config:
     period_minutes: 5.0
+ship_speed_knots: 10.0

@@ -28,7 +28,8 @@ class Expedition(pydantic.BaseModel):
     """Expedition class, including schedule and ship config."""
 
     schedule: Schedule
-    ship_config: ShipConfig
+    instruments_config: InstrumentsConfig
+    ship_speed_knots: float = pydantic.Field(gt=0.0)
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
@@ -42,8 +43,15 @@ class Expedition(pydantic.BaseModel):
         """Load config from yaml file."""
         with open(file_path) as file:
             data = yaml.safe_load(file)
-
         return Expedition(**data)
+
+
+class ShipConfig:
+    """Configuration of the ship."""
+
+    ship_speed_knots: float = pydantic.Field(gt=0.0)
+
+    model_config = pydantic.ConfigDict(extra="forbid")
 
 
 class Schedule(pydantic.BaseModel):
@@ -340,13 +348,8 @@ class XBTConfig(pydantic.BaseModel):
     deceleration_coefficient: float = pydantic.Field(gt=0.0)
 
 
-class ShipConfig(pydantic.BaseModel):
-    """Configuration of the virtual ship."""
-
-    ship_speed_knots: float = pydantic.Field(gt=0.0)
-    """
-    Velocity of the ship in knots.
-    """
+class InstrumentsConfig(pydantic.BaseModel):
+    """Configuration of instruments."""
 
     argo_float_config: ArgoFloatConfig | None = None
     """
@@ -401,7 +404,7 @@ class ShipConfig(pydantic.BaseModel):
 
     def verify(self, schedule: Schedule) -> None:
         """
-        Verify ship configuration against the schedule.
+        Verify instrument configurations against the schedule.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
@@ -430,7 +433,7 @@ class ShipConfig(pydantic.BaseModel):
                 or getattr(self, config_attr) is None
             ):
                 raise ConfigError(
-                    f"Schedule includes instrument '{inst_type.value}', but ship_config does not provide configuration for it."
+                    f"Schedule includes instrument '{inst_type.value}', but instruments_config does not provide configuration for it."
                 )
 
 
