@@ -10,6 +10,7 @@ from .expedition import (
     InstrumentsConfig,
     InstrumentType,
     Schedule,
+    ShipConfig,
     ShipUnderwaterSTConfig,
     Waypoint,
     XBTConfig,
@@ -27,6 +28,7 @@ from .spacetime import (
 __all__ = [  # noqa: RUF022
     "Location",
     "Schedule",
+    "ShipConfig",
     "Waypoint",
     "InstrumentType",
     "ArgoFloatConfig",

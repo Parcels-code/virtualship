@@ -29,7 +29,7 @@ class Expedition(pydantic.BaseModel):
 
     schedule: Schedule
     instruments_config: InstrumentsConfig
-    ship_speed_knots: float = pydantic.Field(gt=0.0)
+    ship_config: ShipConfig
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
@@ -46,10 +46,12 @@ class Expedition(pydantic.BaseModel):
         return Expedition(**data)
 
 
-class ShipConfig:
+class ShipConfig(pydantic.BaseModel):
     """Configuration of the ship."""
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
+
+    # TODO: room here for adding more ship config options in future PRs (e.g. max_days_at_sea)...
 
     model_config = pydantic.ConfigDict(extra="forbid")
 

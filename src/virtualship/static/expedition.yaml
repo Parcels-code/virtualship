@@ -71,4 +71,5 @@ instruments_config:
     deceleration_coefficient: 0.00225
   ship_underwater_st_config:
     period_minutes: 5.0
-ship_speed_knots: 10.0
+ship_config:
+  ship_speed_knots: 10.0
