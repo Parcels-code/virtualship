@@ -34,7 +34,7 @@ def test_import_export_expedition(tmpdir) -> None:
     expedition = Expedition(
         schedule=schedule,
         instruments_config=get_expedition.instruments_config,
-        ship_speed_knots=get_expedition.ship_speed_knots,
+        ship_config=get_expedition.ship_config,
     )
     expedition.to_yaml(out_path)
 
@@ -50,7 +50,7 @@ def test_verify_schedule() -> None:
         ]
     )
 
-    ship_speed_knots = _get_expedition(expedition_dir).ship_speed_knots
+    ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
 
     schedule.verify(ship_speed_knots, None)
 
@@ -158,7 +158,7 @@ def test_verify_schedule_errors(
 
     with pytest.raises(error, match=match):
         schedule.verify(
-            expedition.ship_speed_knots,
+            expedition.ship_config.ship_speed_knots,
             input_data,
             check_space_time_region=check_space_time_region,
         )

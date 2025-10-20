@@ -60,7 +60,9 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
-    expedition.schedule.verify(expedition.ship_speed_knots, loaded_input_data)
+    expedition.schedule.verify(
+        expedition.ship_config.ship_speed_knots, loaded_input_data
+    )
 
     # simulate the schedule
     schedule_results = simulate_schedule(

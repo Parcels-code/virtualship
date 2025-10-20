@@ -16,7 +16,7 @@ def test_simulate_schedule_feasible() -> None:
 
     projection = pyproj.Geod(ellps="WGS84")
     expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
-    expedition.ship_speed_knots = 10.0
+    expedition.ship_config.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
             Waypoint(location=Location(0, 0), time=base_time),
@@ -35,7 +35,7 @@ def test_simulate_schedule_too_far() -> None:
 
     projection = pyproj.Geod(ellps="WGS84")
     expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
-    expedition.ship_speed_knots = 10.0
+    expedition.ship_config.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
             Waypoint(location=Location(0, 0), time=base_time),

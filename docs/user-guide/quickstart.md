@@ -46,7 +46,7 @@ virtualship init EXPEDITION_NAME --from-mfp CoordinatesExport.xlsx
 The `CoordinatesExport.xlsx` in the `virtualship init` command refers to the .xlsx file exported from MFP. Replace the filename with the name of your exported .xlsx file (and make sure to move it from the Downloads to the folder/directory in which you are running the expedition).
 ```
 
-This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship speed and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates will be used.
+This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates will be used.
 
 ```{note}
 For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write an example `expedition.yaml` file in the `EXPEDITION_NAME` folder/directory. This file contains example waypoints, timings, instrument selections, and ship configuration, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.

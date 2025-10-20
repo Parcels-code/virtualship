@@ -51,7 +51,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     expedition = _get_expedition(path)
 
     expedition.schedule.verify(
-        expedition.ship_speed_knots,
+        expedition.ship_config.ship_speed_knots,
         input_data=None,
         check_space_time_region=True,
         ignore_missing_fieldsets=True,

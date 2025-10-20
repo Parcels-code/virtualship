@@ -38,6 +38,7 @@ from virtualship.models import (
     Expedition,
     InstrumentType,
     Location,
+    ShipConfig,
     ShipUnderwaterSTConfig,
     SpatialRange,
     TimeRange,
@@ -185,12 +186,12 @@ class ExpeditionEditor(Static):
                 collapsed=False,
             ):
                 attr = "ship_speed_knots"
-                validators = group_validators(Expedition, attr)
+                validators = group_validators(ShipConfig, attr)
                 with Horizontal(classes="ship_speed"):
                     yield Label("[b]Ship Speed (knots):[/b]")
                     yield Input(
                         id="speed",
-                        type=type_to_textual(get_field_type(Expedition, attr)),
+                        type=type_to_textual(get_field_type(ShipConfig, attr)),
                         validators=[
                             Function(
                                 validator,
@@ -201,8 +202,8 @@ class ExpeditionEditor(Static):
                         classes="ship_speed_input",
                         placeholder="knots",
                         value=str(
-                            self.expedition.ship_speed_knots
-                            if self.expedition.ship_speed_knots
+                            self.expedition.ship_config.ship_speed_knots
+                            if self.expedition.ship_config.ship_speed_knots
                             else ""
                         ),
                     )
@@ -542,16 +543,12 @@ class ExpeditionEditor(Static):
 
     def _update_ship_speed(self):
         attr = "ship_speed_knots"
-        field_type = get_field_type(Expedition, attr)
+        field_type = get_field_type(type(self.expedition.ship_config), attr)
         value = field_type(self.query_one("#speed").value)
-        try:
-            if not (value > 0):
-                raise ValueError("ship_speed_knots must be greater than 0")
-        except TypeError:
-            raise UnexpectedError("Invalid ship speed value") from None
-
-        # persist to the Expedition instance
-        self.expedition.ship_speed_knots = value
+        ShipConfig.model_validate(
+            {**self.expedition.ship_config.model_dump(), attr: value}
+        )
+        self.expedition.ship_config.ship_speed_knots = value
 
     def _update_instrument_configs(self):
         for instrument_name, info in INSTRUMENT_FIELDS.items():

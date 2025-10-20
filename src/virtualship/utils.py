@@ -114,7 +114,7 @@ def validate_coordinates(coordinates_data):
 
 def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
     """
-    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship speed and instrument configurations entries in the YAML file are sourced from the static version.
+    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version.
 
     Parameters
     ----------
@@ -189,14 +189,14 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         yaml.safe_load(get_example_expedition()).get("instruments_config")
     )
 
-    # extract ship speed from static
-    ship_speed_knots = yaml.safe_load(get_example_expedition()).get("ship_speed_knots")
+    # extract ship config from static
+    ship_config = yaml.safe_load(get_example_expedition()).get("ship_config")
 
     # combine to Expedition object
     expedition = Expedition(
         schedule=schedule,
         instruments_config=instruments_config,
-        ship_speed_knots=ship_speed_knots,
+        ship_config=ship_config,
     )
 
     # Save to YAML file

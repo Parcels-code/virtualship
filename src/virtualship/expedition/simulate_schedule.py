@@ -125,7 +125,9 @@ class _ScheduleSimulator:
             lons2=location.lon,
             lats2=location.lat,
         )
-        ship_speed_meter_per_second = self._expedition.ship_speed_knots * 1852 / 3600
+        ship_speed_meter_per_second = (
+            self._expedition.ship_config.ship_speed_knots * 1852 / 3600
+        )
         azimuth1 = geodinv[0]
         distance_to_next_waypoint = geodinv[2]
         time_to_reach = timedelta(
