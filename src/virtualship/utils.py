@@ -130,9 +130,9 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     # avoid circular imports
     from virtualship.models import (
         Expedition,
+        InstrumentsConfig,
         Location,
         Schedule,
-        ShipConfig,
         SpaceTimeRegion,
         SpatialRange,
         TimeRange,
@@ -184,13 +184,20 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         space_time_region=space_time_region,
     )
 
-    # extract ship config object from static
-    config = ShipConfig.model_validate(
-        yaml.safe_load(get_example_expedition()).get("ship_config")
+    # extract instruments config from static
+    instruments_config = InstrumentsConfig.model_validate(
+        yaml.safe_load(get_example_expedition()).get("instruments_config")
     )
 
+    # extract ship speed from static
+    ship_speed_knots = yaml.safe_load(get_example_expedition()).get("ship_speed_knots")
+
     # combine to Expedition object
-    expedition = Expedition(schedule=schedule, ship_config=config)
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=instruments_config,
+        ship_speed_knots=ship_speed_knots,
+    )
 
     # Save to YAML file
     expedition.to_yaml(yaml_output_path)

@@ -38,7 +38,6 @@ from virtualship.models import (
     Expedition,
     InstrumentType,
     Location,
-    ShipConfig,
     ShipUnderwaterSTConfig,
     SpatialRange,
     TimeRange,
@@ -169,25 +168,29 @@ class ExpeditionEditor(Static):
             ) from None
 
         try:
-            ## 1) SHIP CONFIG EDITOR
+            ## 1) SHIP SPEED & INSTRUMENTS CONFIG EDITOR
 
             yield Label(
-                "[b]Ship Config Editor[/b]", id="title_ship_config", markup=True
+                "[b]Ship & Instruments Config Editor[/b]",
+                id="title_ship_instruments_config",
+                markup=True,
             )
             yield Rule(line_style="heavy")
 
             # SECTION: "Ship Speed & Onboard Measurements"
 
             with Collapsible(
-                title="[b]Ship Speed & Onboard Measurements[/b]", id="speed_collapsible"
+                title="[b]Ship Speed & Onboard Measurements[/b]",
+                id="speed_collapsible",
+                collapsed=False,
             ):
                 attr = "ship_speed_knots"
-                validators = group_validators(ShipConfig, attr)
+                validators = group_validators(Expedition, attr)
                 with Horizontal(classes="ship_speed"):
                     yield Label("[b]Ship Speed (knots):[/b]")
                     yield Input(
                         id="speed",
-                        type=type_to_textual(get_field_type(ShipConfig, attr)),
+                        type=type_to_textual(get_field_type(Expedition, attr)),
                         validators=[
                             Function(
                                 validator,
@@ -198,8 +201,8 @@ class ExpeditionEditor(Static):
                         classes="ship_speed_input",
                         placeholder="knots",
                         value=str(
-                            self.expedition.ship_config.ship_speed_knots
-                            if self.expedition.ship_config.ship_speed_knots
+                            self.expedition.ship_speed_knots
+                            if self.expedition.ship_speed_knots
                             else ""
                         ),
                     )
@@ -209,7 +212,7 @@ class ExpeditionEditor(Static):
                     yield Label("[b]Onboard Temperature/Salinity:[/b]")
                     yield Switch(
                         value=bool(
-                            self.expedition.ship_config.ship_underwater_st_config
+                            self.expedition.instruments_config.ship_underwater_st_config
                         ),
                         id="has_onboard_ts",
                     )
@@ -217,15 +220,15 @@ class ExpeditionEditor(Static):
                 with Horizontal(classes="adcp-section"):
                     yield Label("[b]Onboard ADCP:[/b]")
                     yield Switch(
-                        value=bool(self.expedition.ship_config.adcp_config),
+                        value=bool(self.expedition.instruments_config.adcp_config),
                         id="has_adcp",
                     )
 
                 # adcp type selection
                 with Horizontal(id="adcp_type_container", classes="-hidden"):
                     is_deep = (
-                        self.expedition.ship_config.adcp_config
-                        and self.expedition.ship_config.adcp_config.max_depth_meter
+                        self.expedition.instruments_config.adcp_config
+                        and self.expedition.instruments_config.adcp_config.max_depth_meter
                         == -1000.0
                     )
                     yield Label("       OceanObserver:")
@@ -243,8 +246,9 @@ class ExpeditionEditor(Static):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
                     config_class = info["class"]
                     attributes = info["attributes"]
+                    # instrument-specific configs now live under instruments_config
                     config_instance = getattr(
-                        self.expedition.ship_config, instrument_name, None
+                        self.expedition.instruments_config, instrument_name, None
                     )
                     title = info.get("title", instrument_name.replace("_", " ").title())
                     with Collapsible(
@@ -505,8 +509,8 @@ class ExpeditionEditor(Static):
     def on_mount(self) -> None:
         self.refresh_waypoint_widgets()
         adcp_present = (
-            getattr(self.expedition.ship_config, "adcp_config", None)
-            if self.expedition.ship_config
+            getattr(self.expedition.instruments_config, "adcp_config", None)
+            if self.expedition.instruments_config
             else False
         )
         self.show_hide_adcp_type(bool(adcp_present))
@@ -520,7 +524,7 @@ class ExpeditionEditor(Static):
     def save_changes(self) -> bool:
         """Save changes to expedition.yaml."""
         try:
-            self._update_ship_config()
+            self._update_ship_speed()
             self._update_instrument_configs()
             self._update_schedule()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
@@ -536,14 +540,18 @@ class ExpeditionEditor(Static):
                 + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
             ) from None
 
-    def _update_ship_config(self):
+    def _update_ship_speed(self):
         attr = "ship_speed_knots"
-        field_type = get_field_type(type(self.expedition.ship_config), attr)
+        field_type = get_field_type(Expedition, attr)
         value = field_type(self.query_one("#speed").value)
-        ShipConfig.model_validate(
-            {**self.expedition.ship_config.model_dump(), attr: value}
-        )
-        self.expedition.ship_config.ship_speed_knots = value
+        try:
+            if not (value > 0):
+                raise ValueError("ship_speed_knots must be greater than 0")
+        except TypeError:
+            raise UnexpectedError("Invalid ship speed value") from None
+
+        # persist to the Expedition instance
+        self.expedition.ship_speed_knots = value
 
     def _update_instrument_configs(self):
         for instrument_name, info in INSTRUMENT_FIELDS.items():
@@ -554,12 +562,12 @@ class ExpeditionEditor(Static):
             if instrument_name == "adcp_config":
                 has_adcp = self.query_one("#has_adcp", Switch).value
                 if not has_adcp:
-                    setattr(self.expedition.ship_config, instrument_name, None)
+                    setattr(self.expedition.instruments_config, instrument_name, None)
                     continue
             if instrument_name == "ship_underwater_st_config":
                 has_ts = self.query_one("#has_onboard_ts", Switch).value
                 if not has_ts:
-                    setattr(self.expedition.ship_config, instrument_name, None)
+                    setattr(self.expedition.instruments_config, instrument_name, None)
                     continue
             for attr_meta in attributes:
                 attr = attr_meta["name"]
@@ -579,7 +587,9 @@ class ExpeditionEditor(Static):
                 else:
                     kwargs["max_depth_meter"] = -150.0
             setattr(
-                self.expedition.ship_config, instrument_name, config_class(**kwargs)
+                self.expedition.instruments_config,
+                instrument_name,
+                config_class(**kwargs),
             )
 
     def _update_schedule(self):
@@ -742,13 +752,16 @@ class ExpeditionEditor(Static):
     @on(Switch.Changed, "#has_adcp")
     def on_adcp_toggle(self, event: Switch.Changed) -> None:
         self.show_hide_adcp_type(event.value)
-        if event.value and not self.expedition.ship_config.adcp_config:
+        if event.value and not self.expedition.instruments_config.adcp_config:
             # ADCP was turned on and was previously null
             self._set_adcp_default_values()
 
     @on(Switch.Changed, "#has_onboard_ts")
     def on_ts_toggle(self, event: Switch.Changed) -> None:
-        if event.value and not self.expedition.ship_config.ship_underwater_st_config:
+        if (
+            event.value
+            and not self.expedition.instruments_config.ship_underwater_st_config
+        ):
             # T/S was turned on and was previously null
             self._set_ts_default_values()
 
@@ -1152,7 +1165,7 @@ class PlanApp(App):
         margin: 0 1;
     }
 
-    #title_ship_config {
+    #title_ship_instruments_config {
         text-style: bold;
         padding: 1;
     }

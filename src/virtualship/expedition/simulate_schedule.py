@@ -57,8 +57,7 @@ def simulate_schedule(
     Simulate a schedule.
 
     :param projection: The projection to use for sailing.
-    :param ship_config: Ship configuration.
-    :param schedule: The schedule to simulate.
+    :param expedition: Expedition object containing the schedule to simulate.
     :returns: Either the results of a successfully simulated schedule, or information on where the schedule became infeasible.
     """
     return _ScheduleSimulator(projection, expedition).simulate()
@@ -126,9 +125,7 @@ class _ScheduleSimulator:
             lons2=location.lon,
             lats2=location.lat,
         )
-        ship_speed_meter_per_second = (
-            self._expedition.ship_config.ship_speed_knots * 1852 / 3600
-        )
+        ship_speed_meter_per_second = self._expedition.ship_speed_knots * 1852 / 3600
         azimuth1 = geodinv[0]
         distance_to_next_waypoint = geodinv[2]
         time_to_reach = timedelta(
@@ -137,7 +134,7 @@ class _ScheduleSimulator:
         end_time = self._time + time_to_reach
 
         # note all ADCP measurements
-        if self._expedition.ship_config.adcp_config is not None:
+        if self._expedition.instruments_config.adcp_config is not None:
             location = self._location
             time = self._time
             while self._next_adcp_time <= end_time:
@@ -160,11 +157,11 @@ class _ScheduleSimulator:
 
                 self._next_adcp_time = (
                     self._next_adcp_time
-                    + self._expedition.ship_config.adcp_config.period
+                    + self._expedition.instruments_config.adcp_config.period
                 )
 
         # note all ship underwater ST measurements
-        if self._expedition.ship_config.ship_underwater_st_config is not None:
+        if self._expedition.instruments_config.ship_underwater_st_config is not None:
             location = self._location
             time = self._time
             while self._next_ship_underwater_st_time <= end_time:
@@ -187,7 +184,7 @@ class _ScheduleSimulator:
 
                 self._next_ship_underwater_st_time = (
                     self._next_ship_underwater_st_time
-                    + self._expedition.ship_config.ship_underwater_st_config.period
+                    + self._expedition.instruments_config.ship_underwater_st_config.period
                 )
 
         self._time = end_time
@@ -197,25 +194,25 @@ class _ScheduleSimulator:
         end_time = self._time + time_passed
 
         # note all ADCP measurements
-        if self._expedition.ship_config.adcp_config is not None:
+        if self._expedition.instruments_config.adcp_config is not None:
             while self._next_adcp_time <= end_time:
                 self._measurements_to_simulate.adcps.append(
                     Spacetime(self._location, self._next_adcp_time)
                 )
                 self._next_adcp_time = (
                     self._next_adcp_time
-                    + self._expedition.ship_config.adcp_config.period
+                    + self._expedition.instruments_config.adcp_config.period
                 )
 
         # note all ship underwater ST measurements
-        if self._expedition.ship_config.ship_underwater_st_config is not None:
+        if self._expedition.instruments_config.ship_underwater_st_config is not None:
             while self._next_ship_underwater_st_time <= end_time:
                 self._measurements_to_simulate.ship_underwater_sts.append(
                     Spacetime(self._location, self._next_ship_underwater_st_time)
                 )
                 self._next_ship_underwater_st_time = (
                     self._next_ship_underwater_st_time
-                    + self._expedition.ship_config.ship_underwater_st_config.period
+                    + self._expedition.instruments_config.ship_underwater_st_config.period
                 )
 
         self._time = end_time
@@ -240,52 +237,52 @@ class _ScheduleSimulator:
                 self._measurements_to_simulate.argo_floats.append(
                     ArgoFloat(
                         spacetime=Spacetime(self._location, self._time),
-                        min_depth=self._expedition.ship_config.argo_float_config.min_depth_meter,
-                        max_depth=self._expedition.ship_config.argo_float_config.max_depth_meter,
-                        drift_depth=self._expedition.ship_config.argo_float_config.drift_depth_meter,
-                        vertical_speed=self._expedition.ship_config.argo_float_config.vertical_speed_meter_per_second,
-                        cycle_days=self._expedition.ship_config.argo_float_config.cycle_days,
-                        drift_days=self._expedition.ship_config.argo_float_config.drift_days,
+                        min_depth=self._expedition.instruments_config.argo_float_config.min_depth_meter,
+                        max_depth=self._expedition.instruments_config.argo_float_config.max_depth_meter,
+                        drift_depth=self._expedition.instruments_config.argo_float_config.drift_depth_meter,
+                        vertical_speed=self._expedition.instruments_config.argo_float_config.vertical_speed_meter_per_second,
+                        cycle_days=self._expedition.instruments_config.argo_float_config.cycle_days,
+                        drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
                     CTD(
                         spacetime=Spacetime(self._location, self._time),
-                        min_depth=self._expedition.ship_config.ctd_config.min_depth_meter,
-                        max_depth=self._expedition.ship_config.ctd_config.max_depth_meter,
+                        min_depth=self._expedition.instruments_config.ctd_config.min_depth_meter,
+                        max_depth=self._expedition.instruments_config.ctd_config.max_depth_meter,
                     )
                 )
                 time_costs.append(
-                    self._expedition.ship_config.ctd_config.stationkeeping_time
+                    self._expedition.instruments_config.ctd_config.stationkeeping_time
                 )
             elif instrument is InstrumentType.CTD_BGC:
                 self._measurements_to_simulate.ctd_bgcs.append(
                     CTD_BGC(
                         spacetime=Spacetime(self._location, self._time),
-                        min_depth=self._expedition.ship_config.ctd_bgc_config.min_depth_meter,
-                        max_depth=self._expedition.ship_config.ctd_bgc_config.max_depth_meter,
+                        min_depth=self._expedition.instruments_config.ctd_bgc_config.min_depth_meter,
+                        max_depth=self._expedition.instruments_config.ctd_bgc_config.max_depth_meter,
                     )
                 )
                 time_costs.append(
-                    self._expedition.ship_config.ctd_bgc_config.stationkeeping_time
+                    self._expedition.instruments_config.ctd_bgc_config.stationkeeping_time
                 )
             elif instrument is InstrumentType.DRIFTER:
                 self._measurements_to_simulate.drifters.append(
                     Drifter(
                         spacetime=Spacetime(self._location, self._time),
-                        depth=self._expedition.ship_config.drifter_config.depth_meter,
-                        lifetime=self._expedition.ship_config.drifter_config.lifetime,
+                        depth=self._expedition.instruments_config.drifter_config.depth_meter,
+                        lifetime=self._expedition.instruments_config.drifter_config.lifetime,
                     )
                 )
             elif instrument is InstrumentType.XBT:
                 self._measurements_to_simulate.xbts.append(
                     XBT(
                         spacetime=Spacetime(self._location, self._time),
-                        min_depth=self._expedition.ship_config.xbt_config.min_depth_meter,
-                        max_depth=self._expedition.ship_config.xbt_config.max_depth_meter,
-                        fall_speed=self._expedition.ship_config.xbt_config.fall_speed_meter_per_second,
-                        deceleration_coefficient=self._expedition.ship_config.xbt_config.deceleration_coefficient,
+                        min_depth=self._expedition.instruments_config.xbt_config.min_depth_meter,
+                        max_depth=self._expedition.instruments_config.xbt_config.max_depth_meter,
+                        fall_speed=self._expedition.instruments_config.xbt_config.fall_speed_meter_per_second,
+                        deceleration_coefficient=self._expedition.instruments_config.xbt_config.deceleration_coefficient,
                     )
                 )
             else:

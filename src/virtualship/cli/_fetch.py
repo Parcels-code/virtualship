@@ -51,7 +51,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     expedition = _get_expedition(path)
 
     expedition.schedule.verify(
-        expedition.ship_config.ship_speed_knots,
+        expedition.ship_speed_knots,
         input_data=None,
         check_space_time_region=True,
         ignore_missing_fieldsets=True,
@@ -91,8 +91,8 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
             {"XBT", "CTD", "CDT_BGC", "SHIP_UNDERWATER_ST"}
             & set(instrument.name for instrument in instruments_in_schedule)
         )
-        or expedition.ship_config.ship_underwater_st_config is not None
-        or expedition.ship_config.adcp_config is not None
+        or expedition.instruments_config.ship_underwater_st_config is not None
+        or expedition.instruments_config.adcp_config is not None
     ):
         print("Ship data will be downloaded. Please wait...")
 
