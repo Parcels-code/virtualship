@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "parcels >3.1.0",
+    "parcels @ git+https://github.com/OceanParcels/parcels.git@v4-dev",
     "pyproj >= 3, < 4",
     "sortedcontainers == 2.4.0",
     "opensimplex == 0.4.5",
