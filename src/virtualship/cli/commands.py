@@ -7,8 +7,7 @@ from virtualship.cli._fetch import _fetch
 from virtualship.cli._plan import _plan
 from virtualship.expedition.do_expedition import do_expedition
 from virtualship.utils import (
-    SCHEDULE,
-    SHIP_CONFIG,
+    EXPEDITION,
     mfp_to_yaml,
 )
 
@@ -28,47 +27,39 @@ from virtualship.utils import (
 )
 def init(path, from_mfp):
     """
-    Initialize a directory for a new expedition, with an example schedule and ship config files.
+    Initialize a directory for a new expedition, with an expedition.yaml file.
 
-    If --mfp-file is provided, it will generate the schedule from the MPF file instead.
+    If --mfp-file is provided, it will generate the expedition.yaml from the MPF file instead.
     """
     path = Path(path)
     path.mkdir(exist_ok=True)
 
-    config = path / SHIP_CONFIG
-    schedule = path / SCHEDULE
+    expedition = path / EXPEDITION
 
-    if config.exists():
+    if expedition.exists():
         raise FileExistsError(
-            f"File '{config}' already exist. Please remove it or choose another directory."
+            f"File '{expedition}' already exist. Please remove it or choose another directory."
         )
 
-    if schedule.exists():
-        raise FileExistsError(
-            f"File '{schedule}' already exist. Please remove it or choose another directory."
-        )
-
-    config.write_text(utils.get_example_config())
     if from_mfp:
         mfp_file = Path(from_mfp)
-        # Generate schedule.yaml from the MPF file
+        # Generate expedition.yaml from the MPF file
         click.echo(f"Generating schedule from {mfp_file}...")
-        mfp_to_yaml(mfp_file, schedule)
+        mfp_to_yaml(mfp_file, expedition)
         click.echo(
             "\n⚠️  The generated schedule does not contain TIME values or INSTRUMENT selections.  ⚠️"
             "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the schedule configuration, "
-            "\nOR edit 'schedule.yaml' and manually add the necessary time values and instrument selections."
-            "\n\nIf editing 'schedule.yaml' manually:"
+            "\nOR edit 'expedition.yaml' and manually add the necessary time values and instrument selections under the 'schedule' heading."
+            "\n\nIf editing 'expedition.yaml' manually:"
             "\n\n🕒  Expected time format: 'YYYY-MM-DD HH:MM:SS' (e.g., '2023-10-20 01:00:00')."
             "\n\n🌡️   Expected instrument(s) format: one line per instrument e.g."
             f"\n\n{' ' * 15}waypoints:\n{' ' * 15}- instrument:\n{' ' * 19}- CTD\n{' ' * 19}- ARGO_FLOAT\n"
         )
     else:
-        # Create a default example schedule
-        # schedule_body = utils.get_example_schedule()
-        schedule.write_text(utils.get_example_schedule())
+        # Create a default example expedition YAML
+        expedition.write_text(utils.get_example_expedition())
 
-    click.echo(f"Created '{config.name}' and '{schedule.name}' at {path}.")
+    click.echo(f"Created '{expedition.name}' at {path}.")
 
 
 @click.command()

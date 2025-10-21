@@ -7,11 +7,10 @@ from pathlib import Path
 import pyproj
 
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.models import Schedule, ShipConfig
+from virtualship.models import Expedition, Schedule
 from virtualship.utils import (
     CHECKPOINT,
-    _get_schedule,
-    _get_ship_config,
+    _get_expedition,
 )
 
 from .checkpoint import Checkpoint
@@ -38,11 +37,10 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     if isinstance(expedition_dir, str):
         expedition_dir = Path(expedition_dir)
 
-    ship_config = _get_ship_config(expedition_dir)
-    schedule = _get_schedule(expedition_dir)
+    expedition = _get_expedition(expedition_dir)
 
-    # Verify ship_config file is consistent with schedule
-    ship_config.verify(schedule)
+    # Verify instruments_config file is consistent with schedule
+    expedition.instruments_config.verify(expedition.schedule)
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
@@ -50,24 +48,26 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match
-    checkpoint.verify(schedule)
+    checkpoint.verify(expedition.schedule)
 
     # load fieldsets
     loaded_input_data = _load_input_data(
         expedition_dir=expedition_dir,
-        schedule=schedule,
-        ship_config=ship_config,
+        expedition=expedition,
         input_data=input_data,
     )
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
-    schedule.verify(ship_config.ship_speed_knots, loaded_input_data)
+    expedition.schedule.verify(
+        expedition.ship_config.ship_speed_knots, loaded_input_data
+    )
 
     # simulate the schedule
     schedule_results = simulate_schedule(
-        projection=projection, ship_config=ship_config, schedule=schedule
+        projection=projection,
+        expedition=expedition,
     )
     if isinstance(schedule_results, ScheduleProblem):
         print(
@@ -76,7 +76,9 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         _save_checkpoint(
             Checkpoint(
                 past_schedule=Schedule(
-                    waypoints=schedule.waypoints[: schedule_results.failed_waypoint_i]
+                    waypoints=expedition.schedule.waypoints[
+                        : schedule_results.failed_waypoint_i
+                    ]
                 )
             ),
             expedition_dir,
@@ -91,10 +93,10 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\n----- EXPEDITION SUMMARY ------")
 
     # calculate expedition cost in US$
-    assert schedule.waypoints[0].time is not None, (
+    assert expedition.schedule.waypoints[0].time is not None, (
         "First waypoint has no time. This should not be possible as it should have been verified before."
     )
-    time_past = schedule_results.time - schedule.waypoints[0].time
+    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
     cost = expedition_cost(schedule_results, time_past)
     with open(expedition_dir.joinpath("results", "cost.txt"), "w") as file:
         file.writelines(f"cost: {cost} US$")
@@ -106,7 +108,7 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\nSimulating measurements. This may take a while...\n")
     simulate_measurements(
         expedition_dir,
-        ship_config,
+        expedition.instruments_config,
         loaded_input_data,
         schedule_results.measurements_to_simulate,
     )
@@ -122,26 +124,21 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
 def _load_input_data(
     expedition_dir: Path,
-    schedule: Schedule,
-    ship_config: ShipConfig,
+    expedition: Expedition,
     input_data: Path | None,
 ) -> InputData:
     """
     Load the input data.
 
     :param expedition_dir: Directory of the expedition.
-    :type expedition_dir: Path
-    :param schedule: Schedule object.
-    :type schedule: Schedule
-    :param ship_config: Ship configuration.
-    :type ship_config: ShipConfig
+    :param expedition: Expedition object.
     :param input_data: Folder containing input data.
-    :type input_data: Path | None
     :return: InputData object.
-    :rtype: InputData
     """
     if input_data is None:
-        space_time_region_hash = get_space_time_region_hash(schedule.space_time_region)
+        space_time_region_hash = get_space_time_region_hash(
+            expedition.schedule.space_time_region
+        )
         input_data = get_existing_download(expedition_dir, space_time_region_hash)
 
     assert input_data is not None, (
@@ -150,13 +147,14 @@ def _load_input_data(
 
     return InputData.load(
         directory=input_data,
-        load_adcp=ship_config.adcp_config is not None,
-        load_argo_float=ship_config.argo_float_config is not None,
-        load_ctd=ship_config.ctd_config is not None,
-        load_ctd_bgc=ship_config.ctd_bgc_config is not None,
-        load_drifter=ship_config.drifter_config is not None,
-        load_xbt=ship_config.xbt_config is not None,
-        load_ship_underwater_st=ship_config.ship_underwater_st_config is not None,
+        load_adcp=expedition.instruments_config.adcp_config is not None,
+        load_argo_float=expedition.instruments_config.argo_float_config is not None,
+        load_ctd=expedition.instruments_config.ctd_config is not None,
+        load_ctd_bgc=expedition.instruments_config.ctd_bgc_config is not None,
+        load_drifter=expedition.instruments_config.drifter_config is not None,
+        load_xbt=expedition.instruments_config.xbt_config is not None,
+        load_ship_underwater_st=expedition.instruments_config.ship_underwater_st_config
+        is not None,
     )
 
 
