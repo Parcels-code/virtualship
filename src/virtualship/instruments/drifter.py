@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import AdvectionRK4, FieldSet, JITParticle, ParticleSet, Variable
+from parcels import AdvectionRK4, FieldSet, ParticleSet, Variable
+from parcels.particle import Particle
+from parcels.tools import StatusCode
 
 from virtualship.models import Spacetime
 
@@ -19,7 +21,7 @@ class Drifter:
     lifetime: timedelta | None  # if none, lifetime is infinite
 
 
-_DrifterParticle = JITParticle.add_variables(
+_DrifterParticle = Particle.add_variable(
     [
         Variable("temperature", dtype=np.float32, initial=np.nan),
         Variable("has_lifetime", dtype=np.int8),  # bool
@@ -29,15 +31,20 @@ _DrifterParticle = JITParticle.add_variables(
 )
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _check_lifetime(particle, fieldset, time):
-    if particle.has_lifetime == 1:
-        particle.age += particle.dt
-        if particle.age >= particle.lifetime:
-            particle.delete()
+def _check_lifetime(particles, fieldset):
+    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+
+    def has_lifetime(p):
+        p.age = np.where(p.has_lifetime == 1, p.age + dt, p.age)
+        p.state = np.where(p.age >= p.lifetime, StatusCode.Delete, p.state)
+
+    has_lifetime(particles[particles.has_lifetime == 1])
 
 
 def simulate_drifters(

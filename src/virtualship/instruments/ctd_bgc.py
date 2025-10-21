@@ -5,7 +5,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
+from parcels import FieldSet, ParticleSet, Variable
+from parcels.particle import Particle
+from parcels.tools import StatusCode
 
 from virtualship.models import Spacetime
 
@@ -19,7 +21,7 @@ class CTD_BGC:
     max_depth: float
 
 
-_CTD_BGCParticle = JITParticle.add_variables(
+_CTD_BGCParticle = Particle.add_variable(
     [
         Variable("o2", dtype=np.float32, initial=np.nan),
         Variable("chl", dtype=np.float32, initial=np.nan),
@@ -37,50 +39,73 @@ _CTD_BGCParticle = JITParticle.add_variables(
 )
 
 
-def _sample_o2(particle, fieldset, time):
-    particle.o2 = fieldset.o2[time, particle.depth, particle.lat, particle.lon]
+def _sample_o2(particles, fieldset):
+    particles.o2 = fieldset.o2[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_chlorophyll(particle, fieldset, time):
-    particle.chl = fieldset.chl[time, particle.depth, particle.lat, particle.lon]
+def _sample_chlorophyll(particles, fieldset):
+    particles.chl = fieldset.chl[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_nitrate(particle, fieldset, time):
-    particle.no3 = fieldset.no3[time, particle.depth, particle.lat, particle.lon]
+def _sample_nitrate(particles, fieldset):
+    particles.no3 = fieldset.no3[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phosphate(particle, fieldset, time):
-    particle.po4 = fieldset.po4[time, particle.depth, particle.lat, particle.lon]
+def _sample_phosphate(particles, fieldset):
+    particles.po4 = fieldset.po4[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_ph(particle, fieldset, time):
-    particle.ph = fieldset.ph[time, particle.depth, particle.lat, particle.lon]
+def _sample_ph(particles, fieldset):
+    particles.ph = fieldset.ph[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phytoplankton(particle, fieldset, time):
-    particle.phyc = fieldset.phyc[time, particle.depth, particle.lat, particle.lon]
+def _sample_phytoplankton(particles, fieldset):
+    particles.phyc = fieldset.phyc[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_zooplankton(particle, fieldset, time):
-    particle.zooc = fieldset.zooc[time, particle.depth, particle.lat, particle.lon]
+def _sample_zooplankton(particles, fieldset):
+    particles.zooc = fieldset.zooc[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_primary_production(particle, fieldset, time):
-    particle.nppv = fieldset.nppv[time, particle.depth, particle.lat, particle.lon]
+def _sample_primary_production(particles, fieldset):
+    particles.nppv = fieldset.nppv[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _ctd_bgc_cast(particle, fieldset, time):
-    # lowering
-    if particle.raising == 0:
-        particle_ddepth = -particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth < particle.max_depth:
-            particle.raising = 1
-            particle_ddepth = -particle_ddepth
-    # raising
-    else:
-        particle_ddepth = particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth > particle.min_depth:
-            particle.delete()
+def _ctd_bgc_sinking(particles, fieldset):
+    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+
+    def ctd_lowering(p):
+        p.dz = -particles.winch_speed * dt
+        p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
+        p.dz = np.where(p.z + p.dz < p.max_depth, -p.ddpeth, p.dz)
+
+    ctd_lowering(particles[particles.raising == 0])
+
+
+def _ctd_bgc_rising(particles, fieldset):
+    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+
+    def ctd_rising(p):
+        p.dz = p.winch_speed * dt
+        p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
+
+    ctd_rising(particles[particles.raising == 1])
 
 
 def simulate_ctd_bgc(
@@ -168,7 +193,8 @@ def simulate_ctd_bgc(
             _sample_phytoplankton,
             _sample_zooplankton,
             _sample_primary_production,
-            _ctd_bgc_cast,
+            _ctd_bgc_sinking,
+            _ctd_bgc_rising,
         ],
         endtime=fieldset_endtime,
         dt=DT,

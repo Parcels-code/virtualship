@@ -5,7 +5,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
+from parcels import FieldSet, ParticleSet, Variable
+from parcels.particle import Particle
+from parcels.tools import StatusCode
 
 from virtualship.models import Spacetime
 
@@ -19,7 +21,7 @@ class CTD:
     max_depth: float
 
 
-_CTDParticle = JITParticle.add_variables(
+_CTDParticle = Particle.add_variable(
     [
         Variable("salinity", dtype=np.float32, initial=np.nan),
         Variable("temperature", dtype=np.float32, initial=np.nan),
@@ -31,26 +33,37 @@ _CTDParticle = JITParticle.add_variables(
 )
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_salinity(particle, fieldset, time):
-    particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+def _sample_salinity(particles, fieldset):
+    particles.salinity = fieldset.S[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _ctd_cast(particle, fieldset, time):
-    # lowering
-    if particle.raising == 0:
-        particle_ddepth = -particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth < particle.max_depth:
-            particle.raising = 1
-            particle_ddepth = -particle_ddepth
-    # raising
-    else:
-        particle_ddepth = particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth > particle.min_depth:
-            particle.delete()
+def _ctd_sinking(particles, fieldset):
+    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+
+    def ctd_lowering(p):
+        p.dz = -particles.winch_speed * dt
+        p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
+        p.dz = np.where(p.z + p.dz < p.max_depth, -p.ddpeth, p.dz)
+
+    ctd_lowering(particles[particles.raising == 0])
+
+
+def _ctd_rising(particles, fieldset):
+    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+
+    def ctd_rising(p):
+        p.dz = p.winch_speed * dt
+        p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
+
+    ctd_rising(particles[particles.raising == 1])
 
 
 def simulate_ctd(
@@ -123,7 +136,7 @@ def simulate_ctd(
 
     # execute simulation
     ctd_particleset.execute(
-        [_sample_salinity, _sample_temperature, _ctd_cast],
+        [_sample_salinity, _sample_temperature, _ctd_sinking, _ctd_rising],
         endtime=fieldset_endtime,
         dt=DT,
         verbose_progress=False,
