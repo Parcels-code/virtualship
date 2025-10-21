@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
+import xarray as xr
 from pydantic import BaseModel
 
 from virtualship.cli._fetch import (
@@ -15,19 +17,38 @@ from virtualship.cli._fetch import (
     get_existing_download,
     hash_model,
     hash_to_filename,
+    select_product_id,
+    start_end_in_product_timerange,
 )
 from virtualship.models import Expedition
 from virtualship.utils import EXPEDITION, get_example_expedition
 
 
 @pytest.fixture
-def copernicus_subset_no_download(monkeypatch):
-    """Mock the download function."""
+def copernicus_no_download(monkeypatch):
+    """Mock the copernicusmarine `subset` and `open_dataset` functions, approximating the reanalysis products."""
 
+    # mock for copernicusmarine.subset
     def fake_download(output_filename, output_directory, **_):
         Path(output_directory).joinpath(output_filename).touch()
 
+    def fake_open_dataset(*args, **kwargs):
+        return xr.Dataset(
+            coords={
+                "time": (
+                    "time",
+                    [
+                        np.datetime64("1993-01-01"),
+                        np.datetime64("2022-01-01"),
+                    ],  # mock up rough renanalysis period
+                )
+            }
+        )
+
     monkeypatch.setattr("virtualship.cli._fetch.copernicusmarine.subset", fake_download)
+    monkeypatch.setattr(
+        "virtualship.cli._fetch.copernicusmarine.open_dataset", fake_open_dataset
+    )
     yield
 
 
@@ -43,7 +64,7 @@ def expedition(tmpdir):
     return expedition
 
 
-@pytest.mark.usefixtures("copernicus_subset_no_download")
+@pytest.mark.usefixtures("copernicus_no_download")
 def test_fetch(expedition, tmpdir):
     """Test the fetch command, but mock the download."""
     _fetch(Path(tmpdir), "test", "test")
@@ -75,6 +96,31 @@ def test_complete_download(tmp_path):
     complete_download(tmp_path)
 
     assert_complete_download(tmp_path)
+
+
+@pytest.mark.usefixtures("copernicus_no_download")
+def test_select_product_id(schedule):
+    """Should return the physical reanalysis product id via the timings prescribed in the static schedule.yaml file."""
+    result = select_product_id(
+        physical=True,
+        schedule_start=schedule.space_time_region.time_range.start_time,
+        schedule_end=schedule.space_time_region.time_range.end_time,
+        username="test",
+        password="test",
+    )
+    assert result == "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+
+
+@pytest.mark.usefixtures("copernicus_no_download")
+def test_start_end_in_product_timerange(schedule):
+    """Should return True for valid range ass determined by the static schedule.yaml file."""
+    assert start_end_in_product_timerange(
+        selected_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
+        schedule_start=schedule.space_time_region.time_range.start_time,
+        schedule_end=schedule.space_time_region.time_range.end_time,
+        username="test",
+        password="test",
+    )
 
 
 def test_assert_complete_download_complete(tmp_path):
