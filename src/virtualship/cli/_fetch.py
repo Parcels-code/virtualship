@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 from pydantic import BaseModel
 
-from virtualship.errors import IncompleteDownloadError
+from virtualship.errors import CopernicusCatalogueError, IncompleteDownloadError
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
@@ -86,6 +87,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     )
     shutil.copyfile(path / SCHEDULE, download_folder / SCHEDULE)
 
+    # data download
     if (
         (
             {"XBT", "CTD", "CDT_BGC", "SHIP_UNDERWATER_ST"}
@@ -96,6 +98,14 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     ):
         print("Ship data will be downloaded. Please wait...")
 
+        phys_product_id = select_product_id(
+            physical=True,
+            schedule_start=start_datetime,
+            schedule_end=end_datetime,
+            username=username,
+            password=password,
+        )
+
         # Define all ship datasets to download, including bathymetry
         download_dict = {
             "Bathymetry": {
@@ -104,17 +114,17 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
                 "output_filename": "bathymetry.nc",
             },
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["uo", "vo"],
                 "output_filename": "ship_uv.nc",
             },
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["so"],
                 "output_filename": "ship_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["thetao"],
                 "output_filename": "ship_t.nc",
             },
@@ -151,12 +161,12 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         print("Drifter data will be downloaded. Please wait...")
         drifter_download_dict = {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["uo", "vo"],
                 "output_filename": "drifter_uv.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["thetao"],
                 "output_filename": "drifter_t.nc",
             },
@@ -193,17 +203,17 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         print("Argo float data will be downloaded. Please wait...")
         argo_download_dict = {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["uo", "vo"],
                 "output_filename": "argo_float_uv.nc",
             },
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["so"],
                 "output_filename": "argo_float_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "dataset_id": phys_product_id,
                 "variables": ["thetao"],
                 "output_filename": "argo_float_t.nc",
             },
@@ -239,44 +249,51 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     if InstrumentType.CTD_BGC in instruments_in_schedule:
         print("CTD_BGC data will be downloaded. Please wait...")
 
+        bgc_args = {
+            "physical": False,
+            "schedule_start": start_datetime,
+            "schedule_end": end_datetime,
+            "username": username,
+            "password": password,
+        }
+
         ctd_bgc_download_dict = {
             "o2data": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(**{**bgc_args, "variable": "o2"}),
                 "variables": ["o2"],
                 "output_filename": "ctd_bgc_o2.nc",
             },
             "chlorodata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(**{**bgc_args, "variable": "chl"}),
                 "variables": ["chl"],
                 "output_filename": "ctd_bgc_chl.nc",
             },
             "nitratedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(**{**bgc_args, "variable": "no3"}),
                 "variables": ["no3"],
                 "output_filename": "ctd_bgc_no3.nc",
             },
             "phosphatedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(**{**bgc_args, "variable": "po4"}),
                 "variables": ["po4"],
                 "output_filename": "ctd_bgc_po4.nc",
             },
             "phdata": {
-                "dataset_id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(
+                    **{**bgc_args, "variable": "ph"}
+                ),  # this will be monthly resolution if reanalysis(_interim) period
                 "variables": ["ph"],
                 "output_filename": "ctd_bgc_ph.nc",
             },
             "phytoplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(
+                    **{**bgc_args, "variable": "phyc"}
+                ),  # this will be monthly resolution if reanalysis(_interim) period,
                 "variables": ["phyc"],
                 "output_filename": "ctd_bgc_phyc.nc",
             },
-            "zooplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m",
-                "variables": ["zooc"],
-                "output_filename": "ctd_bgc_zooc.nc",
-            },
             "primaryproductiondata": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+                "dataset_id": select_product_id(**{**bgc_args, "variable": "nppv"}),
                 "variables": ["nppv"],
                 "output_filename": "ctd_bgc_nppv.nc",
             },
@@ -411,3 +428,136 @@ def complete_download(download_path: Path) -> None:
     metadata = DownloadMetadata(download_complete=True, download_date=datetime.now())
     metadata.to_yaml(download_metadata)
     return
+
+
+def select_product_id(
+    physical: bool,
+    schedule_start: datetime,
+    schedule_end: datetime,
+    username: str,
+    password: str,
+    variable: str | None = None,  # only needed for BGC datasets
+) -> str:
+    """
+    Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC.
+
+    BGC is more complicated than physical products. Often (re)analysis period and variable dependent, hence more custom logic here.
+    """
+    product_ids = {
+        "phys": {
+            "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+            "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
+            "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+        },
+        "bgc": {
+            "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
+            "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
+            "analysis": None,  # will be set per variable
+        },
+    }
+
+    bgc_analysis_ids = {
+        "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+        "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+        "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+        "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+        "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+        "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+        "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+    }
+
+    # pH and phytoplankton variables are available as *monthly* products only in renalysis(_interim) period
+    monthly_bgc_reanalysis_ids = {
+        "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+        "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+    }
+    monthly_bgc_reanalysis_interim_ids = {
+        "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+        "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+    }
+
+    key = "phys" if physical else "bgc"
+    selected_id = None
+
+    for period, pid in product_ids[key].items():
+        # for BGC analysis, set pid per variable
+        if key == "bgc" and period == "analysis":
+            if variable is None or variable not in bgc_analysis_ids:
+                continue
+            pid = bgc_analysis_ids[variable]
+        # for BGC reanalysis, check if requires monthly product
+        if (
+            key == "bgc"
+            and period == "reanalysis"
+            and variable in monthly_bgc_reanalysis_ids
+        ):
+            monthly_pid = monthly_bgc_reanalysis_ids[variable]
+            ds_monthly = copernicusmarine.open_dataset(
+                monthly_pid,
+                username=username,
+                password=password,
+            )
+            time_end_monthly = ds_monthly["time"][-1].values
+            if np.datetime64(schedule_end) <= time_end_monthly:
+                pid = monthly_pid
+        # for BGC reanalysis_interim, check if requires monthly product
+        if (
+            key == "bgc"
+            and period == "reanalysis_interim"
+            and variable in monthly_bgc_reanalysis_interim_ids
+        ):
+            monthly_pid = monthly_bgc_reanalysis_interim_ids[variable]
+            ds_monthly = copernicusmarine.open_dataset(
+                monthly_pid, username=username, password=password
+            )
+            time_end_monthly = ds_monthly["time"][-1].values
+            if np.datetime64(schedule_end) <= time_end_monthly:
+                pid = monthly_pid
+        if pid is None:
+            continue
+        ds = copernicusmarine.open_dataset(pid, username=username, password=password)
+        time_end = ds["time"][-1].values
+        if np.datetime64(schedule_end) <= time_end:
+            selected_id = pid
+            break
+
+    if selected_id is None:
+        raise CopernicusCatalogueError(
+            "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
+        )
+
+    # handle the rare situation where start time and end time span different products, which is possible for reanalysis and reanalysis_interim
+    # in this case, return the analysis product which spans far back enough
+    if start_end_in_product_timerange(
+        selected_id, schedule_start, schedule_end, username, password
+    ):
+        return selected_id
+
+    else:
+        return (
+            product_ids["phys"]["analysis"] if physical else bgc_analysis_ids[variable]
+        )
+
+
+def start_end_in_product_timerange(
+    selected_id: str,
+    schedule_start: datetime,
+    schedule_end: datetime,
+    username: str,
+    password: str,
+) -> bool:
+    """Check schedule_start and schedule_end are both within a selected Copernicus product's time range."""
+    ds_selected = copernicusmarine.open_dataset(
+        selected_id, username=username, password=password
+    )
+    time_values = ds_selected["time"].values
+    time_min, time_max = np.min(time_values), np.max(time_values)
+
+    if (
+        np.datetime64(schedule_start) >= time_min
+        and np.datetime64(schedule_end) <= time_max
+    ):
+        return True
+
+    else:
+        return False

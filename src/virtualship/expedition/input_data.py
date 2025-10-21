@@ -142,7 +142,6 @@ class InputData:
             "po4": directory.joinpath("ctd_bgc_po4.nc"),
             "ph": directory.joinpath("ctd_bgc_ph.nc"),
             "phyc": directory.joinpath("ctd_bgc_phyc.nc"),
-            "zooc": directory.joinpath("ctd_bgc_zooc.nc"),
             "nppv": directory.joinpath("ctd_bgc_nppv.nc"),
         }
         variables = {
@@ -154,7 +153,6 @@ class InputData:
             "po4": "po4",
             "ph": "ph",
             "phyc": "phyc",
-            "zooc": "zooc",
             "nppv": "nppv",
         }
         dimensions = {
@@ -173,7 +171,6 @@ class InputData:
         fieldset.po4.interp_method = "linear_invdist_land_tracer"
         fieldset.ph.interp_method = "linear_invdist_land_tracer"
         fieldset.phyc.interp_method = "linear_invdist_land_tracer"
-        fieldset.zooc.interp_method = "linear_invdist_land_tracer"
         fieldset.nppv.interp_method = "linear_invdist_land_tracer"
 
         # make depth negative
