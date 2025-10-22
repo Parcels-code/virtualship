@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime, timedelta
-from enum import Enum
 from typing import TYPE_CHECKING
 
 import pydantic
@@ -10,6 +9,7 @@ import pyproj
 import yaml
 
 from virtualship.errors import ConfigError, ScheduleError
+from virtualship.instruments.master import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
 
 from .location import Location
@@ -45,6 +45,23 @@ class Expedition(pydantic.BaseModel):
             data = yaml.safe_load(file)
         return Expedition(**data)
 
+    def get_instruments(self) -> set[InstrumentType]:
+        """Return a set of unique InstrumentType enums used in the expedition."""
+        instruments_in_expedition = []
+        # from waypoints
+        for waypoint in self.schedule.waypoints:
+            if waypoint.instrument:
+                for instrument in waypoint.instrument:
+                    if instrument:
+                        instruments_in_expedition.append(instrument)
+        # check for underway instruments and add if present in expeditions
+        if self.instruments_config.adcp_config is not None:
+            instruments_in_expedition.append(InstrumentType.ADCP)
+        if self.instruments_config.ship_underwater_st_config is not None:
+            instruments_in_expedition.append(InstrumentType.UNDERWATER_ST)
+
+        return set(instruments_in_expedition)
+
 
 class ShipConfig(pydantic.BaseModel):
     """Configuration of the ship."""
@@ -63,16 +80,6 @@ class Schedule(pydantic.BaseModel):
     space_time_region: SpaceTimeRegion | None = None
 
     model_config = pydantic.ConfigDict(extra="forbid")
-
-    def get_instruments(self) -> set[InstrumentType]:
-        """Return a set of unique InstrumentType enums used in the schedule."""
-        instruments_in_schedule = []
-        for waypoint in self.waypoints:
-            if waypoint.instrument:
-                for instrument in waypoint.instrument:
-                    if instrument:
-                        instruments_in_schedule.append(instrument)
-        return set(instruments_in_schedule)
 
     def verify(
         self,
@@ -211,16 +218,6 @@ class Waypoint(pydantic.BaseModel):
         if isinstance(instrument, list):
             return [inst.value for inst in instrument]
         return instrument.value if instrument else None
-
-
-class InstrumentType(Enum):
-    """Types of the instruments."""
-
-    CTD = "CTD"
-    CTD_BGC = "CTD_BGC"
-    DRIFTER = "DRIFTER"
-    ARGO_FLOAT = "ARGO_FLOAT"
-    XBT = "XBT"
 
 
 class ArgoFloatConfig(pydantic.BaseModel):

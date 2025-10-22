@@ -11,6 +11,7 @@ from copernicusmarine.core_functions.credentials_utils import InvalidUsernameOrP
 from pydantic import BaseModel
 
 from virtualship.errors import IncompleteDownloadError
+from virtualship.instruments.master import get_instruments_registry
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
@@ -24,8 +25,6 @@ import click
 
 import virtualship.cli._creds as creds
 from virtualship.utils import EXPEDITION
-from virtualship.instruments.master import INSTRUMENTS
-from virtualship.instruments.master import InstrumentType, get_instruments_registry
 
 DOWNLOAD_METADATA = "download_metadata.yaml"
 
@@ -63,7 +62,6 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         expedition.schedule.space_time_region
     )
 
-    # TODO: needs updating?
     existing_download = get_existing_download(data_dir, space_time_region_hash)
     if existing_download is not None:
         click.echo(
@@ -77,26 +75,9 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         username, password, creds_path
     )
 
-    # Extract space_time_region details from the schedule
-    spatial_range = expedition.schedule.space_time_region.spatial_range
-    time_range = expedition.schedule.space_time_region.time_range
-    start_datetime = time_range.start_time
-    end_datetime = time_range.end_time
-    instruments_in_schedule = expedition.schedule.get_instruments()
-
-    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
-    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
-    if ship_config.adcp_config is not None:
-        instruments_in_schedule.add(InstrumentType.ADCP)
-    if ship_config.ship_underwater_st_config is not None:
-        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
-
-    # TEMPORARY measure to get underway instruments in `instruments_in_schedule`
-    # TODO: should evaporate when schedule and ship_config.yaml files are consolidated in a separate PR...
-    if ship_config.adcp_config is not None:
-        instruments_in_schedule.add(InstrumentType.ADCP)
-    if ship_config.ship_underwater_st_config is not None:
-        instruments_in_schedule.add(InstrumentType.UNDERWATER_ST)
+    # Extract instruments and space_time_region details from expedition
+    instruments_in_expedition = expedition.get_instruments()
+    space_time_region = expedition.schedule.space_time_region
 
     # Create download folder and set download metadata
     download_folder = data_dir / hash_to_filename(space_time_region_hash)
@@ -108,10 +89,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
     # TODO: enhance CLI output for users?
 
-    # bathymetry
-    # TODO: this logic means it is downloaded for all expeditions but is only needed for CTD, CTD_BGC and XBT...
-    # TODO: to discuss: fine to still download for all expeditions because small size and then less duplication?
-    # TODO: or add as var in each of InputDataset objects per instrument because will be overwritten to disk anyway and therefore not duplicate?
+    # bathymetry (for all expeditions)
     copernicusmarine.subset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
         variables=["deptho"],
@@ -131,9 +109,9 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         coordinates_selection_method="outside",
     )
 
-    # keep only instruments in INTSTRUMENTS which are in schedule
+    # access instrument classes but keep only instruments which are in schedule
     filter_instruments = {
-        k: v for k, v in INSTRUMENTS.items() if k in instruments_in_schedule
+        k: v for k, v in INSTRUMENTS.items() if k in instruments_in_expedition
     }
 
     # iterate across instruments and download data based on space_time_region
@@ -142,116 +120,11 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
             input_dataset = instrument["input_class"](
                 data_dir=download_folder,
                 credentials=credentials,
-                space_time_region=space_time_region,
+                space_time_region=expedition.space_time_region,
             )
-    #!
-    #### TODO
-    # ++ new logic here where iterates (?) through available instruments and determines whether download is required:
-    # ++ by conditions of:
-    #       1) whether it's in the schedule (and from this be able to call the right classes from the instruments directory?) and
-    #!      2) is there a clever way of not unnecessarily duplicating data downloads if instruments use the same?!
-    #               (try with a version first where does them all in tow and then try and optimise...?)
 
-    #!
-    ## TODO: move to generic bathymetry download which is done for all expeditions
+            input_dataset.download_data()
 
-    if (
-        (
-            {"XBT", "CTD", "CDT_BGC", "SHIP_UNDERWATER_ST"}
-            & set(instrument.name for instrument in instruments_in_schedule)
-        )
-        or expedition.instruments_config.ship_underwater_st_config is not None
-        or expedition.instruments_config.adcp_config is not None
-    ):
-        print("Ship data will be downloaded. Please wait...")
-
-        # Define all ship datasets to download, including bathymetry
-        download_dict = {
-            "Bathymetry": {
-                "dataset_id": "cmems_mod_glo_phy_my_0.083deg_static",
-                "variables": ["deptho"],
-                "output_filename": "bathymetry.nc",
-            },
-            "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-                "variables": ["uo", "vo"],
-                "output_filename": "ship_uv.nc",
-            },
-            "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
-                "variables": ["so"],
-                "output_filename": "ship_s.nc",
-            },
-            "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
-                "variables": ["thetao"],
-                "output_filename": "ship_t.nc",
-            },
-        }
-
-        # Iterate over all datasets and download each based on space_time_region
-        try:
-            for dataset in download_dict.values():
-                copernicusmarine.subset(
-                    dataset_id=dataset["dataset_id"],
-                    variables=dataset["variables"],
-                    minimum_longitude=spatial_range.minimum_longitude,
-                    maximum_longitude=spatial_range.maximum_longitude,
-                    minimum_latitude=spatial_range.minimum_latitude,
-                    maximum_latitude=spatial_range.maximum_latitude,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime,
-                    minimum_depth=abs(spatial_range.minimum_depth),
-                    maximum_depth=abs(spatial_range.maximum_depth),
-                    output_filename=dataset["output_filename"],
-                    output_directory=download_folder,
-                    username=username,
-                    password=password,
-                    overwrite=True,
-                    coordinates_selection_method="outside",
-                )
-        except InvalidUsernameOrPassword as e:
-            shutil.rmtree(download_folder)
-            raise e
-
-        click.echo("Ship data download based on space-time region completed.")
-
-    if InstrumentType.DRIFTER in instruments_in_schedule:
-        print("Drifter data will be downloaded. Please wait...")
-        drifter_download_dict = {
-            "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
-                "variables": ["uo", "vo"],
-                "output_filename": "drifter_uv.nc",
-            },
-            "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
-                "variables": ["thetao"],
-                "output_filename": "drifter_t.nc",
-            },
-        }
-
-        # Iterate over all datasets and download each based on space_time_region
-        try:
-            for dataset in drifter_download_dict.values():
-                copernicusmarine.subset(
-                    dataset_id=dataset["dataset_id"],
-                    variables=dataset["variables"],
-                    minimum_longitude=spatial_range.minimum_longitude - 3.0,
-                    maximum_longitude=spatial_range.maximum_longitude + 3.0,
-                    minimum_latitude=spatial_range.minimum_latitude - 3.0,
-                    maximum_latitude=spatial_range.maximum_latitude + 3.0,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime + timedelta(days=21),
-                    minimum_depth=abs(1),
-                    maximum_depth=abs(1),
-                    output_filename=dataset["output_filename"],
-                    output_directory=download_folder,
-                    username=username,
-                    password=password,
-                    overwrite=True,
-                    coordinates_selection_method="outside",
-                )
         except InvalidUsernameOrPassword as e:
             shutil.rmtree(download_folder)
             raise e
@@ -331,11 +204,9 @@ def get_existing_download(data_dir: Path, space_time_region_hash: str) -> Path |
             hash = filename_to_hash(download_path.name)
         except ValueError:
             continue
-
         if hash == space_time_region_hash:
             assert_complete_download(download_path)
             return download_path
-
     return None
 
 
