@@ -87,7 +87,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     )
     shutil.copyfile(path / EXPEDITION, download_folder / EXPEDITION)
 
-    # TODO: enhance CLI output for users?
+    click.echo(f"\n\n{(' Fetching data for: Bathymetry ').center(80, '=')}\n\n")
 
     # bathymetry (for all expeditions)
     copernicusmarine.subset(
@@ -116,11 +116,14 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
     # iterate across instruments and download data based on space_time_region
     for itype, instrument in filter_instruments.items():
+        click.echo(
+            f"\n\n{(' Fetching data for: ' + itype.value + ' ').center(80, '=')}\n\n"
+        )
         try:
             input_dataset = instrument["input_class"](
                 data_dir=download_folder,
                 credentials=credentials,
-                space_time_region=expedition.space_time_region,
+                space_time_region=space_time_region,
             )
 
             input_dataset.download_data()
