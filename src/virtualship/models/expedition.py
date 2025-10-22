@@ -8,7 +8,7 @@ import pydantic
 import pyproj
 import yaml
 
-from virtualship.errors import ConfigError, ScheduleError
+from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.master import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
 
@@ -54,13 +54,18 @@ class Expedition(pydantic.BaseModel):
                 for instrument in waypoint.instrument:
                     if instrument:
                         instruments_in_expedition.append(instrument)
-        # check for underway instruments and add if present in expeditions
-        if self.instruments_config.adcp_config is not None:
-            instruments_in_expedition.append(InstrumentType.ADCP)
-        if self.instruments_config.ship_underwater_st_config is not None:
-            instruments_in_expedition.append(InstrumentType.UNDERWATER_ST)
 
-        return set(instruments_in_expedition)
+        # check for underway instruments and add if present in expeditions
+        try:
+            if self.instruments_config.adcp_config is not None:
+                instruments_in_expedition.append(InstrumentType.ADCP)
+            if self.instruments_config.ship_underwater_st_config is not None:
+                instruments_in_expedition.append(InstrumentType.UNDERWATER_ST)
+            return set(instruments_in_expedition)
+        except Exception as e:
+            raise InstrumentsConfigError(
+                "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
+            ) from e
 
 
 class ShipConfig(pydantic.BaseModel):
@@ -348,6 +353,7 @@ class XBTConfig(pydantic.BaseModel):
 
 
 class InstrumentsConfig(pydantic.BaseModel):
+    # TODO: refactor potential for this? Move explicit instrument_config's away from models/ dir?
     """Configuration of instruments."""
 
     argo_float_config: ArgoFloatConfig | None = None
@@ -401,38 +407,43 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
-    def verify(self, schedule: Schedule) -> None:
+    def verify(self, expedition: Expedition) -> None:
         """
         Verify instrument configurations against the schedule.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
         """
-        instruments_in_schedule = schedule.get_instruments()
+        instruments_in_expedition = expedition.get_instruments()
         instrument_config_map = {
             InstrumentType.ARGO_FLOAT: "argo_float_config",
             InstrumentType.DRIFTER: "drifter_config",
             InstrumentType.XBT: "xbt_config",
             InstrumentType.CTD: "ctd_config",
             InstrumentType.CTD_BGC: "ctd_bgc_config",
+            InstrumentType.ADCP: "adcp_config",
+            InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
         }
         # Remove configs for unused instruments
         for inst_type, config_attr in instrument_config_map.items():
-            if hasattr(self, config_attr) and inst_type not in instruments_in_schedule:
+            if (
+                hasattr(self, config_attr)
+                and inst_type not in instruments_in_expedition
+            ):
                 print(
                     f"{inst_type.value} configuration provided but not in schedule. Removing config."
                 )
                 setattr(self, config_attr, None)
         # Check all scheduled instruments are configured
-        for inst_type in instruments_in_schedule:
+        for inst_type in instruments_in_expedition:
             config_attr = instrument_config_map.get(inst_type)
             if (
                 not config_attr
                 or not hasattr(self, config_attr)
                 or getattr(self, config_attr) is None
             ):
-                raise ConfigError(
-                    f"Schedule includes instrument '{inst_type.value}', but instruments_config does not provide configuration for it."
+                raise InstrumentsConfigError(
+                    f"Expedition includes instrument '{inst_type.value}', but instruments_config does not provide configuration for it."
                 )
 
 
