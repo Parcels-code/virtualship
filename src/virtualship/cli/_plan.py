@@ -29,6 +29,7 @@ from virtualship.cli.validator_utils import (
     type_to_textual,
 )
 from virtualship.errors import UnexpectedError, UserError
+from virtualship.instruments.master import InstrumentType
 from virtualship.models import (
     ADCPConfig,
     ArgoFloatConfig,
@@ -36,7 +37,6 @@ from virtualship.models import (
     CTDConfig,
     DrifterConfig,
     Expedition,
-    InstrumentType,
     Location,
     ShipConfig,
     ShipUnderwaterSTConfig,
@@ -630,7 +630,7 @@ class ExpeditionEditor(Static):
                 0,
             )
             wp.instrument = []
-            for instrument in InstrumentType:
+            for instrument in [inst for inst in InstrumentType if not inst.is_underway]:
                 switch_on = self.query_one(f"#wp{i}_{instrument.value}").value
                 if instrument.value == "DRIFTER" and switch_on:
                     count_str = self.query_one(f"#wp{i}_drifter_count").value
@@ -901,7 +901,7 @@ class WaypointWidget(Static):
                     )
 
                 yield Label("Instruments:")
-                for instrument in InstrumentType:
+                for instrument in [i for i in InstrumentType if not i.is_underway]:
                     is_selected = instrument in (self.waypoint.instrument or [])
                     with Horizontal():
                         yield Label(instrument.value)
