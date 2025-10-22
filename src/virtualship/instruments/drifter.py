@@ -6,8 +6,8 @@ from pathlib import Path
 
 import numpy as np
 from parcels import FieldSet, Particle, ParticleFile, ParticleSet, Variable
-from parcels.kernels import AdvectionRK4
 from parcels._core.statuscodes import StatusCode
+from parcels.kernels import AdvectionRK4
 
 from virtualship.models import Spacetime
 
@@ -91,7 +91,9 @@ def simulate_drifters(
     )
 
     # get earliest between fieldset end time and provide end time
-    fieldset_endtime = fieldset.time_interval.right - np.timedelta64(1, "s")  # TODO remove hack stopping 1 second too early when v4 is fixed
+    fieldset_endtime = fieldset.time_interval.right - np.timedelta64(
+        1, "s"
+    )  # TODO remove hack stopping 1 second too early when v4 is fixed
     if endtime is None:
         actual_endtime = fieldset_endtime
     elif endtime > fieldset_endtime:
@@ -110,9 +112,7 @@ def simulate_drifters(
     )
 
     # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
-    if len(drifter_particleset) > len(
-        [d for d in drifters if d.lifetime is None]
-    ):
+    if len(drifter_particleset) > len([d for d in drifters if d.lifetime is None]):
         print(
             "WARN: Some drifters had a life time beyond the end time of the fieldset or the requested end time."
         )
