@@ -4,9 +4,14 @@ from pathlib import Path
 import pyproj
 import pytest
 
-from virtualship.errors import ConfigError, ScheduleError
+from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.expedition.do_expedition import _load_input_data
-from virtualship.models import Expedition, Location, Schedule, Waypoint
+from virtualship.models import (
+    Expedition,
+    Location,
+    Schedule,
+    Waypoint,
+)
 from virtualship.utils import EXPEDITION, _get_expedition, get_example_expedition
 
 projection = pyproj.Geod(ellps="WGS84")
@@ -56,6 +61,7 @@ def test_verify_schedule() -> None:
 
 
 def test_get_instruments() -> None:
+    get_expedition = _get_expedition(expedition_dir)
     schedule = Schedule(
         waypoints=[
             Waypoint(location=Location(0, 0), instrument=["CTD"]),
@@ -63,12 +69,21 @@ def test_get_instruments() -> None:
             Waypoint(location=Location(1, 0), instrument=["CTD"]),
         ]
     )
-
-    assert set(instrument.name for instrument in schedule.get_instruments()) == {
-        "CTD",
-        "XBT",
-        "ARGO_FLOAT",
-    }
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=get_expedition.instruments_config,
+        ship_config=get_expedition.ship_config,
+    )
+    assert (
+        set(instrument.name for instrument in expedition.get_instruments())
+        == {
+            "CTD",
+            "UNDERWATER_ST",  # not added above but underway instruments are auto present from instruments_config in expedition_dir/expedition.yaml
+            "ADCP",  # as above
+            "ARGO_FLOAT",
+            "XBT",
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -165,15 +180,15 @@ def test_verify_schedule_errors(
 
 
 @pytest.fixture
-def schedule(tmp_file):
+def expedition(tmp_file):
     with open(tmp_file, "w") as file:
         file.write(get_example_expedition())
-    return Expedition.from_yaml(tmp_file).schedule
+    return Expedition.from_yaml(tmp_file)
 
 
 @pytest.fixture
-def schedule_no_xbt(schedule):
-    for waypoint in schedule.waypoints:
+def expedition_no_xbt(expedition):
+    for waypoint in expedition.schedule.waypoints:
         if waypoint.instrument and any(
             instrument.name == "XBT" for instrument in waypoint.instrument
         ):
@@ -183,54 +198,57 @@ def schedule_no_xbt(schedule):
                 if instrument.name != "XBT"
             ]
 
-    return schedule
+    return expedition
 
 
 @pytest.fixture
-def instruments_config(tmp_file):
-    with open(tmp_file, "w") as file:
-        file.write(get_example_expedition())
-    return Expedition.from_yaml(tmp_file).instruments_config
+def instruments_config_no_xbt(expedition):
+    delattr(expedition.instruments_config, "xbt_config")
+    return expedition.instruments_config
 
 
 @pytest.fixture
-def instruments_config_no_xbt(instruments_config):
-    delattr(instruments_config, "xbt_config")
-    return instruments_config
+def instruments_config_no_ctd(expedition):
+    delattr(expedition.instruments_config, "ctd_config")
+    return expedition.instruments_config
 
 
 @pytest.fixture
-def instruments_config_no_ctd(instruments_config):
-    delattr(instruments_config, "ctd_config")
-    return instruments_config
+def instruments_config_no_ctd_bgc(expedition):
+    delattr(expedition.instruments_config, "ctd_bgc_config")
+    return expedition.instruments_config
 
 
 @pytest.fixture
-def instruments_config_no_ctd_bgc(instruments_config):
-    delattr(instruments_config, "ctd_bgc_config")
-    return instruments_config
+def instruments_config_no_argo_float(expedition):
+    delattr(expedition.instruments_config, "argo_float_config")
+    return expedition.instruments_config
 
 
 @pytest.fixture
-def instruments_config_no_argo_float(instruments_config):
-    delattr(instruments_config, "argo_float_config")
-    return instruments_config
+def instruments_config_no_drifter(expedition):
+    delattr(expedition.instruments_config, "drifter_config")
+    return expedition.instruments_config
 
 
 @pytest.fixture
-def instruments_config_no_drifter(instruments_config):
-    delattr(instruments_config, "drifter_config")
-    return instruments_config
+def instruments_config_no_adcp(expedition):
+    delattr(expedition.instruments_config, "adcp_config")
+    return expedition.instruments_config
 
 
-def test_verify_instruments_config(instruments_config, schedule) -> None:
-    instruments_config.verify(schedule)
+@pytest.fixture
+def instruments_config_no_underwater_st(expedition):
+    delattr(expedition.instruments_config, "ship_underwater_st_config")
+    return expedition.instruments_config
 
 
-def test_verify_instruments_config_no_instrument(
-    instruments_config, schedule_no_xbt
-) -> None:
-    instruments_config.verify(schedule_no_xbt)
+def test_verify_instruments_config(expedition) -> None:
+    expedition.instruments_config.verify(expedition)
+
+
+def test_verify_instruments_config_no_instrument(expedition, expedition_no_xbt) -> None:
+    expedition.instruments_config.verify(expedition_no_xbt)
 
 
 @pytest.mark.parametrize(
@@ -238,40 +256,52 @@ def test_verify_instruments_config_no_instrument(
     [
         pytest.param(
             "instruments_config_no_xbt",
-            ConfigError,
-            "Schedule includes instrument 'XBT', but instruments_config does not provide configuration for it.",
-            id="ShipConfigNoXBT",
+            InstrumentsConfigError,
+            "Expedition includes instrument 'XBT', but instruments_config does not provide configuration for it.",
+            id="InstrumentsConfigNoXBT",
         ),
         pytest.param(
             "instruments_config_no_ctd",
-            ConfigError,
-            "Schedule includes instrument 'CTD', but instruments_config does not provide configuration for it.",
-            id="ShipConfigNoCTD",
+            InstrumentsConfigError,
+            "Expedition includes instrument 'CTD', but instruments_config does not provide configuration for it.",
+            id="InstrumentsConfigNoCTD",
         ),
         pytest.param(
             "instruments_config_no_ctd_bgc",
-            ConfigError,
-            "Schedule includes instrument 'CTD_BGC', but instruments_config does not provide configuration for it.",
-            id="ShipConfigNoCTD_BGC",
+            InstrumentsConfigError,
+            "Expedition includes instrument 'CTD_BGC', but instruments_config does not provide configuration for it.",
+            id="InstrumentsConfigNoCTD_BGC",
         ),
         pytest.param(
             "instruments_config_no_argo_float",
-            ConfigError,
-            "Schedule includes instrument 'ARGO_FLOAT', but instruments_config does not provide configuration for it.",
-            id="ShipConfigNoARGO_FLOAT",
+            InstrumentsConfigError,
+            "Expedition includes instrument 'ARGO_FLOAT', but instruments_config does not provide configuration for it.",
+            id="InstrumentsConfigNoARGO_FLOAT",
         ),
         pytest.param(
             "instruments_config_no_drifter",
-            ConfigError,
-            "Schedule includes instrument 'DRIFTER', but instruments_config does not provide configuration for it.",
-            id="ShipConfigNoDRIFTER",
+            InstrumentsConfigError,
+            "Expedition includes instrument 'DRIFTER', but instruments_config does not provide configuration for it.",
+            id="InstrumentsConfigNoDRIFTER",
+        ),
+        pytest.param(
+            "instruments_config_no_adcp",
+            InstrumentsConfigError,
+            r"Underway instrument config attribute\(s\) are missing from YAML\. Must be <Instrument>Config object or None\.",
+            id="InstrumentsConfigNoADCP",
+        ),
+        pytest.param(
+            "instruments_config_no_underwater_st",
+            InstrumentsConfigError,
+            r"Underway instrument config attribute\(s\) are missing from YAML\. Must be <Instrument>Config object or None\.",
+            id="InstrumentsConfigNoUNDERWATER_ST",
         ),
     ],
 )
 def test_verify_instruments_config_errors(
-    request, schedule, instruments_config_fixture, error, match
+    request, expedition, instruments_config_fixture, error, match
 ) -> None:
     instruments_config = request.getfixturevalue(instruments_config_fixture)
 
     with pytest.raises(error, match=match):
-        instruments_config.verify(schedule)
+        instruments_config.verify(expedition)
