@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pydantic
 import pyproj
 import yaml
@@ -448,9 +449,9 @@ def _is_on_land_zero_uv(fieldset: FieldSet, waypoint: Waypoint) -> bool:
     :returns: If the waypoint is on land.
     """
     return fieldset.UV.eval(
-        0,
-        fieldset.gridset.grids[0].depth[0],
-        waypoint.location.lat,
-        waypoint.location.lon,
+        fieldset.time_interval.left,
+        fieldset.gridset[0].depth[0],
+        np.array([waypoint.location.lat]),
+        np.array([waypoint.location.lon]),
         applyConversion=False,
     ) == (0.0, 0.0)
