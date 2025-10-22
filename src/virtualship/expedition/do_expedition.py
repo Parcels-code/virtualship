@@ -40,7 +40,7 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     expedition = _get_expedition(expedition_dir)
 
     # Verify instruments_config file is consistent with schedule
-    expedition.instruments_config.verify(expedition.schedule)
+    expedition.instruments_config.verify(expedition)
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)

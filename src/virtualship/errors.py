@@ -22,7 +22,7 @@ class ScheduleError(RuntimeError):
     pass
 
 
-class ConfigError(RuntimeError):
+class InstrumentsConfigError(RuntimeError):
     """An error in the config."""
 
     pass
@@ -36,5 +36,11 @@ class UserError(Exception):
 
 class UnexpectedError(Exception):
     """Error raised when there is an unexpected problem."""
+
+    pass
+
+
+class UnderwayConfigsError(Exception):
+    """Error raised when underway instrument configurations (ADCP or underwater ST) are missing."""
 
     pass
