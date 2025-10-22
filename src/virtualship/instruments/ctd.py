@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, Particle, ParticleSet, Variable
+from parcels import FieldSet, Particle, ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
 from virtualship.models import Spacetime
@@ -45,21 +45,19 @@ def _sample_salinity(particles, fieldset):
 
 
 def _ctd_sinking(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
 
     def ctd_lowering(p):
-        p.dz = -particles.winch_speed * dt
+        p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
         p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
-        p.dz = np.where(p.z + p.dz < p.max_depth, -p.ddpeth, p.dz)
+        p.dz = np.where(p.z + p.dz < p.max_depth, -p.dz, p.dz)
 
     ctd_lowering(particles[particles.raising == 0])
 
 
 def _ctd_rising(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
 
     def ctd_rising(p):
-        p.dz = p.winch_speed * dt
+        p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
         p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
 
     ctd_rising(particles[particles.raising == 1])
@@ -81,7 +79,7 @@ def simulate_ctd(
     :raises ValueError: Whenever provided CTDs, fieldset, are not compatible with this function.
     """
     WINCH_SPEED = 1.0  # sink and rise speed in m/s
-    DT = 10.0  # dt of CTD simulation integrator
+    DT = 10  # dt of CTD simulation integrator
 
     if len(ctds) == 0:
         print(
@@ -90,12 +88,9 @@ def simulate_ctd(
         # TODO when Parcels supports it this check can be removed.
         return
 
-    fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-
     # deploy time for all ctds should be later than fieldset start time
     if not all(
-        [np.datetime64(ctd.spacetime.time) >= fieldset_starttime for ctd in ctds]
+        [np.datetime64(ctd.spacetime.time) >= fieldset.time_interval.left for ctd in ctds]
     ):
         raise ValueError("CTD deployed before fieldset starts.")
 
@@ -104,7 +99,7 @@ def simulate_ctd(
         max(
             ctd.max_depth,
             fieldset.bathymetry.eval(
-                z=0, y=ctd.spacetime.location.lat, x=ctd.spacetime.location.lon, time=0
+                z=0, y=ctd.spacetime.location.lat, x=ctd.spacetime.location.lon, time=fieldset.time_interval.left
             ),
         )
         for ctd in ctds
@@ -123,7 +118,7 @@ def simulate_ctd(
         pclass=_CTDParticle,
         lon=[ctd.spacetime.location.lon for ctd in ctds],
         lat=[ctd.spacetime.location.lat for ctd in ctds],
-        depth=[ctd.min_depth for ctd in ctds],
+        z=[ctd.min_depth for ctd in ctds],
         time=[ctd.spacetime.time for ctd in ctds],
         max_depth=max_depths,
         min_depth=[ctd.min_depth for ctd in ctds],
@@ -131,19 +126,20 @@ def simulate_ctd(
     )
 
     # define output file for the simulation
-    out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=outputdt)
+    out_file = ParticleFile(store=out_path, outputdt=outputdt)
 
     # execute simulation
     ctd_particleset.execute(
         [_sample_salinity, _sample_temperature, _ctd_sinking, _ctd_rising],
-        endtime=fieldset_endtime,
-        dt=DT,
+        endtime=fieldset.time_interval.right,
+        dt=np.timedelta64(DT, "s"),
         verbose_progress=False,
         output_file=out_file,
     )
+    print(ctd_particleset.lon, ctd_particleset.lat, ctd_particleset.z)
 
     # there should be no particles left, as they delete themselves when they resurface
-    if len(ctd_particleset.particledata) != 0:
+    if len(ctd_particleset) != 0:
         raise ValueError(
             "Simulation ended before CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
         )
