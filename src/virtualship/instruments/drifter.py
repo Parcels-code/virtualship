@@ -38,13 +38,11 @@ def _sample_temperature(particles, fieldset):
 
 
 def _check_lifetime(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-
-    def has_lifetime(p):
-        p.age = np.where(p.has_lifetime == 1, p.age + dt, p.age)
-        p.state = np.where(p.age >= p.lifetime, StatusCode.Delete, p.state)
-
-    has_lifetime(particles[particles.has_lifetime == 1])
+    for i in range(len(particles)):
+        if particles[i].has_lifetime == 1:
+            particles[i].age += particles[i].dt / np.timedelta64(1, "s")
+            if particles[i].age >= particles[i].lifetime:
+                particles[i].state = StatusCode.Delete
 
 
 def simulate_drifters(
@@ -78,22 +76,22 @@ def simulate_drifters(
         pclass=_DrifterParticle,
         lat=[drifter.spacetime.location.lat for drifter in drifters],
         lon=[drifter.spacetime.location.lon for drifter in drifters],
-        depth=[drifter.depth for drifter in drifters],
+        z=[drifter.depth for drifter in drifters],
         time=[drifter.spacetime.time for drifter in drifters],
         has_lifetime=[1 if drifter.lifetime is not None else 0 for drifter in drifters],
         lifetime=[
-            0 if drifter.lifetime is None else drifter.lifetime.total_seconds()
+            0 if drifter.lifetime is None else drifter.lifetime / np.timedelta64(1, "s")
             for drifter in drifters
         ],
     )
 
     # define output file for the simulation
-    out_file = drifter_particleset.ParticleFile(
-        name=out_path, outputdt=outputdt, chunks=[len(drifter_particleset), 100]
+    out_file = ParticleFile(
+        store=out_path, outputdt=outputdt, chunks=(len(drifter_particleset), 100)
     )
 
     # get earliest between fieldset end time and provide end time
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+    fieldset_endtime = fieldset.time_interval.right - np.timedelta64(1, "s")  # TODO remove hack stopping 1 second too early when v4 is fixed
     if endtime is None:
         actual_endtime = fieldset_endtime
     elif endtime > fieldset_endtime:
@@ -112,7 +110,7 @@ def simulate_drifters(
     )
 
     # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
-    if len(drifter_particleset.particledata) > len(
+    if len(drifter_particleset) > len(
         [d for d in drifters if d.lifetime is None]
     ):
         print(
