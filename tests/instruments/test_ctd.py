@@ -4,7 +4,6 @@ Test the simulation of CTD instruments.
 Fields are kept static over time and time component of CTD measurements is not tested tested because it's tricky to provide expected measurements.
 """
 
-import datetime
 from datetime import timedelta
 
 import numpy as np
@@ -91,8 +90,10 @@ def test_simulate_ctds(tmpdir) -> None:
     s[:, 1, 1, 0] = ctd_exp[1]["surface"]["salinity"]
     s[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["salinity"]
 
-
-    lons, lats = np.linspace(-1, 2, dims[2]), np.linspace(-1, 2, dims[3])  # TODO set to (0, 1) once Parcels can interpolate on domain boundaries
+    lons, lats = (
+        np.linspace(-1, 2, dims[2]),
+        np.linspace(-1, 2, dims[3]),
+    )  # TODO set to (0, 1) once Parcels can interpolate on domain boundaries
     ds = xr.Dataset(
         {
             "U": (["time", "depth", "YG", "XG"], u),
@@ -102,12 +103,24 @@ def test_simulate_ctds(tmpdir) -> None:
             "bathymetry": (["time", "depth", "YG", "XG"], b),
         },
         coords={
-            "time": (["time"], [base_time, base_time + np.timedelta64(1, "h")], {"axis": "T"}),
+            "time": (
+                ["time"],
+                [base_time, base_time + np.timedelta64(1, "h")],
+                {"axis": "T"},
+            ),
             "depth": (["depth"], np.linspace(-1000, 0, dims[1]), {"axis": "Z"}),
             "YC": (["YC"], np.arange(dims[2]) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(dims[2]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "YG": (
+                ["YG"],
+                np.arange(dims[2]),
+                {"axis": "Y", "c_grid_axis_shift": -0.5},
+            ),
             "XC": (["XC"], np.arange(dims[3]) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(dims[3]), {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "XG": (
+                ["XG"],
+                np.arange(dims[3]),
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
             "lat": (["YG"], lats, {"axis": "Y", "c_grid_axis_shift": 0.5}),
             "lon": (["XG"], lons, {"axis": "X", "c_grid_axis_shift": -0.5}),
         },
@@ -136,9 +149,11 @@ def test_simulate_ctds(tmpdir) -> None:
     results = xr.open_zarr(out_path)
 
     assert len(results.trajectory) == len(ctds)
-    assert (np.min(results.z) == -1000.0)
+    assert np.min(results.z) == -1000.0
 
-    pytest.skip(reason="Parcels v4 can't interpolate on grid boundaries, leading to NaN values in output.")
+    pytest.skip(
+        reason="Parcels v4 can't interpolate on grid boundaries, leading to NaN values in output."
+    )
     for ctd_i, (traj, exp_bothloc) in enumerate(
         zip(results.trajectory, ctd_exp, strict=True)
     ):

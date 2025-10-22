@@ -45,7 +45,6 @@ def _sample_salinity(particles, fieldset):
 
 
 def _ctd_sinking(particles, fieldset):
-
     def ctd_lowering(p):
         p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
         p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
@@ -55,7 +54,6 @@ def _ctd_sinking(particles, fieldset):
 
 
 def _ctd_rising(particles, fieldset):
-
     def ctd_rising(p):
         p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
         p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
@@ -90,7 +88,10 @@ def simulate_ctd(
 
     # deploy time for all ctds should be later than fieldset start time
     if not all(
-        [np.datetime64(ctd.spacetime.time) >= fieldset.time_interval.left for ctd in ctds]
+        [
+            np.datetime64(ctd.spacetime.time) >= fieldset.time_interval.left
+            for ctd in ctds
+        ]
     ):
         raise ValueError("CTD deployed before fieldset starts.")
 
@@ -99,7 +100,10 @@ def simulate_ctd(
         max(
             ctd.max_depth,
             fieldset.bathymetry.eval(
-                z=0, y=ctd.spacetime.location.lat, x=ctd.spacetime.location.lon, time=fieldset.time_interval.left
+                z=0,
+                y=ctd.spacetime.location.lat,
+                x=ctd.spacetime.location.lon,
+                time=fieldset.time_interval.left,
             ),
         )
         for ctd in ctds
