@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import AdvectionRK4, FieldSet, ParticleSet, Variable
-from parcels.particle import Particle
-from parcels.tools import StatusCode
+from parcels import FieldSet, Particle, ParticleFile, ParticleSet, Variable
+from parcels.kernels import AdvectionRK4
+from parcels._core.statuscodes import StatusCode
 
 from virtualship.models import Spacetime
 

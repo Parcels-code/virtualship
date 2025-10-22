@@ -3,8 +3,7 @@
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, ParticleSet, Variable
-from parcels.particle import Particle
+from parcels import FieldSet, Particle, ParticleSet, Variable
 
 from virtualship.models import Spacetime
 

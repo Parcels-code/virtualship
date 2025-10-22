@@ -8,7 +8,7 @@ dependencies:
   - pyproj >= 3, < 4
   - sortedcontainers == 2.4.0
   - opensimplex == 0.4.5
-  - numpy >=1, < 2
+  - numpy >=2.1
   - pydantic >=2, <3
   - pip
   - pyyaml

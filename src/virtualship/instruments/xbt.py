@@ -5,9 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, ParticleSet, Variable
-from parcels.particle import Particle
-from parcels.tools import StatusCode
+from parcels import FieldSet, Particle, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
 
 from virtualship.models import Spacetime
 

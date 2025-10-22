@@ -6,13 +6,13 @@ from pathlib import Path
 
 import numpy as np
 from parcels import (
-    AdvectionRK4,
     FieldSet,
+    Particle,
     ParticleSet,
     StatusCode,
     Variable,
 )
-from parcels.particle import Particle
+from parcels.kernels import AdvectionRK4
 
 from virtualship.models import Spacetime
 

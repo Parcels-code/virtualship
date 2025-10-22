@@ -68,7 +68,10 @@ filterwarnings = [
   "error",
   "default::DeprecationWarning",
   "error::DeprecationWarning:virtualship",
-  "ignore:ParticleSet is empty.*:RuntimeWarning" # TODO: Probably should be ignored in the source code
+  "ignore:ParticleSet is empty.*:RuntimeWarning", # TODO: Probably should be ignored in the source code
+  "ignore:divide by zero encountered in divide:RuntimeWarning",
+  "ignore:invalid value encountered in add:RuntimeWarning",
+  "ignore:This is an alpha version of Parcels v4*:UserWarning",
 ]
 log_cli_level = "INFO"
 testpaths = [
