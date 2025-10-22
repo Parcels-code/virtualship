@@ -4,7 +4,7 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet, Field, VectorField, XGrid
+from parcels import Field, FieldSet, VectorField, XGrid
 
 from virtualship.instruments.drifter import Drifter, simulate_drifters
 from virtualship.models import Location, Spacetime
@@ -23,15 +23,35 @@ def test_simulate_drifters(tmpdir) -> None:
 
     time = [base_time, base_time + np.timedelta64(3, "D")]
     ds = xr.Dataset(
-        {"U": (["time", "YG", "XG"], u), "V": (["time", "YG", "XG"], v), "T": (["time", "YG", "XG"], t)},
+        {
+            "U": (["time", "YG", "XG"], u),
+            "V": (["time", "YG", "XG"], v),
+            "T": (["time", "YG", "XG"], t),
+        },
         coords={
             "time": (["time"], time, {"axis": "T"}),
             "YC": (["YC"], np.arange(dims[1]) + 0.5, {"axis": "Y"}),
-            "YG": (["YG"], np.arange(dims[1]), {"axis": "Y", "c_grid_axis_shift": -0.5}),
+            "YG": (
+                ["YG"],
+                np.arange(dims[1]),
+                {"axis": "Y", "c_grid_axis_shift": -0.5},
+            ),
             "XC": (["XC"], np.arange(dims[2]) + 0.5, {"axis": "X"}),
-            "XG": (["XG"], np.arange(dims[2]), {"axis": "X", "c_grid_axis_shift": -0.5}),
-            "lat": (["YG"], np.linspace(-10, 10, dims[1]), {"axis": "Y", "c_grid_axis_shift": 0.5}),
-            "lon": (["XG"], np.linspace(-10, 10, dims[2]), {"axis": "X", "c_grid_axis_shift": -0.5}),
+            "XG": (
+                ["XG"],
+                np.arange(dims[2]),
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
+            "lat": (
+                ["YG"],
+                np.linspace(-10, 10, dims[1]),
+                {"axis": "Y", "c_grid_axis_shift": 0.5},
+            ),
+            "lon": (
+                ["XG"],
+                np.linspace(-10, 10, dims[2]),
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
         },
     )
 
@@ -41,7 +61,6 @@ def test_simulate_drifters(tmpdir) -> None:
     T = Field("T", ds["T"], grid)
     UV = VectorField("UV", U, V)
     fieldset = FieldSet([U, V, T, UV])
-
 
     # drifters to deploy
     drifters = [
@@ -76,7 +95,9 @@ def test_simulate_drifters(tmpdir) -> None:
     )
 
     # test if output is as expected
-    results = xr.open_zarr(out_path, decode_cf=False)  # TODO fix decode_cf when parcels v4 is fixed
+    results = xr.open_zarr(
+        out_path, decode_cf=False
+    )  # TODO fix decode_cf when parcels v4 is fixed
 
     assert len(results.trajectory) == len(drifters)
 
