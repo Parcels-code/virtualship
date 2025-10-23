@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import copernicusmarine
-
 from parcels import FieldSet
+
 from virtualship.models import Expedition
 
 # TODO: very bodgy
