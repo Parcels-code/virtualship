@@ -98,6 +98,7 @@ class InputData:
             variables=["uo", "vo", "so", "thetao"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
         )
 
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
@@ -130,6 +131,7 @@ class InputData:
             variables=["deptho"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
         )
         bathymetry_variables = {"bathymetry": "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
@@ -156,6 +158,7 @@ class InputData:
             variables=["o2", "chl", "no3", "po4", "nppv"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
         )
 
         variables = {
@@ -196,6 +199,7 @@ class InputData:
             variables=["deptho"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
         )
         bathymetry_variables = {"bathymetry": "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
@@ -221,6 +225,7 @@ class InputData:
             variables=["uo", "vo", "thetao"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
         )
 
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
