@@ -104,6 +104,7 @@ class InputData:
         ds = ds.rename_vars({"deptho": "bathymetry"})
         ds["bathymetry"] = -ds["bathymetry"]
         ds["depth"] = -ds["depth"]
+        ds = ds.rename({"so": "S", "thetao": "T"})
         fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
@@ -180,6 +181,7 @@ class InputData:
             "T": directory.joinpath("drifter_t.nc"),
         }
         ds = xr.open_mfdataset([filenames["U"], filenames["T"]])
+        ds = ds.rename({"thetao": "T"})
         fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
