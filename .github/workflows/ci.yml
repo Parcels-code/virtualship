@@ -22,7 +22,7 @@ env:
 
 jobs:
   cache-pixi-lock:
-    uses: Parcels-code/Parcels/.github/workflows/cache-pixi-lock.yml@58cdd6185b3af03785c567914a070288ffd804e0
+    uses: ./.github/workflows/cache-pixi-lock.yml
 
   tests:
     name: "Unit tests: ${{ matrix.runs-on }} | pixi run -e ${{ matrix.pixi-environment }} tests"
