@@ -28,7 +28,7 @@ pre-commit = { features = ["pre-commit"], no-default-feature = true }
 [dependencies] # keep section in sync with pyproject.toml dependencies
 python = ">=3.11"
 click = "*"
-parcels = ">3.1.0"
+parcels = {path="./Parcels"}
 pyproj = ">=3,<4"
 sortedcontainers = "==2.4.0"
 opensimplex = "==0.4.5"

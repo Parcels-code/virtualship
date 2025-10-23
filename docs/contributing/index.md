@@ -18,7 +18,16 @@ To get started contributing to VirtualShip:
 
 **Step 2:** [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo#forking-a-repository)
 
-**Step 3:** Clone your fork and `cd` into the repository.
+**Step 3:** Clone your fork with submodules and `cd` into the repository.
+
+```bash
+git clone --recurse-submodules git@github.com:YOUR_USERNAME/virtualship.git
+cd virtualship
+```
+
+```{note}
+The `--recurse-submodules` flag is required to clone the Parcels submodule, which is used for testing and development.
+```
 
 **Step 4:** Install the Pixi environment
 
