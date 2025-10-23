@@ -123,7 +123,7 @@ def simulate_ctd(
         lon=[ctd.spacetime.location.lon for ctd in ctds],
         lat=[ctd.spacetime.location.lat for ctd in ctds],
         z=[ctd.min_depth for ctd in ctds],
-        time=[ctd.spacetime.time for ctd in ctds],
+        time=[np.datetime64(ctd.spacetime.time) for ctd in ctds],
         max_depth=max_depths,
         min_depth=[ctd.min_depth for ctd in ctds],
         winch_speed=[WINCH_SPEED for _ in ctds],

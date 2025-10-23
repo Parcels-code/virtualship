@@ -77,7 +77,7 @@ def simulate_drifters(
         lat=[drifter.spacetime.location.lat for drifter in drifters],
         lon=[drifter.spacetime.location.lon for drifter in drifters],
         z=[drifter.depth for drifter in drifters],
-        time=[drifter.spacetime.time for drifter in drifters],
+        time=[np.datetime64(drifter.spacetime.time) for drifter in drifters],
         has_lifetime=[1 if drifter.lifetime is not None else 0 for drifter in drifters],
         lifetime=[
             0 if drifter.lifetime is None else drifter.lifetime / np.timedelta64(1, "s")
