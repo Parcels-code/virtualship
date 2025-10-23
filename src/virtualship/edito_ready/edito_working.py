@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import copernicusmarine
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.models import Expedition
 
 # TODO: very bodgy
@@ -215,6 +215,7 @@ class InputData:
     # TODO
     @classmethod
     def _load_drifter_fieldset(cls, expedition: Expedition) -> FieldSet:
+        # TODO: add buffers!
         ds = copernicusmarine.open_dataset(
             dataset_id=PHYS_REANALYSIS_ID,
             dataset_part="default",  # no idea what this means tbh

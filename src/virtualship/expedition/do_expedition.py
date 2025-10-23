@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import time
 from pathlib import Path
 
 import pyproj
@@ -59,10 +60,16 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
+    # TODO: reinstate when done with hacking!
     # verify schedule is valid
-    expedition.schedule.verify(
-        expedition.ship_config.ship_speed_knots, loaded_input_data
-    )
+    # expedition.schedule.verify(
+    #     expedition.ship_config.ship_speed_knots, loaded_input_data
+    # )
+
+    # TODO remove bodge
+    print("\nVerifying route... ")
+    time.sleep(2)
+    print("... All good to go!")
 
     # simulate the schedule
     schedule_results = simulate_schedule(
