@@ -5,8 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
+from parcels import FieldSet, JITParticle, ParticleSet, Variable
 from virtualship.models import Spacetime
 
 
@@ -103,8 +103,8 @@ def simulate_ctd_bgc(
         # TODO when Parcels supports it this check can be removed.
         return
 
-    fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+    fieldset_starttime = fieldset.time_origin.fulltime(fieldset.o2.grid.time_full[0])
+    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.o2.grid.time_full[-1])
 
     # deploy time for all ctds should be later than fieldset start time
     if not all(
