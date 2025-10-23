@@ -51,9 +51,9 @@ You can use the following Pixi commands to run common development tasks.
 
 VirtualShip supports testing against different environments (e.g., different Python versions) with different feature sets. In CI we test against these environments, and you can too locally. For example:
 
-- `pixi run -e test-py310 tests` - Run tests using Python 3.10
 - `pixi run -e test-py311 tests` - Run tests using Python 3.11
 - `pixi run -e test-py312 tests` - Run tests using Python 3.12
+- `pixi run -e test-latest tests` - Run tests using latest Python
 
 The name of the workflow on GitHub contains the command you have to run locally to recreate the workflow - making it super easy to reproduce CI failures locally.
 
