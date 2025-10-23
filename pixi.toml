@@ -40,6 +40,15 @@ yaspin = "*"
 textual = "*"
 virtualship = { path = "." }
 
+# deps needed for Parcels # TODO inherit these from Parcels instead
+uxarray = ">=2025.3.0"
+dask = ">=2024.5.1"
+zarr = ">=2.15.0,!=2.18.0,<3"
+xgcm = ">=0.9.0"
+cf_xarray = ">=0.8.6"
+cftime = ">=1.6.3"
+pooch = ">=1.8.0"
+
 [feature.py311.dependencies]
 python = "3.11.*"
 
