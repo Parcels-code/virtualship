@@ -140,7 +140,6 @@ def simulate_ctd(
         verbose_progress=False,
         output_file=out_file,
     )
-    print(ctd_particleset.lon, ctd_particleset.lat, ctd_particleset.z)
 
     # there should be no particles left, as they delete themselves when they resurface
     if len(ctd_particleset) != 0:

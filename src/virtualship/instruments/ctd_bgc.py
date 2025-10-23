@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, Particle, ParticleSet, Variable
+from parcels import FieldSet, Particle, ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
 from virtualship.models import Spacetime
@@ -87,21 +87,17 @@ def _sample_primary_production(particles, fieldset):
 
 
 def _ctd_bgc_sinking(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-
     def ctd_lowering(p):
-        p.dz = -particles.winch_speed * dt
+        p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
         p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
-        p.dz = np.where(p.z + p.dz < p.max_depth, -p.ddpeth, p.dz)
+        p.dz = np.where(p.z + p.dz < p.max_depth, -p.dz, p.dz)
 
     ctd_lowering(particles[particles.raising == 0])
 
 
 def _ctd_bgc_rising(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-
     def ctd_rising(p):
-        p.dz = p.winch_speed * dt
+        p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
         p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
 
     ctd_rising(particles[particles.raising == 1])
@@ -123,7 +119,7 @@ def simulate_ctd_bgc(
     :raises ValueError: Whenever provided BGC CTDs, fieldset, are not compatible with this function.
     """
     WINCH_SPEED = 1.0  # sink and rise speed in m/s
-    DT = 10.0  # dt of CTD simulation integrator
+    DT = 10  # dt of CTD simulation integrator
 
     if len(ctd_bgcs) == 0:
         print(
@@ -132,13 +128,10 @@ def simulate_ctd_bgc(
         # TODO when Parcels supports it this check can be removed.
         return
 
-    fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-
     # deploy time for all ctds should be later than fieldset start time
     if not all(
         [
-            np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
+            np.datetime64(ctd_bgc.spacetime.time) >= fieldset.time_interval.left
             for ctd_bgc in ctd_bgcs
         ]
     ):
@@ -149,10 +142,10 @@ def simulate_ctd_bgc(
         max(
             ctd_bgc.max_depth,
             fieldset.bathymetry.eval(
-                z=0,
-                y=ctd_bgc.spacetime.location.lat,
-                x=ctd_bgc.spacetime.location.lon,
-                time=0,
+                z=np.array([0], dtype=np.float32),
+                y=np.array([ctd_bgc.spacetime.location.lat], dtype=np.float32),
+                x=np.array([ctd_bgc.spacetime.location.lon], dtype=np.float32),
+                time=fieldset.time_interval.left,
             ),
         )
         for ctd_bgc in ctd_bgcs
@@ -171,15 +164,15 @@ def simulate_ctd_bgc(
         pclass=_CTD_BGCParticle,
         lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in ctd_bgcs],
         lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in ctd_bgcs],
-        depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
-        time=[ctd_bgc.spacetime.time for ctd_bgc in ctd_bgcs],
+        z=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
+        time=[np.datetime64(ctd_bgc.spacetime.time) for ctd_bgc in ctd_bgcs],
         max_depth=max_depths,
         min_depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
         winch_speed=[WINCH_SPEED for _ in ctd_bgcs],
     )
 
     # define output file for the simulation
-    out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=outputdt)
+    out_file = ParticleFile(store=out_path, outputdt=outputdt)
 
     # execute simulation
     ctd_bgc_particleset.execute(
@@ -195,14 +188,14 @@ def simulate_ctd_bgc(
             _ctd_bgc_sinking,
             _ctd_bgc_rising,
         ],
-        endtime=fieldset_endtime,
-        dt=DT,
+        endtime=fieldset.time_interval.right,
+        dt=np.timedelta64(DT, "s"),
         verbose_progress=False,
         output_file=out_file,
     )
 
     # there should be no particles left, as they delete themselves when they resurface
-    if len(ctd_bgc_particleset.particledata) != 0:
+    if len(ctd_bgc_particleset) != 0:
         raise ValueError(
             "Simulation ended before BGC CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
         )
