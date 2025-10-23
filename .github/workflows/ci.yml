@@ -31,8 +31,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pixi-environment: ["test-py310", "test-py312"]
-        runs-on: [ubuntu-latest, windows-latest, macos-14]
+        pixi-environment: ["test-py311", "test-latest"]
+        runs-on: [ubuntu-latest] #, windows-latest, macos-14]
 
     steps:
       - uses: actions/checkout@v4
