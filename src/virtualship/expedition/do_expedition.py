@@ -141,9 +141,10 @@ def _load_input_data(
         )
         input_data = get_existing_download(expedition_dir, space_time_region_hash)
 
-    assert input_data is not None, (
-        "Input data hasn't been found. Have you run the `virtualship fetch` command?"
-    )
+    # TODO not relevant if streaming data
+    # assert input_data is not None, (
+    #     "Input data hasn't been found. Have you run the `virtualship fetch` command?"
+    # )
 
     return InputData.load(
         directory=input_data,
@@ -155,6 +156,7 @@ def _load_input_data(
         load_xbt=expedition.instruments_config.xbt_config is not None,
         load_ship_underwater_st=expedition.instruments_config.ship_underwater_st_config
         is not None,
+        expedition=expedition,
     )
 
 

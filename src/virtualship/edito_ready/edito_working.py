@@ -6,7 +6,7 @@ from pathlib import Path
 import copernicusmarine
 
 from parcels import Field, FieldSet
-from virtualship.models import Schedule, ShipConfig
+from virtualship.models import Expedition
 
 # TODO: very bodgy
 copernicusmarine.login()  # enter your username and password. There's also a way to store these as a pub/private key, but I haven't done so yet.
@@ -38,14 +38,13 @@ class InputData:
         load_drifter: bool,
         load_xbt: bool,
         load_ship_underwater_st: bool,
-        schedule: Schedule,
-        ship_config: ShipConfig,
+        expedition: Expedition,
     ) -> InputData:
         """Create an instance of this class from copernicusmarine-sourced ds."""
         directory = Path(directory)
 
         if load_drifter:
-            drifter_fieldset = cls._load_drifter_fieldset(schedule)
+            drifter_fieldset = cls._load_drifter_fieldset(expedition)
         else:
             drifter_fieldset = None
         if load_argo_float:
@@ -53,11 +52,11 @@ class InputData:
         else:
             argo_float_fieldset = None
         if load_ctd_bgc:
-            ctd_bgc_fieldset = cls._load_ctd_bgc_fieldset(schedule)
+            ctd_bgc_fieldset = cls._load_ctd_bgc_fieldset(expedition)
         else:
             ctd_bgc_fieldset = None
         if load_adcp or load_ctd or load_ship_underwater_st or load_xbt:
-            ship_fieldset = cls._load_ship_fieldset(schedule)
+            ship_fieldset = cls._load_ship_fieldset(expedition)
         if load_adcp:
             adcp_fieldset = ship_fieldset
         else:
@@ -87,17 +86,17 @@ class InputData:
 
     # TODO
     @classmethod
-    def _load_ship_fieldset(cls, schedule: Schedule) -> FieldSet:
+    def _load_ship_fieldset(cls, expedition: Expedition) -> FieldSet:
         ds = copernicusmarine.open_dataset(
             dataset_id=PHYS_REANALYSIS_ID,
             dataset_part="default",  # no idea what this means tbh
-            minimum_longitude=schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=schedule.space_time_region.spatial_range.maximum_latitude,
+            minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
             variables=["uo", "vo", "so", "thetao"],
-            start_datetime=schedule.space_time_region.time_range.start_time,
-            end_datetime=schedule.space_time_region.time_range.end_time,
+            start_datetime=expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
 
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
@@ -123,13 +122,13 @@ class InputData:
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
             dataset_part="default",  # no idea what this means tbh
-            minimum_longitude=schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=schedule.space_time_region.spatial_range.maximum_latitude,
+            minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
             variables=["uo", "vo", "so", "thetao"],
-            start_datetime=schedule.space_time_region.time_range.start_time,
-            end_datetime=schedule.space_time_region.time_range.end_time,
+            start_datetime=expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
         bathymetry_variables = {"bathymetry", "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
