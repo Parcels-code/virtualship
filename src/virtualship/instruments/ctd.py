@@ -45,20 +45,20 @@ def _sample_salinity(particles, fieldset):
 
 
 def _ctd_sinking(particles, fieldset):
-    def ctd_lowering(p):
-        p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
-        p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
-        p.dz = np.where(p.z + p.dz < p.max_depth, -p.dz, p.dz)
-
-    ctd_lowering(particles[particles.raising == 0])
+    for i in range(len(particles)):
+        if particles[i].raising == 0:
+            particles[i].dz = -particles[i].winch_speed * particles[i].dt / np.timedelta64(1, "s")
+            if particles[i].z + particles[i].dz < particles[i].max_depth:
+                particles[i].raising = 1
+                particles[i].dz = -particles[i].dz
 
 
 def _ctd_rising(particles, fieldset):
-    def ctd_rising(p):
-        p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
-        p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
-
-    ctd_rising(particles[particles.raising == 1])
+    for i in range(len(particles)):
+        if particles[i].raising == 1:
+            particles[i].dz = particles[i].winch_speed * particles[i].dt / np.timedelta64(1, "s")
+            if particles[i].z + particles[i].dz > particles[i].min_depth:
+                particles[i].state = StatusCode.Delete
 
 
 def simulate_ctd(
