@@ -39,6 +39,7 @@ copernicusmarine = ">=2.2.2"
 yaspin = "*"
 textual = "*"
 virtualship = { path = "." }
+openpyxl = "*"
 
 # deps needed for Parcels # TODO inherit these from Parcels instead
 uxarray = ">=2025.3.0"
@@ -60,7 +61,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-asyncio = "*"
 seabird = "*"
-openpyxl = "*"
 
 [feature.test.tasks]
 tests = "pytest"
