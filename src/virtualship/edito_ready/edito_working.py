@@ -5,11 +5,12 @@ from pathlib import Path
 
 import copernicusmarine
 
-from parcels import Field, FieldSet
+from parcels import FieldSet
 from virtualship.models import Expedition
 
 # TODO: very bodgy
-copernicusmarine.login()  # enter your username and password. There's also a way to store these as a pub/private key, but I haven't done so yet.
+#! Toggle on for first time running in session...
+# copernicusmarine.login()
 
 PHYS_REANALYSIS_ID = "cmems_mod_glo_phy_my_0.083deg_P1D-m"
 BGC_RENALYSIS_ID = "cmems_mod_glo_bgc_my_0.25deg_P1D-m"
@@ -121,23 +122,23 @@ class InputData:
         # add bathymetry data
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
-            dataset_part="default",  # no idea what this means tbh
+            # dataset_part="default",  # no idea what this means tbh
             minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
             maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
             minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
             maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-            variables=["uo", "vo", "so", "thetao"],
+            variables=["deptho"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
-        bathymetry_variables = {"bathymetry", "deptho"}
+        bathymetry_variables = {"bathymetry": "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-        bathymetry_field = Field.from_xarray_dataset(
+        bathymetry_field = FieldSet.from_xarray_dataset(
             ds_bathymetry, bathymetry_variables, bathymetry_dimensions
         )
         # make depth negative
         bathymetry_field.bathymetry.data = -bathymetry_field.bathymetry.data
-        fieldset.add_field(bathymetry_field)
+        fieldset.add_field(bathymetry_field.bathymetry)
 
         return fieldset
 
@@ -146,25 +147,24 @@ class InputData:
     def _load_ctd_bgc_fieldset(cls, expedition: Expedition) -> FieldSet:
         ds = copernicusmarine.open_dataset(
             dataset_id=BGC_RENALYSIS_ID,
-            dataset_part="default",  # no idea what this means tbh
+            # dataset_part="default",  # no idea what this means tbh
             minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
             maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
             minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
             maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-            variables=["uo", "vo", "o2", "chl", "no3", "po4", "ph", "phyc", "nppv"],
+            # variables=["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"],
+            variables=["o2", "chl", "no3", "po4", "nppv"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
 
         variables = {
-            "U": "uo",
-            "V": "vo",
             "o2": "o2",
             "chl": "chl",
             "no3": "no3",
             "po4": "po4",
-            "ph": "ph",
-            "phyc": "phyc",
+            # "ph": "ph",
+            # "phyc": "phyc",
             "nppv": "nppv",
         }
         dimensions = {
@@ -181,30 +181,30 @@ class InputData:
         fieldset.chl.interp_method = "linear_invdist_land_tracer"
         fieldset.no3.interp_method = "linear_invdist_land_tracer"
         fieldset.po4.interp_method = "linear_invdist_land_tracer"
-        fieldset.ph.interp_method = "linear_invdist_land_tracer"
-        fieldset.phyc.interp_method = "linear_invdist_land_tracer"
+        # fieldset.ph.interp_method = "linear_invdist_land_tracer"
+        # fieldset.phyc.interp_method = "linear_invdist_land_tracer"
         fieldset.nppv.interp_method = "linear_invdist_land_tracer"
 
         # add bathymetry data
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
-            dataset_part="default",  # no idea what this means tbh
+            # dataset_part="default",  # no idea what this means tbh
             minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
             maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
             minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
             maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-            variables=["uo", "vo", "so", "thetao"],
+            variables=["deptho"],
             start_datetime=expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
-        bathymetry_variables = {"bathymetry", "deptho"}
+        bathymetry_variables = {"bathymetry": "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-        bathymetry_field = Field.from_xarray_dataset(
+        bathymetry_field = FieldSet.from_xarray_dataset(
             ds_bathymetry, bathymetry_variables, bathymetry_dimensions
         )
         # make depth negative
         bathymetry_field.bathymetry.data = -bathymetry_field.bathymetry.data
-        fieldset.add_field(bathymetry_field)
+        fieldset.add_field(bathymetry_field.bathymetry)
 
         return fieldset
 
