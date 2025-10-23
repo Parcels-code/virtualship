@@ -105,6 +105,7 @@ class InputData:
         ds["bathymetry"] = -ds["bathymetry"]
         ds["depth"] = -ds["depth"]
         ds = ds.rename({"so": "S", "thetao": "T"})
+        ds.time.attrs["axis"] = "T"
         fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
@@ -182,6 +183,7 @@ class InputData:
         }
         ds = xr.open_mfdataset([filenames["U"], filenames["T"]])
         ds = ds.rename({"thetao": "T"})
+        ds.time.attrs["axis"] = "T"
         fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
