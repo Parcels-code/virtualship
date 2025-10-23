@@ -7,6 +7,7 @@ from pathlib import Path
 import pyproj
 
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
+from virtualship.edito_ready.edito_working import InputData
 from virtualship.models import Expedition, Schedule
 from virtualship.utils import (
     CHECKPOINT,
@@ -15,7 +16,6 @@ from virtualship.utils import (
 
 from .checkpoint import Checkpoint
 from .expedition_cost import expedition_cost
-from .input_data import InputData
 from .simulate_measurements import simulate_measurements
 from .simulate_schedule import ScheduleProblem, simulate_schedule
 
