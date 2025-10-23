@@ -5,8 +5,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
-
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
+
 from virtualship.models import Spacetime
 
 
