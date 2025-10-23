@@ -100,9 +100,9 @@ def simulate_ctd(
         max(
             ctd.max_depth,
             fieldset.bathymetry.eval(
-                z=np.array(0, dtype=np.float32),
-                y=np.array(ctd.spacetime.location.lat, dtype=np.float32),
-                x=np.array(ctd.spacetime.location.lon, dtype=np.float32),
+                z=np.array([0], dtype=np.float32),
+                y=np.array([ctd.spacetime.location.lat], dtype=np.float32),
+                x=np.array([ctd.spacetime.location.lon], dtype=np.float32),
                 time=fieldset.time_interval.left,
             ),
         )
