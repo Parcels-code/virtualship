@@ -147,7 +147,7 @@ def _load_input_data(
     # )
 
     return InputData.load(
-        directory=input_data,
+        directory=expedition_dir,
         load_adcp=expedition.instruments_config.adcp_config is not None,
         load_argo_float=expedition.instruments_config.argo_float_config is not None,
         load_ctd=expedition.instruments_config.ctd_config is not None,

@@ -143,17 +143,17 @@ class InputData:
 
     # TODO
     @classmethod
-    def _load_ctd_bgc_fieldset(cls, schedule) -> FieldSet:
+    def _load_ctd_bgc_fieldset(cls, expedition: Expedition) -> FieldSet:
         ds = copernicusmarine.open_dataset(
             dataset_id=BGC_RENALYSIS_ID,
             dataset_part="default",  # no idea what this means tbh
-            minimum_longitude=schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=schedule.space_time_region.spatial_range.maximum_latitude,
+            minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
             variables=["uo", "vo", "o2", "chl", "no3", "po4", "ph", "phyc", "nppv"],
-            start_datetime=schedule.space_time_region.time_range.start_time,
-            end_datetime=schedule.space_time_region.time_range.end_time,
+            start_datetime=expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
 
         variables = {
@@ -189,13 +189,13 @@ class InputData:
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
             dataset_part="default",  # no idea what this means tbh
-            minimum_longitude=schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=schedule.space_time_region.spatial_range.maximum_latitude,
+            minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
             variables=["uo", "vo", "so", "thetao"],
-            start_datetime=schedule.space_time_region.time_range.start_time,
-            end_datetime=schedule.space_time_region.time_range.end_time,
+            start_datetime=expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
         bathymetry_variables = {"bathymetry", "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
@@ -210,17 +210,17 @@ class InputData:
 
     # TODO
     @classmethod
-    def _load_drifter_fieldset(cls, schedule) -> FieldSet:
+    def _load_drifter_fieldset(cls, expedition: Expedition) -> FieldSet:
         ds = copernicusmarine.open_dataset(
             dataset_id=PHYS_REANALYSIS_ID,
             dataset_part="default",  # no idea what this means tbh
-            minimum_longitude=schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=schedule.space_time_region.spatial_range.maximum_latitude,
+            minimum_longitude=expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=expedition.schedule.space_time_region.spatial_range.maximum_latitude,
             variables=["uo", "vo", "thetao"],
-            start_datetime=schedule.space_time_region.time_range.start_time,
-            end_datetime=schedule.space_time_region.time_range.end_time,
+            start_datetime=expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=expedition.schedule.space_time_region.time_range.end_time,
         )
 
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
