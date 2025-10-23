@@ -8,36 +8,75 @@ We have a design document providing a conceptual overview of VirtualShip. This d
 
 ### Development installation
 
-We use `conda` to manage our development installation. Make sure you have `conda` installed by following [the instructions here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) and then run the following commands:
-
-```bash
-conda create -n ship python=3.10
-conda activate ship
-conda env update --file environment.yml
-pip install -e . --no-deps --no-build-isolation
+```{note}
+VirtualShip uses [Pixi](https://pixi.sh) to manage environments and run developer tooling. Pixi is a modern alternative to Conda and also includes other powerful tooling useful for a project like VirtualShip. It is our sole development workflow - we do not offer a Conda development workflow. Give Pixi a try, you won't regret it!
 ```
 
-This creates an environment, and installs all the dependencies that you need for development, including:
+To get started contributing to VirtualShip:
 
-- core dependencies
-- development dependencies (e.g., for testing)
-- documentation dependencies
+**Step 1:** [Install Pixi](https://pixi.sh/latest/).
 
-then installs the package in editable mode.
+**Step 2:** [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo#forking-a-repository)
 
-### Useful commands
+**Step 3:** Clone your fork with submodules and `cd` into the repository.
 
-The following commands are useful for local development:
+```bash
+git clone --recurse-submodules git@github.com:YOUR_USERNAME/virtualship.git
+cd virtualship
+```
 
-- `pytest` to run tests
-- `pre-commit run --all-files` to run pre-commit checks
-- `pre-commit install` (optional) to install pre-commit hooks
-  - this means that every time you commit, pre-commit checks will run on the files you changed
-- `sphinx-autobuild docs docs/_build` to build and serve the documentation
-- `sphinx-apidoc -o docs/api/ --module-first --no-toc --force src/virtualship` (optional) to generate the API documentation
-- `sphinx-build -b linkcheck docs/ _build/linkcheck` to check for broken links in the documentation
+```{note}
+The `--recurse-submodules` flag is required to clone the Parcels submodule, which is used for testing and development.
+```
 
-The running of these commands is useful for local development and quick iteration, but not _vital_ as they will be run automatically in the CI pipeline (`pre-commit` by pre-commit.ci, `pytest` by GitHub Actions, and `sphinx` by ReadTheDocs).
+**Step 4:** Install the Pixi environment
+
+```bash
+pixi install
+```
+
+Now you have a development installation of VirtualShip, as well as a bunch of developer tooling to run tests, check code quality, and build the documentation! Simple as that.
+
+### Pixi workflows
+
+You can use the following Pixi commands to run common development tasks.
+
+**Testing**
+
+- `pixi run tests` - Run the full test suite using pytest with coverage reporting
+- `pixi run tests-notebooks` - Run notebook tests
+
+**Documentation**
+
+- `pixi run docs` - Build the documentation using Sphinx
+- `pixi run docs-watch` - Build and auto-rebuild documentation when files change (useful for live editing)
+
+**Code quality**
+
+- `pixi run lint` - Run pre-commit hooks on all files (includes formatting, linting, and other code quality checks)
+- `pixi run typing` - Run mypy type checking on the codebase
+
+**Different environments**
+
+VirtualShip supports testing against different environments (e.g., different Python versions) with different feature sets. In CI we test against these environments, and you can too locally. For example:
+
+- `pixi run -e test-py311 tests` - Run tests using Python 3.11
+- `pixi run -e test-py312 tests` - Run tests using Python 3.12
+- `pixi run -e test-latest tests` - Run tests using latest Python
+
+The name of the workflow on GitHub contains the command you have to run locally to recreate the workflow - making it super easy to reproduce CI failures locally.
+
+**Typical development workflow**
+
+1. Make your code changes
+2. Run `pixi run lint` to ensure code formatting and style compliance
+3. Run `pixi run tests` to verify your changes don't break existing functionality
+4. If you've added new features, run `pixi run typing` to check type annotations
+5. If you've modified documentation, run `pixi run docs` to build and verify the docs
+
+```{tip}
+You can run `pixi info` to see all available environments and `pixi task list` to see all available tasks across environments.
+```
 
 ## For maintainers
 
@@ -52,5 +91,5 @@ The running of these commands is useful for local development and quick iteratio
 
 When adding a dependency, make sure to modify the following files where relevant:
 
-- `environment.yml` for core and development dependencies (important for the development environment, and CI)
+- `pixi.toml` for core and development dependencies (important for the development environment, and CI)
 - `pyproject.toml` for core dependencies (important for the pypi package, this should propagate through automatically to `recipe/meta.yml` in the conda-forge feedstock)
