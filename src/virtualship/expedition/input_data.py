@@ -104,6 +104,7 @@ class InputData:
         ds = ds.rename_vars({"deptho": "bathymetry"})
         ds["bathymetry"] = -ds["bathymetry"]
         ds["depth"] = -ds["depth"]
+        ds = ds.reindex(depth=ds.depth[::-1])
         ds = ds.rename({"so": "S", "thetao": "T"})
         ds.time.attrs["axis"] = "T"
         fieldset = FieldSet.from_copernicusmarine(ds)
