@@ -91,9 +91,9 @@ def test_simulate_ctds(tmpdir) -> None:
     s[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["salinity"]
 
     lons, lats = (
-        np.linspace(-1, 2, dims[2]),
-        np.linspace(-1, 2, dims[3]),
-    )  # TODO set to (0, 1) once Parcels can interpolate on domain boundaries
+        np.linspace(0, 1, dims[2]),
+        np.linspace(0, 1, dims[3]),
+    )
     ds = xr.Dataset(
         {
             "U": (["time", "depth", "YG", "XG"], u),
@@ -151,9 +151,6 @@ def test_simulate_ctds(tmpdir) -> None:
     assert len(results.trajectory) == len(ctds)
     assert np.min(results.z) == -1000.0
 
-    pytest.skip(
-        reason="Parcels v4 can't interpolate on grid boundaries, leading to NaN values in output."
-    )
     for ctd_i, (traj, exp_bothloc) in enumerate(
         zip(results.trajectory, ctd_exp, strict=True)
     ):
