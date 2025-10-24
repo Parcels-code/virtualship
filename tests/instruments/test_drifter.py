@@ -95,9 +95,7 @@ def test_simulate_drifters(tmpdir) -> None:
     )
 
     # test if output is as expected
-    results = xr.open_zarr(
-        out_path, decode_cf=False
-    )  # TODO fix decode_cf when parcels v4 is fixed
+    results = xr.open_zarr(out_path)
 
     assert len(results.trajectory) == len(drifters)
 
