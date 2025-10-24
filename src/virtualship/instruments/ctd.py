@@ -104,7 +104,7 @@ def simulate_ctd(
                 y=np.array([ctd.spacetime.location.lat], dtype=np.float32),
                 x=np.array([ctd.spacetime.location.lon], dtype=np.float32),
                 time=fieldset.time_interval.left,
-            ),
+            )[0],
         )
         for ctd in ctds
     ]
