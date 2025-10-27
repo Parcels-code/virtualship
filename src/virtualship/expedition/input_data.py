@@ -98,15 +98,16 @@ class InputData:
             "T": directory.joinpath("ship_t.nc"),
             "bathymetry": directory.joinpath("bathymetry.nc"),
         }
-        ds = xr.open_mfdataset(
-            [filenames["U"], filenames["T"], filenames["S"], filenames["bathymetry"]]
-        )
-        ds = ds.rename_vars({"deptho": "bathymetry"})
-        ds["bathymetry"] = -ds["bathymetry"]
-        ds["depth"] = -ds["depth"]
-        ds = ds.reindex(depth=ds.depth[::-1])
-        ds = ds.rename({"so": "S", "thetao": "T"})
-        ds.time.attrs["axis"] = "T"
+        dso = xr.open_mfdataset([filenames["U"], filenames["T"], filenames["S"]])
+        dso["depth"] = -dso["depth"]
+        dso = dso.reindex(depth=dso.depth[::-1])
+        dso = dso.rename({"so": "S", "thetao": "T"})
+        dso.time.attrs["axis"] = "T"
+
+        dsb = xr.open_dataset(filenames["bathymetry"]).rename_vars({"deptho": "bathymetry"})
+        dsb["bathymetry"] = -dsb["bathymetry"]
+
+        ds = xr.merge([dso, dsb], join="inner")
         fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
