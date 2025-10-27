@@ -11,7 +11,7 @@ from virtualship.instruments.argo_float import ArgoFloat
 from virtualship.instruments.ctd import CTD
 from virtualship.instruments.ctd_bgc import CTD_BGC
 from virtualship.instruments.drifter import Drifter
-from virtualship.instruments.master import InstrumentType
+from virtualship.instruments.types import InstrumentType
 from virtualship.instruments.xbt import XBT
 from virtualship.models import (
     Expedition,

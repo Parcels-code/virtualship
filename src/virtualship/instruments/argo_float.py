@@ -14,7 +14,7 @@ from parcels import (
     StatusCode,
     Variable,
 )
-from virtualship.instruments.master import InputDataset
+from virtualship.instruments.base import InputDataset
 from virtualship.models.spacetime import Spacetime
 
 

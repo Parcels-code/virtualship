@@ -12,7 +12,6 @@ from copernicusmarine.core_functions.credentials_utils import InvalidUsernameOrP
 from pydantic import BaseModel
 
 from virtualship.errors import CopernicusCatalogueError, IncompleteDownloadError
-from virtualship.instruments.master import get_instruments_registry
 from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
@@ -28,8 +27,6 @@ import virtualship.cli._creds as creds
 from virtualship.utils import EXPEDITION
 
 DOWNLOAD_METADATA = "download_metadata.yaml"
-
-INSTRUMENTS = get_instruments_registry()
 
 
 def _fetch(path: str | Path, username: str | None, password: str | None) -> None:
@@ -110,29 +107,44 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         coordinates_selection_method="outside",
     )
 
-    # access instrument classes but keep only instruments which are in schedule
-    filter_instruments = {
-        k: v for k, v in INSTRUMENTS.items() if k in instruments_in_expedition
+    # Direct mapping from InstrumentType to input dataset class
+    from virtualship.instruments.adcp import ADCPInputDataset
+    from virtualship.instruments.argo_float import ArgoFloatInputDataset
+    from virtualship.instruments.ctd import CTDInputDataset
+    from virtualship.instruments.ctd_bgc import CTD_BGCInputDataset
+    from virtualship.instruments.drifter import DrifterInputDataset
+    from virtualship.instruments.ship_underwater_st import Underwater_STInputDataset
+    from virtualship.instruments.types import InstrumentType
+    from virtualship.instruments.xbt import XBTInputDataset
+
+    INSTRUMENT_INPUT_DATASET_MAP = {
+        InstrumentType.CTD: CTDInputDataset,
+        InstrumentType.CTD_BGC: CTD_BGCInputDataset,
+        InstrumentType.DRIFTER: DrifterInputDataset,
+        InstrumentType.ARGO_FLOAT: ArgoFloatInputDataset,
+        InstrumentType.XBT: XBTInputDataset,
+        InstrumentType.ADCP: ADCPInputDataset,
+        InstrumentType.UNDERWATER_ST: Underwater_STInputDataset,
     }
 
-    # iterate across instruments and download data based on space_time_region
-    for itype, instrument in filter_instruments.items():
+    # Only keep instruments present in the expedition
+    for itype in instruments_in_expedition:
+        input_dataset_class = INSTRUMENT_INPUT_DATASET_MAP.get(itype)
+        if input_dataset_class is None:
+            continue
         click.echo(
             f"\n\n{(' Fetching data for: ' + itype.value + ' ').center(80, '=')}\n\n"
         )
         try:
-            input_dataset = instrument["input_class"](
+            input_dataset = input_dataset_class(
                 data_dir=download_folder,
                 credentials=credentials,
                 space_time_region=space_time_region,
             )
-
             input_dataset.download_data()
-
         except InvalidUsernameOrPassword as e:
             shutil.rmtree(download_folder)
             raise e
-
         click.echo(f"{itype.value} data download completed.")
 
     complete_download(download_folder)

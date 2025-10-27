@@ -29,7 +29,7 @@ from virtualship.cli.validator_utils import (
     type_to_textual,
 )
 from virtualship.errors import UnexpectedError, UserError
-from virtualship.instruments.master import InstrumentType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     ADCPConfig,
     ArgoFloatConfig,

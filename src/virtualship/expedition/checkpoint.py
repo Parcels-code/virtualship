@@ -8,7 +8,7 @@ import pydantic
 import yaml
 
 from virtualship.errors import CheckpointError
-from virtualship.instruments.master import InstrumentType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Schedule
 
 
