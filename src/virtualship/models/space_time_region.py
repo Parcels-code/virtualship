@@ -1,10 +1,9 @@
 """SpaceTimeRegion class."""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, model_validator
-from typing_extensions import Self
 
 Longitude = Annotated[float, Field(..., ge=-180, le=180)]
 Latitude = Annotated[float, Field(..., ge=-90, le=90)]

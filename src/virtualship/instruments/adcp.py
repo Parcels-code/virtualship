@@ -3,13 +3,11 @@
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
+from parcels import FieldSet, Particle, ParticleSet, Variable
 
 from virtualship.models import Spacetime
 
-# we specifically use ScipyParticle because we have many small calls to execute
-# there is some overhead with JITParticle and this ends up being significantly faster
-_ADCPParticle = ScipyParticle.add_variables(
+_ADCPParticle = Particle.add_variable(
     [
         Variable("U", dtype=np.float32, initial=np.nan),
         Variable("V", dtype=np.float32, initial=np.nan),
@@ -17,9 +15,13 @@ _ADCPParticle = ScipyParticle.add_variables(
 )
 
 
-def _sample_velocity(particle, fieldset, time):
-    particle.U, particle.V = fieldset.UV.eval(
-        time, particle.depth, particle.lat, particle.lon, applyConversion=False
+def _sample_velocity(particles, fieldset):
+    particles.U, particles.V = fieldset.UV.eval(
+        particles.time,
+        particles.z,
+        particles.lat,
+        particles.lon,
+        applyConversion=False,
     )
 
 

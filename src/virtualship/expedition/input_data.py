@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import xarray as xr
 from parcels import Field, FieldSet
 
 
@@ -95,40 +96,19 @@ class InputData:
             "V": directory.joinpath("ship_uv.nc"),
             "S": directory.joinpath("ship_s.nc"),
             "T": directory.joinpath("ship_t.nc"),
+            "bathymetry": directory.joinpath("bathymetry.nc"),
         }
-        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
-        dimensions = {
-            "lon": "longitude",
-            "lat": "latitude",
-            "time": "time",
-            "depth": "depth",
-        }
+        dso = xr.open_mfdataset([filenames["U"], filenames["T"], filenames["S"]])
+        dso["depth"] = -dso["depth"]
+        dso = dso.reindex(depth=dso.depth[::-1])
+        dso = dso.rename({"so": "S", "thetao": "T"})
+        dso.time.attrs["axis"] = "T"
 
-        # create the fieldset and set interpolation methods
-        fieldset = FieldSet.from_netcdf(
-            filenames, variables, dimensions, allow_time_extrapolation=True
-        )
-        fieldset.T.interp_method = "linear_invdist_land_tracer"
-        fieldset.S.interp_method = "linear_invdist_land_tracer"
+        dsb = xr.open_dataset(filenames["bathymetry"]).rename_vars({"deptho": "bathymetry"})
+        dsb["bathymetry"] = -dsb["bathymetry"]
 
-        # make depth negative
-        for g in fieldset.gridset.grids:
-            g.negate_depth()
-
-        # add bathymetry data
-        bathymetry_file = directory.joinpath("bathymetry.nc")
-        bathymetry_variables = ("bathymetry", "deptho")
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-        bathymetry_field = Field.from_netcdf(
-            bathymetry_file, bathymetry_variables, bathymetry_dimensions
-        )
-        # make depth negative
-        bathymetry_field.data = -bathymetry_field.data
-        fieldset.add_field(bathymetry_field)
-
-        # read in data already
-        fieldset.computeTimeChunk(0, 1)
-
+        ds = xr.merge([dso, dsb], join="inner")
+        fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
     @classmethod
@@ -203,26 +183,10 @@ class InputData:
             "V": directory.joinpath("drifter_uv.nc"),
             "T": directory.joinpath("drifter_t.nc"),
         }
-        variables = {"U": "uo", "V": "vo", "T": "thetao"}
-        dimensions = {
-            "lon": "longitude",
-            "lat": "latitude",
-            "time": "time",
-            "depth": "depth",
-        }
-
-        fieldset = FieldSet.from_netcdf(
-            filenames, variables, dimensions, allow_time_extrapolation=False
-        )
-        fieldset.T.interp_method = "linear_invdist_land_tracer"
-
-        # make depth negative
-        for g in fieldset.gridset.grids:
-            g.negate_depth()
-
-        # read in data already
-        fieldset.computeTimeChunk(0, 1)
-
+        ds = xr.open_mfdataset([filenames["U"], filenames["T"]])
+        ds = ds.rename({"thetao": "T"})
+        ds.time.attrs["axis"] = "T"
+        fieldset = FieldSet.from_copernicusmarine(ds)
         return fieldset
 
     @classmethod

@@ -1,0 +1,100 @@
+[workspace]
+name = "VirtualShip"
+preview = ["pixi-build"]
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[package]
+name = "virtualship"
+version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
+license = "MIT" # can remove this once https://github.com/prefix-dev/pixi-build-backends/issues/397 is resolved
+
+[package.build]
+backend = { name = "pixi-build-python", version = "==0.4.0" }
+
+[package.host-dependencies]
+setuptools = "*"
+setuptools_scm = "*"
+
+[environments]
+test-latest = { features = ["test"], solve-group = "test" }
+test-py311 = { features = ["test", "py311"] }
+test-py312 = { features = ["test", "py312"] }
+test-notebooks = { features = ["test", "notebooks"], solve-group = "test" }
+docs = { features = ["docs"], solve-group = "docs" }
+typing = { features = ["typing"], solve-group = "typing" }
+pre-commit = { features = ["pre-commit"], no-default-feature = true }
+
+[dependencies] # keep section in sync with pyproject.toml dependencies
+python = ">=3.11"
+click = "*"
+parcels = {path="./Parcels"}
+pyproj = ">=3,<4"
+sortedcontainers = "==2.4.0"
+opensimplex = "==0.4.5"
+numpy = ">=2.1"
+pydantic = ">=2,<3"
+pyyaml = "*"
+copernicusmarine = ">=2.2.2"
+yaspin = "*"
+textual = "*"
+virtualship = { path = "." }
+openpyxl = "*"
+
+# deps needed for Parcels # TODO inherit these from Parcels instead
+uxarray = ">=2025.3.0"
+dask = ">=2024.5.1"
+zarr = ">=2.15.0,!=2.18.0,<3"
+xgcm = ">=0.9.0"
+cf_xarray = ">=0.8.6"
+cftime = ">=1.6.3"
+pooch = ">=1.8.0"
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-asyncio = "*"
+seabird = "*"
+
+[feature.test.tasks]
+tests = "pytest"
+
+[feature.notebooks.dependencies]
+nbval = "*"
+ipykernel = "*"
+
+[feature.notebooks.tasks]
+tests-notebooks = "pytest --nbval-lax docs/"
+
+[feature.docs.dependencies]
+sphinx = ">=7.0"
+myst-parser = ">=0.13"
+nbsphinx = "*"
+ipykernel = "*"
+pandoc = "*"
+sphinx-copybutton = "*"
+pydata-sphinx-theme = "*"
+sphinx-autobuild = "*"
+
+[feature.docs.tasks]
+docs = "sphinx-build docs docs/_build"
+docs-watch = "sphinx-autobuild docs docs/_build"
+
+[feature.pre-commit.dependencies]
+pre_commit = "*"
+
+[feature.pre-commit.tasks]
+lint = "pre-commit run --all-files"
+
+[feature.typing.dependencies]
+mypy = "*"
+lxml = "*"
+
+[feature.typing.tasks]
+typing = "mypy src/virtualship --install-types"

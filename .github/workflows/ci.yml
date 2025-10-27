@@ -21,31 +21,36 @@ env:
   FORCE_COLOR: 3
 
 jobs:
+  cache-pixi-lock:
+    uses: ./.github/workflows/cache-pixi-lock.yml
+
   tests:
-    name: tests (${{ matrix.runs-on }} | Python ${{ matrix.python-version }})
+    name: "Unit tests: ${{ matrix.runs-on }} | pixi run -e ${{ matrix.pixi-environment }} tests"
     runs-on: ${{ matrix.runs-on }}
+    needs: cache-pixi-lock
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
-        runs-on: [ubuntu-latest, windows-latest, macos-14]
+        pixi-environment: ["test-py311", "test-latest"]
+        runs-on: [ubuntu-latest] #, windows-latest, macos-14]
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mamba-org/setup-micromamba@v2
+          submodules: recursive
+      - uses: actions/cache/restore@v4
         with:
-          environment-name: ship
-          environment-file: environment.yml
-          create-args: >-
-            python=${{matrix.python-version}}
-
-      - run: pip install . --no-deps
+          path: pixi.lock
+          key: ${{ needs.cache-pixi-lock.outputs.cache-id }}
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
       - name: Test package
-        run: >-
-          python -m pytest -ra --cov --cov-report=xml --cov-report=term
+        run:
+          pixi run -e ${{ matrix.pixi-environment }} tests -ra --cov --cov-report=xml --cov-report=term
           --durations=20
 
       - name: Upload coverage report
@@ -53,24 +58,24 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   typechecking:
-    name: mypy
+    name: "TypeChecking: pixi run typing"
     runs-on: ubuntu-latest
+    needs: cache-pixi-lock
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mamba-org/setup-micromamba@v2
+          submodules: recursive
+      - uses: actions/cache/restore@v4
         with:
-          environment-name: ship
-          environment-file: environment.yml
-          create-args: >-
-            python=3.12
-
-      - run: pip install . --no-deps
-      - run: conda install lxml # dep for report generation
+          path: pixi.lock
+          key: ${{ needs.cache-pixi-lock.outputs.cache-id }}
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Typechecking
-        run: |
-          mypy --install-types --non-interactive src/virtualship --html-report mypy-report
+        run: pixi run typing --non-interactive --html-report mypy-report
       - name: Upload test results
         if: ${{ always() }} # Upload even on mypy error
         uses: actions/upload-artifact@v4

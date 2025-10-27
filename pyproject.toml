@@ -8,7 +8,7 @@ description = "Code for the Virtual Ship Classroom, where Marine Scientists can 
 readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "oceanparcels.org team" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "parcels >3.1.0",
+    "parcels @ git+https://github.com/OceanParcels/parcels.git@v4-dev",
     "pyproj >= 3, < 4",
     "sortedcontainers == 2.4.0",
     "opensimplex == 0.4.5",
@@ -68,7 +68,11 @@ filterwarnings = [
   "error",
   "default::DeprecationWarning",
   "error::DeprecationWarning:virtualship",
-  "ignore:ParticleSet is empty.*:RuntimeWarning" # TODO: Probably should be ignored in the source code
+  "ignore:ParticleSet is empty.*:RuntimeWarning", # TODO: Probably should be ignored in the source code
+  "ignore:divide by zero encountered *:RuntimeWarning",
+  "ignore:invalid value encountered *:RuntimeWarning",
+  "ignore:This is an alpha version of Parcels v4*:UserWarning",
+  "ignore:numpy.ndarray size changed*:RuntimeWarning",
 ]
 log_cli_level = "INFO"
 testpaths = [

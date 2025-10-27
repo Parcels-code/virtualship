@@ -1,0 +1,4 @@
+[submodule "Parcels"]
+	path = Parcels
+	url = git@github.com:Parcels-code/Parcels.git
+	branch = v4-dev

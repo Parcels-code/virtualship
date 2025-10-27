@@ -3,13 +3,11 @@
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
+from parcels import FieldSet, Particle, ParticleSet, Variable
 
 from virtualship.models import Spacetime
 
-# we specifically use ScipyParticle because we have many small calls to execute
-# there is some overhead with JITParticle and this ends up being significantly faster
-_ShipSTParticle = ScipyParticle.add_variables(
+_ShipSTParticle = Particle.add_variable(
     [
         Variable("S", dtype=np.float32, initial=np.nan),
         Variable("T", dtype=np.float32, initial=np.nan),
@@ -18,13 +16,13 @@ _ShipSTParticle = ScipyParticle.add_variables(
 
 
 # define function sampling Salinity
-def _sample_salinity(particle, fieldset, time):
-    particle.S = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+def _sample_salinity(particles, fieldset):
+    particles.S = fieldset.S[particles.time, particles.z, particles.lat, particles.lon]
 
 
 # define function sampling Temperature
-def _sample_temperature(particle, fieldset, time):
-    particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.T = fieldset.T[particles.time, particles.z, particles.lat, particles.lon]
 
 
 def simulate_ship_underwater_st(
