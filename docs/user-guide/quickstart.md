@@ -80,6 +80,10 @@ For the underway ADCP, there is a choice of using the 38 kHz OceanObserver or th
 
 ### Waypoint datetimes
 
+```{note}
+VirtualShip supports simulating experiments in the years 1993 through to the present day (and up to two weeks in the future) by leveraging the suite of products available Copernicus Marine Data Store (see [Fetch the data](#fetch-the-data)). The data download is automated based on the time period selected in the schedule. Different periods will rely on different products from the Copernicus Marine catalogue (see [Documentation](documentation/copernicus_products.md)).
+```
+
 You will need to enter dates and times for each of the sampling stations/waypoints selected in the MFP route planning stage. This can be done under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
 
 Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.

@@ -38,3 +38,9 @@ class UnexpectedError(Exception):
     """Error raised when there is an unexpected problem."""
 
     pass
+
+
+class CopernicusCatalogueError(Exception):
+    """Error raised when a relevant product is not found in the Copernicus Catalogue."""
+
+    pass
