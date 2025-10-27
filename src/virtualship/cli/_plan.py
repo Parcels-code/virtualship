@@ -848,7 +848,7 @@ class WaypointWidget(Static):
                         [
                             (str(year), year)
                             for year in range(
-                                2022,
+                                1993,
                                 datetime.datetime.now().year + 1,
                             )
                         ],

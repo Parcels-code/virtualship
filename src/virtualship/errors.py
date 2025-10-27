@@ -44,3 +44,9 @@ class UnderwayConfigsError(Exception):
     """Error raised when underway instrument configurations (ADCP or underwater ST) are missing."""
 
     pass
+
+
+class CopernicusCatalogueError(Exception):
+    """Error raised when a relevant product is not found in the Copernicus Catalogue."""
+
+    pass

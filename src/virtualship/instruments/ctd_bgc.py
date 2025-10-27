@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
+from parcels import FieldSet, JITParticle, ParticleSet, Variable
 from virtualship.models.instruments import InputDataset
 from virtualship.models.spacetime import Spacetime
 
@@ -28,7 +28,6 @@ _CTD_BGCParticle = JITParticle.add_variables(
         Variable("po4", dtype=np.float32, initial=np.nan),
         Variable("ph", dtype=np.float32, initial=np.nan),
         Variable("phyc", dtype=np.float32, initial=np.nan),
-        Variable("zooc", dtype=np.float32, initial=np.nan),
         Variable("nppv", dtype=np.float32, initial=np.nan),
         Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
         Variable("max_depth", dtype=np.float32),
@@ -60,10 +59,6 @@ def _sample_ph(particle, fieldset, time):
 
 def _sample_phytoplankton(particle, fieldset, time):
     particle.phyc = fieldset.phyc[time, particle.depth, particle.lat, particle.lon]
-
-
-def _sample_zooplankton(particle, fieldset, time):
-    particle.zooc = fieldset.zooc[time, particle.depth, particle.lat, particle.lon]
 
 
 def _sample_primary_production(particle, fieldset, time):
@@ -251,7 +246,6 @@ def simulate_ctd_bgc(
             _sample_phosphate,
             _sample_ph,
             _sample_phytoplankton,
-            _sample_zooplankton,
             _sample_primary_production,
             _ctd_bgc_cast,
         ],
