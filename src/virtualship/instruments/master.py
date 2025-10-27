@@ -55,11 +55,13 @@ def get_instruments_registry():
             "input_class": _input_class_map.get(inst.value),
         }
         for inst in InstrumentType
-        if _input_class_map.get(inst.value) is not None
     }
 
 
 # Base classes
+
+# TODO: could InputDataset and Instrument be unified?
+# TODO: and all associated child classes...
 
 
 class InputDataset(abc.ABC):
