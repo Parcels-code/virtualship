@@ -38,8 +38,8 @@ def copernicus_no_download(monkeypatch):
                 "time": (
                     "time",
                     [
-                        np.datetime64("1993-01-01"),
                         np.datetime64("2022-01-01"),
+                        np.datetime64("2025-01-01"),
                     ],  # mock up rough renanalysis period
                 )
             }
@@ -65,7 +65,7 @@ def expedition(tmpdir):
 
 
 @pytest.mark.usefixtures("copernicus_no_download")
-def test_fetch(schedule, ship_config, tmpdir):
+def test_fetch(expedition, tmpdir):
     """Test the fetch command, but mock the download and dataset metadata interrogation."""
     _fetch(Path(tmpdir), "test", "test")
 
@@ -99,12 +99,12 @@ def test_complete_download(tmp_path):
 
 
 @pytest.mark.usefixtures("copernicus_no_download")
-def test_select_product_id(schedule):
+def test_select_product_id(expedition):
     """Should return the physical reanalysis product id via the timings prescribed in the static schedule.yaml file."""
     result = select_product_id(
         physical=True,
-        schedule_start=schedule.space_time_region.time_range.start_time,
-        schedule_end=schedule.space_time_region.time_range.end_time,
+        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
+        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
         username="test",
         password="test",
     )
@@ -112,12 +112,12 @@ def test_select_product_id(schedule):
 
 
 @pytest.mark.usefixtures("copernicus_no_download")
-def test_start_end_in_product_timerange(schedule):
+def test_start_end_in_product_timerange(expedition):
     """Should return True for valid range ass determined by the static schedule.yaml file."""
     assert start_end_in_product_timerange(
         selected_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        schedule_start=schedule.space_time_region.time_range.start_time,
-        schedule_end=schedule.space_time_region.time_range.end_time,
+        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
+        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
         username="test",
         password="test",
     )

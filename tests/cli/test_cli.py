@@ -23,9 +23,9 @@ def copernicus_no_download(monkeypatch):
                 "time": (
                     "time",
                     [
-                        np.datetime64("1993-01-01"),
                         np.datetime64("2022-01-01"),
-                    ],  # mock up rough renanalysis period
+                        np.datetime64("2025-01-01"),
+                    ],  # mock up rough reanalysis period, covers test schedule
                 )
             }
         )
