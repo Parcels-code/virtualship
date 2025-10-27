@@ -9,7 +9,6 @@ import pyproj
 import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.instruments.master import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
 
 from .location import Location
@@ -17,8 +16,8 @@ from .space_time_region import SpaceTimeRegion
 
 if TYPE_CHECKING:
     from parcels import FieldSet
-
     from virtualship.expedition.input_data import InputData
+    from virtualship.instruments.master import InstrumentType
 
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
@@ -45,8 +44,10 @@ class Expedition(pydantic.BaseModel):
             data = yaml.safe_load(file)
         return Expedition(**data)
 
-    def get_instruments(self) -> set[InstrumentType]:
+    def get_instruments(self):
         """Return a set of unique InstrumentType enums used in the expedition."""
+        from virtualship.instruments.master import InstrumentType
+
         instruments_in_expedition = []
         # from waypoints
         for waypoint in self.schedule.waypoints:
@@ -114,6 +115,8 @@ class Schedule(pydantic.BaseModel):
         """
         print("\nVerifying route... ")
 
+        from virtualship.instruments.master import InstrumentType
+
         if check_space_time_region and self.space_time_region is None:
             raise ScheduleError(
                 "space_time_region not found in schedule, please define it to fetch the data."
@@ -180,6 +183,7 @@ class Schedule(pydantic.BaseModel):
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = self.waypoints[0].time
+
         for wp_i, (wp, wp_next) in enumerate(
             zip(self.waypoints, self.waypoints[1:], strict=False)
         ):
@@ -414,6 +418,8 @@ class InstrumentsConfig(pydantic.BaseModel):
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
         """
+        from virtualship.instruments.master import InstrumentType
+
         instruments_in_expedition = expedition.get_instruments()
         instrument_config_map = {
             InstrumentType.ARGO_FLOAT: "argo_float_config",
