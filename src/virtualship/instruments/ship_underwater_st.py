@@ -6,7 +6,9 @@ import numpy as np
 
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
+from virtualship.utils import register_instrument
 
 
 @dataclass
@@ -34,6 +36,7 @@ def _sample_temperature(particle, fieldset, time):
     particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
+@register_instrument(InstrumentType.UNDERWATER_ST)
 class Underwater_STInputDataset(InputDataset):
     """Input dataset for Underwater_ST instrument."""
 

@@ -7,7 +7,9 @@ import numpy as np
 
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
+from virtualship.utils import register_instrument
 
 
 @dataclass
@@ -54,6 +56,7 @@ def _ctd_cast(particle, fieldset, time):
             particle.delete()
 
 
+@register_instrument(InstrumentType.CTD)
 class CTDInputDataset(InputDataset):
     """Input dataset for CTD instrument."""
 

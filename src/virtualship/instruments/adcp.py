@@ -6,7 +6,9 @@ import numpy as np
 
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
+from virtualship.utils import register_instrument
 
 
 @dataclass
@@ -32,6 +34,7 @@ def _sample_velocity(particle, fieldset, time):
     )
 
 
+@register_instrument(InstrumentType.ADCP)
 class ADCPInputDataset(InputDataset):
     """Input dataset for ADCP instrument."""
 

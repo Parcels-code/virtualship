@@ -15,7 +15,9 @@ from parcels import (
     Variable,
 )
 from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
+from virtualship.utils import register_instrument
 
 
 @dataclass
@@ -116,6 +118,7 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
+@register_instrument(InstrumentType.ARGO_FLOAT)
 class ArgoFloatInputDataset(InputDataset):
     """Input dataset for ArgoFloat instrument."""
 

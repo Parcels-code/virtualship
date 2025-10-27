@@ -16,6 +16,7 @@ from virtualship.utils import (
     _dump_yaml,
     _generic_load_yaml,
     _get_expedition,
+    get_input_dataset_class,
 )
 
 if TYPE_CHECKING:
@@ -107,29 +108,9 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         coordinates_selection_method="outside",
     )
 
-    # Direct mapping from InstrumentType to input dataset class
-    from virtualship.instruments.adcp import ADCPInputDataset
-    from virtualship.instruments.argo_float import ArgoFloatInputDataset
-    from virtualship.instruments.ctd import CTDInputDataset
-    from virtualship.instruments.ctd_bgc import CTD_BGCInputDataset
-    from virtualship.instruments.drifter import DrifterInputDataset
-    from virtualship.instruments.ship_underwater_st import Underwater_STInputDataset
-    from virtualship.instruments.types import InstrumentType
-    from virtualship.instruments.xbt import XBTInputDataset
-
-    INSTRUMENT_INPUT_DATASET_MAP = {
-        InstrumentType.CTD: CTDInputDataset,
-        InstrumentType.CTD_BGC: CTD_BGCInputDataset,
-        InstrumentType.DRIFTER: DrifterInputDataset,
-        InstrumentType.ARGO_FLOAT: ArgoFloatInputDataset,
-        InstrumentType.XBT: XBTInputDataset,
-        InstrumentType.ADCP: ADCPInputDataset,
-        InstrumentType.UNDERWATER_ST: Underwater_STInputDataset,
-    }
-
     # Only keep instruments present in the expedition
     for itype in instruments_in_expedition:
-        input_dataset_class = INSTRUMENT_INPUT_DATASET_MAP.get(itype)
+        input_dataset_class = get_input_dataset_class(itype)
         if input_dataset_class is None:
             continue
         click.echo(

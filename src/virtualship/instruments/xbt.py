@@ -7,7 +7,9 @@ import numpy as np
 
 from parcels import FieldSet, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
+from virtualship.utils import register_instrument
 
 
 @dataclass
@@ -55,6 +57,7 @@ def _xbt_cast(particle, fieldset, time):
         particle_ddepth = particle.max_depth - particle.depth
 
 
+@register_instrument(InstrumentType.XBT)
 class XBTInputDataset(InputDataset):
     """Input dataset for XBT instrument."""
 
