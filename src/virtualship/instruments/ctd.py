@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
 
+from parcels import FieldSet, JITParticle, ParticleSet, Variable
 from virtualship.models.instruments import InputDataset
 from virtualship.models.spacetime import Spacetime
 
