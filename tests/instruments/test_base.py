@@ -3,16 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from virtualship.instruments.master import (
-    InputDataset,
-    InstrumentType,
-    get_instruments_registry,
-)
+from virtualship.instruments.base import InputDataset
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.space_time_region import (
     SpaceTimeRegion,
     SpatialRange,
     TimeRange,
 )
+from virtualship.utils import get_input_dataset_class
 
 
 class DummyInputDataset(InputDataset):
@@ -85,7 +83,7 @@ def test_dummyinputdataset_initialization(dummy_space_time_region):
     assert ds.credentials["username"] == "u"
 
 
-@patch("virtualship.models.instruments.copernicusmarine.subset")
+@patch("virtualship.instruments.base.copernicusmarine.subset")
 def test_download_data_calls_subset(mock_subset, dummy_space_time_region):
     ds = DummyInputDataset(
         name="test",
@@ -102,8 +100,6 @@ def test_download_data_calls_subset(mock_subset, dummy_space_time_region):
 
 
 def test_all_instruments_have_input_class():
-    registry = get_instruments_registry()
     for instrument in InstrumentType:
-        entry = registry.get(instrument)
-        assert entry is not None, f"No registry entry for {instrument}"
-        assert entry.get("input_class") is not None, f"No input_class for {instrument}"
+        input_class = get_input_dataset_class(instrument)
+        assert input_class is not None, f"No input_class for {instrument}"
