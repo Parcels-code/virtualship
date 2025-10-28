@@ -951,7 +951,9 @@ class WaypointWidget(Static):
                         if prev and curr:
                             curr.value = prev.value
 
-                    for instrument in InstrumentType:
+                    for instrument in [
+                        inst for inst in InstrumentType if not inst.is_underway
+                    ]:
                         prev_switch = schedule_editor.query_one(
                             f"#wp{self.index - 1}_{instrument.value}"
                         )
@@ -1044,9 +1046,8 @@ class PlanScreen(Screen):
             # verify schedule
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
-                input_data=None,
+                input_dir=None,
                 check_space_time_region=True,
-                ignore_missing_fieldsets=True,
             )
 
             expedition_saved = expedition_editor.save_changes()

@@ -52,9 +52,8 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
     expedition.schedule.verify(
         expedition.ship_config.ship_speed_knots,
-        input_data=None,
+        input_dir=None,
         check_space_time_region=True,
-        ignore_missing_fieldsets=True,
     )
 
     space_time_region_hash = get_space_time_region_hash(
