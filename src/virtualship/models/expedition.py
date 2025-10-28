@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pydantic
 import pyproj
 import yaml
 
+from parcels import Field
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
@@ -87,9 +90,9 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
+        input_dir: str | Path | None,
         *,
         check_space_time_region: bool = False,
-        ignore_missing_fieldsets: bool = False,
     ) -> None:
         """
         Verify the feasibility and correctness of the schedule's waypoints.
@@ -102,9 +105,9 @@ class Schedule(pydantic.BaseModel):
         5. The ship can arrive on time at each waypoint given its speed.
 
         :param ship_speed: The ship's speed in knots.
-        :param input_data: An InputData object containing fieldsets used to check if waypoints are on water.
+        :param input_dir: The input directory containing necessary files.
         :param check_space_time_region: whether to check for missing space_time_region.
-        :param ignore_missing_fieldsets: whether to ignore warning for missing field sets.
+        # :param ignore_missing_fieldsets: whether to ignore warning for missing field sets.
         :raises PlanningError: If any of the verification checks fail, indicating infeasible or incorrect waypoints.
         :raises NotImplementedError: If an instrument in the schedule is not implemented.
         :return: None. The method doesn't return a value but raises exceptions if verification fails.
@@ -134,46 +137,33 @@ class Schedule(pydantic.BaseModel):
                 f"Waypoint(s) {', '.join(f'#{i + 1}' for i in invalid_i)}: each waypoint should be timed after all previous waypoints",
             )
 
-        # check if all waypoints are in water
-        # this is done by picking an arbitrary provided fieldset and checking if UV is not zero
-
-        # TODO: this may need to be done with generic bathymetry data, now that removed InputData!
-        # get all available fieldsets
-        available_fieldsets = []
-        # if input_data is not None:
-        #     fieldsets = [
-        #         input_data.adcp_fieldset,
-        #         input_data.argo_float_fieldset,
-        #         input_data.ctd_fieldset,
-        #         input_data.drifter_fieldset,
-        #         input_data.ship_underwater_st_fieldset,
-        #     ]
-        # for fs in fieldsets:
-        #     if fs is not None:
-        #         available_fieldsets.append(fs)
-
-        # check if there are any fieldsets, else it's an error
-        if len(available_fieldsets) == 0:
-            if not ignore_missing_fieldsets:
-                print(
-                    "Cannot verify because no fieldsets have been loaded. This is probably "
-                    "because you are not using any instruments in your schedule. This is not a problem, "
-                    "but carefully check your waypoint locations manually."
+        # check if all waypoints are in water using bathymetry data
+        # TODO: tests should be updated to check this!
+        land_waypoints = []
+        if input_dir is not None:
+            bathymetry_path = input_dir.joinpath("bathymetry.nc")
+            try:
+                bathymetry_field = Field.from_netcdf(
+                    bathymetry_path,
+                    variables=("bathymetry", "deptho"),
+                    dimensions={"lon": "longitude", "lat": "latitude"},
                 )
-
-        else:
-            # pick any
-            fieldset = available_fieldsets[0]
-            # get waypoints with 0 UV
-            land_waypoints = [
-                (wp_i, wp)
-                for wp_i, wp in enumerate(self.waypoints)
-                if _is_on_land_zero_uv(fieldset, wp)
-            ]
-            # raise an error if there are any
+            except Exception as e:
+                raise FileNotFoundError(
+                    "Bathymetry file not found in input data. Cannot verify waypoints are in water."
+                ) from e
+            for wp_i, wp in enumerate(self.waypoints):
+                bathy = bathymetry_field.eval(
+                    0,  # time
+                    0,  # depth (surface)
+                    wp.location.lat,
+                    wp.location.lon,
+                )
+                if np.isnan(bathy) or bathy >= 0:
+                    land_waypoints.append((wp_i, wp))
             if len(land_waypoints) > 0:
                 raise ScheduleError(
-                    f"The following waypoints are on land: {['#' + str(wp_i) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}"
+                    f"The following waypoints are on land: {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}"
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)

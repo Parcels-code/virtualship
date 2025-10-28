@@ -48,10 +48,8 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
     # verify schedule is valid
     # TODO: needs updating when .verify() updated to not need input_data
-
-    loaded_input_data = []  # TODO: TEMPORARY!
     expedition.schedule.verify(
-        expedition.ship_config.ship_speed_knots, loaded_input_data
+        expedition.ship_config.ship_speed_knots, input_dir=input_data
     )
 
     # simulate the schedule

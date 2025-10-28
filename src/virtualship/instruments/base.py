@@ -99,13 +99,7 @@ class Instrument(abc.ABC):
 
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
-        # TODO: this should mean can delete input_data.py!
-
-        # TODO: hopefully simulate_measurements can also be removed! And maybe the list of e.g. ctds ('measurements') to run can be added to higher level like do_expedition.py...? I think as they already do...
-
         # TODO: can simulate_schedule.py be refactored to be contained in base.py and repsective instrument files too...?
-
-        # TODO: what do I need to do about automatic registration of Instrument classes...?
 
         # TODO: tests will need updating...!
 
