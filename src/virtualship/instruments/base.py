@@ -1,11 +1,12 @@
 import abc
 from datetime import timedelta
+from pathlib import Path
 
 import copernicusmarine
 import yaspin
 
 from parcels import Field, FieldSet
-from virtualship.models import SpaceTimeRegion
+from virtualship.models import Expedition, SpaceTimeRegion
 from virtualship.utils import ship_spinner
 
 
@@ -71,7 +72,9 @@ class Instrument(abc.ABC):
 
     def __init__(
         self,
-        input_dataset: InputDataset,
+        name: str,
+        expedition: Expedition,
+        directory: Path | str,
         filenames: dict,
         variables: dict,
         add_bathymetry: bool,
@@ -79,9 +82,9 @@ class Instrument(abc.ABC):
         bathymetry_file: str = "bathymetry.nc",
     ):
         """Initialise instrument."""
-        self.input_data = input_dataset
-        self.name = input_dataset.name
-        self.directory = input_dataset.data_dir
+        self.name = name
+        self.expedition = expedition
+        self.directory = directory
         self.filenames = filenames
         self.variables = variables
         self.dimensions = {
@@ -106,7 +109,7 @@ class Instrument(abc.ABC):
 
         # TODO: tests will need updating...!
 
-        # TODO: think about combining InputDataset and Instrument classes together!
+        # TODO: think about combining InputDataset and Instrument classes together! Or maybe not if they are better kept separate...
 
         try:
             fieldset = FieldSet.from_netcdf(
@@ -139,10 +142,10 @@ class Instrument(abc.ABC):
         return fieldset
 
     @abc.abstractmethod
-    def simulate(self):
+    def simulate(self, measurements: list, out_path: str | Path):
         """Simulate instrument measurements."""
 
-    def run(self, *args, **kwargs):
+    def run(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
         # TODO: this will have to be able to handle the non-spinner/instead progress bar for drifters and argos!
 
@@ -151,5 +154,5 @@ class Instrument(abc.ABC):
             side="right",
             spinner=ship_spinner,
         ) as spinner:
-            self.simulate(*args, **kwargs)
+            self.simulate(measurements, out_path)
             spinner.ok("✅")

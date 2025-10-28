@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -97,33 +96,31 @@ class CTDInputDataset(InputDataset):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize CTDInstrument."""
         filenames = {
-            "S": input_dataset.data_dir.joinpath(f"{input_dataset.name}_s.nc"),
-            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+            "S": directory.data_dir.joinpath(f"{name}_s.nc"),
+            "T": directory.data_dir.joinpath(f"{name}_t.nc"),
         }
         variables = {"S": "so", "T": "thetao"}
 
         super().__init__(
-            input_dataset,
+            CTD.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
         )
 
-    def simulate(
-        self, ctds: list[CTD], out_path: str | Path, outputdt: timedelta
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate CTD measurements."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
         DT = 10.0  # dt of CTD simulation integrator
+        OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD simulation
 
-        if len(ctds) == 0:
+        if len(self.measurements) == 0:
             print(
                 "No CTDs provided. Parcels currently crashes when providing an empty particle set, so no CTD simulation will be done and no files will be created."
             )
@@ -137,7 +134,10 @@ class CTDInstrument(Instrument):
 
         # deploy time for all ctds should be later than fieldset start time
         if not all(
-            [np.datetime64(ctd.spacetime.time) >= fieldset_starttime for ctd in ctds]
+            [
+                np.datetime64(ctd.spacetime.time) >= fieldset_starttime
+                for ctd in self.measurements
+            ]
         ):
             raise ValueError("CTD deployed before fieldset starts.")
 
@@ -152,7 +152,7 @@ class CTDInstrument(Instrument):
                     time=0,
                 ),
             )
-            for ctd in ctds
+            for ctd in self.measurements
         ]
 
         # CTD depth can not be too shallow, because kernel would break.
@@ -166,17 +166,17 @@ class CTDInstrument(Instrument):
         ctd_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_CTDParticle,
-            lon=[ctd.spacetime.location.lon for ctd in ctds],
-            lat=[ctd.spacetime.location.lat for ctd in ctds],
-            depth=[ctd.min_depth for ctd in ctds],
-            time=[ctd.spacetime.time for ctd in ctds],
+            lon=[ctd.spacetime.location.lon for ctd in self.measurements],
+            lat=[ctd.spacetime.location.lat for ctd in self.measurements],
+            depth=[ctd.min_depth for ctd in self.measurements],
+            time=[ctd.spacetime.time for ctd in self.measurements],
             max_depth=max_depths,
-            min_depth=[ctd.min_depth for ctd in ctds],
-            winch_speed=[WINCH_SPEED for _ in ctds],
+            min_depth=[ctd.min_depth for ctd in self.measurements],
+            winch_speed=[WINCH_SPEED for _ in self.measurements],
         )
 
         # define output file for the simulation
-        out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=outputdt)
+        out_file = ctd_particleset.ParticleFile(name=self.out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_particleset.execute(

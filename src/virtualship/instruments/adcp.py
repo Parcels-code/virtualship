@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -7,8 +6,10 @@ import numpy as np
 from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_input_dataset, register_instrument
+from virtualship.utils import (
+    register_input_dataset,
+    register_instrument,
+)
 
 
 @dataclass
@@ -73,37 +74,33 @@ class ADCPInputDataset(InputDataset):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize ADCPInstrument."""
         filenames = {
-            "UV": input_dataset.data_dir.joinpath(f"{input_dataset.name}_uv.nc"),
+            "UV": directory.joinpath(f"{name}_uv.nc"),
         }
         variables = {"UV": ["uo", "vo"]}
         super().__init__(
-            input_dataset,
+            ADCP.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=True,
         )
 
-    def simulate(
-        self,
-        out_path: str | Path,
-        max_depth: float,
-        min_depth: float,
-        num_bins: int,
-        sample_points: list[Spacetime],
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate ADCP measurements."""
-        sample_points.sort(key=lambda p: p.time)
+        MAX_DEPTH = self.expedition.instruments_config.adcp_config.max_depth_meter
+        MIN_DEPTH = -5.0
+        NUM_BINS = self.instruments_config.adcp_config.num_bins
+
+        self.measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
 
-        bins = np.linspace(max_depth, min_depth, num_bins)
+        bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
         num_particles = len(bins)
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
@@ -114,9 +111,9 @@ class ADCPInstrument(Instrument):
             time=0,
         )
 
-        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = particleset.ParticleFile(name=self.out_path, outputdt=np.inf)
 
-        for point in sample_points:
+        for point in self.measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
             particleset.time_nextloop[:] = fieldset.time_origin.reltime(

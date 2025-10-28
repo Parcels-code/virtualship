@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -109,42 +108,42 @@ class CTD_BGCInputDataset(InputDataset):
             "o2data": {
                 "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
                 "variables": ["o2"],
-                "output_filename": "ctd_bgc_o2.nc",
+                "output_filename": f"{self.name}_o2.nc",
             },
             "chlorodata": {
                 "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
                 "variables": ["chl"],
-                "output_filename": "ctd_bgc_chl.nc",
+                "output_filename": f"{self.name}_chl.nc",
             },
             "nitratedata": {
                 "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
                 "variables": ["no3"],
-                "output_filename": "ctd_bgc_no3.nc",
+                "output_filename": f"{self.name}_no3.nc",
             },
             "phosphatedata": {
                 "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
                 "variables": ["po4"],
-                "output_filename": "ctd_bgc_po4.nc",
+                "output_filename": f"{self.name}_po4.nc",
             },
             "phdata": {
                 "dataset_id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
                 "variables": ["ph"],
-                "output_filename": "ctd_bgc_ph.nc",
+                "output_filename": f"{self.name}_ph.nc",
             },
             "phytoplanktondata": {
                 "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
                 "variables": ["phyc"],
-                "output_filename": "ctd_bgc_phyc.nc",
+                "output_filename": f"{self.name}_phyc.nc",
             },
             "zooplanktondata": {
                 "dataset_id": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m",
                 "variables": ["zooc"],
-                "output_filename": "ctd_bgc_zooc.nc",
+                "output_filename": f"{self.name}_zooc.nc",
             },
             "primaryproductiondata": {
                 "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
                 "variables": ["nppv"],
-                "output_filename": "ctd_bgc_nppv.nc",
+                "output_filename": f"{self.name}_nppv.nc",
             },
         }
 
@@ -153,20 +152,17 @@ class CTD_BGCInputDataset(InputDataset):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize CTD_BGCInstrument."""
         filenames = {
-            "o2": input_dataset.data_dir.joinpath("ctd_bgc_o2.nc"),
-            "chl": input_dataset.data_dir.joinpath("ctd_bgc_chl.nc"),
-            "no3": input_dataset.data_dir.joinpath("ctd_bgc_no3.nc"),
-            "po4": input_dataset.data_dir.joinpath("ctd_bgc_po4.nc"),
-            "ph": input_dataset.data_dir.joinpath("ctd_bgc_ph.nc"),
-            "phyc": input_dataset.data_dir.joinpath("ctd_bgc_phyc.nc"),
-            "zooc": input_dataset.data_dir.joinpath("ctd_bgc_zooc.nc"),
-            "nppv": input_dataset.data_dir.joinpath("ctd_bgc_nppv.nc"),
+            "o2": directory.joinpath(f"{name}_o2.nc"),
+            "chl": directory.joinpath(f"{name}_chl.nc"),
+            "no3": directory.joinpath(f"{name}_no3.nc"),
+            "po4": directory.joinpath(f"{name}_po4.nc"),
+            "ph": directory.joinpath(f"{name}_ph.nc"),
+            "phyc": directory.joinpath(f"{name}_phyc.nc"),
+            "zooc": directory.joinpath(f"{name}_zooc.nc"),
+            "nppv": directory.joinpath(f"{name}_nppv.nc"),
         }
         variables = {
             "o2": "o2",
@@ -179,21 +175,22 @@ class CTD_BGCInstrument(Instrument):
             "nppv": "nppv",
         }
         super().__init__(
-            input_dataset,
+            CTD_BGC.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
         )
 
-    def simulate(
-        self, ctd_bgcs: list[CTD_BGC], out_path: str | Path, outputdt: timedelta
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate BGC CTD measurements using Parcels."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
-        DT = 10.0  # dt of CTD simulation integrator
+        DT = 10.0  # dt of CTD_BGC simulation integrator
+        OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD_BGC simulation
 
-        if len(ctd_bgcs) == 0:
+        if len(self.measurements) == 0:
             print(
                 "No BGC CTDs provided. Parcels currently crashes when providing an empty particle set, so no BGC CTD simulation will be done and no files will be created."
             )
@@ -209,7 +206,7 @@ class CTD_BGCInstrument(Instrument):
         if not all(
             [
                 np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
-                for ctd_bgc in ctd_bgcs
+                for ctd_bgc in self.measurements
             ]
         ):
             raise ValueError("BGC CTD deployed before fieldset starts.")
@@ -225,7 +222,7 @@ class CTD_BGCInstrument(Instrument):
                     time=0,
                 ),
             )
-            for ctd_bgc in ctd_bgcs
+            for ctd_bgc in self.measurements
         ]
 
         # CTD depth can not be too shallow, because kernel would break.
@@ -239,17 +236,19 @@ class CTD_BGCInstrument(Instrument):
         ctd_bgc_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_CTD_BGCParticle,
-            lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in ctd_bgcs],
-            lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in ctd_bgcs],
-            depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
-            time=[ctd_bgc.spacetime.time for ctd_bgc in ctd_bgcs],
+            lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in self.measurements],
+            lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in self.measurements],
+            depth=[ctd_bgc.min_depth for ctd_bgc in self.measurements],
+            time=[ctd_bgc.spacetime.time for ctd_bgc in self.measurements],
             max_depth=max_depths,
-            min_depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
-            winch_speed=[WINCH_SPEED for _ in ctd_bgcs],
+            min_depth=[ctd_bgc.min_depth for ctd_bgc in self.measurements],
+            winch_speed=[WINCH_SPEED for _ in self.measurements],
         )
 
         # define output file for the simulation
-        out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=outputdt)
+        out_file = ctd_bgc_particleset.ParticleFile(
+            name=self.out_path, outputdt=OUTPUT_DT
+        )
 
         # execute simulation
         ctd_bgc_particleset.execute(

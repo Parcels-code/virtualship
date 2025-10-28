@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
@@ -73,12 +72,12 @@ class DrifterInputDataset(InputDataset):
             "UVdata": {
                 "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
                 "variables": ["uo", "vo"],
-                "output_filename": "drifter_uv.nc",
+                "output_filename": f"{self.name}_uv.nc",
             },
             "Tdata": {
                 "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
                 "variables": ["thetao"],
-                "output_filename": "drifter_t.nc",
+                "output_filename": f"{self.name}_t.nc",
             },
         }
 
@@ -87,34 +86,30 @@ class DrifterInputDataset(InputDataset):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize DrifterInstrument."""
         filenames = {
-            "UV": input_dataset.data_dir.joinpath("drifter_uv.nc"),
-            "T": input_dataset.data_dir.joinpath("drifter_t.nc"),
+            "UV": directory.joinpath(f"{name}_uv.nc"),
+            "T": directory.joinpath(f"{name}_t.nc"),
         }
         variables = {"UV": ["uo", "vo"], "T": "thetao"}
         super().__init__(
-            input_dataset,
+            Drifter.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=False,
         )
 
-    def simulate(
-        self,
-        drifters: list[Drifter],
-        out_path: str | Path,
-        outputdt: timedelta,
-        dt: timedelta,
-        endtime: datetime | None = None,
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate Drifter measurements."""
-        if len(drifters) == 0:
+        OUTPUT_DT = timedelta(hours=5)
+        DT = timedelta(minutes=5)
+        ENDTIME = None
+
+        if len(self.measurements) == 0:
             print(
                 "No drifters provided. Parcels currently crashes when providing an empty particle set, so no drifter simulation will be done and no files will be created."
             )
@@ -127,46 +122,49 @@ class DrifterInstrument(Instrument):
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=[drifter.spacetime.location.lat for drifter in drifters],
-            lon=[drifter.spacetime.location.lon for drifter in drifters],
-            depth=[drifter.depth for drifter in drifters],
-            time=[drifter.spacetime.time for drifter in drifters],
+            lat=[drifter.spacetime.location.lat for drifter in self.measurements],
+            lon=[drifter.spacetime.location.lon for drifter in self.measurements],
+            depth=[drifter.depth for drifter in self.measurements],
+            time=[drifter.spacetime.time for drifter in self.measurements],
             has_lifetime=[
-                1 if drifter.lifetime is not None else 0 for drifter in drifters
+                1 if drifter.lifetime is not None else 0
+                for drifter in self.measurements
             ],
             lifetime=[
                 0 if drifter.lifetime is None else drifter.lifetime.total_seconds()
-                for drifter in drifters
+                for drifter in self.measurements
             ],
         )
 
         # define output file for the simulation
         out_file = drifter_particleset.ParticleFile(
-            name=out_path, outputdt=outputdt, chunks=[len(drifter_particleset), 100]
+            name=self.out_path,
+            outputdt=OUTPUT_DT,
+            chunks=[len(drifter_particleset), 100],
         )
 
         # get earliest between fieldset end time and provide end time
         fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-        if endtime is None:
+        if ENDTIME is None:
             actual_endtime = fieldset_endtime
-        elif endtime > fieldset_endtime:
+        elif ENDTIME > fieldset_endtime:
             print("WARN: Requested end time later than fieldset end time.")
             actual_endtime = fieldset_endtime
         else:
-            actual_endtime = np.timedelta64(endtime)
+            actual_endtime = np.timedelta64(ENDTIME)
 
         # execute simulation
         drifter_particleset.execute(
             [AdvectionRK4, _sample_temperature, _check_lifetime],
             endtime=actual_endtime,
-            dt=dt,
+            dt=DT,
             output_file=out_file,
             verbose_progress=True,
         )
 
         # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
         if len(drifter_particleset.particledata) > len(
-            [d for d in drifters if d.lifetime is None]
+            [d for d in self.measurements if d.lifetime is None]
         ):
             print(
                 "WARN: Some drifters had a life time beyond the end time of the fieldset or the requested end time."

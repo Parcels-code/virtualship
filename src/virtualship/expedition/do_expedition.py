@@ -44,17 +44,12 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     # verify that schedule and checkpoint match
     checkpoint.verify(expedition.schedule)
 
-    # load fieldsets
-    _load_input_data = []  # TEMPORARY!
-    loaded_input_data = _load_input_data(
-        expedition_dir=expedition_dir,
-        expedition=expedition,
-        input_data=input_data,
-    )
-
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
+    # TODO: needs updating when .verify() updated to not need input_data
+
+    loaded_input_data = []  # TODO: TEMPORARY!
     expedition.schedule.verify(
         expedition.ship_config.ship_speed_knots, loaded_input_data
     )
@@ -87,47 +82,33 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
     print("\n----- EXPEDITION SUMMARY ------")
 
-    # calculate expedition cost in US$
-    assert expedition.schedule.waypoints[0].time is not None, (
-        "First waypoint has no time. This should not be possible as it should have been verified before."
-    )
-    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
-    cost = expedition_cost(schedule_results, time_past)
-    with open(expedition_dir.joinpath("results", "cost.txt"), "w") as file:
-        file.writelines(f"cost: {cost} US$")
-    print(f"\nExpedition duration: {time_past}\nExpedition cost: US$ {cost:,.0f}.")
+    # expedition cost in US$
+    _write_expedition_cost(expedition, schedule_results, expedition_dir)
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
 
     # simulate measurements
     print("\nSimulating measurements. This may take a while...\n")
 
-    # TODO: this is where XYZInstrument.run() could be called instead of simulate_measurements!?
-    # TODO: this time maybe looping through measurements to simulate in some form...
-    # TODO: first in explicit per instrument, then think about whether can be automated more...not the end of the world if just have to explain in documentation that changes must be made here...
-
     instruments_in_expedition = expedition.get_instruments()
 
     for itype in instruments_in_expedition:
+        # get instrument class
         instrument_class = get_instrument_class(itype)
         if instrument_class is None:
             raise RuntimeError(f"No instrument class found for type {itype}.")
 
+        # get measurements to simulate for this instrument
         measurements = schedule_results.measurements_to_simulate.get(itype.name.lower())
 
-        instrument_class.run(
-            expedition_dir.joinpath("results", f"{itype.name.lower()}.zarr"),
-            measurements=measurements,
-            fieldset=loaded_input_data.get_fieldset_for_instrument_type(itype),
-            expedition=expedition,
-        )
+        # initialise instrument
+        instrument = instrument_class(expedition=expedition, directory=expedition_dir)
 
-    # simulate_measurements(
-    #     expedition_dir,
-    #     expedition.instruments_config,
-    #     loaded_input_data,
-    #     schedule_results.measurements_to_simulate,
-    # )
+        # run simulation
+        instrument.run(
+            measurements=measurements,
+            out_path=expedition_dir.joinpath("results", f"{itype.name.lower()}.zarr"),
+        )
 
     print("\nAll measurement simulations are complete.")
 
@@ -150,3 +131,15 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
     file_path = expedition_dir.joinpath(CHECKPOINT)
     checkpoint.to_yaml(file_path)
+
+
+def _write_expedition_cost(expedition, schedule_results, expedition_dir):
+    """Calculate the expedition cost, write it to a file, and print summary."""
+    assert expedition.schedule.waypoints[0].time is not None, (
+        "First waypoint has no time. This should not be possible as it should have been verified before."
+    )
+    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
+    cost = expedition_cost(schedule_results, time_past)
+    with open(expedition_dir.joinpath("results", "cost.txt"), "w") as file:
+        file.writelines(f"cost: {cost} US$")
+    print(f"\nExpedition duration: {time_past}\nExpedition cost: US$ {cost:,.0f}.")

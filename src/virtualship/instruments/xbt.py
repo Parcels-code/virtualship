@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -87,17 +86,17 @@ class XBTInputDataset(InputDataset):
             "UVdata": {
                 "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
                 "variables": ["uo", "vo"],
-                "output_filename": "ship_uv.nc",
+                "output_filename": f"{self.name}_uv.nc",
             },
             "Sdata": {
                 "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
                 "variables": ["so"],
-                "output_filename": "ship_s.nc",
+                "output_filename": f"{self.name}_s.nc",
             },
             "Tdata": {
                 "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
                 "variables": ["thetao"],
-                "output_filename": "ship_t.nc",
+                "output_filename": f"{self.name}_t.nc",
             },
         }
 
@@ -106,35 +105,30 @@ class XBTInputDataset(InputDataset):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize XBTInstrument."""
         filenames = {
-            "UV": input_dataset.data_dir.joinpath("ship_uv.nc"),
-            "S": input_dataset.data_dir.joinpath("ship_s.nc"),
-            "T": input_dataset.data_dir.joinpath("ship_t.nc"),
+            "UV": directory.joinpath(f"{name}_uv.nc"),
+            "S": directory.joinpath(f"{name}_s.nc"),
+            "T": directory.joinpath(f"{name}_t.nc"),
         }
         variables = {"UV": ["uo", "vo"], "S": "so", "T": "thetao"}
         super().__init__(
-            input_dataset,
+            XBT.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
         )
 
-    def simulate(
-        self,
-        xbts: list[XBT],
-        out_path: str | Path,
-        outputdt: timedelta,
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate XBT measurements."""
         DT = 10.0  # dt of XBT simulation integrator
+        OUTPUT_DT = timedelta(seconds=1)
 
-        if len(xbts) == 0:
+        if len(self.measurements) == 0:
             print(
                 "No XBTs provided. Parcels currently crashes when providing an empty particle set, so no XBT simulation will be done and no files will be created."
             )
@@ -148,7 +142,10 @@ class XBTInstrument(Instrument):
 
         # deploy time for all xbts should be later than fieldset start time
         if not all(
-            [np.datetime64(xbt.spacetime.time) >= fieldset_starttime for xbt in xbts]
+            [
+                np.datetime64(xbt.spacetime.time) >= fieldset_starttime
+                for xbt in self.measurements
+            ]
         ):
             raise ValueError("XBT deployed before fieldset starts.")
 
@@ -163,11 +160,11 @@ class XBTInstrument(Instrument):
                     time=0,
                 ),
             )
-            for xbt in xbts
+            for xbt in self.measurements
         ]
 
         # initial fall speeds
-        initial_fall_speeds = [xbt.fall_speed for xbt in xbts]
+        initial_fall_speeds = [xbt.fall_speed for xbt in self.measurements]
 
         # XBT depth can not be too shallow, because kernel would break.
         for max_depth, fall_speed in zip(max_depths, initial_fall_speeds, strict=False):
@@ -180,16 +177,16 @@ class XBTInstrument(Instrument):
         xbt_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_XBTParticle,
-            lon=[xbt.spacetime.location.lon for xbt in xbts],
-            lat=[xbt.spacetime.location.lat for xbt in xbts],
-            depth=[xbt.min_depth for xbt in xbts],
-            time=[xbt.spacetime.time for xbt in xbts],
+            lon=[xbt.spacetime.location.lon for xbt in self.measurements],
+            lat=[xbt.spacetime.location.lat for xbt in self.measurements],
+            depth=[xbt.min_depth for xbt in self.measurements],
+            time=[xbt.spacetime.time for xbt in self.measurements],
             max_depth=max_depths,
-            min_depth=[xbt.min_depth for xbt in xbts],
-            fall_speed=[xbt.fall_speed for xbt in xbts],
+            min_depth=[xbt.min_depth for xbt in self.measurements],
+            fall_speed=[xbt.fall_speed for xbt in self.measurements],
         )
 
-        out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=outputdt)
+        out_file = xbt_particleset.ParticleFile(name=self.out_path, outputdt=OUTPUT_DT)
 
         xbt_particleset.execute(
             [_sample_temperature, _xbt_cast],

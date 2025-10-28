@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -7,7 +6,6 @@ import numpy as np
 from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.spacetime import Spacetime
 from virtualship.utils import register_input_dataset, register_instrument
 
 
@@ -80,32 +78,28 @@ class Underwater_STInputDataset(InputDataset):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(
-        self,
-        input_dataset: InputDataset,
-    ):
+    def __init__(self, name, expedition, directory):
         """Initialize Underwater_STInstrument."""
         filenames = {
-            "S": input_dataset.data_dir.joinpath(f"{input_dataset.name}_s.nc"),
-            "T": input_dataset.data_dir.joinpath(f"{input_dataset.name}_t.nc"),
+            "S": directory.joinpath(f"{name}_s.nc"),
+            "T": directory.joinpath(f"{name}_t.nc"),
         }
         variables = {"S": "so", "T": "thetao"}
         super().__init__(
-            input_dataset,
+            Underwater_ST.name,
+            expedition,
+            directory,
             filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=True,
         )
 
-    def simulate(
-        self,
-        out_path: str | Path,
-        depth: float,
-        sample_points: list[Spacetime],
-    ) -> None:
+    def simulate(self) -> None:
         """Simulate underway salinity and temperature measurements."""
-        sample_points.sort(key=lambda p: p.time)
+        DEPTH = -2.0
+
+        self.measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
 
@@ -114,13 +108,13 @@ class Underwater_STInstrument(Instrument):
             pclass=_ShipSTParticle,
             lon=0.0,
             lat=0.0,
-            depth=depth,
+            depth=DEPTH,
             time=0,
         )
 
-        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = particleset.ParticleFile(name=self.out_path, outputdt=np.inf)
 
-        for point in sample_points:
+        for point in self.measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
             particleset.time_nextloop[:] = fieldset.time_origin.reltime(
