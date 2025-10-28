@@ -1,11 +1,10 @@
 import abc
-from collections.abc import Callable
 from datetime import timedelta
-from pathlib import Path
 
 import copernicusmarine
 import yaspin
 
+from parcels import Field, FieldSet
 from virtualship.models import SpaceTimeRegion
 from virtualship.utils import ship_spinner
 
@@ -37,7 +36,6 @@ class InputDataset(abc.ABC):
     @abc.abstractmethod
     def get_datasets_dict(self) -> dict:
         """Get parameters for instrument's variable(s) specific data download."""
-        ...
 
     def download_data(self) -> None:
         """Download data for the instrument using copernicusmarine."""
@@ -69,41 +67,89 @@ class InputDataset(abc.ABC):
 
 
 class Instrument(abc.ABC):
-    """Base class for instruments."""
+    """Base class for instruments and their simulation."""
 
     def __init__(
         self,
-        name: str,
-        config,
         input_dataset: InputDataset,
-        kernels: list[Callable],
+        filenames: dict,
+        variables: dict,
+        add_bathymetry: bool,
+        allow_time_extrapolation: bool,
+        bathymetry_file: str = "bathymetry.nc",
     ):
         """Initialise instrument."""
-        self.name = name
-        self.config = config
         self.input_data = input_dataset
-        self.kernels = kernels
+        self.name = input_dataset.name
+        self.directory = input_dataset.data_dir
+        self.filenames = filenames
+        self.variables = variables
+        self.dimensions = {
+            "lon": "longitude",
+            "lat": "latitude",
+            "time": "time",
+            "depth": "depth",
+        }  # same dimensions for all instruments
+        self.bathymetry_file = self.directory.joinpath(bathymetry_file)
+        self.add_bathymetry = add_bathymetry
+        self.allow_time_extrapolation = allow_time_extrapolation
 
-    # def load_fieldset(self):
-    #     """Load fieldset for simulation."""
-    #     # paths = self.input_data.get_fieldset_paths()
-    #     ...
+    def load_input_data(self) -> FieldSet:
+        """Load and return the input data as a FieldSet for the instrument."""
+        # TODO: this should mean can delete input_data.py!
 
-    def get_output_path(self, output_dir: Path) -> Path:
-        """Get output path for results."""
-        return output_dir / f"{self.name}.zarr"
+        # TODO: hopefully simulate_measurements can also be removed! And maybe the list of e.g. ctds ('measurements') to run can be added to higher level like do_expedition.py...? I think as they already do...
 
-    def run(self):
+        # TODO: can simulate_schedule.py be refactored to be contained in base.py and repsective instrument files too...?
+
+        # TODO: what do I need to do about automatic registration of Instrument classes...?
+
+        # TODO: tests will need updating...!
+
+        # TODO: think about combining InputDataset and Instrument classes together!
+
+        try:
+            fieldset = FieldSet.from_netcdf(
+                self.filenames,
+                self.variables,
+                self.dimensions,
+                allow_time_extrapolation=self.allow_time_extrapolation,
+            )
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"Input data for instrument {self.name} not found. Have you run the `virtualship fetch` command??"
+            ) from e
+
+        # interpolation methods
+        for var in self.variables:
+            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+        # depth negative
+        for g in fieldset.gridset.grids:
+            g.negate_depth()
+        # bathymetry data
+        if self.add_bathymetry:
+            bathymetry_field = Field.from_netcdf(
+                self.bathymetry_file,
+                self.bathymetry_variables,
+                self.bathymetry_dimensions,
+            )
+            bathymetry_field.data = -bathymetry_field.data
+            fieldset.add_field(bathymetry_field)
+        fieldset.computeTimeChunk(0, 1)  # read in data already
+        return fieldset
+
+    @abc.abstractmethod
+    def simulate(self):
+        """Simulate instrument measurements."""
+
+    def run(self, *args, **kwargs):
         """Run instrument simulation."""
+        # TODO: this will have to be able to handle the non-spinner/instead progress bar for drifters and argos!
+
         with yaspin(
             text=f"Simulating {self.name} measurements... ",
             side="right",
             spinner=ship_spinner,
         ) as spinner:
-            self.simulate()
+            self.simulate(*args, **kwargs)
             spinner.ok("✅")
-
-    @abc.abstractmethod
-    def simulate(self):
-        """Simulate instrument measurements."""
-        ...

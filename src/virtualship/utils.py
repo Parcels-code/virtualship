@@ -240,17 +240,31 @@ ship_spinner = Spinner(
     ],
 )
 
-# InstrumentType -> InputDataset registry and registration utilities.
-INSTRUMENT_INPUT_DATASET_MAP = {}
+
+# InstrumentType -> InputDataset and Instrument registry and registration utilities.
+INPUT_DATASET_MAP = {}
+INSTRUMENT_CLASS_MAP = {}
+
+
+def register_input_dataset(instrument_type):
+    def decorator(cls):
+        INPUT_DATASET_MAP[instrument_type] = cls
+        return cls
+
+    return decorator
 
 
 def register_instrument(instrument_type):
     def decorator(cls):
-        INSTRUMENT_INPUT_DATASET_MAP[instrument_type] = cls
+        INSTRUMENT_CLASS_MAP[instrument_type] = cls
         return cls
 
     return decorator
 
 
 def get_input_dataset_class(instrument_type):
-    return INSTRUMENT_INPUT_DATASET_MAP.get(instrument_type)
+    return INPUT_DATASET_MAP.get(instrument_type)
+
+
+def get_instrument_class(instrument_type):
+    return INSTRUMENT_CLASS_MAP.get(instrument_type)

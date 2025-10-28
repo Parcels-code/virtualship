@@ -17,7 +17,6 @@ from .space_time_region import SpaceTimeRegion
 
 if TYPE_CHECKING:
     from parcels import FieldSet
-    from virtualship.expedition.input_data import InputData
 
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
@@ -88,7 +87,6 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
-        input_data: InputData | None,
         *,
         check_space_time_region: bool = False,
         ignore_missing_fieldsets: bool = False,
@@ -139,19 +137,20 @@ class Schedule(pydantic.BaseModel):
         # check if all waypoints are in water
         # this is done by picking an arbitrary provided fieldset and checking if UV is not zero
 
+        # TODO: this may need to be done with generic bathymetry data, now that removed InputData!
         # get all available fieldsets
         available_fieldsets = []
-        if input_data is not None:
-            fieldsets = [
-                input_data.adcp_fieldset,
-                input_data.argo_float_fieldset,
-                input_data.ctd_fieldset,
-                input_data.drifter_fieldset,
-                input_data.ship_underwater_st_fieldset,
-            ]
-            for fs in fieldsets:
-                if fs is not None:
-                    available_fieldsets.append(fs)
+        # if input_data is not None:
+        #     fieldsets = [
+        #         input_data.adcp_fieldset,
+        #         input_data.argo_float_fieldset,
+        #         input_data.ctd_fieldset,
+        #         input_data.drifter_fieldset,
+        #         input_data.ship_underwater_st_fieldset,
+        #     ]
+        # for fs in fieldsets:
+        #     if fs is not None:
+        #         available_fieldsets.append(fs)
 
         # check if there are any fieldsets, else it's an error
         if len(available_fieldsets) == 0:

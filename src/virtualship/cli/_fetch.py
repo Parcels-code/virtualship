@@ -112,7 +112,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     for itype in instruments_in_expedition:
         input_dataset_class = get_input_dataset_class(itype)
         if input_dataset_class is None:
-            continue
+            raise RuntimeError(f"No input dataset class found for type {itype}.")
         click.echo(
             f"\n\n{(' Fetching data for: ' + itype.value + ' ').center(80, '=')}\n\n"
         )

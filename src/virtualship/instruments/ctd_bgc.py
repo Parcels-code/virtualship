@@ -5,11 +5,11 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import FieldSet, JITParticle, ParticleSet, Variable
-from virtualship.instruments.base import InputDataset
+from parcels import JITParticle, ParticleSet, Variable
+from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import register_input_dataset, register_instrument
 
 
 @dataclass
@@ -81,7 +81,7 @@ def _ctd_bgc_cast(particle, fieldset, time):
             particle.delete()
 
 
-@register_instrument(InstrumentType.CTD_BGC)
+@register_input_dataset(InstrumentType.CTD_BGC)
 class CTD_BGCInputDataset(InputDataset):
     """Input dataset object for CTD_BGC instrument."""
 
@@ -149,117 +149,128 @@ class CTD_BGCInputDataset(InputDataset):
         }
 
 
-# class CTD_BGCInstrument(instruments.Instrument):
-#     """CTD_BGC instrument class."""
+@register_instrument(InstrumentType.CTD_BGC)
+class CTD_BGCInstrument(Instrument):
+    """CTD_BGC instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(CTD_BGC.name, config, input_dataset, kernels)
-
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
-
-
-def simulate_ctd_bgc(
-    fieldset: FieldSet,
-    out_path: str | Path,
-    ctd_bgcs: list[CTD_BGC],
-    outputdt: timedelta,
-) -> None:
-    """
-    Use Parcels to simulate a set of BGC CTDs in a fieldset.
-
-    :param fieldset: The fieldset to simulate the BGC CTDs in.
-    :param out_path: The path to write the results to.
-    :param ctds: A list of BGC CTDs to simulate.
-    :param outputdt: Interval which dictates the update frequency of file output during simulation
-    :raises ValueError: Whenever provided BGC CTDs, fieldset, are not compatible with this function.
-    """
-    WINCH_SPEED = 1.0  # sink and rise speed in m/s
-    DT = 10.0  # dt of CTD simulation integrator
-
-    if len(ctd_bgcs) == 0:
-        print(
-            "No BGC CTDs provided. Parcels currently crashes when providing an empty particle set, so no BGC CTD simulation will be done and no files will be created."
+    def __init__(
+        self,
+        input_dataset: InputDataset,
+    ):
+        """Initialize CTD_BGCInstrument."""
+        filenames = {
+            "o2": input_dataset.data_dir.joinpath("ctd_bgc_o2.nc"),
+            "chl": input_dataset.data_dir.joinpath("ctd_bgc_chl.nc"),
+            "no3": input_dataset.data_dir.joinpath("ctd_bgc_no3.nc"),
+            "po4": input_dataset.data_dir.joinpath("ctd_bgc_po4.nc"),
+            "ph": input_dataset.data_dir.joinpath("ctd_bgc_ph.nc"),
+            "phyc": input_dataset.data_dir.joinpath("ctd_bgc_phyc.nc"),
+            "zooc": input_dataset.data_dir.joinpath("ctd_bgc_zooc.nc"),
+            "nppv": input_dataset.data_dir.joinpath("ctd_bgc_nppv.nc"),
+        }
+        variables = {
+            "o2": "o2",
+            "chl": "chl",
+            "no3": "no3",
+            "po4": "po4",
+            "ph": "ph",
+            "phyc": "phyc",
+            "zooc": "zooc",
+            "nppv": "nppv",
+        }
+        super().__init__(
+            input_dataset,
+            filenames,
+            variables,
+            add_bathymetry=True,
+            allow_time_extrapolation=True,
         )
-        # TODO when Parcels supports it this check can be removed.
-        return
 
-    fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+    def simulate(
+        self, ctd_bgcs: list[CTD_BGC], out_path: str | Path, outputdt: timedelta
+    ) -> None:
+        """Simulate BGC CTD measurements using Parcels."""
+        WINCH_SPEED = 1.0  # sink and rise speed in m/s
+        DT = 10.0  # dt of CTD simulation integrator
 
-    # deploy time for all ctds should be later than fieldset start time
-    if not all(
-        [
-            np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
+        if len(ctd_bgcs) == 0:
+            print(
+                "No BGC CTDs provided. Parcels currently crashes when providing an empty particle set, so no BGC CTD simulation will be done and no files will be created."
+            )
+            # TODO when Parcels supports it this check can be removed.
+            return
+
+        fieldset = self.load_input_data()
+
+        fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
+        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+
+        # deploy time for all ctds should be later than fieldset start time
+        if not all(
+            [
+                np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
+                for ctd_bgc in ctd_bgcs
+            ]
+        ):
+            raise ValueError("BGC CTD deployed before fieldset starts.")
+
+        # depth the bgc ctd will go to. shallowest between bgc ctd max depth and bathymetry.
+        max_depths = [
+            max(
+                ctd_bgc.max_depth,
+                fieldset.bathymetry.eval(
+                    z=0,
+                    y=ctd_bgc.spacetime.location.lat,
+                    x=ctd_bgc.spacetime.location.lon,
+                    time=0,
+                ),
+            )
             for ctd_bgc in ctd_bgcs
         ]
-    ):
-        raise ValueError("BGC CTD deployed before fieldset starts.")
 
-    # depth the bgc ctd will go to. shallowest between bgc ctd max depth and bathymetry.
-    max_depths = [
-        max(
-            ctd_bgc.max_depth,
-            fieldset.bathymetry.eval(
-                z=0,
-                y=ctd_bgc.spacetime.location.lat,
-                x=ctd_bgc.spacetime.location.lon,
-                time=0,
-            ),
-        )
-        for ctd_bgc in ctd_bgcs
-    ]
+        # CTD depth can not be too shallow, because kernel would break.
+        # This shallow is not useful anyway, no need to support.
+        if not all([max_depth <= -DT * WINCH_SPEED for max_depth in max_depths]):
+            raise ValueError(
+                f"BGC CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
+            )
 
-    # CTD depth can not be too shallow, because kernel would break.
-    # This shallow is not useful anyway, no need to support.
-    if not all([max_depth <= -DT * WINCH_SPEED for max_depth in max_depths]):
-        raise ValueError(
-            f"BGC CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
+        # define parcel particles
+        ctd_bgc_particleset = ParticleSet(
+            fieldset=fieldset,
+            pclass=_CTD_BGCParticle,
+            lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in ctd_bgcs],
+            lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in ctd_bgcs],
+            depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
+            time=[ctd_bgc.spacetime.time for ctd_bgc in ctd_bgcs],
+            max_depth=max_depths,
+            min_depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
+            winch_speed=[WINCH_SPEED for _ in ctd_bgcs],
         )
 
-    # define parcel particles
-    ctd_bgc_particleset = ParticleSet(
-        fieldset=fieldset,
-        pclass=_CTD_BGCParticle,
-        lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in ctd_bgcs],
-        lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in ctd_bgcs],
-        depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
-        time=[ctd_bgc.spacetime.time for ctd_bgc in ctd_bgcs],
-        max_depth=max_depths,
-        min_depth=[ctd_bgc.min_depth for ctd_bgc in ctd_bgcs],
-        winch_speed=[WINCH_SPEED for _ in ctd_bgcs],
-    )
+        # define output file for the simulation
+        out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=outputdt)
 
-    # define output file for the simulation
-    out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=outputdt)
-
-    # execute simulation
-    ctd_bgc_particleset.execute(
-        [
-            _sample_o2,
-            _sample_chlorophyll,
-            _sample_nitrate,
-            _sample_phosphate,
-            _sample_ph,
-            _sample_phytoplankton,
-            _sample_primary_production,
-            _ctd_bgc_cast,
-        ],
-        endtime=fieldset_endtime,
-        dt=DT,
-        verbose_progress=False,
-        output_file=out_file,
-    )
-
-    # there should be no particles left, as they delete themselves when they resurface
-    if len(ctd_bgc_particleset.particledata) != 0:
-        raise ValueError(
-            "Simulation ended before BGC CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
+        # execute simulation
+        ctd_bgc_particleset.execute(
+            [
+                _sample_o2,
+                _sample_chlorophyll,
+                _sample_nitrate,
+                _sample_phosphate,
+                _sample_ph,
+                _sample_phytoplankton,
+                _sample_primary_production,
+                _ctd_bgc_cast,
+            ],
+            endtime=fieldset_endtime,
+            dt=DT,
+            verbose_progress=False,
+            output_file=out_file,
         )
+
+        # there should be no particles left, as they delete themselves when they resurface
+        if len(ctd_bgc_particleset.particledata) != 0:
+            raise ValueError(
+                "Simulation ended before BGC CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
+            )

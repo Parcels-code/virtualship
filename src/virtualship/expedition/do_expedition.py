@@ -6,17 +6,11 @@ from pathlib import Path
 
 import pyproj
 
-from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.models import Expedition, Schedule
-from virtualship.utils import (
-    CHECKPOINT,
-    _get_expedition,
-)
+from virtualship.models import Schedule
+from virtualship.utils import CHECKPOINT, _get_expedition, get_instrument_class
 
 from .checkpoint import Checkpoint
 from .expedition_cost import expedition_cost
-from .input_data import InputData
-from .simulate_measurements import simulate_measurements
 from .simulate_schedule import ScheduleProblem, simulate_schedule
 
 # projection used to sail between waypoints
@@ -51,6 +45,7 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     checkpoint.verify(expedition.schedule)
 
     # load fieldsets
+    _load_input_data = []  # TEMPORARY!
     loaded_input_data = _load_input_data(
         expedition_dir=expedition_dir,
         expedition=expedition,
@@ -106,12 +101,34 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
 
     # simulate measurements
     print("\nSimulating measurements. This may take a while...\n")
-    simulate_measurements(
-        expedition_dir,
-        expedition.instruments_config,
-        loaded_input_data,
-        schedule_results.measurements_to_simulate,
-    )
+
+    # TODO: this is where XYZInstrument.run() could be called instead of simulate_measurements!?
+    # TODO: this time maybe looping through measurements to simulate in some form...
+    # TODO: first in explicit per instrument, then think about whether can be automated more...not the end of the world if just have to explain in documentation that changes must be made here...
+
+    instruments_in_expedition = expedition.get_instruments()
+
+    for itype in instruments_in_expedition:
+        instrument_class = get_instrument_class(itype)
+        if instrument_class is None:
+            raise RuntimeError(f"No instrument class found for type {itype}.")
+
+        measurements = schedule_results.measurements_to_simulate.get(itype.name.lower())
+
+        instrument_class.run(
+            expedition_dir.joinpath("results", f"{itype.name.lower()}.zarr"),
+            measurements=measurements,
+            fieldset=loaded_input_data.get_fieldset_for_instrument_type(itype),
+            expedition=expedition,
+        )
+
+    # simulate_measurements(
+    #     expedition_dir,
+    #     expedition.instruments_config,
+    #     loaded_input_data,
+    #     schedule_results.measurements_to_simulate,
+    # )
+
     print("\nAll measurement simulations are complete.")
 
     print("\n----- EXPEDITION RESULTS ------")
@@ -120,42 +137,6 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
     print("\n------------- END -------------\n")
-
-
-def _load_input_data(
-    expedition_dir: Path,
-    expedition: Expedition,
-    input_data: Path | None,
-) -> InputData:
-    """
-    Load the input data.
-
-    :param expedition_dir: Directory of the expedition.
-    :param expedition: Expedition object.
-    :param input_data: Folder containing input data.
-    :return: InputData object.
-    """
-    if input_data is None:
-        space_time_region_hash = get_space_time_region_hash(
-            expedition.schedule.space_time_region
-        )
-        input_data = get_existing_download(expedition_dir, space_time_region_hash)
-
-    assert input_data is not None, (
-        "Input data hasn't been found. Have you run the `virtualship fetch` command?"
-    )
-
-    return InputData.load(
-        directory=input_data,
-        load_adcp=expedition.instruments_config.adcp_config is not None,
-        load_argo_float=expedition.instruments_config.argo_float_config is not None,
-        load_ctd=expedition.instruments_config.ctd_config is not None,
-        load_ctd_bgc=expedition.instruments_config.ctd_bgc_config is not None,
-        load_drifter=expedition.instruments_config.drifter_config is not None,
-        load_xbt=expedition.instruments_config.xbt_config is not None,
-        load_ship_underwater_st=expedition.instruments_config.ship_underwater_st_config
-        is not None,
-    )
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:

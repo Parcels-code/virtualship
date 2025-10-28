@@ -8,16 +8,15 @@ import numpy as np
 
 from parcels import (
     AdvectionRK4,
-    FieldSet,
     JITParticle,
     ParticleSet,
     StatusCode,
     Variable,
 )
-from virtualship.instruments.base import InputDataset
+from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import register_input_dataset, register_instrument
 
 
 @dataclass
@@ -118,7 +117,7 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
-@register_instrument(InstrumentType.ARGO_FLOAT)
+@register_input_dataset(InstrumentType.ARGO_FLOAT)
 class ArgoFloatInputDataset(InputDataset):
     """Input dataset for ArgoFloat instrument."""
 
@@ -163,89 +162,89 @@ class ArgoFloatInputDataset(InputDataset):
         }
 
 
-# class ArgoFloatInstrument(instruments.Instrument):
-#     """ArgoFloat instrument class."""
+@register_instrument(InstrumentType.ARGO_FLOAT)
+class ArgoFloatInstrument(Instrument):
+    """ArgoFloat instrument class."""
 
-#     def __init__(
-#         self,
-#         config,
-#         input_dataset,
-#         kernels,
-#     ):
-#         """Initialise with instrument's name."""
-#         super().__init__(ArgoFloat.name, config, input_dataset, kernels)
-
-#     def simulate(self):
-#         """Simulate measurements."""
-#         ...
-
-
-def simulate_argo_floats(
-    fieldset: FieldSet,
-    out_path: str | Path,
-    argo_floats: list[ArgoFloat],
-    outputdt: timedelta,
-    endtime: datetime | None,
-) -> None:
-    """
-    Use Parcels to simulate a set of Argo floats in a fieldset.
-
-    :param fieldset: The fieldset to simulate the Argo floats in.
-    :param out_path: The path to write the results to.
-    :param argo_floats: A list of Argo floats to simulate.
-    :param outputdt: Interval which dictates the update frequency of file output during simulation
-    :param endtime: Stop at this time, or if None, continue until the end of the fieldset.
-    """
-    DT = 10.0  # dt of Argo float simulation integrator
-
-    if len(argo_floats) == 0:
-        print(
-            "No Argo floats provided. Parcels currently crashes when providing an empty particle set, so no argo floats simulation will be done and no files will be created."
+    def __init__(
+        self,
+        input_dataset: InputDataset,
+    ):
+        """Initialize ArgoFloatInstrument."""
+        filenames = {
+            "UV": input_dataset.data_dir.joinpath("argo_float_uv.nc"),
+            "S": input_dataset.data_dir.joinpath("argo_float_s.nc"),
+            "T": input_dataset.data_dir.joinpath("argo_float_t.nc"),
+        }
+        variables = {"UV": ["uo", "vo"], "S": "so", "T": "thetao"}
+        super().__init__(
+            input_dataset,
+            filenames,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=False,
         )
-        # TODO when Parcels supports it this check can be removed.
-        return
 
-    # define parcel particles
-    argo_float_particleset = ParticleSet(
-        fieldset=fieldset,
-        pclass=_ArgoParticle,
-        lat=[argo.spacetime.location.lat for argo in argo_floats],
-        lon=[argo.spacetime.location.lon for argo in argo_floats],
-        depth=[argo.min_depth for argo in argo_floats],
-        time=[argo.spacetime.time for argo in argo_floats],
-        min_depth=[argo.min_depth for argo in argo_floats],
-        max_depth=[argo.max_depth for argo in argo_floats],
-        drift_depth=[argo.drift_depth for argo in argo_floats],
-        vertical_speed=[argo.vertical_speed for argo in argo_floats],
-        cycle_days=[argo.cycle_days for argo in argo_floats],
-        drift_days=[argo.drift_days for argo in argo_floats],
-    )
+    def simulate(
+        self,
+        argo_floats: list[ArgoFloat],
+        out_path: str | Path,
+        outputdt: timedelta,
+        endtime: datetime | None = None,
+    ) -> None:
+        """Simulate Argo float measurements."""
+        DT = 10.0  # dt of Argo float simulation integrator
 
-    # define output file for the simulation
-    out_file = argo_float_particleset.ParticleFile(
-        name=out_path, outputdt=outputdt, chunks=[len(argo_float_particleset), 100]
-    )
+        if len(argo_floats) == 0:
+            print(
+                "No Argo floats provided. Parcels currently crashes when providing an empty particle set, so no argo floats simulation will be done and no files will be created."
+            )
+            # TODO when Parcels supports it this check can be removed.
+            return
 
-    # get earliest between fieldset end time and provide end time
-    fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-    if endtime is None:
-        actual_endtime = fieldset_endtime
-    elif endtime > fieldset_endtime:
-        print("WARN: Requested end time later than fieldset end time.")
-        actual_endtime = fieldset_endtime
-    else:
-        actual_endtime = np.timedelta64(endtime)
+        fieldset = self.load_input_data()
 
-    # execute simulation
-    argo_float_particleset.execute(
-        [
-            _argo_float_vertical_movement,
-            AdvectionRK4,
-            _keep_at_surface,
-            _check_error,
-        ],
-        endtime=actual_endtime,
-        dt=DT,
-        output_file=out_file,
-        verbose_progress=True,
-    )
+        # define parcel particles
+        argo_float_particleset = ParticleSet(
+            fieldset=fieldset,
+            pclass=_ArgoParticle,
+            lat=[argo.spacetime.location.lat for argo in argo_floats],
+            lon=[argo.spacetime.location.lon for argo in argo_floats],
+            depth=[argo.min_depth for argo in argo_floats],
+            time=[argo.spacetime.time for argo in argo_floats],
+            min_depth=[argo.min_depth for argo in argo_floats],
+            max_depth=[argo.max_depth for argo in argo_floats],
+            drift_depth=[argo.drift_depth for argo in argo_floats],
+            vertical_speed=[argo.vertical_speed for argo in argo_floats],
+            cycle_days=[argo.cycle_days for argo in argo_floats],
+            drift_days=[argo.drift_days for argo in argo_floats],
+        )
+
+        # define output file for the simulation
+        out_file = argo_float_particleset.ParticleFile(
+            name=out_path, outputdt=outputdt, chunks=[len(argo_float_particleset), 100]
+        )
+
+        # get earliest between fieldset end time and provide end time
+        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        if endtime is None:
+            actual_endtime = fieldset_endtime
+        elif endtime > fieldset_endtime:
+            print("WARN: Requested end time later than fieldset end time.")
+            actual_endtime = fieldset_endtime
+        else:
+            actual_endtime = np.timedelta64(endtime)
+
+        # execute simulation
+        argo_float_particleset.execute(
+            [
+                _argo_float_vertical_movement,
+                AdvectionRK4,
+                _keep_at_surface,
+                _check_error,
+            ],
+            endtime=actual_endtime,
+            dt=DT,
+            output_file=out_file,
+            verbose_progress=True,
+        )
