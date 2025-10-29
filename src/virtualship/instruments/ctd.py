@@ -8,7 +8,7 @@ from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Spacetime
-from virtualship.utils import register_input_dataset
+from virtualship.utils import register_input_dataset, register_instrument
 
 
 @dataclass
@@ -81,26 +81,27 @@ class CTDInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["so"],
                 "output_filename": f"{self.name}_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["thetao"],
                 "output_filename": f"{self.name}_t.nc",
             },
         }
 
 
+@register_instrument(InstrumentType.CTD)
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize CTDInstrument."""
         filenames = {
-            "S": directory.data_dir.joinpath(f"{name}_s.nc"),
-            "T": directory.data_dir.joinpath(f"{name}_t.nc"),
+            "S": f"{CTD.name}_s.nc",
+            "T": f"{CTD.name}_t.nc",
         }
         variables = {"S": "so", "T": "thetao"}
 
@@ -114,13 +115,13 @@ class CTDInstrument(Instrument):
             allow_time_extrapolation=True,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate CTD measurements."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
         DT = 10.0  # dt of CTD simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD simulation
 
-        if len(self.measurements) == 0:
+        if len(measurements) == 0:
             print(
                 "No CTDs provided. Parcels currently crashes when providing an empty particle set, so no CTD simulation will be done and no files will be created."
             )
@@ -136,7 +137,7 @@ class CTDInstrument(Instrument):
         if not all(
             [
                 np.datetime64(ctd.spacetime.time) >= fieldset_starttime
-                for ctd in self.measurements
+                for ctd in measurements
             ]
         ):
             raise ValueError("CTD deployed before fieldset starts.")
@@ -152,7 +153,7 @@ class CTDInstrument(Instrument):
                     time=0,
                 ),
             )
-            for ctd in self.measurements
+            for ctd in measurements
         ]
 
         # CTD depth can not be too shallow, because kernel would break.
@@ -176,7 +177,7 @@ class CTDInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = ctd_particleset.ParticleFile(name=self.out_path, outputdt=OUTPUT_DT)
+        out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_particleset.execute(

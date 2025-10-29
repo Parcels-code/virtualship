@@ -6,23 +6,31 @@ from pathlib import Path
 
 import pyproj
 
+from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
 from virtualship.models import Schedule
-from virtualship.utils import CHECKPOINT, _get_expedition, get_instrument_class
+from virtualship.utils import (
+    CHECKPOINT,
+    _get_expedition,
+    get_instrument_class,
+)
 
 from .checkpoint import Checkpoint
 from .expedition_cost import expedition_cost
-from .simulate_schedule import ScheduleProblem, simulate_schedule
+from .simulate_schedule import (
+    MeasurementsToSimulate,
+    ScheduleProblem,
+    simulate_schedule,
+)
 
 # projection used to sail between waypoints
 projection = pyproj.Geod(ellps="WGS84")
 
 
-def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) -> None:
+def do_expedition(expedition_dir: str | Path) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
     :param expedition_dir: The base directory for the expedition.
-    :param input_data: Input data folder (override used for testing).
     """
     print("\n╔═════════════════════════════════════════════════╗")
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
@@ -47,10 +55,12 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
-    # TODO: needs updating when .verify() updated to not need input_data
-    expedition.schedule.verify(
-        expedition.ship_config.ship_speed_knots, input_dir=input_data
+    data_dir = get_existing_download(
+        expedition_dir,
+        get_space_time_region_hash(expedition.schedule.space_time_region),
     )
+
+    expedition.schedule.verify(expedition.ship_config.ship_speed_knots, data_dir)
 
     # simulate the schedule
     schedule_results = simulate_schedule(
@@ -96,8 +106,9 @@ def do_expedition(expedition_dir: str | Path, input_data: Path | None = None) ->
         if instrument_class is None:
             raise RuntimeError(f"No instrument class found for type {itype}.")
 
-        # get measurements to simulate for this instrument
-        measurements = schedule_results.measurements_to_simulate.get(itype.name.lower())
+        # get measurements to simulate
+        attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
+        measurements = getattr(schedule_results.measurements_to_simulate, attr)
 
         # initialise instrument
         instrument = instrument_class(expedition=expedition, directory=expedition_dir)

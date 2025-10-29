@@ -70,12 +70,12 @@ class DrifterInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["uo", "vo"],
                 "output_filename": f"{self.name}_uv.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["thetao"],
                 "output_filename": f"{self.name}_t.nc",
             },
@@ -86,13 +86,14 @@ class DrifterInputDataset(InputDataset):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize DrifterInstrument."""
         filenames = {
-            "UV": directory.joinpath(f"{name}_uv.nc"),
-            "T": directory.joinpath(f"{name}_t.nc"),
+            "U": f"{Drifter.name}_uv.nc",
+            "V": f"{Drifter.name}_uv.nc",
+            "T": f"{Drifter.name}_t.nc",
         }
-        variables = {"UV": ["uo", "vo"], "T": "thetao"}
+        variables = {"U": "uo", "V": "vo", "T": "thetao"}
         super().__init__(
             Drifter.name,
             expedition,
@@ -103,13 +104,13 @@ class DrifterInstrument(Instrument):
             allow_time_extrapolation=False,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate Drifter measurements."""
         OUTPUT_DT = timedelta(hours=5)
         DT = timedelta(minutes=5)
         ENDTIME = None
 
-        if len(self.measurements) == 0:
+        if len(measurements) == 0:
             print(
                 "No drifters provided. Parcels currently crashes when providing an empty particle set, so no drifter simulation will be done and no files will be created."
             )
@@ -122,23 +123,22 @@ class DrifterInstrument(Instrument):
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=[drifter.spacetime.location.lat for drifter in self.measurements],
-            lon=[drifter.spacetime.location.lon for drifter in self.measurements],
-            depth=[drifter.depth for drifter in self.measurements],
-            time=[drifter.spacetime.time for drifter in self.measurements],
+            lat=[drifter.spacetime.location.lat for drifter in measurements],
+            lon=[drifter.spacetime.location.lon for drifter in measurements],
+            depth=[drifter.depth for drifter in measurements],
+            time=[drifter.spacetime.time for drifter in measurements],
             has_lifetime=[
-                1 if drifter.lifetime is not None else 0
-                for drifter in self.measurements
+                1 if drifter.lifetime is not None else 0 for drifter in measurements
             ],
             lifetime=[
                 0 if drifter.lifetime is None else drifter.lifetime.total_seconds()
-                for drifter in self.measurements
+                for drifter in measurements
             ],
         )
 
         # define output file for the simulation
         out_file = drifter_particleset.ParticleFile(
-            name=self.out_path,
+            name=out_path,
             outputdt=OUTPUT_DT,
             chunks=[len(drifter_particleset), 100],
         )

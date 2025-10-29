@@ -62,12 +62,12 @@ class Underwater_STInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["so"],
                 "output_filename": f"{self.name}_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["thetao"],
                 "output_filename": f"{self.name}_t.nc",
             },
@@ -78,11 +78,11 @@ class Underwater_STInputDataset(InputDataset):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize Underwater_STInstrument."""
         filenames = {
-            "S": directory.joinpath(f"{name}_s.nc"),
-            "T": directory.joinpath(f"{name}_t.nc"),
+            "S": f"{Underwater_ST.name}_s.nc",
+            "T": f"{Underwater_ST.name}_t.nc",
         }
         variables = {"S": "so", "T": "thetao"}
         super().__init__(
@@ -95,14 +95,13 @@ class Underwater_STInstrument(Instrument):
             allow_time_extrapolation=True,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate underway salinity and temperature measurements."""
         DEPTH = -2.0
 
-        self.measurements.sort(key=lambda p: p.time)
+        measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
-
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
             pclass=_ShipSTParticle,
@@ -112,9 +111,9 @@ class Underwater_STInstrument(Instrument):
             time=0,
         )
 
-        out_file = particleset.ParticleFile(name=self.out_path, outputdt=np.inf)
+        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
-        for point in self.measurements:
+        for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
             particleset.time_nextloop[:] = fieldset.time_origin.reltime(

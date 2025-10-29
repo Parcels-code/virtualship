@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import ClassVar
 
 import pyproj
 
@@ -39,7 +40,26 @@ class ScheduleProblem:
 
 @dataclass
 class MeasurementsToSimulate:
-    """The measurements to simulate, as concluded from schedule simulation."""
+    """
+    The measurements to simulate, as concluded from schedule simulation.
+
+    Provides a mapping from InstrumentType to the correct attribute name for robust access.
+    """
+
+    _instrumenttype_to_attr: ClassVar[dict] = {
+        InstrumentType.ADCP: "adcps",
+        InstrumentType.UNDERWATER_ST: "ship_underwater_sts",
+        InstrumentType.ARGO_FLOAT: "argo_floats",
+        InstrumentType.DRIFTER: "drifters",
+        InstrumentType.CTD: "ctds",
+        InstrumentType.CTD_BGC: "ctd_bgcs",
+        InstrumentType.XBT: "xbts",
+    }
+
+    @classmethod
+    def get_attr_for_instrumenttype(cls, instrument_type):
+        """Return the attribute name for a given InstrumentType."""
+        return cls._instrumenttype_to_attr[instrument_type]
 
     adcps: list[Spacetime] = field(default_factory=list, init=False)
     ship_underwater_sts: list[Spacetime] = field(default_factory=list, init=False)

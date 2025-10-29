@@ -62,7 +62,7 @@ class Expedition(pydantic.BaseModel):
                 instruments_in_expedition.append(InstrumentType.ADCP)
             if self.instruments_config.ship_underwater_st_config is not None:
                 instruments_in_expedition.append(InstrumentType.UNDERWATER_ST)
-            return set(instruments_in_expedition)
+            return sorted(set(instruments_in_expedition), key=lambda x: x.name)
         except Exception as e:
             raise InstrumentsConfigError(
                 "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
@@ -90,7 +90,8 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
-        input_dir: str | Path | None,
+        data_dir: str | Path | None,
+        ignore_missing_bathymetry: bool = False,
         *,
         check_space_time_region: bool = False,
     ) -> None:
@@ -103,14 +104,6 @@ class Schedule(pydantic.BaseModel):
         3. Waypoint times are in ascending order.
         4. All waypoints are in water (not on land).
         5. The ship can arrive on time at each waypoint given its speed.
-
-        :param ship_speed: The ship's speed in knots.
-        :param input_dir: The input directory containing necessary files.
-        :param check_space_time_region: whether to check for missing space_time_region.
-        # :param ignore_missing_fieldsets: whether to ignore warning for missing field sets.
-        :raises PlanningError: If any of the verification checks fail, indicating infeasible or incorrect waypoints.
-        :raises NotImplementedError: If an instrument in the schedule is not implemented.
-        :return: None. The method doesn't return a value but raises exceptions if verification fails.
         """
         print("\nVerifying route... ")
 
@@ -139,18 +132,20 @@ class Schedule(pydantic.BaseModel):
 
         # check if all waypoints are in water using bathymetry data
         # TODO: tests should be updated to check this!
+        # TODO: write test that checks that will flag when waypoint is on land!! [add to existing suite of fail .verify() tests in test_expedition.py]
+        # TODO: need to do an overhaul of the DATA which is in tests/expedition/expedition_dir - don't think it's currently suitable!
         land_waypoints = []
-        if input_dir is not None:
-            bathymetry_path = input_dir.joinpath("bathymetry.nc")
+        if data_dir is not None:
+            bathymetry_path = data_dir.joinpath("bathymetry.nc")
             try:
                 bathymetry_field = Field.from_netcdf(
                     bathymetry_path,
-                    variables=("bathymetry", "deptho"),
+                    variable=("bathymetry", "deptho"),
                     dimensions={"lon": "longitude", "lat": "latitude"},
                 )
             except Exception as e:
-                raise FileNotFoundError(
-                    "Bathymetry file not found in input data. Cannot verify waypoints are in water."
+                raise ScheduleError(
+                    f"Problem loading bathymetry data (used to verify waypoints are in water): {e}"
                 ) from e
             for wp_i, wp in enumerate(self.waypoints):
                 bathy = bathymetry_field.eval(
@@ -159,12 +154,17 @@ class Schedule(pydantic.BaseModel):
                     wp.location.lat,
                     wp.location.lon,
                 )
-                if np.isnan(bathy) or bathy >= 0:
+                if np.isnan(bathy) or bathy <= 0:
                     land_waypoints.append((wp_i, wp))
+
             if len(land_waypoints) > 0:
                 raise ScheduleError(
                     f"The following waypoints are on land: {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}"
                 )
+        elif not ignore_missing_bathymetry:
+            raise ScheduleError(
+                "Cannot verify waypoints are in water as bathymetry data not found. Have you run `virtualship fetch` command?"
+            )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = self.waypoints[0].time

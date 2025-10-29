@@ -106,42 +106,37 @@ class CTD_BGCInputDataset(InputDataset):
         """Variable specific args for instrument."""
         return {
             "o2data": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["o2"],
                 "output_filename": f"{self.name}_o2.nc",
             },
             "chlorodata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["chl"],
                 "output_filename": f"{self.name}_chl.nc",
             },
             "nitratedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["no3"],
                 "output_filename": f"{self.name}_no3.nc",
             },
             "phosphatedata": {
-                "dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["po4"],
                 "output_filename": f"{self.name}_po4.nc",
             },
             "phdata": {
-                "dataset_id": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["ph"],
                 "output_filename": f"{self.name}_ph.nc",
             },
             "phytoplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["phyc"],
                 "output_filename": f"{self.name}_phyc.nc",
             },
-            "zooplanktondata": {
-                "dataset_id": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m",
-                "variables": ["zooc"],
-                "output_filename": f"{self.name}_zooc.nc",
-            },
             "primaryproductiondata": {
-                "dataset_id": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+                "physical": False,
                 "variables": ["nppv"],
                 "output_filename": f"{self.name}_nppv.nc",
             },
@@ -152,17 +147,16 @@ class CTD_BGCInputDataset(InputDataset):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize CTD_BGCInstrument."""
         filenames = {
-            "o2": directory.joinpath(f"{name}_o2.nc"),
-            "chl": directory.joinpath(f"{name}_chl.nc"),
-            "no3": directory.joinpath(f"{name}_no3.nc"),
-            "po4": directory.joinpath(f"{name}_po4.nc"),
-            "ph": directory.joinpath(f"{name}_ph.nc"),
-            "phyc": directory.joinpath(f"{name}_phyc.nc"),
-            "zooc": directory.joinpath(f"{name}_zooc.nc"),
-            "nppv": directory.joinpath(f"{name}_nppv.nc"),
+            "o2": f"{CTD_BGC.name}_o2.nc",
+            "chl": f"{CTD_BGC.name}_chl.nc",
+            "no3": f"{CTD_BGC.name}_no3.nc",
+            "po4": f"{CTD_BGC.name}_po4.nc",
+            "ph": f"{CTD_BGC.name}_ph.nc",
+            "phyc": f"{CTD_BGC.name}_phyc.nc",
+            "nppv": f"{CTD_BGC.name}_nppv.nc",
         }
         variables = {
             "o2": "o2",
@@ -171,7 +165,6 @@ class CTD_BGCInstrument(Instrument):
             "po4": "po4",
             "ph": "ph",
             "phyc": "phyc",
-            "zooc": "zooc",
             "nppv": "nppv",
         }
         super().__init__(
@@ -184,13 +177,13 @@ class CTD_BGCInstrument(Instrument):
             allow_time_extrapolation=True,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate BGC CTD measurements using Parcels."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
         DT = 10.0  # dt of CTD_BGC simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD_BGC simulation
 
-        if len(self.measurements) == 0:
+        if len(measurements) == 0:
             print(
                 "No BGC CTDs provided. Parcels currently crashes when providing an empty particle set, so no BGC CTD simulation will be done and no files will be created."
             )
@@ -206,7 +199,7 @@ class CTD_BGCInstrument(Instrument):
         if not all(
             [
                 np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
-                for ctd_bgc in self.measurements
+                for ctd_bgc in measurements
             ]
         ):
             raise ValueError("BGC CTD deployed before fieldset starts.")
@@ -246,9 +239,7 @@ class CTD_BGCInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = ctd_bgc_particleset.ParticleFile(
-            name=self.out_path, outputdt=OUTPUT_DT
-        )
+        out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_bgc_particleset.execute(

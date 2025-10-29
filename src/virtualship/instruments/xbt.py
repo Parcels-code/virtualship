@@ -84,17 +84,17 @@ class XBTInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["uo", "vo"],
                 "output_filename": f"{self.name}_uv.nc",
             },
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["so"],
                 "output_filename": f"{self.name}_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["thetao"],
                 "output_filename": f"{self.name}_t.nc",
             },
@@ -105,14 +105,15 @@ class XBTInputDataset(InputDataset):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize XBTInstrument."""
         filenames = {
-            "UV": directory.joinpath(f"{name}_uv.nc"),
-            "S": directory.joinpath(f"{name}_s.nc"),
-            "T": directory.joinpath(f"{name}_t.nc"),
+            "U": f"{XBT.name}_uv.nc",
+            "V": f"{XBT.name}_uv.nc",
+            "S": f"{XBT.name}_s.nc",
+            "T": f"{XBT.name}_t.nc",
         }
-        variables = {"UV": ["uo", "vo"], "S": "so", "T": "thetao"}
+        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         super().__init__(
             XBT.name,
             expedition,
@@ -123,12 +124,12 @@ class XBTInstrument(Instrument):
             allow_time_extrapolation=True,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate XBT measurements."""
         DT = 10.0  # dt of XBT simulation integrator
         OUTPUT_DT = timedelta(seconds=1)
 
-        if len(self.measurements) == 0:
+        if len(measurements) == 0:
             print(
                 "No XBTs provided. Parcels currently crashes when providing an empty particle set, so no XBT simulation will be done and no files will be created."
             )
@@ -144,7 +145,7 @@ class XBTInstrument(Instrument):
         if not all(
             [
                 np.datetime64(xbt.spacetime.time) >= fieldset_starttime
-                for xbt in self.measurements
+                for xbt in measurements
             ]
         ):
             raise ValueError("XBT deployed before fieldset starts.")
@@ -160,7 +161,7 @@ class XBTInstrument(Instrument):
                     time=0,
                 ),
             )
-            for xbt in self.measurements
+            for xbt in measurements
         ]
 
         # initial fall speeds
@@ -186,7 +187,7 @@ class XBTInstrument(Instrument):
             fall_speed=[xbt.fall_speed for xbt in self.measurements],
         )
 
-        out_file = xbt_particleset.ParticleFile(name=self.out_path, outputdt=OUTPUT_DT)
+        out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         xbt_particleset.execute(
             [_sample_temperature, _xbt_cast],

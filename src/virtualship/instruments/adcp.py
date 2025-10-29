@@ -63,7 +63,7 @@ class ADCPInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["uo", "vo"],
                 "output_filename": f"{self.name}_uv.nc",
             },
@@ -74,12 +74,13 @@ class ADCPInputDataset(InputDataset):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize ADCPInstrument."""
         filenames = {
-            "UV": directory.joinpath(f"{name}_uv.nc"),
+            "U": f"{ADCP.name}_uv.nc",
+            "V": f"{ADCP.name}_uv.nc",
         }
-        variables = {"UV": ["uo", "vo"]}
+        variables = {"U": "uo", "V": "vo"}
         super().__init__(
             ADCP.name,
             expedition,
@@ -90,13 +91,13 @@ class ADCPInstrument(Instrument):
             allow_time_extrapolation=True,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate ADCP measurements."""
         MAX_DEPTH = self.expedition.instruments_config.adcp_config.max_depth_meter
         MIN_DEPTH = -5.0
-        NUM_BINS = self.instruments_config.adcp_config.num_bins
+        NUM_BINS = self.expedition.instruments_config.adcp_config.num_bins
 
-        self.measurements.sort(key=lambda p: p.time)
+        measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
 
@@ -105,15 +106,17 @@ class ADCPInstrument(Instrument):
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
             pclass=_ADCPParticle,
-            lon=np.full(num_particles, 0.0),
+            lon=np.full(
+                num_particles, 0.0
+            ),  # initial lat/lon are irrelevant and will be overruled later.s
             lat=np.full(num_particles, 0.0),
             depth=bins,
             time=0,
         )
 
-        out_file = particleset.ParticleFile(name=self.out_path, outputdt=np.inf)
+        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
-        for point in self.measurements:
+        for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
             particleset.time_nextloop[:] = fieldset.time_origin.reltime(

@@ -144,17 +144,17 @@ class ArgoFloatInputDataset(InputDataset):
         """Get variable specific args for instrument."""
         return {
             "UVdata": {
-                "dataset_id": "cmems_mod_glo_phy-cur_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["uo", "vo"],
                 "output_filename": f"{self.name}_uv.nc",
             },
             "Sdata": {
-                "dataset_id": "cmems_mod_glo_phy-so_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["so"],
                 "output_filename": f"{self.name}_s.nc",
             },
             "Tdata": {
-                "dataset_id": "cmems_mod_glo_phy-thetao_anfc_0.083deg_PT6H-i",
+                "physical": True,
                 "variables": ["thetao"],
                 "output_filename": f"{self.name}_t.nc",
             },
@@ -165,14 +165,15 @@ class ArgoFloatInputDataset(InputDataset):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
-    def __init__(self, name, expedition, directory):
+    def __init__(self, expedition, directory):
         """Initialize ArgoFloatInstrument."""
         filenames = {
-            "UV": directory.joinpath(f"{name}_uv.nc"),
-            "S": directory.joinpath(f"{name}_s.nc"),
-            "T": directory.joinpath(f"{name}_t.nc"),
+            "U": f"{ArgoFloat.name}_uv.nc",
+            "V": f"{ArgoFloat.name}_uv.nc",
+            "S": f"{ArgoFloat.name}_s.nc",
+            "T": f"{ArgoFloat.name}_t.nc",
         }
-        variables = {"UV": ["uo", "vo"], "S": "so", "T": "thetao"}
+        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         super().__init__(
             ArgoFloat.name,
             expedition,
@@ -183,13 +184,13 @@ class ArgoFloatInstrument(Instrument):
             allow_time_extrapolation=False,
         )
 
-    def simulate(self) -> None:
+    def simulate(self, measurements, out_path) -> None:
         """Simulate Argo float measurements."""
         DT = 10.0  # dt of Argo float simulation integrator
         OUTPUT_DT = timedelta(minutes=5)
         ENDTIME = None
 
-        if len(self.measurements) == 0:
+        if len(measurements) == 0:
             print(
                 "No Argo floats provided. Parcels currently crashes when providing an empty particle set, so no argo floats simulation will be done and no files will be created."
             )
@@ -202,21 +203,21 @@ class ArgoFloatInstrument(Instrument):
         argo_float_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ArgoParticle,
-            lat=[argo.spacetime.location.lat for argo in self.measurements],
-            lon=[argo.spacetime.location.lon for argo in self.measurements],
-            depth=[argo.min_depth for argo in self.measurements],
-            time=[argo.spacetime.time for argo in self.measurements],
-            min_depth=[argo.min_depth for argo in self.measurements],
-            max_depth=[argo.max_depth for argo in self.measurements],
-            drift_depth=[argo.drift_depth for argo in self.measurements],
-            vertical_speed=[argo.vertical_speed for argo in self.measurements],
-            cycle_days=[argo.cycle_days for argo in self.measurements],
-            drift_days=[argo.drift_days for argo in self.measurements],
+            lat=[argo.spacetime.location.lat for argo in measurements],
+            lon=[argo.spacetime.location.lon for argo in measurements],
+            depth=[argo.min_depth for argo in measurements],
+            time=[argo.spacetime.time for argo in measurements],
+            min_depth=[argo.min_depth for argo in measurements],
+            max_depth=[argo.max_depth for argo in measurements],
+            drift_depth=[argo.drift_depth for argo in measurements],
+            vertical_speed=[argo.vertical_speed for argo in measurements],
+            cycle_days=[argo.cycle_days for argo in measurements],
+            drift_days=[argo.drift_days for argo in measurements],
         )
 
         # define output file for the simulation
         out_file = argo_float_particleset.ParticleFile(
-            name=self.out_path,
+            name=out_path,
             outputdt=OUTPUT_DT,
             chunks=[len(argo_float_particleset), 100],
         )

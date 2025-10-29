@@ -1046,8 +1046,9 @@ class PlanScreen(Screen):
             # verify schedule
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
-                input_dir=None,
+                data_dir=None,
                 check_space_time_region=True,
+                ignore_missing_bathymetry=True,
             )
 
             expedition_saved = expedition_editor.save_changes()
