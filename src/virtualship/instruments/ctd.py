@@ -80,6 +80,11 @@ class CTDInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Get variable specific args for instrument."""
         return {
+            "UVdata": {
+                "physical": True,  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+                "variables": ["uo", "vo"],
+                "output_filename": f"{self.name}_uv.nc",
+            },
             "Sdata": {
                 "physical": True,
                 "variables": ["so"],
@@ -100,10 +105,12 @@ class CTDInstrument(Instrument):
     def __init__(self, expedition, directory):
         """Initialize CTDInstrument."""
         filenames = {
+            "U": f"{CTD.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+            "V": f"{CTD.name}_uv.nc",
             "S": f"{CTD.name}_s.nc",
             "T": f"{CTD.name}_t.nc",
         }
-        variables = {"S": "so", "T": "thetao"}
+        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
 
         super().__init__(
             CTD.name,
@@ -130,8 +137,12 @@ class CTDInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[0]
+        )
+        fieldset_endtime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[-1]
+        )
 
         # deploy time for all ctds should be later than fieldset start time
         if not all(
@@ -167,13 +178,13 @@ class CTDInstrument(Instrument):
         ctd_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_CTDParticle,
-            lon=[ctd.spacetime.location.lon for ctd in self.measurements],
-            lat=[ctd.spacetime.location.lat for ctd in self.measurements],
-            depth=[ctd.min_depth for ctd in self.measurements],
-            time=[ctd.spacetime.time for ctd in self.measurements],
+            lon=[ctd.spacetime.location.lon for ctd in measurements],
+            lat=[ctd.spacetime.location.lat for ctd in measurements],
+            depth=[ctd.min_depth for ctd in measurements],
+            time=[ctd.spacetime.time for ctd in measurements],
             max_depth=max_depths,
-            min_depth=[ctd.min_depth for ctd in self.measurements],
-            winch_speed=[WINCH_SPEED for _ in self.measurements],
+            min_depth=[ctd.min_depth for ctd in measurements],
+            winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation

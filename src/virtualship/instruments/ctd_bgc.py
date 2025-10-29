@@ -105,6 +105,11 @@ class CTD_BGCInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Variable specific args for instrument."""
         return {
+            "UVdata": {
+                "physical": True,  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+                "variables": ["uo", "vo"],
+                "output_filename": f"{self.name}_uv.nc",
+            },
             "o2data": {
                 "physical": False,
                 "variables": ["o2"],
@@ -150,6 +155,8 @@ class CTD_BGCInstrument(Instrument):
     def __init__(self, expedition, directory):
         """Initialize CTD_BGCInstrument."""
         filenames = {
+            "U": f"{CTD_BGC.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+            "V": f"{CTD_BGC.name}_uv.nc",
             "o2": f"{CTD_BGC.name}_o2.nc",
             "chl": f"{CTD_BGC.name}_chl.nc",
             "no3": f"{CTD_BGC.name}_no3.nc",
@@ -159,6 +166,8 @@ class CTD_BGCInstrument(Instrument):
             "nppv": f"{CTD_BGC.name}_nppv.nc",
         }
         variables = {
+            "U": "uo",
+            "V": "vo",
             "o2": "o2",
             "chl": "chl",
             "no3": "no3",
@@ -192,8 +201,12 @@ class CTD_BGCInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        fieldset_starttime = fieldset.o2.grid.time_origin.fulltime(
+            fieldset.o2.grid.time_full[0]
+        )
+        fieldset_endtime = fieldset.o2.grid.time_origin.fulltime(
+            fieldset.o2.grid.time_full[-1]
+        )
 
         # deploy time for all ctds should be later than fieldset start time
         if not all(

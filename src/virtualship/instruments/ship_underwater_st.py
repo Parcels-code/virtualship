@@ -61,6 +61,11 @@ class Underwater_STInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Get variable specific args for instrument."""
         return {
+            "UVdata": {
+                "physical": True,  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+                "variables": ["uo", "vo"],
+                "output_filename": f"{self.name}_uv.nc",
+            },
             "Sdata": {
                 "physical": True,
                 "variables": ["so"],
@@ -81,10 +86,13 @@ class Underwater_STInstrument(Instrument):
     def __init__(self, expedition, directory):
         """Initialize Underwater_STInstrument."""
         filenames = {
+            "U": f"{Underwater_ST.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
+            "V": f"{Underwater_ST.name}_uv.nc",
             "S": f"{Underwater_ST.name}_s.nc",
             "T": f"{Underwater_ST.name}_t.nc",
         }
-        variables = {"S": "so", "T": "thetao"}
+        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+
         super().__init__(
             Underwater_ST.name,
             expedition,
