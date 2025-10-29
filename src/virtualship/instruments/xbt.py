@@ -165,26 +165,26 @@ class XBTInstrument(Instrument):
         ]
 
         # initial fall speeds
-        initial_fall_speeds = [xbt.fall_speed for xbt in self.measurements]
+        initial_fall_speeds = [xbt.fall_speed for xbt in measurements]
 
         # XBT depth can not be too shallow, because kernel would break.
         for max_depth, fall_speed in zip(max_depths, initial_fall_speeds, strict=False):
             if not max_depth <= -DT * fall_speed:
                 raise ValueError(
-                    f"XBT max_depth or bathymetry shallower than maximum {-DT * fall_speed}"
+                    f"XBT max_depth or bathymetry shallower than minimum {-DT * fall_speed}. It is likely the XBT cannot be deployed in this area, which is too shallow."
                 )
 
         # define xbt particles
         xbt_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_XBTParticle,
-            lon=[xbt.spacetime.location.lon for xbt in self.measurements],
-            lat=[xbt.spacetime.location.lat for xbt in self.measurements],
-            depth=[xbt.min_depth for xbt in self.measurements],
-            time=[xbt.spacetime.time for xbt in self.measurements],
+            lon=[xbt.spacetime.location.lon for xbt in measurements],
+            lat=[xbt.spacetime.location.lat for xbt in measurements],
+            depth=[xbt.min_depth for xbt in measurements],
+            time=[xbt.spacetime.time for xbt in measurements],
             max_depth=max_depths,
-            min_depth=[xbt.min_depth for xbt in self.measurements],
-            fall_speed=[xbt.fall_speed for xbt in self.measurements],
+            min_depth=[xbt.min_depth for xbt in measurements],
+            fall_speed=[xbt.fall_speed for xbt in measurements],
         )
 
         out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
