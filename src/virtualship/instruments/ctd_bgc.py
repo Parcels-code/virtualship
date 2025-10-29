@@ -228,7 +228,7 @@ class CTD_BGCInstrument(Instrument):
                     time=0,
                 ),
             )
-            for ctd_bgc in self.measurements
+            for ctd_bgc in measurements
         ]
 
         # CTD depth can not be too shallow, because kernel would break.
@@ -242,13 +242,13 @@ class CTD_BGCInstrument(Instrument):
         ctd_bgc_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_CTD_BGCParticle,
-            lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in self.measurements],
-            lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in self.measurements],
-            depth=[ctd_bgc.min_depth for ctd_bgc in self.measurements],
-            time=[ctd_bgc.spacetime.time for ctd_bgc in self.measurements],
+            lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in measurements],
+            lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in measurements],
+            depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
+            time=[ctd_bgc.spacetime.time for ctd_bgc in measurements],
             max_depth=max_depths,
-            min_depth=[ctd_bgc.min_depth for ctd_bgc in self.measurements],
-            winch_speed=[WINCH_SPEED for _ in self.measurements],
+            min_depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
+            winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation

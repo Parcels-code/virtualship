@@ -164,7 +164,7 @@ class DrifterInstrument(Instrument):
 
         # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
         if len(drifter_particleset.particledata) > len(
-            [d for d in self.measurements if d.lifetime is None]
+            [d for d in measurements if d.lifetime is None]
         ):
             print(
                 "WARN: Some drifters had a life time beyond the end time of the fieldset or the requested end time."
