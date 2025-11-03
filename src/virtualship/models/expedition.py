@@ -5,12 +5,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 import pydantic
 import pyproj
 import yaml
-from parcels import Field
 
+from parcels import Field
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
@@ -19,7 +18,7 @@ from .location import Location
 from .space_time_region import SpaceTimeRegion
 
 if TYPE_CHECKING:
-    from parcels import FieldSet
+    pass
 
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
@@ -132,7 +131,6 @@ class Schedule(pydantic.BaseModel):
 
         # check if all waypoints are in water using bathymetry data
         # TODO: write test that checks that will flag when waypoint is on land!! [add to existing suite of fail .verify() tests in test_expedition.py]
-        # TODO: need to do an overhaul of the DATA which is in tests/expedition/expedition_dir - don't think it's currently suitable!
         land_waypoints = []
         if data_dir is not None:
             bathymetry_path = data_dir.joinpath("bathymetry.nc")
@@ -147,18 +145,19 @@ class Schedule(pydantic.BaseModel):
                     f"Problem loading bathymetry data (used to verify waypoints are in water): {e}"
                 ) from e
             for wp_i, wp in enumerate(self.waypoints):
-                bathy = bathymetry_field.eval(
-                    0,  # time
-                    0,  # depth (surface)
-                    wp.location.lat,
-                    wp.location.lon,
-                )
-                if np.isnan(bathy) or bathy <= 0:
+                try:
+                    bathymetry_field.eval(
+                        0,  # time
+                        0,  # depth (surface)
+                        wp.location.lat,
+                        wp.location.lon,
+                    )
+                except Exception:
                     land_waypoints.append((wp_i, wp))
 
             if len(land_waypoints) > 0:
                 raise ScheduleError(
-                    f"The following waypoints are on land: {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}"
+                    f"The following waypoint(s) throw(s) error(s): {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
                 )
         elif not ignore_missing_bathymetry:
             raise ScheduleError(
@@ -431,20 +430,3 @@ class InstrumentsConfig(pydantic.BaseModel):
                 raise InstrumentsConfigError(
                     f"Expedition includes instrument '{inst_type.value}', but instruments_config does not provide configuration for it."
                 )
-
-
-def _is_on_land_zero_uv(fieldset: FieldSet, waypoint: Waypoint) -> bool:
-    """
-    Check if waypoint is on land by assuming zero velocity means land.
-
-    :param fieldset: The fieldset to sample the velocity from.
-    :param waypoint: The waypoint to check.
-    :returns: If the waypoint is on land.
-    """
-    return fieldset.UV.eval(
-        0,
-        fieldset.gridset.grids[0].depth[0],
-        waypoint.location.lat,
-        waypoint.location.lon,
-        applyConversion=False,
-    ) == (0.0, 0.0)
