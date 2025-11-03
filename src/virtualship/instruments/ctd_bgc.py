@@ -100,7 +100,6 @@ class CTD_BGCInputDataset(InputDataset):
             data_dir,
             credentials,
             space_time_region,
-            verbose_progress=False,
         )
 
     def get_datasets_dict(self) -> dict:

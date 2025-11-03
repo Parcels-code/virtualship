@@ -138,7 +138,6 @@ class ArgoFloatInputDataset(InputDataset):
             data_dir,
             credentials,
             space_time_region,
-            verbose_progress=True,
         )
 
     def get_datasets_dict(self) -> dict:
