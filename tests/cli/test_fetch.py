@@ -17,8 +17,6 @@ from virtualship.cli._fetch import (
     get_existing_download,
     hash_model,
     hash_to_filename,
-    select_product_id,
-    start_end_in_product_timerange,
 )
 from virtualship.models import Expedition
 from virtualship.utils import EXPEDITION, get_example_expedition
@@ -96,31 +94,6 @@ def test_complete_download(tmp_path):
     complete_download(tmp_path)
 
     assert_complete_download(tmp_path)
-
-
-@pytest.mark.usefixtures("copernicus_no_download")
-def test_select_product_id(expedition):
-    """Should return the physical reanalysis product id via the timings prescribed in the static schedule.yaml file."""
-    result = select_product_id(
-        physical=True,
-        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
-        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
-        username="test",
-        password="test",
-    )
-    assert result == "cmems_mod_glo_phy_my_0.083deg_P1D-m"
-
-
-@pytest.mark.usefixtures("copernicus_no_download")
-def test_start_end_in_product_timerange(expedition):
-    """Should return True for valid range ass determined by the static schedule.yaml file."""
-    assert start_end_in_product_timerange(
-        selected_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
-        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
-        username="test",
-        password="test",
-    )
 
 
 def test_assert_complete_download_complete(tmp_path):

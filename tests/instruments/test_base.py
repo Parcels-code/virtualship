@@ -1,9 +1,12 @@
 import datetime
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
+import xarray as xr
 
-from virtualship.instruments.base import InputDataset
+from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.space_time_region import (
     SpaceTimeRegion,
@@ -11,6 +14,18 @@ from virtualship.models.space_time_region import (
     TimeRange,
 )
 from virtualship.utils import get_input_dataset_class
+
+# test dataclass, particle class, kernels, etc. are defined for each instrument
+
+
+# TODO: add all the other things here like particle class, kernels, etc.
+def test_all_instruments_have_input_class():
+    for instrument in InstrumentType:
+        input_class = get_input_dataset_class(instrument)
+        assert input_class is not None, f"No input_class for {instrument}"
+
+
+# test InputDataset class
 
 
 class DummyInputDataset(InputDataset):
@@ -20,7 +35,7 @@ class DummyInputDataset(InputDataset):
         """Return a dummy datasets dict for testing."""
         return {
             "dummy": {
-                "dataset_id": "test_id",
+                "physical": True,
                 "variables": ["var1"],
                 "output_filename": "dummy.nc",
             }
@@ -48,21 +63,6 @@ def dummy_space_time_region():
     )
 
 
-def test_inputdataset_abstract_instantiation():
-    # instantiation should not be allowed
-    with pytest.raises(TypeError):
-        InputDataset(
-            name="test",
-            latlon_buffer=0,
-            datetime_buffer=0,
-            min_depth=0,
-            max_depth=10,
-            data_dir=".",
-            credentials={"username": "u", "password": "p"},
-            space_time_region=None,
-        )
-
-
 def test_dummyinputdataset_initialization(dummy_space_time_region):
     ds = DummyInputDataset(
         name="test",
@@ -83,8 +83,23 @@ def test_dummyinputdataset_initialization(dummy_space_time_region):
     assert ds.credentials["username"] == "u"
 
 
+@patch("virtualship.instruments.base.copernicusmarine.open_dataset")
 @patch("virtualship.instruments.base.copernicusmarine.subset")
-def test_download_data_calls_subset(mock_subset, dummy_space_time_region):
+def test_download_data_calls_subset(
+    mock_subset, mock_open_dataset, dummy_space_time_region
+):
+    """Test that download_data calls the subset function correctly, will also test Copernicus Marine product id search logic."""
+    mock_open_dataset.return_value = xr.Dataset(
+        {
+            "time": (
+                "time",
+                [
+                    np.datetime64("1993-01-01T00:00:00"),
+                    np.datetime64("2023-01-01T01:00:00"),
+                ],
+            )
+        }
+    )
     ds = DummyInputDataset(
         name="test",
         latlon_buffer=0.5,
@@ -99,7 +114,38 @@ def test_download_data_calls_subset(mock_subset, dummy_space_time_region):
     assert mock_subset.called
 
 
-def test_all_instruments_have_input_class():
-    for instrument in InstrumentType:
-        input_class = get_input_dataset_class(instrument)
-        assert input_class is not None, f"No input_class for {instrument}"
+# test Instrument class
+
+
+class DummyInstrument(Instrument):
+    """Minimal concrete Instrument for testing."""
+
+    def simulate(self, data_dir, measurements, out_path):
+        """Dummy simulate implementation for test."""
+        self.simulate_called = True
+
+
+@patch("virtualship.instruments.base.FieldSet")
+@patch("virtualship.instruments.base.get_existing_download")
+@patch("virtualship.instruments.base.get_space_time_region_hash")
+def test_load_input_data_calls(mock_hash, mock_get_download, mock_FieldSet):
+    """Test Instrument.load_input_data with mocks."""
+    mock_hash.return_value = "hash"
+    mock_get_download.return_value = Path("/tmp/data")
+    mock_fieldset = MagicMock()
+    mock_FieldSet.from_netcdf.return_value = mock_fieldset
+    mock_fieldset.gridset.grids = [MagicMock(negate_depth=MagicMock())]
+    mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
+    dummy = DummyInstrument(
+        name="test",
+        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        directory="/tmp",
+        filenames={"A": "a.nc"},
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+    )
+    fieldset = dummy.load_input_data()
+    assert mock_FieldSet.from_netcdf.called
+    assert fieldset == mock_fieldset

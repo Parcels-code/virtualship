@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
 from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.models import Spacetime
+
+if TYPE_CHECKING:
+    from virtualship.models.spacetime import Spacetime
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
 # TODO: add some kind of check that each instrument has a dataclass, particle class, InputDataset class and Instrument class?
@@ -23,7 +25,7 @@ class CTD:
     """CTD configuration."""
 
     name: ClassVar[str] = "CTD"
-    spacetime: Spacetime
+    spacetime: "Spacetime"
     min_depth: float
     max_depth: float
 

@@ -1,6 +1,7 @@
 import abc
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import copernicusmarine
 import numpy as np
@@ -9,8 +10,10 @@ from yaspin import yaspin
 from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
 from virtualship.errors import CopernicusCatalogueError
-from virtualship.models import Expedition, SpaceTimeRegion
 from virtualship.utils import ship_spinner
+
+if TYPE_CHECKING:
+    from virtualship.models import Expedition, SpaceTimeRegion
 
 PRODUCT_IDS = {
     "phys": {
@@ -60,7 +63,7 @@ class InputDataset(abc.ABC):
         max_depth: float,
         data_dir: str,
         credentials: dict,
-        space_time_region: SpaceTimeRegion,
+        space_time_region: "SpaceTimeRegion",
     ):
         """Initialise input dataset."""
         self.name = name
@@ -185,22 +188,7 @@ class InputDataset(abc.ABC):
                 "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
             )
 
-        def start_end_in_product_timerange(
-            selected_id, schedule_start, schedule_end, username, password
-        ):
-            ds_selected = copernicusmarine.open_dataset(
-                selected_id, username=username, password=password
-            )
-            time_values = ds_selected["time"].values
-            import numpy as np
-
-            time_min, time_max = np.min(time_values), np.max(time_values)
-            return (
-                np.datetime64(schedule_start) >= time_min
-                and np.datetime64(schedule_end) <= time_max
-            )
-
-        if start_end_in_product_timerange(
+        if self._start_end_in_product_timerange(
             selected_id, schedule_start, schedule_end, username, password
         ):
             return selected_id
@@ -211,6 +199,21 @@ class InputDataset(abc.ABC):
                 else BGC_ANALYSIS_IDS[variable]
             )
 
+    def _start_end_in_product_timerange(
+        self, selected_id, schedule_start, schedule_end, username, password
+    ):
+        ds_selected = copernicusmarine.open_dataset(
+            selected_id, username=username, password=password
+        )
+        time_values = ds_selected["time"].values
+        import numpy as np
+
+        time_min, time_max = np.min(time_values), np.max(time_values)
+        return (
+            np.datetime64(schedule_start) >= time_min
+            and np.datetime64(schedule_end) <= time_max
+        )
+
 
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
@@ -218,7 +221,7 @@ class Instrument(abc.ABC):
     def __init__(
         self,
         name: str,
-        expedition: Expedition,
+        expedition: "Expedition",
         directory: Path | str,
         filenames: dict,
         variables: dict,
