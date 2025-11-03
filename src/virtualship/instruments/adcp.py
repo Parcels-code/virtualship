@@ -89,6 +89,7 @@ class ADCPInstrument(Instrument):
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=True,
+            verbose_progress=False,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -127,6 +128,6 @@ class ADCPInstrument(Instrument):
                 [_sample_velocity],
                 dt=1,
                 runtime=1,
-                verbose_progress=False,
+                verbose_progress=self.verbose_progress,
                 output_file=out_file,
             )

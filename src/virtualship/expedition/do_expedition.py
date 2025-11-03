@@ -1,5 +1,6 @@
 """do_expedition function."""
 
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -24,6 +25,11 @@ from .simulate_schedule import (
 
 # projection used to sail between waypoints
 projection = pyproj.Geod(ellps="WGS84")
+
+
+# parcels logger (suppress INFO messages to prevent log being flooded)
+external_logger = logging.getLogger("parcels.tools.loggers")
+external_logger.setLevel(logging.WARNING)
 
 
 def do_expedition(expedition_dir: str | Path) -> None:

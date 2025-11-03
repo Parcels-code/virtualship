@@ -138,6 +138,7 @@ class ArgoFloatInputDataset(InputDataset):
             data_dir,
             credentials,
             space_time_region,
+            verbose_progress=True,
         )
 
     def get_datasets_dict(self) -> dict:
@@ -182,6 +183,7 @@ class ArgoFloatInstrument(Instrument):
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=False,
+            verbose_progress=True,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -243,5 +245,5 @@ class ArgoFloatInstrument(Instrument):
             endtime=actual_endtime,
             dt=DT,
             output_file=out_file,
-            verbose_progress=True,
+            verbose_progress=self.verbose_progress,
         )

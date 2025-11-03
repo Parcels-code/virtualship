@@ -121,6 +121,7 @@ class CTDInstrument(Instrument):
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
+            verbose_progress=False,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -199,7 +200,7 @@ class CTDInstrument(Instrument):
             [_sample_salinity, _sample_temperature, _ctd_cast],
             endtime=fieldset_endtime,
             dt=DT,
-            verbose_progress=False,
+            verbose_progress=self.verbose_progress,
             output_file=out_file,
         )
 

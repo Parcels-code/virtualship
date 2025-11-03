@@ -102,6 +102,7 @@ class DrifterInstrument(Instrument):
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=False,
+            verbose_progress=True,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -159,7 +160,7 @@ class DrifterInstrument(Instrument):
             endtime=actual_endtime,
             dt=DT,
             output_file=out_file,
-            verbose_progress=True,
+            verbose_progress=self.verbose_progress,
         )
 
         # if there are more particles left than the number of drifters with an indefinite endtime, warn the user

@@ -122,6 +122,7 @@ class XBTInstrument(Instrument):
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
+            verbose_progress=False,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -193,7 +194,7 @@ class XBTInstrument(Instrument):
             [_sample_temperature, _xbt_cast],
             endtime=fieldset_endtime,
             dt=DT,
-            verbose_progress=False,
+            verbose_progress=self.verbose_progress,
             output_file=out_file,
         )
 

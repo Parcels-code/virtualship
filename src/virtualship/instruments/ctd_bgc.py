@@ -100,6 +100,7 @@ class CTD_BGCInputDataset(InputDataset):
             data_dir,
             credentials,
             space_time_region,
+            verbose_progress=False,
         )
 
     def get_datasets_dict(self) -> dict:
@@ -175,6 +176,7 @@ class CTD_BGCInstrument(Instrument):
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,
+            verbose_progress=False,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -262,7 +264,7 @@ class CTD_BGCInstrument(Instrument):
             ],
             endtime=fieldset_endtime,
             dt=DT,
-            verbose_progress=False,
+            verbose_progress=self.verbose_progress,
             output_file=out_file,
         )
 
