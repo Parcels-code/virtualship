@@ -6,7 +6,7 @@ import numpy as np
 from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import register_input_dataset, register_instrument
+from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
 
 @dataclass
@@ -61,11 +61,6 @@ class Underwater_STInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Get variable specific args for instrument."""
         return {
-            "UVdata": {
-                "physical": True,  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
-                "variables": ["uo", "vo"],
-                "output_filename": f"{self.name}_uv.nc",
-            },
             "Sdata": {
                 "physical": True,
                 "variables": ["so"],
@@ -86,12 +81,10 @@ class Underwater_STInstrument(Instrument):
     def __init__(self, expedition, directory):
         """Initialize Underwater_STInstrument."""
         filenames = {
-            "U": f"{Underwater_ST.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
-            "V": f"{Underwater_ST.name}_uv.nc",
             "S": f"{Underwater_ST.name}_s.nc",
             "T": f"{Underwater_ST.name}_t.nc",
         }
-        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+        variables = {"S": "so", "T": "thetao"}
 
         super().__init__(
             Underwater_ST.name,
@@ -110,6 +103,10 @@ class Underwater_STInstrument(Instrument):
         measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
+
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
             pclass=_ShipSTParticle,

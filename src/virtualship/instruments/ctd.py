@@ -8,7 +8,7 @@ from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Spacetime
-from virtualship.utils import register_input_dataset, register_instrument
+from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
 # TODO: add some kind of check that each instrument has a dataclass, particle class, InputDataset class and Instrument class?
 # TODO: probably as a test
@@ -86,11 +86,6 @@ class CTDInputDataset(InputDataset):
     def get_datasets_dict(self) -> dict:
         """Get variable specific args for instrument."""
         return {
-            "UVdata": {
-                "physical": True,  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
-                "variables": ["uo", "vo"],
-                "output_filename": f"{self.name}_uv.nc",
-            },
             "Sdata": {
                 "physical": True,
                 "variables": ["so"],
@@ -113,12 +108,10 @@ class CTDInstrument(Instrument):
         #! TODO: actually don't need to download U and V for CTD simulation... can instead add mock/duplicate of T and name it U (also don't need V)!
 
         filenames = {
-            "U": f"{CTD.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
-            "V": f"{CTD.name}_uv.nc",
             "S": f"{CTD.name}_s.nc",
             "T": f"{CTD.name}_t.nc",
         }
-        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+        variables = {"S": "so", "T": "thetao"}
 
         super().__init__(
             CTD.name,
@@ -144,6 +137,9 @@ class CTDInstrument(Instrument):
             return
 
         fieldset = self.load_input_data()
+
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
         fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
             fieldset.T.grid.time_full[0]

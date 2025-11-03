@@ -4,11 +4,13 @@ from pathlib import Path
 
 import copernicusmarine
 import numpy as np
+from yaspin import yaspin
 
 from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.models import Expedition, SpaceTimeRegion
+from virtualship.utils import ship_spinner
 
 PRODUCT_IDS = {
     "phys": {
@@ -244,9 +246,6 @@ class Instrument(abc.ABC):
         """Load and return the input data as a FieldSet for the instrument."""
         # TODO: can simulate_schedule.py be refactored to be contained in base.py and repsective instrument files too...?
         # TODO: tests need updating...!
-
-        #! TODO: CTD, CTD_BGC and Underway_ST deployment testing in `run` is outstanding!
-
         try:
             data_dir = self._get_data_dir(self.directory)
             joined_filepaths = {
@@ -291,13 +290,13 @@ class Instrument(abc.ABC):
         """Run instrument simulation."""
         # TODO: this will have to be able to handle the non-spinner/instead progress bar for drifters and argos!
 
-        # with yaspin(
-        #     text=f"Simulating {self.name} measurements... ",
-        #     side="right",
-        #     spinner=ship_spinner,
-        # ) as spinner:
-        self.simulate(measurements, out_path)
-        # spinner.ok("✅")
+        with yaspin(
+            text=f"Simulating {self.name} measurements... ",
+            side="right",
+            spinner=ship_spinner,
+        ) as spinner:
+            self.simulate(measurements, out_path)
+            spinner.ok("✅")
 
     def _get_data_dir(self, expedition_dir: Path) -> Path:
         space_time_region_hash = get_space_time_region_hash(
