@@ -12,9 +12,6 @@ if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
-# TODO: add some kind of check that each instrument has a dataclass, particle class, InputDataset class and Instrument class?
-# TODO: probably as a test
-
 # =====================================================
 # SECTION: Dataclass
 # =====================================================

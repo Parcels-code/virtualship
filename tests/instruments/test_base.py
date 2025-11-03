@@ -18,7 +18,6 @@ from virtualship.utils import get_input_dataset_class
 # test dataclass, particle class, kernels, etc. are defined for each instrument
 
 
-# TODO: add all the other things here like particle class, kernels, etc.
 def test_all_instruments_have_input_class():
     for instrument in InstrumentType:
         input_class = get_input_dataset_class(instrument)
