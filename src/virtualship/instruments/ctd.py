@@ -10,6 +10,9 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models import Spacetime
 from virtualship.utils import register_input_dataset, register_instrument
 
+# TODO: add some kind of check that each instrument has a dataclass, particle class, InputDataset class and Instrument class?
+# TODO: probably as a test
+
 
 @dataclass
 class CTD:
@@ -31,6 +34,9 @@ _CTDParticle = JITParticle.add_variables(
         Variable("winch_speed", dtype=np.float32),
     ]
 )
+
+
+# TODO: way to group kernels together, just to make clearer?
 
 
 def _sample_temperature(particle, fieldset, time):
@@ -104,6 +110,8 @@ class CTDInstrument(Instrument):
 
     def __init__(self, expedition, directory):
         """Initialize CTDInstrument."""
+        #! TODO: actually don't need to download U and V for CTD simulation... can instead add mock/duplicate of T and name it U (also don't need V)!
+
         filenames = {
             "U": f"{CTD.name}_uv.nc",  # TODO: U and V are only needed for parcels.FieldSet.check_complete()... would be nice to remove... v4?
             "V": f"{CTD.name}_uv.nc",

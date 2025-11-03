@@ -245,6 +245,8 @@ class Instrument(abc.ABC):
         # TODO: can simulate_schedule.py be refactored to be contained in base.py and repsective instrument files too...?
         # TODO: tests need updating...!
 
+        #! TODO: CTD, CTD_BGC and Underway_ST deployment testing in `run` is outstanding!
+
         try:
             data_dir = self._get_data_dir(self.directory)
             joined_filepaths = {
