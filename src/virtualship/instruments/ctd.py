@@ -96,18 +96,26 @@ def simulate_ctd(
         raise ValueError("CTD deployed before fieldset starts.")
 
     # depth the ctd will go to. shallowest between ctd max depth and bathymetry.
-    max_depths = [
-        max(
-            ctd.max_depth,
-            fieldset.bathymetry.eval(
-                z=np.array([0], dtype=np.float32),
-                y=np.array([ctd.spacetime.location.lat], dtype=np.float32),
-                x=np.array([ctd.spacetime.location.lon], dtype=np.float32),
-                time=fieldset.time_interval.left,
-            )[0],
-        )
-        for ctd in ctds
-    ]
+
+    BathySampling = Particle.add_variable(Variable("max_depth"))
+    pset_bathy = ParticleSet(
+        fieldset=fieldset,
+        pclass=BathySampling,
+        lon=[ctd.spacetime.location.lon for ctd in ctds],
+        lat=[ctd.spacetime.location.lat for ctd in ctds],
+        max_depth = [ctd.max_depth for ctd in ctds],
+    )
+    def SampleBathy(particles, fieldset):
+        local_bathy = fieldset.bathymetry[particles]
+        particles.max_depth = np.where(local_bathy > particles.bathymetry, local_bathy, particles.bathymetry)
+
+    pset_bathy.execute(
+        SampleBathy,
+        runtime=np.timedelta64(1, "s"),
+        dt=np.timedelta64(1, "s"),
+        verbose_progress=False,
+    )
+    max_depths = pset_bathy.max_depth[:]
 
     # CTD depth can not be too shallow, because kernel would break.
     # This shallow is not useful anyway, no need to support.
