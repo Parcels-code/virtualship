@@ -9,8 +9,8 @@ from datetime import timedelta
 
 import numpy as np
 import xarray as xr
-
 from parcels import Field, FieldSet
+
 from virtualship.instruments.ctd import CTD, simulate_ctd
 from virtualship.models import Location, Spacetime
 

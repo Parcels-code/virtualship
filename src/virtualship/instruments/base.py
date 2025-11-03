@@ -4,9 +4,9 @@ from pathlib import Path
 
 import copernicusmarine
 import numpy as np
+from parcels import Field, FieldSet
 from yaspin import yaspin
 
-from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.models import Expedition, SpaceTimeRegion

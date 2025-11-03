@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-
 from parcels import ParticleSet, ScipyParticle, Variable
+
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
