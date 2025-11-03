@@ -10,6 +10,10 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import register_input_dataset, register_instrument
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class Drifter:
@@ -21,6 +25,10 @@ class Drifter:
     lifetime: timedelta | None  # if none, lifetime is infinite
 
 
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
+
 _DrifterParticle = JITParticle.add_variables(
     [
         Variable("temperature", dtype=np.float32, initial=np.nan),
@@ -29,6 +37,10 @@ _DrifterParticle = JITParticle.add_variables(
         Variable("lifetime", dtype=np.float32),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 def _sample_temperature(particle, fieldset, time):
@@ -40,6 +52,11 @@ def _check_lifetime(particle, fieldset, time):
         particle.age += particle.dt
         if particle.age >= particle.lifetime:
             particle.delete()
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.DRIFTER)
@@ -80,6 +97,11 @@ class DrifterInputDataset(InputDataset):
                 "output_filename": f"{self.name}_t.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.DRIFTER)

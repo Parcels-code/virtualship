@@ -341,7 +341,6 @@ class XBTConfig(pydantic.BaseModel):
 
 
 class InstrumentsConfig(pydantic.BaseModel):
-    # TODO: refactor potential for this? Move explicit instrument_config's away from models/ dir?
     """Configuration of instruments."""
 
     argo_float_config: ArgoFloatConfig | None = None

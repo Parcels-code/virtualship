@@ -8,6 +8,10 @@ from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class Underwater_ST:
@@ -16,12 +20,20 @@ class Underwater_ST:
     name: ClassVar[str] = "Underwater_ST"
 
 
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
+
 _ShipSTParticle = ScipyParticle.add_variables(
     [
         Variable("S", dtype=np.float32, initial=np.nan),
         Variable("T", dtype=np.float32, initial=np.nan),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 # define function sampling Salinity
@@ -32,6 +44,11 @@ def _sample_salinity(particle, fieldset, time):
 # define function sampling Temperature
 def _sample_temperature(particle, fieldset, time):
     particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.UNDERWATER_ST)
@@ -72,6 +89,11 @@ class Underwater_STInputDataset(InputDataset):
                 "output_filename": f"{self.name}_t.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.UNDERWATER_ST)

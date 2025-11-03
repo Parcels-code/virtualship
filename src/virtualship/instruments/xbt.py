@@ -10,6 +10,10 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import register_input_dataset, register_instrument
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class XBT:
@@ -23,6 +27,10 @@ class XBT:
     deceleration_coefficient: float
 
 
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
+
 _XBTParticle = JITParticle.add_variables(
     [
         Variable("temperature", dtype=np.float32, initial=np.nan),
@@ -32,6 +40,10 @@ _XBTParticle = JITParticle.add_variables(
         Variable("deceleration_coefficient", dtype=np.float32),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 def _sample_temperature(particle, fieldset, time):
@@ -54,6 +66,11 @@ def _xbt_cast(particle, fieldset, time):
     # set particle depth to max depth if it's too deep
     if particle.depth + particle_ddepth < particle.max_depth:
         particle_ddepth = particle.max_depth - particle.depth
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.XBT)
@@ -99,6 +116,11 @@ class XBTInputDataset(InputDataset):
                 "output_filename": f"{self.name}_t.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.XBT)

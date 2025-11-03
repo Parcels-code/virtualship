@@ -11,6 +11,10 @@ from virtualship.utils import (
     register_instrument,
 )
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class ADCP:
@@ -19,8 +23,11 @@ class ADCP:
     name: ClassVar[str] = "ADCP"
 
 
-# we specifically use ScipyParticle because we have many small calls to execute
-# there is some overhead with JITParticle and this ends up being significantly faster
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
+
+
 _ADCPParticle = ScipyParticle.add_variables(
     [
         Variable("U", dtype=np.float32, initial=np.nan),
@@ -28,11 +35,20 @@ _ADCPParticle = ScipyParticle.add_variables(
     ]
 )
 
+# =====================================================
+# SECTION: Kernels
+# =====================================================
+
 
 def _sample_velocity(particle, fieldset, time):
     particle.U, particle.V = fieldset.UV.eval(
         time, particle.depth, particle.lat, particle.lon, applyConversion=False
     )
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.ADCP)
@@ -68,6 +84,11 @@ class ADCPInputDataset(InputDataset):
                 "output_filename": f"{self.name}_uv.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.ADCP)

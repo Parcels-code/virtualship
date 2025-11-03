@@ -10,6 +10,10 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class CTD_BGC:
@@ -20,6 +24,10 @@ class CTD_BGC:
     min_depth: float
     max_depth: float
 
+
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
 
 _CTD_BGCParticle = JITParticle.add_variables(
     [
@@ -36,6 +44,10 @@ _CTD_BGCParticle = JITParticle.add_variables(
         Variable("winch_speed", dtype=np.float32),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 def _sample_o2(particle, fieldset, time):
@@ -78,6 +90,11 @@ def _ctd_bgc_cast(particle, fieldset, time):
         particle_ddepth = particle.winch_speed * particle.dt
         if particle.depth + particle_ddepth > particle.min_depth:
             particle.delete()
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.CTD_BGC)
@@ -141,6 +158,11 @@ class CTD_BGCInputDataset(InputDataset):
                 "output_filename": f"{self.name}_nppv.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.CTD_BGC)

@@ -13,6 +13,10 @@ from virtualship.utils import add_dummy_UV, register_input_dataset, register_ins
 # TODO: add some kind of check that each instrument has a dataclass, particle class, InputDataset class and Instrument class?
 # TODO: probably as a test
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class CTD:
@@ -23,6 +27,10 @@ class CTD:
     min_depth: float
     max_depth: float
 
+
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
 
 _CTDParticle = JITParticle.add_variables(
     [
@@ -36,7 +44,9 @@ _CTDParticle = JITParticle.add_variables(
 )
 
 
-# TODO: way to group kernels together, just to make clearer?
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 def _sample_temperature(particle, fieldset, time):
@@ -59,6 +69,11 @@ def _ctd_cast(particle, fieldset, time):
         particle_ddepth = particle.winch_speed * particle.dt
         if particle.depth + particle_ddepth > particle.min_depth:
             particle.delete()
+
+
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
 
 
 @register_input_dataset(InstrumentType.CTD)
@@ -99,14 +114,17 @@ class CTDInputDataset(InputDataset):
         }
 
 
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
+
+
 @register_instrument(InstrumentType.CTD)
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
     def __init__(self, expedition, directory):
         """Initialize CTDInstrument."""
-        #! TODO: actually don't need to download U and V for CTD simulation... can instead add mock/duplicate of T and name it U (also don't need V)!
-
         filenames = {
             "S": f"{CTD.name}_s.nc",
             "T": f"{CTD.name}_t.nc",

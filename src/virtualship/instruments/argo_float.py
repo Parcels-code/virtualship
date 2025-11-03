@@ -17,6 +17,10 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import register_input_dataset, register_instrument
 
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
 
 @dataclass
 class ArgoFloat:
@@ -31,6 +35,10 @@ class ArgoFloat:
     cycle_days: float
     drift_days: float
 
+
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
 
 _ArgoParticle = JITParticle.add_variables(
     [
@@ -47,6 +55,10 @@ _ArgoParticle = JITParticle.add_variables(
         Variable("drift_days", dtype=np.int32),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 def _argo_float_vertical_movement(particle, fieldset, time):
@@ -116,6 +128,11 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
+# =====================================================
+# SECTION: InputDataset Class
+# =====================================================
+
+
 @register_input_dataset(InstrumentType.ARGO_FLOAT)
 class ArgoFloatInputDataset(InputDataset):
     """Input dataset for ArgoFloat instrument."""
@@ -159,6 +176,11 @@ class ArgoFloatInputDataset(InputDataset):
                 "output_filename": f"{self.name}_t.nc",
             },
         }
+
+
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
 
 @register_instrument(InstrumentType.ARGO_FLOAT)

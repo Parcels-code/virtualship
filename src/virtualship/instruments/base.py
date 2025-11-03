@@ -246,11 +246,7 @@ class Instrument(abc.ABC):
 
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
-        # TODO: can simulate_schedule.py be refactored to be contained in base.py and repsective instrument files too...?
         # TODO: tests need updating...!
-
-        #! TODO: E.g. ADCP is giving too much depth data?!
-        #! TODO: in fact output from most instruments doesn't look quite right...?
 
         try:
             data_dir = self._get_data_dir(self.directory)
@@ -303,10 +299,11 @@ class Instrument(abc.ABC):
                 spinner=ship_spinner,
             ) as spinner:
                 self.simulate(measurements, out_path)
-                spinner.ok("✅")
+                spinner.ok("✅\n")
         else:
             print(f"Simulating {self.name} measurements... ")
             self.simulate(measurements, out_path)
+            print("\n")
 
     def _get_data_dir(self, expedition_dir: Path) -> Path:
         space_time_region_hash = get_space_time_region_hash(
