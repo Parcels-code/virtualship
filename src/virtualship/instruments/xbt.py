@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-
 from parcels import JITParticle, ParticleSet, Variable
+
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime

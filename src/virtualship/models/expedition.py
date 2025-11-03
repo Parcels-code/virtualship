@@ -9,8 +9,8 @@ import numpy as np
 import pydantic
 import pyproj
 import yaml
-
 from parcels import Field
+
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import _validate_numeric_mins_to_timedelta
