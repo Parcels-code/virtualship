@@ -7,6 +7,7 @@ from pathlib import Path
 
 import xarray as xr
 from parcels import Field, FieldSet
+from parcels.interpolators import XLinearInvdistLandTracer
 
 
 @dataclass
@@ -109,6 +110,8 @@ class InputData:
 
         ds = xr.merge([dso, dsb], join="inner")
         fieldset = FieldSet.from_copernicusmarine(ds)
+        fieldset.S.interp_method = XLinearInvdistLandTracer
+        fieldset.T.interp_method = XLinearInvdistLandTracer
         return fieldset
 
     @classmethod
