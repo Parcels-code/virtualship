@@ -78,4 +78,7 @@ nbsphinx_thumbnails = {
     "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
 }
+
+sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
+
 nbsphinx_execute = "never"
