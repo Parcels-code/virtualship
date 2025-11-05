@@ -4,48 +4,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import copernicusmarine
-import numpy as np
-from parcels import Field, FieldSet
 from yaspin import yaspin
 
+from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.errors import CopernicusCatalogueError
-from virtualship.utils import ship_spinner
+from virtualship.utils import _select_product_id, ship_spinner
 
 if TYPE_CHECKING:
     from virtualship.models import Expedition, SpaceTimeRegion
-
-PRODUCT_IDS = {
-    "phys": {
-        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
-        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-    },
-    "bgc": {
-        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
-        "analysis": None,  # will be set per variable
-    },
-}
-
-BGC_ANALYSIS_IDS = {
-    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-}
-
-MONTHLY_BGC_REANALYSIS_IDS = {
-    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-}
-MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
-    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-}
 
 
 class InputDataset(abc.ABC):
@@ -111,7 +77,7 @@ class InputDataset(abc.ABC):
             else:
                 variable = dataset.get("variables")[0]  # BGC variables, special case
 
-            dataset_id = self._select_product_id(
+            dataset_id = _select_product_id(
                 physical=physical,
                 schedule_start=self.space_time_region.time_range.start_time,
                 schedule_end=self.space_time_region.time_range.end_time,
@@ -125,94 +91,6 @@ class InputDataset(abc.ABC):
                 "dataset_id": dataset_id,
             }
             copernicusmarine.subset(**download_args)
-
-    def _select_product_id(
-        self,
-        physical: bool,
-        schedule_start,
-        schedule_end,
-        username: str,
-        password: str,
-        variable: str | None = None,
-    ) -> str:
-        """Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC."""
-        key = "phys" if physical else "bgc"
-        selected_id = None
-
-        for period, pid in PRODUCT_IDS[key].items():
-            # for BGC analysis, set pid per variable
-            if key == "bgc" and period == "analysis":
-                if variable is None or variable not in BGC_ANALYSIS_IDS:
-                    continue
-                pid = BGC_ANALYSIS_IDS[variable]
-            # for BGC reanalysis, check if requires monthly product
-            if (
-                key == "bgc"
-                and period == "reanalysis"
-                and variable in MONTHLY_BGC_REANALYSIS_IDS
-            ):
-                monthly_pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
-                ds_monthly = copernicusmarine.open_dataset(
-                    monthly_pid,
-                    username=username,
-                    password=password,
-                )
-                time_end_monthly = ds_monthly["time"][-1].values
-                if np.datetime64(schedule_end) <= time_end_monthly:
-                    pid = monthly_pid
-            # for BGC reanalysis_interim, check if requires monthly product
-            if (
-                key == "bgc"
-                and period == "reanalysis_interim"
-                and variable in MONTHLY_BGC_REANALYSIS_INTERIM_IDS
-            ):
-                monthly_pid = MONTHLY_BGC_REANALYSIS_INTERIM_IDS[variable]
-                ds_monthly = copernicusmarine.open_dataset(
-                    monthly_pid, username=username, password=password
-                )
-                time_end_monthly = ds_monthly["time"][-1].values
-                if np.datetime64(schedule_end) <= time_end_monthly:
-                    pid = monthly_pid
-            if pid is None:
-                continue
-            ds = copernicusmarine.open_dataset(
-                pid, username=username, password=password
-            )
-            time_end = ds["time"][-1].values
-            if np.datetime64(schedule_end) <= time_end:
-                selected_id = pid
-                break
-
-        if selected_id is None:
-            raise CopernicusCatalogueError(
-                "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
-            )
-
-        if self._start_end_in_product_timerange(
-            selected_id, schedule_start, schedule_end, username, password
-        ):
-            return selected_id
-        else:
-            return (
-                PRODUCT_IDS["phys"]["analysis"]
-                if physical
-                else BGC_ANALYSIS_IDS[variable]
-            )
-
-    def _start_end_in_product_timerange(
-        self, selected_id, schedule_start, schedule_end, username, password
-    ):
-        ds_selected = copernicusmarine.open_dataset(
-            selected_id, username=username, password=password
-        )
-        time_values = ds_selected["time"].values
-        import numpy as np
-
-        time_min, time_max = np.min(time_values), np.max(time_values)
-        return (
-            np.datetime64(schedule_start) >= time_min
-            and np.datetime64(schedule_end) <= time_max
-        )
 
 
 class Instrument(abc.ABC):
