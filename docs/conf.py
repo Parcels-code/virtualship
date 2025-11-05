@@ -75,6 +75,7 @@ nbsphinx_thumbnails = {
     "user-guide/assignments/Research_Proposal_only": "user-guide/_images/MFP.jpg",
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/sciencecommunication_assignment": "user-guide/_images/marine_ss.jpg",
-    "user-guide/assignments/Sail_the_ship": "user-guide/_images/vessel.jpg",
+    "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
+    "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
 }
 nbsphinx_execute = "never"
