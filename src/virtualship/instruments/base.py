@@ -96,6 +96,11 @@ class InputDataset(abc.ABC):
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
+    #! TODO List:
+    # TODO: update documentation/quickstart
+    # TODO: update tests
+    # TODO: if use direct ingestion as primary data sourcing, can substantially cut code base (including _fetch.py, InputDataset objects). Consider this for Parcels v4 transition.
+
     def __init__(
         self,
         name: str,
@@ -107,6 +112,7 @@ class Instrument(abc.ABC):
         allow_time_extrapolation: bool,
         verbose_progress: bool,
         bathymetry_file: str = "bathymetry.nc",
+        direct: bool = False,
     ):
         """Initialise instrument."""
         self.name = name
@@ -124,27 +130,54 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
+        self.direct = direct
 
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
-        # TODO: tests need updating...!
+        if self.direct:  # if direct ingestion from Copernicus Marine is enabled
+            try:
+                # ds = copernicusmarine.open_dataset(
+                #     dataset_id="PHYS_REANALYSIS_ID",
+                #     dataset_part="default",
+                #     minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+                #     maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+                #     minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+                #     maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude,
+                #     variables=["uo", "vo", "so", "thetao"],
+                #     start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
+                #     end_datetime=self.expedition.schedule.space_time_region.time_range.end_time,
+                #     coordinates_selection_method="outside",
+                # )
 
-        try:
-            data_dir = self._get_data_dir(self.directory)
-            joined_filepaths = {
-                key: data_dir.joinpath(filename)
-                for key, filename in self.filenames.items()
-            }
-            fieldset = FieldSet.from_netcdf(
-                joined_filepaths,
-                self.variables,
-                self.dimensions,
-                allow_time_extrapolation=self.allow_time_extrapolation,
-            )
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                f"Input data for instrument {self.name} not found. Have you run the `virtualship fetch` command??"
-            ) from e
+                #! TODO: FIX!
+                fieldset = copernicusmarine.FieldSet.from_copernicus(
+                    self.expedition.schedule.space_time_region,
+                    self.variables,
+                    self.dimensions,
+                    allow_time_extrapolation=self.allow_time_extrapolation,
+                )
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    "ERROR"  # TODO: improve error message!
+                ) from e
+
+        else:  # from fetched data on disk
+            try:
+                data_dir = self._get_data_dir(self.directory)
+                joined_filepaths = {
+                    key: data_dir.joinpath(filename)
+                    for key, filename in self.filenames.items()
+                }
+                fieldset = FieldSet.from_netcdf(
+                    joined_filepaths,
+                    self.variables,
+                    self.dimensions,
+                    allow_time_extrapolation=self.allow_time_extrapolation,
+                )
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"Input data for instrument {self.name} not found. Have you run the `virtualship fetch` command??"
+                ) from e
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
