@@ -338,8 +338,8 @@ def _select_product_id(
     physical: bool,
     schedule_start,
     schedule_end,
-    username: str,
-    password: str,
+    username: str | None = None,
+    password: str | None = None,
     variable: str | None = None,
 ) -> str:
     """Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC."""
@@ -416,4 +416,24 @@ def _start_end_in_product_timerange(
     return (
         np.datetime64(schedule_start) >= time_min
         and np.datetime64(schedule_end) <= time_max
+    )
+
+
+def _get_bathy_data(space_time_region) -> FieldSet:
+    """Bathymetry data 'streamed' directly from Copernicus Marine."""
+    ds_bathymetry = copernicusmarine.open_dataset(
+        dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
+        minimum_longitude=space_time_region.spatial_range.minimum_longitude,
+        maximum_longitude=space_time_region.spatial_range.maximum_longitude,
+        minimum_latitude=space_time_region.spatial_range.minimum_latitude,
+        maximum_latitude=space_time_region.spatial_range.maximum_latitude,
+        variables=["deptho"],
+        start_datetime=space_time_region.time_range.start_time,
+        end_datetime=space_time_region.time_range.end_time,
+        coordinates_selection_method="outside",
+    )
+    bathymetry_variables = {"bathymetry": "deptho"}
+    bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+    return FieldSet.from_xarray_dataset(
+        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
     )

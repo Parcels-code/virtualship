@@ -12,7 +12,7 @@ import yaml
 from parcels import Field
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import _validate_numeric_mins_to_timedelta
+from virtualship.utils import _get_bathy_data, _validate_numeric_mins_to_timedelta
 
 from .location import Location
 from .space_time_region import SpaceTimeRegion
@@ -89,7 +89,7 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
-        data_dir: str | Path | None,
+        bathy_data_dir: str | Path | None,
         ignore_missing_bathymetry: bool = False,
         *,
         check_space_time_region: bool = False,
@@ -132,18 +132,30 @@ class Schedule(pydantic.BaseModel):
         # check if all waypoints are in water using bathymetry data
         # TODO: write test that checks that will flag when waypoint is on land!! [add to existing suite of fail .verify() tests in test_expedition.py]
         land_waypoints = []
-        if data_dir is not None:
-            bathymetry_path = data_dir.joinpath("bathymetry.nc")
-            try:
-                bathymetry_field = Field.from_netcdf(
-                    bathymetry_path,
-                    variable=("bathymetry", "deptho"),
-                    dimensions={"lon": "longitude", "lat": "latitude"},
-                )
-            except Exception as e:
-                raise ScheduleError(
-                    f"Problem loading bathymetry data (used to verify waypoints are in water): {e}"
-                ) from e
+        if not ignore_missing_bathymetry:
+            if bathy_data_dir is None:
+                try:
+                    bathymetry_field = _get_bathy_data(
+                        self.space_time_region
+                    ).bathymetry  # via copernicusmarine
+                except Exception as e:
+                    raise ScheduleError(
+                        f"Problem loading bathymetry data (used to verify waypoints are in water) directly via copernicusmarine. \n\n original message: {e}"
+                    ) from e
+
+            else:
+                bathymetry_path = bathy_data_dir.joinpath("bathymetry.nc")
+                try:
+                    bathymetry_field = Field.from_netcdf(
+                        bathymetry_path,
+                        variable=("bathymetry", "deptho"),
+                        dimensions={"lon": "longitude", "lat": "latitude"},
+                    )
+                except Exception as e:
+                    raise ScheduleError(
+                        f"Problem loading local bathymetry data (used to verify waypoints are in water). Have you run `virtualship fetch` command?. \n\n original message: {e}"
+                    ) from e
+
             for wp_i, wp in enumerate(self.waypoints):
                 try:
                     bathymetry_field.eval(
@@ -159,10 +171,6 @@ class Schedule(pydantic.BaseModel):
                 raise ScheduleError(
                     f"The following waypoint(s) throw(s) error(s): {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
                 )
-        elif not ignore_missing_bathymetry:
-            raise ScheduleError(
-                "Cannot verify waypoints are in water as bathymetry data not found. Have you run `virtualship fetch` command?"
-            )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = self.waypoints[0].time

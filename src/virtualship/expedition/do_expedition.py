@@ -31,12 +31,16 @@ projection = pyproj.Geod(ellps="WGS84")
 external_logger = logging.getLogger("parcels.tools.loggers")
 external_logger.setLevel(logging.WARNING)
 
+# copernicusmarine logger (suppress INFO messages to prevent log being flooded)
+logging.getLogger("copernicusmarine").setLevel("ERROR")
 
-def do_expedition(expedition_dir: str | Path) -> None:
+
+def do_expedition(expedition_dir: str | Path, from_copernicusmarine: bool) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
     :param expedition_dir: The base directory for the expedition.
+    :param from_copernicusmarine: Whether to use direct data ingestion from Copernicus Marine. Should be determined by CLI flag.
     """
     print("\n╔═════════════════════════════════════════════════╗")
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
@@ -61,12 +65,15 @@ def do_expedition(expedition_dir: str | Path) -> None:
     print("\n---- WAYPOINT VERIFICATION ----")
 
     # verify schedule is valid
-    data_dir = get_existing_download(
-        expedition_dir,
-        get_space_time_region_hash(expedition.schedule.space_time_region),
-    )
+    if from_copernicusmarine:
+        bathy_data_dir = None
+    else:
+        bathy_data_dir = get_existing_download(
+            expedition_dir,
+            get_space_time_region_hash(expedition.schedule.space_time_region),
+        )
 
-    expedition.schedule.verify(expedition.ship_config.ship_speed_knots, data_dir)
+    expedition.schedule.verify(expedition.ship_config.ship_speed_knots, bathy_data_dir)
 
     # simulate the schedule
     schedule_results = simulate_schedule(
@@ -117,7 +124,11 @@ def do_expedition(expedition_dir: str | Path) -> None:
         measurements = getattr(schedule_results.measurements_to_simulate, attr)
 
         # initialise instrument
-        instrument = instrument_class(expedition=expedition, directory=expedition_dir)
+        instrument = instrument_class(
+            expedition=expedition,
+            directory=expedition_dir,
+            from_copernicusmarine=from_copernicusmarine,
+        )
 
         # run simulation
         instrument.run(

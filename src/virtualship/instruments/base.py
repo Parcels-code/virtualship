@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import copernicusmarine
+import xarray as xr
 from yaspin import yaspin
 
 from parcels import Field, FieldSet
@@ -112,7 +113,7 @@ class Instrument(abc.ABC):
         allow_time_extrapolation: bool,
         verbose_progress: bool,
         bathymetry_file: str = "bathymetry.nc",
-        direct: bool = False,
+        from_copernicusmarine: bool = False,
     ):
         """Initialise instrument."""
         self.name = name
@@ -130,35 +131,31 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
-        self.direct = direct
+        self.from_copernicusmarine = from_copernicusmarine
 
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
-        if self.direct:  # if direct ingestion from Copernicus Marine is enabled
+        if self.from_copernicusmarine:
             try:
-                # ds = copernicusmarine.open_dataset(
-                #     dataset_id="PHYS_REANALYSIS_ID",
-                #     dataset_part="default",
-                #     minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude,
-                #     maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude,
-                #     minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude,
-                #     maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-                #     variables=["uo", "vo", "so", "thetao"],
-                #     start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
-                #     end_datetime=self.expedition.schedule.space_time_region.time_range.end_time,
-                #     coordinates_selection_method="outside",
-                # )
+                datasets = []
+                for var in self.variables.values():
+                    physical = (
+                        True if var in ("uo", "vo", "so", "thetao") else False
+                    )  # TODO: add more if start using new physical variables! Or more dynamic way of determining?
+                    ds = self._get_copernicus_ds(
+                        physical=physical, var=var
+                    )  # user should be prompted for credentials
+                    datasets.append(ds)
 
-                #! TODO: FIX!
-                fieldset = copernicusmarine.FieldSet.from_copernicus(
-                    self.expedition.schedule.space_time_region,
-                    self.variables,
-                    self.dimensions,
-                    allow_time_extrapolation=self.allow_time_extrapolation,
+                ds_concat = xr.merge(datasets)
+                fieldset = FieldSet.from_xarray_dataset(
+                    ds_concat, self.variables, self.dimensions, mesh="spherical"
                 )
-            except FileNotFoundError as e:
+
+            except Exception as e:
                 raise FileNotFoundError(
-                    "ERROR"  # TODO: improve error message!
+                    f"Failed to load input data directly from Copernicus Marine for instrument '{self.name}'. "
+                    f"Please check your credentials, network connection, and variable names. Original error: {e}"
                 ) from e
 
         else:  # from fetched data on disk
@@ -176,7 +173,8 @@ class Instrument(abc.ABC):
                 )
             except FileNotFoundError as e:
                 raise FileNotFoundError(
-                    f"Input data for instrument {self.name} not found. Have you run the `virtualship fetch` command??"
+                    f"Input data for instrument {self.name} not found locally. Have you run the `virtualship fetch` command?"
+                    "Alternatively, you can use the `--from-copernicusmarine` option to ingest data directly from Copernicus Marine."
                 ) from e
 
         # interpolation methods
@@ -230,3 +228,25 @@ class Instrument(abc.ABC):
         )
 
         return data_dir
+
+    def _get_copernicus_ds(self, physical: bool, var: str) -> xr.Dataset:
+        """Get Copernicus Marine dataset for direct ingestion."""
+        product_id = _select_product_id(
+            physical=physical,
+            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
+            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
+            variable=var if not physical else None,
+        )
+
+        return copernicusmarine.open_dataset(
+            dataset_id=product_id,
+            dataset_part="default",
+            minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude,
+            maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude,
+            minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude,
+            maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude,
+            variables=["uo", "vo", "so", "thetao"],
+            start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=self.expedition.schedule.space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
+        )

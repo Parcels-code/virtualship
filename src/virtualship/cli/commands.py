@@ -106,11 +106,18 @@ def fetch(path: str | Path, username: str | None, password: str | None) -> None:
     _fetch(path, username, password)
 
 
+# TODO: also add option to 'stream' via link to dir elsewhere, e.g. simlink or path to data stored elsewhere that isn't expedition dir!
 @click.command()
 @click.argument(
     "path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
 )
-def run(path):
+@click.option(
+    "--from-copernicusmarine",
+    is_flag=True,
+    default=False,
+    help="Ingest fieldsets directly via copernicusmarine toolbox.",
+)
+def run(path, from_copernicusmarine: bool):
     """Run the expedition."""
-    do_expedition(Path(path))
+    do_expedition(Path(path), from_copernicusmarine)

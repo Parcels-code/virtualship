@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 
@@ -122,7 +122,7 @@ class CTDInputDataset(InputDataset):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_copernicusmarine):
         """Initialize CTDInstrument."""
         filenames = {
             "S": f"{CTD.name}_s.nc",
@@ -139,6 +139,7 @@ class CTDInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
+            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:
