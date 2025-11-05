@@ -42,6 +42,13 @@ def do_expedition(expedition_dir: str | Path, from_copernicusmarine: bool) -> No
     :param expedition_dir: The base directory for the expedition.
     :param from_copernicusmarine: Whether to use direct data ingestion from Copernicus Marine. Should be determined by CLI flag.
     """
+    # ################################# TEMPORARY TIMER: START #################################
+    import time
+
+    start_time = time.time()
+    print("[TIMER] Expedition started...")
+    # ################################# TEMPORARY TIMER: START #################################
+
     print("\n╔═════════════════════════════════════════════════╗")
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
     print("╚═════════════════════════════════════════════════╝")
@@ -144,6 +151,12 @@ def do_expedition(expedition_dir: str | Path, from_copernicusmarine: bool) -> No
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
     print("\n------------- END -------------\n")
+
+    ################################# TEMPORARY TIMER: END #################################
+    end_time = time.time()
+    elapsed = end_time - start_time
+    print(f"[TIMER] Expedition completed in {elapsed:.2f} seconds.")
+    ################################# TEMPORARY TIMER: END #################################
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:

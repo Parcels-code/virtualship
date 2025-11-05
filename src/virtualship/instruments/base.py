@@ -9,7 +9,7 @@ from yaspin import yaspin
 
 from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.utils import _select_product_id, ship_spinner
+from virtualship.utils import _get_bathy_data, _select_product_id, ship_spinner
 
 if TYPE_CHECKING:
     from virtualship.models import Expedition, SpaceTimeRegion
@@ -147,7 +147,7 @@ class Instrument(abc.ABC):
                     )  # user should be prompted for credentials
                     datasets.append(ds)
 
-                ds_concat = xr.merge(datasets)
+                ds_concat = xr.merge(datasets)  # TODO: deal with WARNINGS?
                 fieldset = FieldSet.from_xarray_dataset(
                     ds_concat, self.variables, self.dimensions, mesh="spherical"
                 )
@@ -183,16 +183,24 @@ class Instrument(abc.ABC):
         # depth negative
         for g in fieldset.gridset.grids:
             g.negate_depth()
+
         # bathymetry data
         if self.add_bathymetry:
-            bathymetry_field = Field.from_netcdf(
-                data_dir.joinpath(self.bathymetry_file),
-                variable=("bathymetry", "deptho"),
-                dimensions={"lon": "longitude", "lat": "latitude"},
-            )
+            if self.from_copernicusmarine:
+                bathymetry_field = _get_bathy_data(
+                    self.expedition.schedule.space_time_region
+                ).bathymetry
+            else:
+                bathymetry_field = Field.from_netcdf(
+                    data_dir.joinpath(self.bathymetry_file),
+                    variable=("bathymetry", "deptho"),
+                    dimensions={"lon": "longitude", "lat": "latitude"},
+                )
             bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
-        fieldset.computeTimeChunk(0, 1)  # read in data already
+
+        # TODO: is this line necessary?!
+        # fieldset.computeTimeChunk(0, 1)  # read in data already
 
         return fieldset
 

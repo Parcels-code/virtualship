@@ -1046,7 +1046,7 @@ class PlanScreen(Screen):
             # verify schedule
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
-                data_dir=None,
+                bathy_data_dir=None,
                 check_space_time_region=True,
                 ignore_missing_bathymetry=True,
             )
