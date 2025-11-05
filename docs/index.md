@@ -5,10 +5,10 @@
 :hidden:
 
 Home <self>
-user-guide/index
+User Guide & Documentation <user-guide/index>
 api/index
 contributing/index
-VirtualShip Website <https://virtualship.oceanparcels.org/>
+VirtualShip Website <https://virtualship.parcels-code.org/>
 ```
 
 ```{include} ../README.md

@@ -49,7 +49,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 "po4": 14,
                 "ph": 8.1,
                 "phyc": 15,
-                "zooc": 16,
                 "nppv": 17,
                 "lat": ctd_bgcs[0].spacetime.location.lat,
                 "lon": ctd_bgcs[0].spacetime.location.lon,
@@ -61,7 +60,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 "po4": 19,
                 "ph": 8.0,
                 "phyc": 20,
-                "zooc": 21,
                 "nppv": 22,
                 "lat": ctd_bgcs[0].spacetime.location.lat,
                 "lon": ctd_bgcs[0].spacetime.location.lon,
@@ -75,7 +73,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 "po4": 14,
                 "ph": 8.1,
                 "phyc": 15,
-                "zooc": 16,
                 "nppv": 17,
                 "lat": ctd_bgcs[1].spacetime.location.lat,
                 "lon": ctd_bgcs[1].spacetime.location.lon,
@@ -87,7 +84,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 "po4": 19,
                 "ph": 8.0,
                 "phyc": 20,
-                "zooc": 21,
                 "nppv": 22,
                 "lat": ctd_bgcs[1].spacetime.location.lat,
                 "lon": ctd_bgcs[1].spacetime.location.lon,
@@ -105,7 +101,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
     po4 = np.zeros((2, 2, 2, 2))
     ph = np.zeros((2, 2, 2, 2))
     phyc = np.zeros((2, 2, 2, 2))
-    zooc = np.zeros((2, 2, 2, 2))
     nppv = np.zeros((2, 2, 2, 2))
 
     # Fill fields for both CTDs at surface and maxdepth
@@ -139,11 +134,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
     phyc[:, 1, 1, 0] = ctd_bgc_exp[1]["surface"]["phyc"]
     phyc[:, 0, 1, 0] = ctd_bgc_exp[1]["maxdepth"]["phyc"]
 
-    zooc[:, 1, 0, 1] = ctd_bgc_exp[0]["surface"]["zooc"]
-    zooc[:, 0, 0, 1] = ctd_bgc_exp[0]["maxdepth"]["zooc"]
-    zooc[:, 1, 1, 0] = ctd_bgc_exp[1]["surface"]["zooc"]
-    zooc[:, 0, 1, 0] = ctd_bgc_exp[1]["maxdepth"]["zooc"]
-
     nppv[:, 1, 0, 1] = ctd_bgc_exp[0]["surface"]["nppv"]
     nppv[:, 0, 0, 1] = ctd_bgc_exp[0]["maxdepth"]["nppv"]
     nppv[:, 1, 1, 0] = ctd_bgc_exp[1]["surface"]["nppv"]
@@ -159,7 +149,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
             "po4": po4,
             "ph": ph,
             "phyc": phyc,
-            "zooc": zooc,
             "nppv": nppv,
         },
         {
@@ -208,7 +197,6 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 "po4",
                 "ph",
                 "phyc",
-                "zooc",
                 "nppv",
                 "lat",
                 "lon",
