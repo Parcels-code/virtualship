@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
@@ -100,7 +100,7 @@ class Underwater_STInputDataset(InputDataset):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_copernicusmarine):
         """Initialize Underwater_STInstrument."""
         filenames = {
             "S": f"{Underwater_ST.name}_s.nc",
@@ -117,6 +117,7 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
+            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:

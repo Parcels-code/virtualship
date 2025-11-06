@@ -39,6 +39,13 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
     be provided on prompt, via command line arguments, or via a YAML config file. Run
     `virtualship fetch` on an expedition for more info.
     """
+    # ################################# TEMPORARY TIMER: START #################################
+    import time
+
+    start_time = time.time()
+    print("[TIMER] Expedition started...")
+    # ################################# TEMPORARY TIMER: START #################################
+
     if sum([username is None, password is None]) == 1:
         raise ValueError("Both username and password must be provided when using CLI.")
 
@@ -51,7 +58,7 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
 
     expedition.schedule.verify(
         expedition.ship_config.ship_speed_knots,
-        data_dir=None,
+        bathy_data_dir=None,
         check_space_time_region=True,
         ignore_missing_bathymetry=True,
     )
@@ -128,6 +135,12 @@ def _fetch(path: str | Path, username: str | None, password: str | None) -> None
         click.echo(f"{itype.value} data download completed.")
 
     complete_download(download_folder)
+
+    ################################# TEMPORARY TIMER: END #################################
+    end_time = time.time()
+    elapsed = end_time - start_time
+    print(f"[TIMER] Expedition completed in {elapsed:.2f} seconds.")
+    ################################# TEMPORARY TIMER: END #################################
 
 
 def _hash(s: str, *, length: int) -> str:

@@ -101,6 +101,7 @@ class Instrument(abc.ABC):
     # TODO: update documentation/quickstart
     # TODO: update tests
     # TODO: if use direct ingestion as primary data sourcing, can substantially cut code base (including _fetch.py, InputDataset objects). Consider this for Parcels v4 transition.
+    #! TODO: how is this handling credentials?! Seems to work already, are these set up from my previous instances of using copernicusmarine? Therefore users will only have to do it once too?
 
     def __init__(
         self,

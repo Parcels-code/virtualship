@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -127,7 +127,7 @@ class XBTInputDataset(InputDataset):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_copernicusmarine):
         """Initialize XBTInstrument."""
         filenames = {
             "U": f"{XBT.name}_uv.nc",
@@ -145,6 +145,7 @@ class XBTInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
+            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:

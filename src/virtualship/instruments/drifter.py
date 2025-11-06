@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import InputDataset, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -108,7 +108,7 @@ class DrifterInputDataset(InputDataset):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_copernicusmarine):
         """Initialize DrifterInstrument."""
         filenames = {
             "U": f"{Drifter.name}_uv.nc",
@@ -125,6 +125,7 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
+            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:
