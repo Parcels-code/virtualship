@@ -8,19 +8,18 @@ from pathlib import Path
 import pyproj
 
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
+from virtualship.expedition.checkpoint import Checkpoint
+from virtualship.expedition.expedition_cost import expedition_cost
+from virtualship.expedition.simulate_schedule import (
+    MeasurementsToSimulate,
+    ScheduleProblem,
+    simulate_schedule,
+)
 from virtualship.models import Schedule
 from virtualship.utils import (
     CHECKPOINT,
     _get_expedition,
     get_instrument_class,
-)
-
-from .checkpoint import Checkpoint
-from .expedition_cost import expedition_cost
-from .simulate_schedule import (
-    MeasurementsToSimulate,
-    ScheduleProblem,
-    simulate_schedule,
 )
 
 # projection used to sail between waypoints
@@ -32,7 +31,7 @@ external_logger = logging.getLogger("parcels.tools.loggers")
 external_logger.setLevel(logging.WARNING)
 
 
-def do_expedition(expedition_dir: str | Path) -> None:
+def _run(expedition_dir: str | Path) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
@@ -119,8 +118,8 @@ def do_expedition(expedition_dir: str | Path) -> None:
         # initialise instrument
         instrument = instrument_class(expedition=expedition, directory=expedition_dir)
 
-        # run simulation
-        instrument.run(
+        # execute simulation
+        instrument.execute(
             measurements=measurements,
             out_path=expedition_dir.joinpath("results", f"{itype.name.lower()}.zarr"),
         )

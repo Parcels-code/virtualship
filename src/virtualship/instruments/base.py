@@ -169,7 +169,7 @@ class Instrument(abc.ABC):
     def simulate(self, data_dir: Path, measurements: list, out_path: str | Path):
         """Simulate instrument measurements."""
 
-    def run(self, measurements: list, out_path: str | Path) -> None:
+    def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
         # TODO: this will have to be able to handle the non-spinner/instead progress bar for drifters and argos!
 

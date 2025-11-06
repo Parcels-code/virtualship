@@ -5,7 +5,7 @@ import click
 from virtualship import utils
 from virtualship.cli._fetch import _fetch
 from virtualship.cli._plan import _plan
-from virtualship.expedition.do_expedition import do_expedition
+from virtualship.cli._run import _run
 from virtualship.utils import (
     EXPEDITION,
     mfp_to_yaml,
@@ -113,4 +113,4 @@ def fetch(path: str | Path, username: str | None, password: str | None) -> None:
 )
 def run(path):
     """Run the expedition."""
-    do_expedition(Path(path))
+    _run(Path(path))
