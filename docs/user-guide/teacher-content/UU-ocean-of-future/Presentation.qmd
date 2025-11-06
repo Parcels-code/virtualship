@@ -1,24 +1,24 @@
 ---
 title: "Ocean observations"
 subtitle: "Ocean of the future <br> 13-11-2025"
-author: "Emma Daniels"
+author: "Emma Daniels & Jamie Atkins"
 format: 
     revealjs:
         slide-number: true
         theme: sky
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
         controls: true
-        incremental: false 
+        # incremental: true 
 title-slide-attributes:
-    data-background-image: "https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg"
+    data-background-image: "https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg"
     data-background-size: contain
+    # data-background-iframe: "https://www.youtube.com/embed/qeeipUefe8A?autoplay=1&controls=0&loop=1"
+    # data-background-video-loop: true
+    # data-background-video-muted: true
 ---
 
-## {background-iframe="https://wordwall.net/embed/4f6b5ced54d644c2bab35354305bb0eb?themeId=65&templateId=30&fontStackId=1" background-interactive="true"}
-
-## HMS Challenger
-First major scientific oceanographic expedition (1872-1876)
-![](https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg)
+##
+![](https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg)
 
 ## Difficulties of Measuring
 
@@ -33,7 +33,7 @@ First major scientific oceanographic expedition (1872-1876)
 ![](https://climate.esa.int/media/images/Screenshot_2024-01-15_at_13.10.35.max-2000x2000.png)
 Note that it's not possible to investigate the interior ocean
 
-## Advantages and Limitations
+## Satellite Observations
 
 ::: {.nonincremental}
 - **Advantages**:
@@ -58,7 +58,10 @@ Note that it's not possible to investigate the interior ocean
     - Cabled networks and instruments
     - Resurfacing equipment
 
-## Alternative Methods
+## PACE satellite ('24)
+![](https://pace.oceansciences.org/images/pace_first_light_composite.png)
+
+## Observation * calibration Methods
 
 - **Coastal Observatories**: Shore-based radar, tide gauges, and sensor networks
 - **Moored Buoys**: Fixed platforms for continuous time-series measurements
@@ -66,8 +69,9 @@ Note that it's not possible to investigate the interior ocean
 - **Animal-Borne Sensors**: Tags on marine animals collecting oceanographic data
 - **Research Vessels**: Ship-based surveys and deep-sea exploration
 
-<!-- ## 
-![](https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg) -->
+## HMS Challenger
+First major scientific oceanographic expedition (1872-1876)
+![](https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg)
 
 ## Alternative Methods
 ![](https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp)
@@ -78,7 +82,7 @@ Note that it's not possible to investigate the interior ocean
 - **Acoustic Doppler Current Profilers (ADCP)**: Measuring ocean currents
 - **Multibeam Echosounders**: High-resolution seafloor mapping
 - **Sediment Cores**: Extracting seafloor samples for geological and climate studies
-- **Net Tows**: Biological sampling of plankton and marine organisms
+- **Tows**: Biological sampling of plankton and marine organisms
 
 ##
 ![](https://www.medclic.es/uploads/filer_public/3d/ab/3dab4a25-0a19-40bb-afd4-a21520911a79/16_buque_oceanografico1_en_web.jpg)
@@ -96,7 +100,7 @@ Note that it's not possible to investigate the interior ocean
 
 ## Plankton measurements
 
-- Net Tows
+- Tows: nets or CPR
 - In-Situ Imaging
 - Water Sampling
 - Chlorophyll Analysis
@@ -109,3 +113,14 @@ Note that it's not possible to investigate the interior ocean
 ##
 ![](https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg)
 
+##
+![](https://www.cprsurvey.org/media/1747/)
+
+##
+![](https://www.researchgate.net/profile/Brian-Hunt-4/publication/352895937/figure/fig1/AS:1040886699921408@1625178136641/The-internal-workings-of-the-Continuous-Plankton-Recorder-CPR.png)
+
+##
+![](https://www.sciencelearn.org.nz/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F117510%2F1722379309-deployment-of-the-cpr20160726-1222-9citkh.jpg%3Fw%3D1840%26h%3D1223.404255319149&w=1080&q=85)
+
+##
+![](https://www.cprsurvey.org/media/1196/gacs-map.png?width=1030&height=517)
