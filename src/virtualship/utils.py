@@ -333,6 +333,10 @@ MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
     "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
 }
 
+# variables used in VirtualShip which are physical or biogeochemical variables, respectively
+COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
+COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
+
 
 def _select_product_id(
     physical: bool,

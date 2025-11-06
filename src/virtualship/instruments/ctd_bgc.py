@@ -272,6 +272,8 @@ class CTD_BGCInstrument(Instrument):
         # define output file for the simulation
         out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
+        breakpoint()
+
         # execute simulation
         ctd_bgc_particleset.execute(
             [

@@ -4,12 +4,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import copernicusmarine
+import numpy as np
 import xarray as xr
 from yaspin import yaspin
 
 from parcels import Field, FieldSet
 from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
-from virtualship.utils import _get_bathy_data, _select_product_id, ship_spinner
+from virtualship.utils import (
+    COPERNICUSMARINE_BGC_VARIABLES,
+    COPERNICUSMARINE_PHYS_VARIABLES,
+    _get_bathy_data,
+    _select_product_id,
+    ship_spinner,
+)
 
 if TYPE_CHECKING:
     from virtualship.models import Expedition, SpaceTimeRegion
@@ -140,15 +147,25 @@ class Instrument(abc.ABC):
             try:
                 datasets = []
                 for var in self.variables.values():
-                    physical = (
-                        True if var in ("uo", "vo", "so", "thetao") else False
-                    )  # TODO: add more if start using new physical variables! Or more dynamic way of determining?
-                    ds = self._get_copernicus_ds(
-                        physical=physical, var=var
-                    )  # user should be prompted for credentials
+                    physical = True if var in COPERNICUSMARINE_PHYS_VARIABLES else False
+
+                    # TODO: TEMPORARY BODGE FOR DRIFTER INSTRUMENT - REMOVE WHEN ABLE TO!
+                    if self.name == "Drifter":
+                        ds = self._get_copernicus_ds_DRIFTER(physical=physical, var=var)
+                    else:
+                        ds = self._get_copernicus_ds(physical=physical, var=var)
                     datasets.append(ds)
 
+                # make sure time dims are matched if BGC variables are present (different monthly/daily resolutions can impact fieldset_endtime in simulate)
+                if any(
+                    key in COPERNICUSMARINE_BGC_VARIABLES
+                    for key in ds.keys()
+                    for ds in datasets
+                ):
+                    datasets = self._align_temporal(datasets)
+
                 ds_concat = xr.merge(datasets)  # TODO: deal with WARNINGS?
+
                 fieldset = FieldSet.from_xarray_dataset(
                     ds_concat, self.variables, self.dimensions, mesh="spherical"
                 )
@@ -200,9 +217,6 @@ class Instrument(abc.ABC):
             bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
 
-        # TODO: is this line necessary?!
-        # fieldset.computeTimeChunk(0, 1)  # read in data already
-
         return fieldset
 
     @abc.abstractmethod
@@ -211,8 +225,6 @@ class Instrument(abc.ABC):
 
     def run(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        # TODO: this will have to be able to handle the non-spinner/instead progress bar for drifters and argos!
-
         if not self.verbose_progress:
             with yaspin(
                 text=f"Simulating {self.name} measurements... ",
@@ -226,6 +238,8 @@ class Instrument(abc.ABC):
             self.simulate(measurements, out_path)
             print("\n")
 
+        # self.simulate(measurements, out_path)
+
     def _get_data_dir(self, expedition_dir: Path) -> Path:
         space_time_region_hash = get_space_time_region_hash(
             self.expedition.schedule.space_time_region
@@ -238,7 +252,11 @@ class Instrument(abc.ABC):
 
         return data_dir
 
-    def _get_copernicus_ds(self, physical: bool, var: str) -> xr.Dataset:
+    def _get_copernicus_ds(
+        self,
+        physical: bool,
+        var: str,
+    ) -> xr.Dataset:
         """Get Copernicus Marine dataset for direct ingestion."""
         product_id = _select_product_id(
             physical=physical,
@@ -254,8 +272,59 @@ class Instrument(abc.ABC):
             maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude,
             minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude,
             maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-            variables=["uo", "vo", "so", "thetao"],
+            variables=[var],
             start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=self.expedition.schedule.space_time_region.time_range.end_time,
             coordinates_selection_method="outside",
         )
+
+    # TODO: TEMPORARY BODGE FOR DRIFTER INSTRUMENT - REMOVE WHEN ABLE TO!
+    def _get_copernicus_ds_DRIFTER(
+        self,
+        physical: bool,
+        var: str,
+    ) -> xr.Dataset:
+        """Get Copernicus Marine dataset for direct ingestion."""
+        product_id = _select_product_id(
+            physical=physical,
+            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
+            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
+            variable=var if not physical else None,
+        )
+
+        return copernicusmarine.open_dataset(
+            dataset_id=product_id,
+            dataset_part="default",
+            minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude
+            - 3.0,
+            maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude
+            + 3.0,
+            minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude
+            - 3.0,
+            maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
+            + 3.0,
+            maximum_depth=1.0,
+            minimum_depth=1.0,
+            variables=[var],
+            start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=self.expedition.schedule.space_time_region.time_range.end_time
+            + timedelta(days=21.0),
+            coordinates_selection_method="outside",
+        )
+
+    def _align_temporal(self, datasets: list[xr.Dataset]) -> list[xr.Dataset]:
+        """Align monthly and daily time dims of multiple datasets (by repeating monthly values daily)."""
+        reference_time = datasets[
+            np.argmax(ds.time for ds in datasets)
+        ].time  # daily timeseries
+
+        datasets_aligned = []
+        for ds in datasets:
+            if not np.array_equal(ds.time, reference_time):
+                # TODO: NEED TO CHOOSE BEST METHOD HERE
+                # ds = ds.resample(time="1D").ffill().reindex(time=reference_time)
+                # ds = ds.resample(time="1D").ffill()
+                ds = ds.reindex({"time": reference_time}, method="nearest")
+            datasets_aligned.append(ds)
+
+        return datasets_aligned
