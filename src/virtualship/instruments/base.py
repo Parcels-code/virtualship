@@ -4,13 +4,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import copernicusmarine
-import numpy as np
 import xarray as xr
 from yaspin import yaspin
 
 from parcels import FieldSet
 from virtualship.utils import (
-    COPERNICUSMARINE_BGC_VARIABLES,
     COPERNICUSMARINE_PHYS_VARIABLES,
     _get_bathy_data,
     _select_product_id,
@@ -61,31 +59,16 @@ class Instrument(abc.ABC):
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
         try:
-            datasets = []
-            for var in self.variables.values():
-                physical = True if var in COPERNICUSMARINE_PHYS_VARIABLES else False
-                datasets.append(self._get_copernicus_ds(physical=physical, var=var))
-
-            # make sure time dims are matched if BGC variables are present (different monthly/daily resolutions can impact fieldset_endtime in simulate)
-            all_keys = set().union(*(ds.keys() for ds in datasets))
-            if all_keys & set(COPERNICUSMARINE_BGC_VARIABLES):
-                datasets = self._align_temporal(datasets)
-
-            ds_concat = xr.merge(datasets)  # TODO: deal with WARNINGS?
-
-            fieldset = FieldSet.from_xarray_dataset(
-                ds_concat, self.variables, self.dimensions, mesh="spherical"
-            )
-
+            fieldset = self._generate_fieldset()
         except Exception as e:
             raise FileNotFoundError(
-                f"Failed to load input data directly from Copernicus Marine for instrument '{self.name}'. "
-                f"Please check your credentials, network connection, and variable names. Original error: {e}"
+                f"Failed to load input data directly from Copernicus Marine for instrument '{self.name}'.Original error: {e}"
             ) from e
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
             getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+
         # depth negative
         for g in fieldset.gridset.grids:
             g.negate_depth()
@@ -109,18 +92,22 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {self.name} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+        TMP = False
+        if not TMP:
+            if not self.verbose_progress:
+                with yaspin(
+                    text=f"Simulating {self.name} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+            else:
+                print(f"Simulating {self.name} measurements... ")
                 self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
+                print("\n")
         else:
-            print(f"Simulating {self.name} measurements... ")
             self.simulate(measurements, out_path)
-            print("\n")
 
     def _get_copernicus_ds(
         self,
@@ -160,19 +147,25 @@ class Instrument(abc.ABC):
             coordinates_selection_method="outside",
         )
 
-    def _align_temporal(self, datasets: list[xr.Dataset]) -> list[xr.Dataset]:
-        """Align monthly and daily time dims of multiple datasets (by repeating monthly values daily)."""
-        reference_time = datasets[
-            np.argmax(ds.time for ds in datasets)
-        ].time  # daily timeseries
+    def _generate_fieldset(self) -> FieldSet:
+        """
+        Fieldset per variable then combine.
 
-        datasets_aligned = []
-        for ds in datasets:
-            if not np.array_equal(ds.time, reference_time):
-                # TODO: NEED TO CHOOSE BEST METHOD HERE
-                # ds = ds.resample(time="1D").ffill().reindex(time=reference_time)
-                # ds = ds.resample(time="1D").ffill()
-                ds = ds.reindex({"time": reference_time}, method="nearest")
-            datasets_aligned.append(ds)
+        Avoids issues when creating one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
 
-        return datasets_aligned
+        """
+        fieldsets_list = []
+        for key, var in self.variables.items():
+            physical = True if var in COPERNICUSMARINE_PHYS_VARIABLES else False
+            ds = self._get_copernicus_ds(physical=physical, var=var)
+            fieldset = FieldSet.from_xarray_dataset(
+                ds, {key: var}, self.dimensions, mesh="spherical"
+            )
+            fieldsets_list.append(fieldset)
+        base_fieldset = fieldsets_list[0]
+        if len(fieldsets_list) > 1:
+            for fs, key in zip(
+                fieldsets_list[1:], list(self.variables.keys())[1:], strict=True
+            ):
+                base_fieldset.add_field(getattr(fs, key))
+        return base_fieldset
