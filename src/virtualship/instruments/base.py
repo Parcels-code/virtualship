@@ -223,7 +223,7 @@ class Instrument(abc.ABC):
     def simulate(self, data_dir: Path, measurements: list, out_path: str | Path):
         """Simulate instrument measurements."""
 
-    def run(self, measurements: list, out_path: str | Path) -> None:
+    def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
         if not self.verbose_progress:
             with yaspin(
