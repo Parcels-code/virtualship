@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 import copernicusmarine
 import numpy as np
 import xarray as xr
+from parcels import FieldSet
 from yaspin import yaspin
 
-from parcels import FieldSet
 from virtualship.utils import (
     COPERNICUSMARINE_BGC_VARIABLES,
     COPERNICUSMARINE_PHYS_VARIABLES,
