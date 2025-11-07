@@ -146,6 +146,11 @@ class ArgoFloatInstrument(Instrument):
             "T": f"{ArgoFloat.name}_t.nc",
         }
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+        buffer_spec = {
+            "latlon": 6.0,  # [degrees]
+            "time": 21.0,  # [days]
+        }
+
         super().__init__(
             ArgoFloat.name,
             expedition,
@@ -155,6 +160,8 @@ class ArgoFloatInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
+            buffer_spec=buffer_spec,
+            limit_spec=None,
         )
 
     def simulate(self, measurements, out_path) -> None:

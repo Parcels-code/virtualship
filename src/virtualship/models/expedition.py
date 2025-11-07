@@ -132,7 +132,7 @@ class Schedule(pydantic.BaseModel):
         if not ignore_missing_bathymetry:
             try:
                 bathymetry_field = _get_bathy_data(
-                    self.space_time_region
+                    self.space_time_region, latlon_buffer=None
                 ).bathymetry  # via copernicusmarine
             except Exception as e:
                 raise ScheduleError(
@@ -406,9 +406,6 @@ class InstrumentsConfig(pydantic.BaseModel):
                 hasattr(self, config_attr)
                 and inst_type not in instruments_in_expedition
             ):
-                print(
-                    f"{inst_type.value} configuration provided but not in schedule. Removing config."
-                )
                 setattr(self, config_attr, None)
         # Check all scheduled instruments are configured
         for inst_type in instruments_in_expedition:

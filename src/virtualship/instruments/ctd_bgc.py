@@ -130,6 +130,8 @@ class CTD_BGCInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
+            buffer_spec=None,
+            limit_spec=None,
         )
 
     def simulate(self, measurements, out_path) -> None:

@@ -412,14 +412,18 @@ def _start_end_in_product_timerange(
     )
 
 
-def _get_bathy_data(space_time_region) -> FieldSet:
+def _get_bathy_data(space_time_region, latlon_buffer: float | None = None) -> FieldSet:
     """Bathymetry data 'streamed' directly from Copernicus Marine."""
     ds_bathymetry = copernicusmarine.open_dataset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
-        minimum_longitude=space_time_region.spatial_range.minimum_longitude,
-        maximum_longitude=space_time_region.spatial_range.maximum_longitude,
-        minimum_latitude=space_time_region.spatial_range.minimum_latitude,
-        maximum_latitude=space_time_region.spatial_range.maximum_latitude,
+        minimum_longitude=space_time_region.spatial_range.minimum_longitude
+        - (latlon_buffer if latlon_buffer is not None else 0),
+        maximum_longitude=space_time_region.spatial_range.maximum_longitude
+        + (latlon_buffer if latlon_buffer is not None else 0),
+        minimum_latitude=space_time_region.spatial_range.minimum_latitude
+        - (latlon_buffer if latlon_buffer is not None else 0),
+        maximum_latitude=space_time_region.spatial_range.maximum_latitude
+        + (latlon_buffer if latlon_buffer is not None else 0),
         variables=["deptho"],
         start_datetime=space_time_region.time_range.start_time,
         end_datetime=space_time_region.time_range.end_time,

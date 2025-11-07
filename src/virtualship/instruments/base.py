@@ -25,9 +25,7 @@ class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
     #! TODO List:
-    # TODO: update documentation/quickstart
-    # TODO: update tests
-    #! TODO: how is this handling credentials?! Seems to work already, are these set up from my previous instances of using copernicusmarine? Therefore users will only have to do it once too?
+    # TODO: how is this handling credentials?! Seems to work already, are these set up from my previous instances of using copernicusmarine? Therefore users will only have to do it once too?
 
     def __init__(
         self,
@@ -39,7 +37,8 @@ class Instrument(abc.ABC):
         add_bathymetry: bool,
         allow_time_extrapolation: bool,
         verbose_progress: bool,
-        bathymetry_file: str = "bathymetry.nc",
+        buffer_spec: dict | None = None,
+        limit_spec: dict | None = None,
     ):
         """Initialise instrument."""
         self.name = name
@@ -53,10 +52,11 @@ class Instrument(abc.ABC):
             "time": "time",
             "depth": "depth",
         }  # same dimensions for all instruments
-        self.bathymetry_file = bathymetry_file
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
+        self.buffer_spec = buffer_spec
+        self.limit_spec = limit_spec
 
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
@@ -64,20 +64,11 @@ class Instrument(abc.ABC):
             datasets = []
             for var in self.variables.values():
                 physical = True if var in COPERNICUSMARINE_PHYS_VARIABLES else False
-
-                # TODO: TEMPORARY BODGE FOR DRIFTER INSTRUMENT - REMOVE WHEN ABLE TO!
-                if self.name == "Drifter":
-                    ds = self._get_copernicus_ds_DRIFTER(physical=physical, var=var)
-                else:
-                    ds = self._get_copernicus_ds(physical=physical, var=var)
-                datasets.append(ds)
+                datasets.append(self._get_copernicus_ds(physical=physical, var=var))
 
             # make sure time dims are matched if BGC variables are present (different monthly/daily resolutions can impact fieldset_endtime in simulate)
-            if any(
-                key in COPERNICUSMARINE_BGC_VARIABLES
-                for key in ds.keys()
-                for ds in datasets
-            ):
+            all_keys = set().union(*(ds.keys() for ds in datasets))
+            if all_keys & set(COPERNICUSMARINE_BGC_VARIABLES):
                 datasets = self._align_temporal(datasets)
 
             ds_concat = xr.merge(datasets)  # TODO: deal with WARNINGS?
@@ -100,11 +91,15 @@ class Instrument(abc.ABC):
             g.negate_depth()
 
         # bathymetry data
-        bathymetry_field = _get_bathy_data(
-            self.expedition.schedule.space_time_region
-        ).bathymetry
-        bathymetry_field.data = -bathymetry_field.data
-        fieldset.add_field(bathymetry_field)
+        if self.add_bathymetry:
+            bathymetry_field = _get_bathy_data(
+                self.expedition.schedule.space_time_region,
+                latlon_buffer=self.buffer_spec.get("latlon")
+                if self.buffer_spec
+                else None,
+            ).bathymetry
+            bathymetry_field.data = -bathymetry_field.data
+            fieldset.add_field(bathymetry_field)
 
         return fieldset
 
@@ -127,8 +122,6 @@ class Instrument(abc.ABC):
             self.simulate(measurements, out_path)
             print("\n")
 
-        # self.simulate(measurements, out_path)
-
     def _get_copernicus_ds(
         self,
         physical: bool,
@@ -142,50 +135,28 @@ class Instrument(abc.ABC):
             variable=var if not physical else None,
         )
 
-        return copernicusmarine.open_dataset(
-            dataset_id=product_id,
-            dataset_part="default",
-            minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude,
-            maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude,
-            minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude,
-            maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude,
-            variables=[var],
-            start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
-            end_datetime=self.expedition.schedule.space_time_region.time_range.end_time,
-            coordinates_selection_method="outside",
-        )
+        latlon_buffer = self.buffer_spec.get("latlon") if self.buffer_spec else 0.0
+        time_buffer = self.buffer_spec.get("time") if self.buffer_spec else 0.0
 
-    # TODO: TEMPORARY BODGE FOR DRIFTER INSTRUMENT - REMOVE WHEN ABLE TO!
-    def _get_copernicus_ds_DRIFTER(
-        self,
-        physical: bool,
-        var: str,
-    ) -> xr.Dataset:
-        """Get Copernicus Marine dataset for direct ingestion."""
-        product_id = _select_product_id(
-            physical=physical,
-            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
-            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
-            variable=var if not physical else None,
-        )
+        depth_min = self.limit_spec.get("depth_min") if self.limit_spec else None
+        depth_max = self.limit_spec.get("depth_max") if self.limit_spec else None
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            dataset_part="default",
             minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude
-            - 3.0,
+            - latlon_buffer,
             maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude
-            + 3.0,
+            + latlon_buffer,
             minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude
-            - 3.0,
+            - latlon_buffer,
             maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
-            + 3.0,
-            maximum_depth=1.0,
-            minimum_depth=1.0,
+            + latlon_buffer,
             variables=[var],
             start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
             end_datetime=self.expedition.schedule.space_time_region.time_range.end_time
-            + timedelta(days=21.0),
+            + timedelta(days=time_buffer),
+            minimum_depth=depth_min,
+            maximum_depth=depth_max,
             coordinates_selection_method="outside",
         )
 

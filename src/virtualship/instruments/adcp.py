@@ -61,6 +61,7 @@ class ADCPInstrument(Instrument):
             "V": f"{ADCP.name}_uv.nc",
         }
         variables = {"U": "uo", "V": "vo"}
+
         super().__init__(
             ADCP.name,
             expedition,
@@ -70,6 +71,8 @@ class ADCPInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
+            buffer_spec=None,
+            limit_spec=None,
         )
 
     def simulate(self, measurements, out_path) -> None:

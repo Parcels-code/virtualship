@@ -71,6 +71,15 @@ class DrifterInstrument(Instrument):
             "T": f"{Drifter.name}_t.nc",
         }
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
+        buffer_spec = {
+            "latlon": 6.0,  # [degrees]
+            "time": 21.0,  # [days]
+        }
+        limit_spec = {
+            "depth_min": 1.0,  # [meters]
+            "depth_max": 1.0,  # [meters]
+        }
+
         super().__init__(
             Drifter.name,
             expedition,
@@ -80,6 +89,8 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
+            buffer_spec=buffer_spec,
+            limit_spec=limit_spec,
         )
 
     def simulate(self, measurements, out_path) -> None:
@@ -121,7 +132,7 @@ class DrifterInstrument(Instrument):
             chunks=[len(drifter_particleset), 100],
         )
 
-        # get earliest between fieldset end time and provide end time
+        # get earliest between fieldset end time and prescribed end time
         fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
         if ENDTIME is None:
             actual_endtime = fieldset_endtime
