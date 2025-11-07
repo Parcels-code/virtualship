@@ -5,10 +5,10 @@ from typing import ClassVar
 import numpy as np
 
 from parcels import JITParticle, ParticleSet, Variable
-from virtualship.instruments.base import InputDataset, Instrument
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -93,74 +93,6 @@ def _ctd_bgc_cast(particle, fieldset, time):
 
 
 # =====================================================
-# SECTION: InputDataset Class
-# =====================================================
-
-
-@register_input_dataset(InstrumentType.CTD_BGC)
-class CTD_BGCInputDataset(InputDataset):
-    """Input dataset object for CTD_BGC instrument."""
-
-    DOWNLOAD_BUFFERS: ClassVar[dict] = {
-        "latlon_degrees": 0.0,
-        "days": 0.0,
-    }  # CTD_BGC data requires no buffers
-
-    def __init__(self, data_dir, credentials, space_time_region):
-        """Initialise with instrument's name."""
-        super().__init__(
-            CTD_BGC.name,
-            self.DOWNLOAD_BUFFERS["latlon_degrees"],
-            self.DOWNLOAD_BUFFERS["days"],
-            space_time_region.spatial_range.minimum_depth,
-            space_time_region.spatial_range.maximum_depth,
-            data_dir,
-            credentials,
-            space_time_region,
-        )
-
-    def get_datasets_dict(self) -> dict:
-        """Variable specific args for instrument."""
-        return {
-            "o2data": {
-                "physical": False,
-                "variables": ["o2"],
-                "output_filename": f"{self.name}_o2.nc",
-            },
-            "chlorodata": {
-                "physical": False,
-                "variables": ["chl"],
-                "output_filename": f"{self.name}_chl.nc",
-            },
-            "nitratedata": {
-                "physical": False,
-                "variables": ["no3"],
-                "output_filename": f"{self.name}_no3.nc",
-            },
-            "phosphatedata": {
-                "physical": False,
-                "variables": ["po4"],
-                "output_filename": f"{self.name}_po4.nc",
-            },
-            "phdata": {
-                "physical": False,
-                "variables": ["ph"],
-                "output_filename": f"{self.name}_ph.nc",
-            },
-            "phytoplanktondata": {
-                "physical": False,
-                "variables": ["phyc"],
-                "output_filename": f"{self.name}_phyc.nc",
-            },
-            "primaryproductiondata": {
-                "physical": False,
-                "variables": ["nppv"],
-                "output_filename": f"{self.name}_nppv.nc",
-            },
-        }
-
-
-# =====================================================
 # SECTION: Instrument Class
 # =====================================================
 
@@ -169,7 +101,7 @@ class CTD_BGCInputDataset(InputDataset):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    def __init__(self, expedition, directory, from_copernicusmarine):
+    def __init__(self, expedition, directory):
         """Initialize CTD_BGCInstrument."""
         filenames = {
             "o2": f"{CTD_BGC.name}_o2.nc",
@@ -198,7 +130,6 @@ class CTD_BGCInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:

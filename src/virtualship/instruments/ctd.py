@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, ClassVar
 import numpy as np
 
 from parcels import JITParticle, ParticleSet, Variable
-from virtualship.instruments.base import InputDataset, Instrument
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -71,49 +71,6 @@ def _ctd_cast(particle, fieldset, time):
 
 
 # =====================================================
-# SECTION: InputDataset Class
-# =====================================================
-
-
-@register_input_dataset(InstrumentType.CTD)
-class CTDInputDataset(InputDataset):
-    """Input dataset for CTD instrument."""
-
-    DOWNLOAD_BUFFERS: ClassVar[dict] = {
-        "latlon_degrees": 0.0,
-        "days": 0.0,
-    }  # CTD data requires no buffers
-
-    def __init__(self, data_dir, credentials, space_time_region):
-        """Initialise with instrument's name."""
-        super().__init__(
-            CTD.name,
-            self.DOWNLOAD_BUFFERS["latlon_degrees"],
-            self.DOWNLOAD_BUFFERS["days"],
-            space_time_region.spatial_range.minimum_depth,
-            space_time_region.spatial_range.maximum_depth,
-            data_dir,
-            credentials,
-            space_time_region,
-        )
-
-    def get_datasets_dict(self) -> dict:
-        """Get variable specific args for instrument."""
-        return {
-            "Sdata": {
-                "physical": True,
-                "variables": ["so"],
-                "output_filename": f"{self.name}_s.nc",
-            },
-            "Tdata": {
-                "physical": True,
-                "variables": ["thetao"],
-                "output_filename": f"{self.name}_t.nc",
-            },
-        }
-
-
-# =====================================================
 # SECTION: Instrument Class
 # =====================================================
 
@@ -122,7 +79,7 @@ class CTDInputDataset(InputDataset):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(self, expedition, directory, from_copernicusmarine):
+    def __init__(self, expedition, directory):
         """Initialize CTDInstrument."""
         filenames = {
             "S": f"{CTD.name}_s.nc",
@@ -139,7 +96,6 @@ class CTDInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pyproj
 
-from virtualship.cli._fetch import get_existing_download, get_space_time_region_hash
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
     ScheduleProblem,
@@ -34,12 +33,11 @@ external_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
-def _run(expedition_dir: str | Path, from_copernicusmarine: bool) -> None:
+def _run(expedition_dir: str | Path) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
     :param expedition_dir: The base directory for the expedition.
-    :param from_copernicusmarine: Whether to use direct data ingestion from Copernicus Marine. Should be determined by CLI flag.
     """
     # ################################# TEMPORARY TIMER: START #################################
     import time
@@ -70,16 +68,7 @@ def _run(expedition_dir: str | Path, from_copernicusmarine: bool) -> None:
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
-    # verify schedule is valid
-    if from_copernicusmarine:
-        bathy_data_dir = None
-    else:
-        bathy_data_dir = get_existing_download(
-            expedition_dir,
-            get_space_time_region_hash(expedition.schedule.space_time_region),
-        )
-
-    expedition.schedule.verify(expedition.ship_config.ship_speed_knots, bathy_data_dir)
+    expedition.schedule.verify(expedition.ship_config.ship_speed_knots)
 
     # simulate the schedule
     schedule_results = simulate_schedule(
@@ -133,7 +122,6 @@ def _run(expedition_dir: str | Path, from_copernicusmarine: bool) -> None:
         instrument = instrument_class(
             expedition=expedition,
             directory=expedition_dir,
-            from_copernicusmarine=from_copernicusmarine,
         )
 
         # execute simulation

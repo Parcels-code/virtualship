@@ -4,10 +4,9 @@ from typing import ClassVar
 import numpy as np
 
 from parcels import ParticleSet, ScipyParticle, Variable
-from virtualship.instruments.base import InputDataset, Instrument
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    register_input_dataset,
     register_instrument,
 )
 
@@ -47,46 +46,6 @@ def _sample_velocity(particle, fieldset, time):
 
 
 # =====================================================
-# SECTION: InputDataset Class
-# =====================================================
-
-
-@register_input_dataset(InstrumentType.ADCP)
-class ADCPInputDataset(InputDataset):
-    """Input dataset for ADCP instrument."""
-
-    DOWNLOAD_BUFFERS: ClassVar[dict] = {
-        "latlon_degrees": 0.0,
-        "days": 0.0,
-    }  # ADCP data requires no buffers
-
-    DOWNLOAD_LIMITS: ClassVar[dict] = {"min_depth": 1}
-
-    def __init__(self, data_dir, credentials, space_time_region):
-        """Initialise with instrument's name."""
-        super().__init__(
-            ADCP.name,
-            self.DOWNLOAD_BUFFERS["latlon_degrees"],
-            self.DOWNLOAD_BUFFERS["days"],
-            space_time_region.spatial_range.minimum_depth,
-            space_time_region.spatial_range.maximum_depth,
-            data_dir,
-            credentials,
-            space_time_region,
-        )
-
-    def get_datasets_dict(self) -> dict:
-        """Get variable specific args for instrument."""
-        return {
-            "UVdata": {
-                "physical": True,
-                "variables": ["uo", "vo"],
-                "output_filename": f"{self.name}_uv.nc",
-            },
-        }
-
-
-# =====================================================
 # SECTION: Instrument Class
 # =====================================================
 
@@ -95,7 +54,7 @@ class ADCPInputDataset(InputDataset):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    def __init__(self, expedition, directory, from_copernicusmarine):
+    def __init__(self, expedition, directory):
         """Initialize ADCPInstrument."""
         filenames = {
             "U": f"{ADCP.name}_uv.nc",
@@ -111,7 +70,6 @@ class ADCPInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:

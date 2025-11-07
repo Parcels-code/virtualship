@@ -3,7 +3,6 @@ from pathlib import Path
 import click
 
 from virtualship import utils
-from virtualship.cli._fetch import _fetch
 from virtualship.cli._plan import _plan
 from virtualship.cli._run import _run
 from virtualship.utils import (
@@ -76,48 +75,12 @@ def plan(path):
     _plan(Path(path))
 
 
-@click.command()
-@click.argument(
-    "path",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
-)
-@click.option(
-    "--username",
-    type=str,
-    default=None,
-    help="Copernicus Marine username.",
-)
-@click.option(
-    "--password",
-    type=str,
-    default=None,
-    help="Copernicus Marine password.",
-)
-def fetch(path: str | Path, username: str | None, password: str | None) -> None:
-    """
-    Download input data for an expedition.
-
-    Entrypoint for the tool to download data based on space-time region provided in the
-    schedule file. Data is downloaded from Copernicus Marine, credentials for which can be
-    obtained via registration: https://data.marine.copernicus.eu/register . Credentials can
-    be provided on prompt, via command line arguments, or via a YAML config file. Run
-    `virtualship fetch` on a expedition for more info.
-    """
-    _fetch(path, username, password)
-
-
 # TODO: also add option to 'stream' via link to dir elsewhere, e.g. simlink or path to data stored elsewhere that isn't expedition dir!
 @click.command()
 @click.argument(
     "path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
 )
-@click.option(
-    "--from-copernicusmarine",
-    is_flag=True,
-    default=False,
-    help="Ingest fieldsets directly via copernicusmarine toolbox.",
-)
-def run(path, from_copernicusmarine: bool):
+def run(path):
     """Run the expedition."""
-    _run(Path(path), from_copernicusmarine)
+    _run(Path(path))

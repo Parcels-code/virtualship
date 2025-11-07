@@ -4,9 +4,9 @@ from typing import ClassVar
 import numpy as np
 
 from parcels import ParticleSet, ScipyParticle, Variable
-from virtualship.instruments.base import InputDataset, Instrument
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import add_dummy_UV, register_input_dataset, register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -47,51 +47,6 @@ def _sample_temperature(particle, fieldset, time):
 
 
 # =====================================================
-# SECTION: InputDataset Class
-# =====================================================
-
-
-@register_input_dataset(InstrumentType.UNDERWATER_ST)
-class Underwater_STInputDataset(InputDataset):
-    """Input dataset for Underwater_ST instrument."""
-
-    DOWNLOAD_BUFFERS: ClassVar[dict] = {
-        "latlon_degrees": 0.0,
-        "days": 0.0,
-    }  # Underwater_ST data requires no buffers
-
-    DOWNLOAD_LIMITS: ClassVar[dict] = {"min_depth": 1}
-
-    def __init__(self, data_dir, credentials, space_time_region):
-        """Initialise with instrument's name."""
-        super().__init__(
-            Underwater_ST.name,
-            self.DOWNLOAD_BUFFERS["latlon_degrees"],
-            self.DOWNLOAD_BUFFERS["days"],
-            -2.0,  # is always at 2m depth
-            -2.0,  # is always at 2m depth
-            data_dir,
-            credentials,
-            space_time_region,
-        )
-
-    def get_datasets_dict(self) -> dict:
-        """Get variable specific args for instrument."""
-        return {
-            "Sdata": {
-                "physical": True,
-                "variables": ["so"],
-                "output_filename": f"{self.name}_s.nc",
-            },
-            "Tdata": {
-                "physical": True,
-                "variables": ["thetao"],
-                "output_filename": f"{self.name}_t.nc",
-            },
-        }
-
-
-# =====================================================
 # SECTION: Instrument Class
 # =====================================================
 
@@ -100,7 +55,7 @@ class Underwater_STInputDataset(InputDataset):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(self, expedition, directory, from_copernicusmarine):
+    def __init__(self, expedition, directory):
         """Initialize Underwater_STInstrument."""
         filenames = {
             "S": f"{Underwater_ST.name}_s.nc",
@@ -117,7 +72,6 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            from_copernicusmarine=from_copernicusmarine,
         )
 
     def simulate(self, measurements, out_path) -> None:
