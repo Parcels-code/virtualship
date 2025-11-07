@@ -68,7 +68,7 @@ def init(path, from_mfp):
 )
 def plan(path):
     """
-    Launch UI to help build schedule and ship config files.
+    Launch UI to help build expedition configuration (YAML) file.
 
     Should you encounter any issues with using this tool, please report an issue describing the problem to the VirtualShip issue tracker at: https://github.com/OceanParcels/virtualship/issues"
     """
@@ -82,5 +82,5 @@ def plan(path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
 )
 def run(path):
-    """Run the expedition."""
+    """Execute the expedition simulations."""
     _run(Path(path))
