@@ -147,7 +147,7 @@ class ArgoFloatInstrument(Instrument):
         }
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         buffer_spec = {
-            "latlon": 6.0,  # [degrees]
+            "latlon": 3.0,  # [degrees]
             "time": 21.0,  # [days]
         }
 

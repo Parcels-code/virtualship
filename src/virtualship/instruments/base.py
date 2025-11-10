@@ -1,4 +1,5 @@
 import abc
+from collections import OrderedDict
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -8,6 +9,7 @@ import xarray as xr
 from yaspin import yaspin
 
 from parcels import FieldSet
+from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
     _get_bathy_data,
@@ -43,7 +45,8 @@ class Instrument(abc.ABC):
         self.expedition = expedition
         self.directory = directory
         self.filenames = filenames
-        self.variables = variables
+
+        self.variables = OrderedDict(variables)
         self.dimensions = {
             "lon": "longitude",
             "lat": "latitude",
@@ -61,8 +64,8 @@ class Instrument(abc.ABC):
         try:
             fieldset = self._generate_fieldset()
         except Exception as e:
-            raise FileNotFoundError(
-                f"Failed to load input data directly from Copernicus Marine for instrument '{self.name}'.Original error: {e}"
+            raise CopernicusCatalogueError(
+                f"Failed to load input data directly from Copernicus Marine for instrument '{self.name}'. Original error: {e}"
             ) from e
 
         # interpolation methods
@@ -92,22 +95,18 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False
-        if not TMP:
-            if not self.verbose_progress:
-                with yaspin(
-                    text=f"Simulating {self.name} measurements... ",
-                    side="right",
-                    spinner=ship_spinner,
-                ) as spinner:
-                    self.simulate(measurements, out_path)
-                    spinner.ok("✅\n")
-            else:
-                print(f"Simulating {self.name} measurements... ")
+        if not self.verbose_progress:
+            with yaspin(
+                text=f"Simulating {self.name} measurements... ",
+                side="right",
+                spinner=ship_spinner,
+            ) as spinner:
                 self.simulate(measurements, out_path)
-                print("\n")
+                spinner.ok("✅\n")
         else:
+            print(f"Simulating {self.name} measurements... ")
             self.simulate(measurements, out_path)
+            print("\n")
 
     def _get_copernicus_ds(
         self,
@@ -122,11 +121,10 @@ class Instrument(abc.ABC):
             variable=var if not physical else None,
         )
 
-        latlon_buffer = self.buffer_spec.get("latlon") if self.buffer_spec else 0.0
-        time_buffer = self.buffer_spec.get("time") if self.buffer_spec else 0.0
-
-        depth_min = self.limit_spec.get("depth_min") if self.limit_spec else None
-        depth_max = self.limit_spec.get("depth_max") if self.limit_spec else None
+        latlon_buffer = self._get_spec_value("buffer", "latlon", 0.0)
+        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+        depth_min = self._get_spec_value("limit", "depth_min", None)
+        depth_max = self._get_spec_value("limit", "depth_max", None)
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
@@ -151,21 +149,27 @@ class Instrument(abc.ABC):
         """
         Fieldset per variable then combine.
 
-        Avoids issues when creating one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
-
+        Avoids issues when creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
         """
         fieldsets_list = []
-        for key, var in self.variables.items():
+        keys = list(self.variables.keys())
+        for key in keys:
+            var = self.variables[key]
             physical = True if var in COPERNICUSMARINE_PHYS_VARIABLES else False
             ds = self._get_copernicus_ds(physical=physical, var=var)
-            fieldset = FieldSet.from_xarray_dataset(
+            fs = FieldSet.from_xarray_dataset(
                 ds, {key: var}, self.dimensions, mesh="spherical"
             )
-            fieldsets_list.append(fieldset)
+            fieldsets_list.append(fs)
+
         base_fieldset = fieldsets_list[0]
         if len(fieldsets_list) > 1:
-            for fs, key in zip(
-                fieldsets_list[1:], list(self.variables.keys())[1:], strict=True
-            ):
+            for fs, key in zip(fieldsets_list[1:], keys[1:], strict=True):
                 base_fieldset.add_field(getattr(fs, key))
+
         return base_fieldset
+
+    def _get_spec_value(self, spec_type: str, key: str, default=None):
+        """Helper to extract a value from buffer_spec or limit_spec."""
+        spec = self.buffer_spec if spec_type == "buffer" else self.limit_spec
+        return spec.get(key) if spec and spec.get(key) is not None else default

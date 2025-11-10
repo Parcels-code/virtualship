@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import time
 from pathlib import Path
 
 import pyproj
@@ -39,12 +40,9 @@ def _run(expedition_dir: str | Path) -> None:
 
     :param expedition_dir: The base directory for the expedition.
     """
-    # ################################# TEMPORARY TIMER: START #################################
-    import time
-
+    # start timing
     start_time = time.time()
     print("[TIMER] Expedition started...")
-    # ################################# TEMPORARY TIMER: START #################################
 
     print("\n╔═════════════════════════════════════════════════╗")
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
@@ -139,11 +137,10 @@ def _run(expedition_dir: str | Path) -> None:
     )
     print("\n------------- END -------------\n")
 
-    ################################# TEMPORARY TIMER: END #################################
+    # end timing
     end_time = time.time()
     elapsed = end_time - start_time
-    print(f"[TIMER] Expedition completed in {elapsed:.2f} seconds.")
-    ################################# TEMPORARY TIMER: END #################################
+    print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
