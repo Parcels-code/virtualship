@@ -2,13 +2,13 @@ from pathlib import Path
 
 import click
 
-from virtualship import utils
 from virtualship.cli._plan import _plan
 from virtualship.cli._run import _run
 from virtualship.utils import (
     COPERNICUSMARINE_BGC_VARIABLES,
     COPERNICUSMARINE_PHYS_VARIABLES,
     EXPEDITION,
+    get_example_expedition,
     mfp_to_yaml,
 )
 
@@ -58,7 +58,7 @@ def init(path, from_mfp):
         )
     else:
         # Create a default example expedition YAML
-        expedition.write_text(utils.get_example_expedition())
+        expedition.write_text(get_example_expedition())
 
     click.echo(f"Created '{expedition.name}' at {path}.")
 
@@ -90,7 +90,8 @@ def plan(path):
     help="Use pre-downloaded data, saved to disk, for expedition, instead of streaming directly via Copernicus Marine"
     "Assumes all data is stored in prescribed directory, and all variables (as listed below) are present."
     f"Required variables are: {set(COPERNICUSMARINE_PHYS_VARIABLES + COPERNICUSMARINE_BGC_VARIABLES)}"
-    "Assumes that variable names at least contain the standard Copernicus Marine variable name as a substring.",
+    "Assumes that variable names at least contain the standard Copernicus Marine variable name as a substring."
+    "Will also take the first file found containing the variable name substring. CAUTION if multiple files contain the same variable name substring.",
 )
 def run(path, from_data):
     """Execute the expedition simulations."""
