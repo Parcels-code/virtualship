@@ -163,7 +163,7 @@ class Instrument(abc.ABC):
         """
         Load local dataset from specified data directory.
 
-        Sliced according to expedition.schedule.space_time_region andbuffer and limit specs.
+        Sliced according to expedition.schedule.space_time_region and buffer specs.
         """
         ds = xr.open_dataset(self.from_data.joinpath(filename))
 
@@ -193,15 +193,10 @@ class Instrument(abc.ABC):
             self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
             + self._get_spec_value("buffer", "latlon", 3.0)
         )
-        min_depth = self._get_spec_value("limit", "depth_min", None)
-        max_depth = self._get_spec_value("limit", "depth_max", None)
 
         return ds.sel(
             latitude=slice(min_lat, max_lat),
             longitude=slice(min_lon, max_lon),
-            depth=slice(min_depth, max_depth)
-            if min_depth is not None and max_depth is not None
-            else slice(None),
         )
 
     def _generate_fieldset(self) -> FieldSet:

@@ -38,7 +38,7 @@ instruments_config:
     min_depth_meter: -11.0
     stationkeeping_time_minutes: 20.0
   drifter_config:
-    depth_meter: 0.0
+    depth_meter: -1.0
     lifetime_minutes: 40320.0
   ship_underwater_st_config:
     period_minutes: 5.0
