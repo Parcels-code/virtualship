@@ -79,7 +79,7 @@ def _ctd_cast(particle, fieldset, time):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize CTDInstrument."""
         filenames = {
             "S": f"{CTD.name}_s.nc",
@@ -98,6 +98,7 @@ class CTDInstrument(Instrument):
             verbose_progress=False,
             buffer_spec=None,
             limit_spec=None,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

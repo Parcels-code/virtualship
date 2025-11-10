@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, TextIO
 
 import copernicusmarine
 import numpy as np
+import xarray as xr
 
 from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
@@ -412,23 +413,41 @@ def _start_end_in_product_timerange(
     )
 
 
-def _get_bathy_data(space_time_region, latlon_buffer: float | None = None) -> FieldSet:
-    """Bathymetry data 'streamed' directly from Copernicus Marine."""
-    ds_bathymetry = copernicusmarine.open_dataset(
-        dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
-        minimum_longitude=space_time_region.spatial_range.minimum_longitude
-        - (latlon_buffer if latlon_buffer is not None else 0),
-        maximum_longitude=space_time_region.spatial_range.maximum_longitude
-        + (latlon_buffer if latlon_buffer is not None else 0),
-        minimum_latitude=space_time_region.spatial_range.minimum_latitude
-        - (latlon_buffer if latlon_buffer is not None else 0),
-        maximum_latitude=space_time_region.spatial_range.maximum_latitude
-        + (latlon_buffer if latlon_buffer is not None else 0),
-        variables=["deptho"],
-        start_datetime=space_time_region.time_range.start_time,
-        end_datetime=space_time_region.time_range.end_time,
-        coordinates_selection_method="outside",
-    )
+def _get_bathy_data(
+    space_time_region, latlon_buffer: float | None = None, from_data: Path | None = None
+) -> FieldSet:
+    """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
+    if from_data is not None:  # load from local data
+        var = "deptho"
+        try:
+            filename, _ = _find_nc_file_with_variable(from_data, var)
+        except Exception as e:
+            raise RuntimeError(
+                f"Could not find bathymetry variable '{var}' in provided data directory '{from_data}'."
+            ) from e
+        ds_bathymetry = xr.open_dataset(from_data.joinpath(filename))
+        bathymetry_variables = {"bathymetry": "deptho"}
+        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+        return FieldSet.from_xarray_dataset(
+            ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+        )
+
+    else:  # stream via Copernicus Marine
+        ds_bathymetry = copernicusmarine.open_dataset(
+            dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
+            minimum_longitude=space_time_region.spatial_range.minimum_longitude
+            - (latlon_buffer if latlon_buffer is not None else 0),
+            maximum_longitude=space_time_region.spatial_range.maximum_longitude
+            + (latlon_buffer if latlon_buffer is not None else 0),
+            minimum_latitude=space_time_region.spatial_range.minimum_latitude
+            - (latlon_buffer if latlon_buffer is not None else 0),
+            maximum_latitude=space_time_region.spatial_range.maximum_latitude
+            + (latlon_buffer if latlon_buffer is not None else 0),
+            variables=["deptho"],
+            start_datetime=space_time_region.time_range.start_time,
+            end_datetime=space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
+        )
     bathymetry_variables = {"bathymetry": "deptho"}
     bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
     return FieldSet.from_xarray_dataset(
@@ -456,3 +475,16 @@ def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float
 
     cost = ship_cost + argo_cost + drifter_cost
     return cost
+
+
+def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
+    """Search for a .nc file in the given directory containing the specified variable."""
+    for nc_file in data_dir.glob("*.nc"):
+        try:
+            with xr.open_dataset(nc_file, chunks={}) as ds:
+                matched_vars = [v for v in ds.variables if var in v]
+                if matched_vars:
+                    return nc_file.name, matched_vars[0]
+        except Exception:
+            continue
+    return None

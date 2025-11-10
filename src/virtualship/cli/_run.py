@@ -35,7 +35,7 @@ external_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
-def _run(expedition_dir: str | Path) -> None:
+def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
@@ -49,20 +49,21 @@ def _run(expedition_dir: str | Path) -> None:
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
     print("╚═════════════════════════════════════════════════╝")
 
-    COPERNICUS_CREDS_FILE = os.path.expandvars(
-        "$HOME/.copernicusmarine/.copernicusmarine-credentials"
-    )
-
-    if (
-        os.path.isfile(COPERNICUS_CREDS_FILE)
-        and os.path.getsize(COPERNICUS_CREDS_FILE) > 0
-    ):
-        pass
-    else:
-        print(
-            "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n"
+    if from_data is None:
+        COPERNICUS_CREDS_FILE = os.path.expandvars(
+            "$HOME/.copernicusmarine/.copernicusmarine-credentials"
         )
-        copernicusmarine.login()
+
+        if (
+            os.path.isfile(COPERNICUS_CREDS_FILE)
+            and os.path.getsize(COPERNICUS_CREDS_FILE) > 0
+        ):
+            pass
+        else:
+            print(
+                "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n"
+            )
+            copernicusmarine.login()
 
     if isinstance(expedition_dir, str):
         expedition_dir = Path(expedition_dir)
@@ -136,6 +137,7 @@ def _run(expedition_dir: str | Path) -> None:
         instrument = instrument_class(
             expedition=expedition,
             directory=expedition_dir,
+            from_data=Path(from_data) if from_data is not None else None,
         )
 
         # execute simulation

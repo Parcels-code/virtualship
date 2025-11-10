@@ -54,7 +54,7 @@ def _sample_velocity(particle, fieldset, time):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize ADCPInstrument."""
         filenames = {
             "U": f"{ADCP.name}_uv.nc",
@@ -73,6 +73,7 @@ class ADCPInstrument(Instrument):
             verbose_progress=False,
             buffer_spec=None,
             limit_spec=None,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

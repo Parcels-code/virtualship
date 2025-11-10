@@ -137,7 +137,7 @@ def _check_error(particle, fieldset, time):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize ArgoFloatInstrument."""
         filenames = {
             "U": f"{ArgoFloat.name}_uv.nc",
@@ -162,6 +162,7 @@ class ArgoFloatInstrument(Instrument):
             verbose_progress=True,
             buffer_spec=buffer_spec,
             limit_spec=None,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

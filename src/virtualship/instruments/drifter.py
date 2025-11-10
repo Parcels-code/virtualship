@@ -63,7 +63,7 @@ def _check_lifetime(particle, fieldset, time):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize DrifterInstrument."""
         filenames = {
             "U": f"{Drifter.name}_uv.nc",
@@ -91,6 +91,7 @@ class DrifterInstrument(Instrument):
             verbose_progress=True,
             buffer_spec=buffer_spec,
             limit_spec=limit_spec,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

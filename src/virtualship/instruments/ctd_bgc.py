@@ -101,7 +101,7 @@ def _ctd_bgc_cast(particle, fieldset, time):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize CTD_BGCInstrument."""
         filenames = {
             "o2": f"{CTD_BGC.name}_o2.nc",
@@ -132,6 +132,7 @@ class CTD_BGCInstrument(Instrument):
             verbose_progress=False,
             buffer_spec=None,
             limit_spec=None,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

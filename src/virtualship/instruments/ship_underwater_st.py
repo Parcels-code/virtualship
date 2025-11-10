@@ -55,7 +55,7 @@ def _sample_temperature(particle, fieldset, time):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(self, expedition, directory):
+    def __init__(self, expedition, directory, from_data):
         """Initialize Underwater_STInstrument."""
         filenames = {
             "S": f"{Underwater_ST.name}_s.nc",
@@ -74,6 +74,7 @@ class Underwater_STInstrument(Instrument):
             verbose_progress=False,
             buffer_spec=None,
             limit_spec=None,
+            from_data=from_data,
         )
 
     def simulate(self, measurements, out_path) -> None:

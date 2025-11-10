@@ -87,7 +87,7 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
-        ignore_missing_bathymetry: bool = False,
+        ignore_land_test: bool = False,
         *,
         check_space_time_region: bool = False,
     ) -> None:
@@ -129,11 +129,12 @@ class Schedule(pydantic.BaseModel):
         # check if all waypoints are in water using bathymetry data
         # TODO: write test that checks that will flag when waypoint is on land!! [add to existing suite of fail .verify() tests in test_expedition.py]
         land_waypoints = []
-        if not ignore_missing_bathymetry:
+        if not ignore_land_test:
             try:
                 bathymetry_field = _get_bathy_data(
-                    self.space_time_region, latlon_buffer=None
-                ).bathymetry  # via copernicusmarine
+                    self.space_time_region,
+                    latlon_buffer=None,
+                ).bathymetry
             except Exception as e:
                 raise ScheduleError(
                     f"Problem loading bathymetry data (used to verify waypoints are in water) directly via copernicusmarine. \n\n original message: {e}"

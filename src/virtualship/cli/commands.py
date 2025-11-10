@@ -6,6 +6,8 @@ from virtualship import utils
 from virtualship.cli._plan import _plan
 from virtualship.cli._run import _run
 from virtualship.utils import (
+    COPERNICUSMARINE_BGC_VARIABLES,
+    COPERNICUSMARINE_PHYS_VARIABLES,
     EXPEDITION,
     mfp_to_yaml,
 )
@@ -81,6 +83,15 @@ def plan(path):
     "path",
     type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
 )
-def run(path):
+@click.option(
+    "--from-data",
+    type=str,
+    default=None,
+    help="Use pre-downloaded data, saved to disk, for expedition, instead of streaming directly via Copernicus Marine"
+    "Assumes all data is stored in prescribed directory, and all variables (as listed below) are present."
+    f"Required variables are: {set(COPERNICUSMARINE_PHYS_VARIABLES + COPERNICUSMARINE_BGC_VARIABLES)}"
+    "Assumes that variable names at least contain the standard Copernicus Marine variable name as a substring.",
+)
+def run(path, from_data):
     """Execute the expedition simulations."""
-    _run(Path(path))
+    _run(Path(path), from_data)
