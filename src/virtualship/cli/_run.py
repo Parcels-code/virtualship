@@ -6,6 +6,7 @@ import shutil
 import time
 from pathlib import Path
 
+import copernicusmarine
 import pyproj
 
 from virtualship.expedition.simulate_schedule import (
@@ -47,6 +48,21 @@ def _run(expedition_dir: str | Path) -> None:
     print("\n╔═════════════════════════════════════════════════╗")
     print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
     print("╚═════════════════════════════════════════════════╝")
+
+    COPERNICUS_CREDS_FILE = os.path.expandvars(
+        "$HOME/.copernicusmarine/.copernicusmarine-credentials"
+    )
+
+    if (
+        os.path.isfile(COPERNICUS_CREDS_FILE)
+        and os.path.getsize(COPERNICUS_CREDS_FILE) > 0
+    ):
+        pass
+    else:
+        print(
+            "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n"
+        )
+        copernicusmarine.login()
 
     if isinstance(expedition_dir, str):
         expedition_dir = Path(expedition_dir)
