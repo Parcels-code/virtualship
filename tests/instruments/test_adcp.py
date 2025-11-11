@@ -4,9 +4,9 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
-from virtualship.instruments.adcp import simulate_adcp
+from parcels import FieldSet
+from virtualship.instruments.adcp import ADCPInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -77,17 +77,22 @@ def test_simulate_adcp(tmpdir) -> None:
         },
     )
 
-    # perform simulation
+    # dummy expedition and directory for ADCPInstrument
+    class DummyExpedition:
+        class instruments_config:
+            class adcp_config:
+                max_depth_meter = MAX_DEPTH
+                num_bins = NUM_BINS
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    adcp_instrument = ADCPInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_adcp(
-        fieldset=fieldset,
-        out_path=out_path,
-        max_depth=MAX_DEPTH,
-        min_depth=MIN_DEPTH,
-        num_bins=NUM_BINS,
-        sample_points=sample_points,
-    )
+    adcp_instrument.load_input_data = lambda: fieldset
+    adcp_instrument.simulate(sample_points, out_path)
 
     results = xr.open_zarr(out_path)
 

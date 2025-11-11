@@ -5,13 +5,12 @@ Fields are kept static over time and time component of CTD_BGC measurements is n
 """
 
 import datetime
-from datetime import timedelta
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
-from virtualship.instruments.ctd_bgc import CTD_BGC, simulate_ctd_bgc
+from parcels import Field, FieldSet
+from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -163,15 +162,19 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # perform simulation
+    # dummy expedition and directory for CTD_BGCInstrument
+    class DummyExpedition:
+        pass
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    ctd_bgc_instrument = CTD_BGCInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_ctd_bgc(
-        ctd_bgcs=ctd_bgcs,
-        fieldset=fieldset,
-        out_path=out_path,
-        outputdt=timedelta(seconds=10),
-    )
+    ctd_bgc_instrument.load_input_data = lambda: fieldset
+    ctd_bgc_instrument.simulate(ctd_bgcs, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)

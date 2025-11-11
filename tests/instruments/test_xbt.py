@@ -5,13 +5,12 @@ Fields are kept static over time and time component of XBT measurements is not t
 """
 
 import datetime
-from datetime import timedelta
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
-from virtualship.instruments.xbt import XBT, simulate_xbt
+from parcels import Field, FieldSet
+from virtualship.instruments.xbt import XBT, XBTInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -96,15 +95,19 @@ def test_simulate_xbts(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # perform simulation
+    # dummy expedition and directory for XBTInstrument
+    class DummyExpedition:
+        pass
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    xbt_instrument = XBTInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_xbt(
-        xbts=xbts,
-        fieldset=fieldset,
-        out_path=out_path,
-        outputdt=timedelta(seconds=10),
-    )
+    xbt_instrument.load_input_data = lambda: fieldset
+    xbt_instrument.simulate(xbts, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)

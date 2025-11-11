@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
-from virtualship.instruments.argo_float import ArgoFloat, simulate_argo_floats
+from parcels import FieldSet
+from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -53,16 +53,19 @@ def test_simulate_argo_floats(tmpdir) -> None:
         )
     ]
 
-    # perform simulation
+    # dummy expedition and directory for ArgoFloatInstrument
+    class DummyExpedition:
+        pass
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    argo_instrument = ArgoFloatInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_argo_floats(
-        fieldset=fieldset,
-        out_path=out_path,
-        argo_floats=argo_floats,
-        outputdt=timedelta(minutes=5),
-        endtime=None,
-    )
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)

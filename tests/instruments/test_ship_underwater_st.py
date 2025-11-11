@@ -4,16 +4,13 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
-from virtualship.instruments.ship_underwater_st import simulate_ship_underwater_st
+from parcels import FieldSet
+from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
 from virtualship.models import Location, Spacetime
 
 
 def test_simulate_ship_underwater_st(tmpdir) -> None:
-    # depth at which the sampling will be done
-    DEPTH = -2
-
     # arbitrary time offset for the dummy fieldset
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
@@ -70,15 +67,20 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
         },
     )
 
-    # perform simulation
+    # dummy expedition and directory for Underwater_STInstrument
+    class DummyExpedition:
+        pass
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    st_instrument = Underwater_STInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_ship_underwater_st(
-        fieldset=fieldset,
-        out_path=out_path,
-        depth=DEPTH,
-        sample_points=sample_points,
-    )
+    st_instrument.load_input_data = lambda: fieldset
+    # The instrument expects measurements as sample_points
+    st_instrument.simulate(sample_points, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)

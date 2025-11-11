@@ -5,13 +5,12 @@ Fields are kept static over time and time component of CTD measurements is not t
 """
 
 import datetime
-from datetime import timedelta
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
-from virtualship.instruments.ctd import CTD, simulate_ctd
+from parcels import Field, FieldSet
+from virtualship.instruments.ctd import CTD, CTDInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -102,15 +101,42 @@ def test_simulate_ctds(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # perform simulation
+    # dummy expedition and directory for CTDInstrument
+    class DummyExpedition:
+        class schedule:
+            class space_time_region:
+                time_range = type(
+                    "TimeRange",
+                    (),
+                    {
+                        "start_time": fieldset.T.grid.time_origin.fulltime(
+                            fieldset.T.grid.time_full[0]
+                        ),
+                        "end_time": fieldset.T.grid.time_origin.fulltime(
+                            fieldset.T.grid.time_full[-1]
+                        ),
+                    },
+                )()
+                spatial_range = type(
+                    "SpatialRange",
+                    (),
+                    {
+                        "minimum_longitude": 0,
+                        "maximum_longitude": 1,
+                        "minimum_latitude": 0,
+                        "maximum_latitude": 1,
+                    },
+                )()
+
+    expedition = DummyExpedition()
+    directory = tmpdir
+    from_data = None
+
+    ctd_instrument = CTDInstrument(expedition, directory, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_ctd(
-        ctds=ctds,
-        fieldset=fieldset,
-        out_path=out_path,
-        outputdt=timedelta(seconds=10),
-    )
+    ctd_instrument.load_input_data = lambda: fieldset
+    ctd_instrument.simulate(ctds, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)
@@ -132,6 +158,7 @@ def test_simulate_ctds(tmpdir) -> None:
             for var in ["salinity", "temperature", "lat", "lon"]:
                 obs_value = obs[var].values.item()
                 exp_value = exp[var]
+
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {ctd_i=} {loc=} {var=} {obs_value=} {exp_value=}."
                 )

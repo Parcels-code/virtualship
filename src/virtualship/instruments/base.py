@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 # TODO: from-data should default to None and only be overwritten if specified in `virtualship run` ...
 
+# TODO: update CMS credentials automation workflow so not all using the same credentials if running in a Jupyter Collaborative Session...!
+
 
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
@@ -105,7 +107,7 @@ class Instrument(abc.ABC):
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
         #
-        TMP = True  # temporary spinner implementation
+        TMP = False  # temporary spinner implementation
         #
         if TMP:
             if not self.verbose_progress:
