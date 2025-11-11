@@ -5,7 +5,7 @@ import pytest
 import xarray as xr
 from click.testing import CliRunner
 
-from virtualship.cli.commands import fetch, init
+from virtualship.cli.commands import init
 from virtualship.utils import EXPEDITION
 
 
@@ -65,24 +65,3 @@ def test_init_existing_expedition():
         with pytest.raises(FileExistsError):
             result = runner.invoke(init, ["."])
             raise result.exception
-
-
-@pytest.mark.parametrize(
-    "fetch_args",
-    [
-        [".", "--username", "test"],
-        [".", "--password", "test"],
-    ],
-)
-@pytest.mark.usefixtures("copernicus_no_download")
-def test_fetch_both_creds_via_cli(runner, fetch_args):
-    result = runner.invoke(fetch, fetch_args)
-    assert result.exit_code == 1
-    assert "Both username and password" in result.exc_info[1].args[0]
-
-
-@pytest.mark.usefixtures("copernicus_no_download")
-def test_fetch(runner):
-    """Test the fetch command, but mock the downloads (and metadata interrogation)."""
-    result = runner.invoke(fetch, [".", "--username", "test", "--password", "test"])
-    assert result.exit_code == 0
