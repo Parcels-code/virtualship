@@ -5,7 +5,6 @@ import pyproj
 import pytest
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.expedition.do_expedition import _load_input_data
 from virtualship.models import (
     Expedition,
     Location,
@@ -57,7 +56,7 @@ def test_verify_schedule() -> None:
 
     ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
 
-    schedule.verify(ship_speed_knots, None)
+    schedule.verify(ship_speed_knots, ignore_land_test=True)
 
 
 def test_get_instruments() -> None:
@@ -156,7 +155,7 @@ def test_get_instruments() -> None:
             ),
             True,
             ScheduleError,
-            "space_time_region not found in schedule, please define it to fetch the data.",
+            "space_time_region not found in schedule, please define it to proceed.",
             id="NoSpaceTimeRegion",
         ),
     ],
@@ -165,16 +164,11 @@ def test_verify_schedule_errors(
     schedule: Schedule, check_space_time_region: bool, error, match
 ) -> None:
     expedition = _get_expedition(expedition_dir)
-    input_data = _load_input_data(
-        expedition_dir,
-        expedition,
-        input_data=Path("expedition_dir/input_data"),
-    )
 
     with pytest.raises(error, match=match):
         schedule.verify(
             expedition.ship_config.ship_speed_knots,
-            input_data,
+            ignore_land_test=True,
             check_space_time_region=check_space_time_region,
         )
 

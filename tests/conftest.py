@@ -1,4 +1,4 @@
-"""Test configuration that is ran for every test."""
+"""Test configuration that is run for every test."""
 
 import pytest
 

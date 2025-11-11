@@ -1,119 +1,14 @@
-import datetime
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-import pytest
-import xarray as xr
-
-from virtualship.instruments.base import InputDataset, Instrument
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.space_time_region import (
-    SpaceTimeRegion,
-    SpatialRange,
-    TimeRange,
-)
-from virtualship.utils import get_input_dataset_class
-
-# test dataclass, particle class, kernels, etc. are defined for each instrument
+from virtualship.utils import get_instrument_class
 
 
-def test_all_instruments_have_input_class():
+def test_all_instruments_have_instrument_class():
     for instrument in InstrumentType:
-        input_class = get_input_dataset_class(instrument)
-        assert input_class is not None, f"No input_class for {instrument}"
-
-
-# test InputDataset class
-
-
-class DummyInputDataset(InputDataset):
-    """A minimal InputDataset subclass for testing purposes."""
-
-    def get_datasets_dict(self):
-        """Return a dummy datasets dict for testing."""
-        return {
-            "dummy": {
-                "physical": True,
-                "variables": ["var1"],
-                "output_filename": "dummy.nc",
-            }
-        }
-
-
-@pytest.fixture
-def dummy_space_time_region():
-    spatial_range = SpatialRange(
-        minimum_longitude=0,
-        maximum_longitude=1,
-        minimum_latitude=0,
-        maximum_latitude=1,
-        minimum_depth=0,
-        maximum_depth=10,
-    )
-    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
-    time_range = TimeRange(
-        start_time=base_time,
-        end_time=base_time + datetime.timedelta(hours=1),
-    )
-    return SpaceTimeRegion(
-        spatial_range=spatial_range,
-        time_range=time_range,
-    )
-
-
-def test_dummyinputdataset_initialization(dummy_space_time_region):
-    ds = DummyInputDataset(
-        name="test",
-        latlon_buffer=0.5,
-        datetime_buffer=1,
-        min_depth=0,
-        max_depth=10,
-        data_dir=".",
-        credentials={"username": "u", "password": "p"},
-        space_time_region=dummy_space_time_region,
-    )
-    assert ds.name == "test"
-    assert ds.latlon_buffer == 0.5
-    assert ds.datetime_buffer == 1
-    assert ds.min_depth == 0
-    assert ds.max_depth == 10
-    assert ds.data_dir == "."
-    assert ds.credentials["username"] == "u"
-
-
-@patch("virtualship.instruments.base.copernicusmarine.open_dataset")
-@patch("virtualship.instruments.base.copernicusmarine.subset")
-def test_download_data_calls_subset(
-    mock_subset, mock_open_dataset, dummy_space_time_region
-):
-    """Test that download_data calls the subset function correctly, will also test Copernicus Marine product id search logic."""
-    mock_open_dataset.return_value = xr.Dataset(
-        {
-            "time": (
-                "time",
-                [
-                    np.datetime64("1993-01-01T00:00:00"),
-                    np.datetime64("2023-01-01T01:00:00"),
-                ],
-            )
-        }
-    )
-    ds = DummyInputDataset(
-        name="test",
-        latlon_buffer=0.5,
-        datetime_buffer=1,
-        min_depth=0,
-        max_depth=10,
-        data_dir=".",
-        credentials={"username": "u", "password": "p"},
-        space_time_region=dummy_space_time_region,
-    )
-    ds.download_data()
-    assert mock_subset.called
-
-
-# test Instrument class
+        instrument_class = get_instrument_class(instrument)
+        assert instrument_class is not None, f"No instrument_class for {instrument}"
 
 
 class DummyInstrument(Instrument):
@@ -125,16 +20,18 @@ class DummyInstrument(Instrument):
 
 
 @patch("virtualship.instruments.base.FieldSet")
-@patch("virtualship.instruments.base.get_existing_download")
-@patch("virtualship.instruments.base.get_space_time_region_hash")
-def test_load_input_data_calls(mock_hash, mock_get_download, mock_FieldSet):
+@patch(
+    "virtualship.instruments.base._select_product_id", return_value="dummy_product_id"
+)
+@patch("virtualship.instruments.base.copernicusmarine")
+def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_FieldSet):
     """Test Instrument.load_input_data with mocks."""
-    mock_hash.return_value = "hash"
-    mock_get_download.return_value = Path("/tmp/data")
     mock_fieldset = MagicMock()
     mock_FieldSet.from_netcdf.return_value = mock_fieldset
+    mock_FieldSet.from_xarray_dataset.return_value = mock_fieldset
     mock_fieldset.gridset.grids = [MagicMock(negate_depth=MagicMock())]
     mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
+    mock_copernicusmarine.open_dataset.return_value = MagicMock()
     dummy = DummyInstrument(
         name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
@@ -144,7 +41,96 @@ def test_load_input_data_calls(mock_hash, mock_get_download, mock_FieldSet):
         add_bathymetry=False,
         allow_time_extrapolation=False,
         verbose_progress=False,
+        from_data=None,
     )
     fieldset = dummy.load_input_data()
-    assert mock_FieldSet.from_netcdf.called
+    assert mock_FieldSet.from_xarray_dataset.called
     assert fieldset == mock_fieldset
+    assert fieldset == mock_fieldset
+
+
+def test_execute_calls_simulate(monkeypatch):
+    dummy = DummyInstrument(
+        name="test",
+        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        directory="/tmp",
+        filenames={"A": "a.nc"},
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=True,
+        from_data=None,
+    )
+    dummy.simulate = MagicMock()
+    dummy.execute([1, 2, 3], "/tmp/out")
+    dummy.simulate.assert_called_once()
+
+
+def test_get_spec_value_buffer_and_limit():
+    dummy = DummyInstrument(
+        name="test",
+        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        directory="/tmp",
+        filenames={"A": "a.nc"},
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        buffer_spec={"latlon": 5.0},
+        limit_spec={"depth_min": 10.0},
+        from_data=None,
+    )
+    assert dummy._get_spec_value("buffer", "latlon", 0.0) == 5.0
+    assert dummy._get_spec_value("limit", "depth_min", None) == 10.0
+    assert dummy._get_spec_value("buffer", "missing", 42) == 42
+
+
+def test_generate_fieldset_combines_fields(monkeypatch):
+    dummy = DummyInstrument(
+        name="test",
+        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        directory="/tmp",
+        filenames={"A": "a.nc", "B": "b.nc"},
+        variables={"A": "a", "B": "b"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        from_data=None,
+    )
+    dummy.from_data = None
+
+    monkeypatch.setattr(dummy, "_get_copernicus_ds", lambda physical, var: MagicMock())
+
+    fs_A = MagicMock()
+    fs_B = MagicMock()
+    fs_B.B = MagicMock()
+    monkeypatch.setattr(
+        "virtualship.instruments.base.FieldSet.from_xarray_dataset",
+        lambda ds, varmap, dims, mesh=None: fs_A if "A" in varmap else fs_B,
+    )
+    monkeypatch.setattr(fs_A, "add_field", MagicMock())
+    dummy._generate_fieldset()
+    fs_A.add_field.assert_called_once_with(fs_B.B)
+
+
+def test_load_input_data_error(monkeypatch):
+    dummy = DummyInstrument(
+        name="test",
+        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        directory="/tmp",
+        filenames={"A": "a.nc"},
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        from_data=None,
+    )
+    monkeypatch.setattr(
+        dummy, "_generate_fieldset", lambda: (_ for _ in ()).throw(Exception("fail"))
+    )
+    import virtualship.errors
+
+    try:
+        dummy.load_input_data()
+    except virtualship.errors.CopernicusCatalogueError as e:
+        assert "Failed to load input data" in str(e)

@@ -22,6 +22,9 @@ if TYPE_CHECKING:
     from virtualship.models import Expedition
 
 
+# TODO: from-data should default to None and only be overwritten if specified in `virtualship run` ...
+
+
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
