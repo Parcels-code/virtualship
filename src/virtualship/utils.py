@@ -448,8 +448,9 @@ def _get_bathy_data(
             end_datetime=space_time_region.time_range.end_time,
             coordinates_selection_method="outside",
         )
-    bathymetry_variables = {"bathymetry": "deptho"}
-    bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+        bathymetry_variables = {"bathymetry": "deptho"}
+        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+
     return FieldSet.from_xarray_dataset(
         ds_bathymetry, bathymetry_variables, bathymetry_dimensions
     )

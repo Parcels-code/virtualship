@@ -63,7 +63,8 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
             pass
         else:
             print(
-                "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n"
+                "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n\n"
+                "If you did not expect to see this message, and intended to use pre-downloaded data instead of streaming via Copernicus Marine, please use the '--from-data' option to specify the path to the data.\n"
             )
             copernicusmarine.login()
 
@@ -85,7 +86,10 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
-    expedition.schedule.verify(expedition.ship_config.ship_speed_knots)
+    expedition.schedule.verify(
+        expedition.ship_config.ship_speed_knots,
+        from_data=Path(from_data) if from_data else None,
+    )
 
     # simulate the schedule
     schedule_results = simulate_schedule(

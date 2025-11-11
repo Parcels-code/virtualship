@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pydantic
@@ -90,6 +91,7 @@ class Schedule(pydantic.BaseModel):
         ignore_land_test: bool = False,
         *,
         check_space_time_region: bool = False,
+        from_data: Path | None = None,
     ) -> None:
         """
         Verify the feasibility and correctness of the schedule's waypoints.
@@ -134,6 +136,7 @@ class Schedule(pydantic.BaseModel):
                 bathymetry_field = _get_bathy_data(
                     self.space_time_region,
                     latlon_buffer=None,
+                    from_data=from_data,
                 ).bathymetry
             except Exception as e:
                 raise ScheduleError(
