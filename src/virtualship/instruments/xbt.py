@@ -150,8 +150,6 @@ class XBTInstrument(Instrument):
                     f"XBT max_depth or bathymetry shallower than minimum {-DT * fall_speed}. It is likely the XBT cannot be deployed in this area, which is too shallow."
                 )
 
-        breakpoint()
-
         # define xbt particles
         xbt_particleset = ParticleSet(
             fieldset=fieldset,

@@ -1,15 +1,24 @@
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
+import numpy as np
 import pyproj
 import pytest
+import xarray as xr
 
+from parcels import FieldSet
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
     Expedition,
     Location,
     Schedule,
     Waypoint,
+)
+from virtualship.models.space_time_region import (
+    SpaceTimeRegion,
+    SpatialRange,
+    TimeRange,
 )
 from virtualship.utils import EXPEDITION, _get_expedition, get_example_expedition
 
@@ -83,6 +92,79 @@ def test_get_instruments() -> None:
             "XBT",
         }
     )
+
+
+def test_verify_on_land():
+    """Test that schedule verification raises error for waypoints on land (0.0 m bathymetry)."""
+    # bathymetry fieldset with NaNs at specific locations
+    latitude = np.array([0, 1.0, 2.0])
+    longitude = np.array([0, 1.0, 2.0])
+    bathymetry = np.array(
+        [
+            [100, 0.0, 100],
+            [100, 100, 0.0],
+            [0.0, 100, 100],
+        ]
+    )
+
+    ds_bathymetry = xr.Dataset(
+        {
+            "deptho": (("latitude", "longitude"), bathymetry),
+        },
+        coords={
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+    )
+
+    bathymetry_variables = {"bathymetry": "deptho"}
+    bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+    bathymetry_fieldset = FieldSet.from_xarray_dataset(
+        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    )
+
+    # waypoints placed in NaN bathy cells
+    waypoints = [
+        Waypoint(
+            location=Location(0.0, 1.0), time=datetime(2022, 1, 1, 1, 0, 0)
+        ),  # NaN cell
+        Waypoint(
+            location=Location(1.0, 2.0), time=datetime(2022, 1, 2, 1, 0, 0)
+        ),  # NaN cell
+        Waypoint(
+            location=Location(2.0, 0.0), time=datetime(2022, 1, 3, 1, 0, 0)
+        ),  # NaN cell
+    ]
+
+    spatial_range = SpatialRange(
+        minimum_latitude=min(wp.location.lat for wp in waypoints),
+        maximum_latitude=max(wp.location.lat for wp in waypoints),
+        minimum_longitude=min(wp.location.lon for wp in waypoints),
+        maximum_longitude=max(wp.location.lon for wp in waypoints),
+    )
+    time_range = TimeRange(
+        start_time=min(wp.time for wp in waypoints if wp.time is not None),
+        end_time=max(wp.time for wp in waypoints if wp.time is not None),
+    )
+    space_time_region = SpaceTimeRegion(
+        spatial_range=spatial_range, time_range=time_range
+    )
+    schedule = Schedule(waypoints=waypoints, space_time_region=space_time_region)
+    ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
+
+    with patch(
+        "virtualship.models.expedition._get_bathy_data",
+        return_value=bathymetry_fieldset,
+    ):
+        with pytest.raises(
+            ScheduleError,
+            match=r"The following waypoint\(s\) throw\(s\) error\(s\):",
+        ):
+            schedule.verify(
+                ship_speed_knots,
+                ignore_land_test=False,
+                from_data=None,
+            )
 
 
 @pytest.mark.parametrize(

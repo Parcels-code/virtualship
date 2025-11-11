@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pydantic
 import pyproj
 import yaml
@@ -145,14 +146,18 @@ class Schedule(pydantic.BaseModel):
 
             for wp_i, wp in enumerate(self.waypoints):
                 try:
-                    bathymetry_field.eval(
+                    value = bathymetry_field.eval(
                         0,  # time
                         0,  # depth (surface)
                         wp.location.lat,
                         wp.location.lon,
                     )
-                except Exception:
-                    land_waypoints.append((wp_i, wp))
+                    if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
+                        land_waypoints.append((wp_i, wp))
+                except Exception as e:
+                    raise ScheduleError(
+                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. There may be a problem with the waypoint location being outside of the space_time_region or with the bathymetry data itself.\n\n Original error: {e}"
+                    ) from e
 
             if len(land_waypoints) > 0:
                 raise ScheduleError(
