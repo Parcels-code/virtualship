@@ -1,7 +1,7 @@
 ---
 title: "Ocean observations"
 subtitle: "Ocean of the future <br> 13-11-2025"
-author: "Emma Daniels & Jamie Atkins"
+author: "Emma Daniels & Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom"
 format: 
     revealjs:
         slide-number: true
@@ -20,18 +20,20 @@ title-slide-attributes:
 ##
 ![](https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg)
 
+## {background-iframe="https://wordwall.net/embed/4f6b5ced54d644c2bab35354305bb0eb?themeId=65&templateId=30&fontStackId=1" background-interactive="true"}
+
 ## Difficulties of Measuring
 
 - **Vast Scale**: Covers 71% of Earth's surface, average depth 3,688m
-- **Accessibility**: Remote locations, harsh weather, high operational costs
-- **Extreme conditions**: Pressure, storms and salt require specialized equipment
-- **Light Limitation**: Optical methods only work in top ~200m
 - **Real-Time Monitoring**: Difficulty transmitting data from deep or remote locations
+- **Extreme conditions**: Pressure, storms and salt require specialized equipment
+- **Accessibility**: Remote locations, harsh weather, high operational costs
+- **Light Limitation**: Optical methods only work in top ~200m
 
 ## Satellite Observations
 
 ![](https://climate.esa.int/media/images/Screenshot_2024-01-15_at_13.10.35.max-2000x2000.png)
-Note that it's not possible to investigate the interior ocean
+Note that it's not possible to investigate the interior ocean with satellites
 
 ## Satellite Observations
 
@@ -46,6 +48,9 @@ Note that it's not possible to investigate the interior ocean
     - Cannot penetrate deep into the ocean
 :::
 
+## PACE Satellite (2024)
+![](https://pace.oceansciences.org/images/pace_first_light_composite.png)
+
 ## Light Attenuation in the Ocean
 ![](https://oceanservice.noaa.gov/facts/lightinocean2.jpg)
 
@@ -58,23 +63,24 @@ Note that it's not possible to investigate the interior ocean
     - Cabled networks and instruments
     - Resurfacing equipment
 
-## PACE satellite ('24)
-![](https://pace.oceansciences.org/images/pace_first_light_composite.png)
-
-## Observation * calibration Methods
+<!-- ## Observation Methods
 
 - **Coastal Observatories**: Shore-based radar, tide gauges, and sensor networks
 - **Moored Buoys**: Fixed platforms for continuous time-series measurements
 - **Argo Floats and Gliders**: Autonomous floats and vehicles for extended ocean monitoring
 - **Animal-Borne Sensors**: Tags on marine animals collecting oceanographic data
-- **Research Vessels**: Ship-based surveys and deep-sea exploration
+- **Research Vessels**: Ship-based surveys and deep-sea exploration -->
 
-## HMS Challenger
-First major scientific oceanographic expedition (1872-1876)
+## Observation Methods
+![](https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp)
+
+## HMS Challenger (1872-1876) 
 ![](https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg)
 
-## Alternative Methods
-![](https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp)
+##
+```{=html}
+<iframe width="1200" height="700" src="https://nioz.foleon.com/new-research-fleet/magazine/" title="NIOZ fleet"></iframe>
+```
 
 ## Ship-Based Measurements
 
@@ -98,14 +104,19 @@ First major scientific oceanographic expedition (1872-1876)
 - **Targeted Sampling**: Niskin bottles collect water at specific depths of interest
 - **Calibration Standard**: Validates satellite and autonomous sensor data
 
+##
+![](https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-78255-9/MediaObjects/41598_2020_78255_Fig2_HTML.png)
+
+##
+![](https://os.copernicus.org/articles/15/1327/2019/os-15-1327-2019-f01-thumb.png)
+
 ## Plankton measurements
 
-- Tows: nets or CPR
 - In-Situ Imaging
-- Water Sampling
+- Water Sampling and preserving
 - Chlorophyll Analysis
 - eDNA Filtering
-- Preserving Samples
+- Tows: nets or CPR
 
 ## 
 ![](https://www.researchgate.net/profile/Ronald-Pouwer-2/publication/348566554/figure/fig2/AS:11431281090974442@1666259598493/Sampling-of-zooplankton-with-a-Bongo-net-during-Atlantic-Meridional-Transect-27-in-2017.png)
@@ -114,13 +125,25 @@ First major scientific oceanographic expedition (1872-1876)
 ![](https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg)
 
 ##
-![](https://www.cprsurvey.org/media/1747/)
-
-##
-![](https://www.researchgate.net/profile/Brian-Hunt-4/publication/352895937/figure/fig1/AS:1040886699921408@1625178136641/The-internal-workings-of-the-Continuous-Plankton-Recorder-CPR.png)
-
-##
 ![](https://www.sciencelearn.org.nz/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F117510%2F1722379309-deployment-of-the-cpr20160726-1222-9citkh.jpg%3Fw%3D1840%26h%3D1223.404255319149&w=1080&q=85)
 
 ##
 ![](https://www.cprsurvey.org/media/1196/gacs-map.png?width=1030&height=517)
+
+##
+```{=html}
+<iframe width="1200" height="700" src="https://data.marine.copernicus.eu/viewer/expert?view=viewer&crs=epsg%3A4326&t=754617600000&z=-0.49402499198913574&center=3.888847711461338%2C0&zoom=9.902376717481406&layers=H4sIABYFE2kAAxXNuw6CMBQA0H_5M0iBxXRDY5QEo.ExEGNuKr1SktYS2oFK_HdxPct5TGC9omFr7SAd8GmOoJPAwZPpU4hAi0BD_Zd9ddoUFR7v1a2sd8UFz4caGUuR5SxpDBmHxkpstcVeBTQB2Yqtc0ktOi9812DGsjxN45hGH8cv4VVIJPVe2eX5lh9JI3C2lLa9NkIT8LfQjubnDzr6GHilAAAA&basemap=dark" title="Copernicus Marine data"></iframe>
+```
+
+## VirtualShip expedition
+
+- 9 days of ship time
+- Depart and arrive from Texel, Netherlands
+- Straight transect starting from the deep shelve
+- Inslingeren: (zeem.) opnieuw wennen aan het zeemansleven
+- Travel and CTD deployment time
+- SURF Research Cloud setup by Jamie
+- Instructions in Jupyter Notebook
+
+## Problems at sea and VR
+![](https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1768/9422978/b65410a5b7d1/pone.0272960.g008.jpg)
