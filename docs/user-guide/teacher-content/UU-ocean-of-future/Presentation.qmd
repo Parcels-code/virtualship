@@ -8,7 +8,7 @@ format:
         theme: sky
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
         controls: true
-        # incremental: true
+        incremental: true
 title-slide-attributes:
     data-background-image: "https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg"
     data-background-size: contain
@@ -59,8 +59,8 @@ Note that it's not possible to investigate the interior ocean with satellites
 - Remote sensing only observes top few meters of ocean
 - Cameras and optical instruments are ineffective at depth
 - Alternative methods required:
-    - Acoustic sensors
     - Cabled networks and instruments
+    - Acoustic sensors
     - Resurfacing equipment
 
 <!-- ## Observation Methods
@@ -107,19 +107,16 @@ Note that it's not possible to investigate the interior ocean with satellites
 ##
 ![](https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-78255-9/MediaObjects/41598_2020_78255_Fig2_HTML.png)
 
-##
-![](https://os.copernicus.org/articles/15/1327/2019/os-15-1327-2019-f01-thumb.png)
-
 ## Plankton measurements
 
+- Water Sampling
 - In-Situ Imaging
-- Water Sampling and preserving
 - Chlorophyll Analysis
 - eDNA Filtering
 - Tows: nets or CPR
 
 ##
-![](https://upload.wikimedia.org/wikipedia/commons/b/b7/August_5%2C_2011_Friday_night_plankton_tow%21_%286013476640%29.jpgg)
+![](https://upload.wikimedia.org/wikipedia/commons/b/b7/August_5%2C_2011_Friday_night_plankton_tow%21_%286013476640%29.jpg)
 
 ##
 ![](https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg)
@@ -145,5 +142,5 @@ Note that it's not possible to investigate the interior ocean with satellites
 - SURF Research Cloud setup by Jamie
 - Instructions in Jupyter Notebook
 
-## Problems at sea and VR
-![](https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1768/9422978/b65410a5b7d1/pone.0272960.g008.jpg)
+## VR and life @ sea
+![](https://i.ytimg.com/vi/xr-mGYerSyk/sddefault.jpg)
