@@ -1,343 +1,557 @@
-<!DOCTYPE html>
-<html lang="en"><head>
-<script src="Presentation_files/libs/clipboard/clipboard.min.js"></script>
-<script src="Presentation_files/libs/quarto-html/tabby.min.js"></script>
-<script src="Presentation_files/libs/quarto-html/popper.min.js"></script>
-<script src="Presentation_files/libs/quarto-html/tippy.umd.min.js"></script>
-<link href="Presentation_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="Presentation_files/libs/quarto-html/light-border.css" rel="stylesheet">
-<link href="Presentation_files/libs/quarto-html/quarto-syntax-highlighting-095e6f6405c331e3b33229e03003579f.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
-  <meta name="generator" content="quarto-1.9.8">
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="Presentation_files/libs/clipboard/clipboard.min.js"></script>
+    <script src="Presentation_files/libs/quarto-html/tabby.min.js"></script>
+    <script src="Presentation_files/libs/quarto-html/popper.min.js"></script>
+    <script src="Presentation_files/libs/quarto-html/tippy.umd.min.js"></script>
+    <link
+      href="Presentation_files/libs/quarto-html/tippy.css"
+      rel="stylesheet"
+    />
+    <link
+      href="Presentation_files/libs/quarto-html/light-border.css"
+      rel="stylesheet"
+    />
+    <link
+      href="Presentation_files/libs/quarto-html/quarto-syntax-highlighting-095e6f6405c331e3b33229e03003579f.css"
+      rel="stylesheet"
+      id="quarto-text-highlighting-styles"
+    />
+    <meta charset="utf-8" />
+    <meta name="generator" content="quarto-1.9.8" />
 
-  <meta name="author" content="Emma Daniels &amp; Jamie Atkins   Postdocs @ UU   Virtual Ship Classroom">
-  <title>Ocean observations</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
-  <link rel="stylesheet" href="Presentation_files/libs/revealjs/dist/reset.css">
-  <link rel="stylesheet" href="Presentation_files/libs/revealjs/dist/reveal.css">
-  <style>
-    code{white-space: pre-wrap;}
-    span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    ul.task-list{list-style: none;}
-    ul.task-list li input[type="checkbox"] {
-      width: 0.8em;
-      margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
-      vertical-align: middle;
-    }
-  </style>
-  <link rel="stylesheet" href="Presentation_files/libs/revealjs/dist/theme/quarto-7aaf31681eed659f0200bcc8fe9a56fc.css">
-  <link href="Presentation_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
-  <link href="Presentation_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
-  <link href="Presentation_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
-  <link href="Presentation_files/libs/revealjs/plugin/quarto-support/footer.css" rel="stylesheet">
-  <style type="text/css">
-    .reveal div.sourceCode {
-      margin: 0;
-      overflow: auto;
-    }
-    .reveal div.hanging-indent {
-      margin-left: 1em;
-      text-indent: -1em;
-    }
-    .reveal .slide:not(.center) {
-      height: 100%;
-    }
-    .reveal .slide.scrollable {
-      overflow-y: auto;
-    }
-    .reveal .footnotes {
-      height: 100%;
-      overflow-y: auto;
-    }
-    .reveal .slide .absolute {
-      position: absolute;
-      display: block;
-    }
-    .reveal .footnotes ol {
-      counter-reset: ol;
-      list-style-type: none; 
-      margin-left: 0;
-    }
-    .reveal .footnotes ol li:before {
-      counter-increment: ol;
-      content: counter(ol) ". "; 
-    }
-    .reveal .footnotes ol li > p:first-child {
-      display: inline-block;
-    }
-    .reveal .slide ul,
-    .reveal .slide ol {
-      margin-bottom: 0.5em;
-    }
-    .reveal .slide ul li,
-    .reveal .slide ol li {
-      margin-top: 0.4em;
-      margin-bottom: 0.2em;
-    }
-    .reveal .slide ul[role="tablist"] li {
-      margin-bottom: 0;
-    }
-    .reveal .slide ul li > *:first-child,
-    .reveal .slide ol li > *:first-child {
-      margin-block-start: 0;
-    }
-    .reveal .slide ul li > *:last-child,
-    .reveal .slide ol li > *:last-child {
-      margin-block-end: 0;
-    }
-    .reveal .slide .columns:nth-child(3) {
-      margin-block-start: 0.8em;
-    }
-    .reveal blockquote {
-      box-shadow: none;
-    }
-    .reveal .tippy-content>* {
-      margin-top: 0.2em;
-      margin-bottom: 0.7em;
-    }
-    .reveal .tippy-content>*:last-child {
-      margin-bottom: 0.2em;
-    }
-    .reveal .slide > img.stretch.quarto-figure-center,
-    .reveal .slide > img.r-stretch.quarto-figure-center {
-      display: block;
-      margin-left: auto;
-      margin-right: auto; 
-    }
-    .reveal .slide > img.stretch.quarto-figure-left,
-    .reveal .slide > img.r-stretch.quarto-figure-left  {
-      display: block;
-      margin-left: 0;
-      margin-right: auto; 
-    }
-    .reveal .slide > img.stretch.quarto-figure-right,
-    .reveal .slide > img.r-stretch.quarto-figure-right  {
-      display: block;
-      margin-left: auto;
-      margin-right: 0; 
-    }
-  </style>
-</head>
-<body class="quarto-light">
-  <div class="reveal">
-    <div class="slides">
+    <meta
+      name="author"
+      content="Emma Daniels &amp; Jamie Atkins   Postdocs @ UU   Virtual Ship Classroom"
+    />
+    <title>Ocean observations</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui"
+    />
+    <link
+      rel="stylesheet"
+      href="Presentation_files/libs/revealjs/dist/reset.css"
+    />
+    <link
+      rel="stylesheet"
+      href="Presentation_files/libs/revealjs/dist/reveal.css"
+    />
+    <style>
+      code {
+        white-space: pre-wrap;
+      }
+      span.smallcaps {
+        font-variant: small-caps;
+      }
+      div.columns {
+        display: flex;
+        gap: min(4vw, 1.5em);
+      }
+      div.column {
+        flex: auto;
+        overflow-x: auto;
+      }
+      div.hanging-indent {
+        margin-left: 1.5em;
+        text-indent: -1.5em;
+      }
+      ul.task-list {
+        list-style: none;
+      }
+      ul.task-list li input[type="checkbox"] {
+        width: 0.8em;
+        margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */
+        vertical-align: middle;
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="Presentation_files/libs/revealjs/dist/theme/quarto-7aaf31681eed659f0200bcc8fe9a56fc.css"
+    />
+    <link
+      href="Presentation_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css"
+      rel="stylesheet"
+    />
+    <link
+      href="Presentation_files/libs/revealjs/plugin/reveal-menu/menu.css"
+      rel="stylesheet"
+    />
+    <link
+      href="Presentation_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css"
+      rel="stylesheet"
+    />
+    <link
+      href="Presentation_files/libs/revealjs/plugin/quarto-support/footer.css"
+      rel="stylesheet"
+    />
+    <style type="text/css">
+      .reveal div.sourceCode {
+        margin: 0;
+        overflow: auto;
+      }
+      .reveal div.hanging-indent {
+        margin-left: 1em;
+        text-indent: -1em;
+      }
+      .reveal .slide:not(.center) {
+        height: 100%;
+      }
+      .reveal .slide.scrollable {
+        overflow-y: auto;
+      }
+      .reveal .footnotes {
+        height: 100%;
+        overflow-y: auto;
+      }
+      .reveal .slide .absolute {
+        position: absolute;
+        display: block;
+      }
+      .reveal .footnotes ol {
+        counter-reset: ol;
+        list-style-type: none;
+        margin-left: 0;
+      }
+      .reveal .footnotes ol li:before {
+        counter-increment: ol;
+        content: counter(ol) ". ";
+      }
+      .reveal .footnotes ol li > p:first-child {
+        display: inline-block;
+      }
+      .reveal .slide ul,
+      .reveal .slide ol {
+        margin-bottom: 0.5em;
+      }
+      .reveal .slide ul li,
+      .reveal .slide ol li {
+        margin-top: 0.4em;
+        margin-bottom: 0.2em;
+      }
+      .reveal .slide ul[role="tablist"] li {
+        margin-bottom: 0;
+      }
+      .reveal .slide ul li > *:first-child,
+      .reveal .slide ol li > *:first-child {
+        margin-block-start: 0;
+      }
+      .reveal .slide ul li > *:last-child,
+      .reveal .slide ol li > *:last-child {
+        margin-block-end: 0;
+      }
+      .reveal .slide .columns:nth-child(3) {
+        margin-block-start: 0.8em;
+      }
+      .reveal blockquote {
+        box-shadow: none;
+      }
+      .reveal .tippy-content > * {
+        margin-top: 0.2em;
+        margin-bottom: 0.7em;
+      }
+      .reveal .tippy-content > *:last-child {
+        margin-bottom: 0.2em;
+      }
+      .reveal .slide > img.stretch.quarto-figure-center,
+      .reveal .slide > img.r-stretch.quarto-figure-center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .reveal .slide > img.stretch.quarto-figure-left,
+      .reveal .slide > img.r-stretch.quarto-figure-left {
+        display: block;
+        margin-left: 0;
+        margin-right: auto;
+      }
+      .reveal .slide > img.stretch.quarto-figure-right,
+      .reveal .slide > img.r-stretch.quarto-figure-right {
+        display: block;
+        margin-left: auto;
+        margin-right: 0;
+      }
+    </style>
+  </head>
+  <body class="quarto-light">
+    <div class="reveal">
+      <div class="slides">
+        <section
+          id="title-slide"
+          data-background-image="https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg"
+          data-background-size="contain"
+          class="quarto-title-block center"
+        >
+          <h1 class="title">Ocean observations</h1>
+          <p class="subtitle">
+            Ocean of the future <br />
+            13-11-2025
+          </p>
 
-<section id="title-slide" data-background-image="https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg" data-background-size="contain" class="quarto-title-block center">
-  <h1 class="title">Ocean observations</h1>
-  <p class="subtitle">Ocean of the future <br> 13-11-2025</p>
+          <div class="quarto-title-authors">
+            <div class="quarto-title-author">
+              <div class="quarto-title-author-name">
+                Emma Daniels &amp; Jamie Atkins <br />
+                Postdocs @ UU <br />
+                Virtual Ship Classroom
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="section" class="slide level2">
+          <h2></h2>
 
-<div class="quarto-title-authors">
-<div class="quarto-title-author">
-<div class="quarto-title-author-name">
-Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom 
-</div>
-</div>
-</div>
+          <img
+            data-src="https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section
+          id="section-1"
+          class="slide level2"
+          data-background-iframe="https://wordwall.net/embed/4f6b5ced54d644c2bab35354305bb0eb?themeId=65&amp;templateId=30&amp;fontStackId=1"
+          data-background-interactive="true"
+        >
+          <h2></h2>
+        </section>
+        <section id="difficulties-of-measuring" class="slide level2">
+          <h2>Difficulties of Measuring</h2>
+          <ul>
+            <li>
+              <strong>Vast Scale</strong>: Covers 71% of Earth’s surface,
+              average depth 3,688m
+            </li>
+            <li>
+              <strong>Real-Time Monitoring</strong>: Difficulty transmitting
+              data from deep or remote locations
+            </li>
+            <li>
+              <strong>Extreme conditions</strong>: Pressure, storms and salt
+              require specialized equipment
+            </li>
+            <li>
+              <strong>Accessibility</strong>: Remote locations, harsh weather,
+              high operational costs
+            </li>
+            <li>
+              <strong>Light Limitation</strong>: Optical methods only work in
+              top ~200m
+            </li>
+          </ul>
+        </section>
+        <section id="satellite-observations" class="slide level2">
+          <h2>Satellite Observations</h2>
+          <p>
+            <img
+              data-src="https://climate.esa.int/media/images/Screenshot_2024-01-15_at_13.10.35.max-2000x2000.png"
+            />
+            Note that it’s not possible to investigate the interior ocean with
+            satellites
+          </p>
+        </section>
+        <section id="satellite-observations-1" class="slide level2">
+          <h2>Satellite Observations</h2>
+          <ul>
+            <li>
+              <strong>Advantages</strong>:
+              <ul>
+                <li>Global coverage and accessibility</li>
+                <li>Continuous monitoring of large areas</li>
+                <li>Cost-effective compared to ship-based surveys</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Limitations</strong>:
+              <ul>
+                <li>Affected by atmospheric conditions</li>
+                <li>Cannot penetrate deep into the ocean</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="pace-satellite-2024" class="slide level2">
+          <h2>PACE Satellite (2024)</h2>
 
-</section>
-<section id="section" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://pace.oceansciences.org/images/pace_first_light_composite.png"
+            class="r-stretch"
+          />
+        </section>
+        <section id="light-attenuation-in-the-ocean" class="slide level2">
+          <h2>Light Attenuation in the Ocean</h2>
 
-<img data-src="https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg" class="r-stretch"></section>
-<section id="section-1" class="slide level2" data-background-iframe="https://wordwall.net/embed/4f6b5ced54d644c2bab35354305bb0eb?themeId=65&amp;templateId=30&amp;fontStackId=1" data-background-interactive="true">
-<h2></h2>
-</section>
-<section id="difficulties-of-measuring" class="slide level2">
-<h2>Difficulties of Measuring</h2>
-<ul>
-<li><strong>Vast Scale</strong>: Covers 71% of Earth’s surface, average depth 3,688m</li>
-<li><strong>Real-Time Monitoring</strong>: Difficulty transmitting data from deep or remote locations</li>
-<li><strong>Extreme conditions</strong>: Pressure, storms and salt require specialized equipment</li>
-<li><strong>Accessibility</strong>: Remote locations, harsh weather, high operational costs</li>
-<li><strong>Light Limitation</strong>: Optical methods only work in top ~200m</li>
-</ul>
-</section>
-<section id="satellite-observations" class="slide level2">
-<h2>Satellite Observations</h2>
-<p><img data-src="https://climate.esa.int/media/images/Screenshot_2024-01-15_at_13.10.35.max-2000x2000.png"> Note that it’s not possible to investigate the interior ocean with satellites</p>
-</section>
-<section id="satellite-observations-1" class="slide level2">
-<h2>Satellite Observations</h2>
-<ul>
-<li><strong>Advantages</strong>:
-<ul>
-<li>Global coverage and accessibility</li>
-<li>Continuous monitoring of large areas</li>
-<li>Cost-effective compared to ship-based surveys</li>
-</ul></li>
-<li><strong>Limitations</strong>:
-<ul>
-<li>Affected by atmospheric conditions</li>
-<li>Cannot penetrate deep into the ocean</li>
-</ul></li>
-</ul>
-</section>
-<section id="pace-satellite-2024" class="slide level2">
-<h2>PACE Satellite (2024)</h2>
-
-<img data-src="https://pace.oceansciences.org/images/pace_first_light_composite.png" class="r-stretch"></section>
-<section id="light-attenuation-in-the-ocean" class="slide level2">
-<h2>Light Attenuation in the Ocean</h2>
-
-<img data-src="https://oceanservice.noaa.gov/facts/lightinocean2.jpg" class="r-stretch"></section>
-<section id="light-attenuation-in-the-ocean-1" class="slide level2">
-<h2>Light Attenuation in the Ocean</h2>
-<ul>
-<li>Remote sensing only observes top few meters of ocean</li>
-<li>Cameras and optical instruments are ineffective at depth</li>
-<li>Alternative methods required:
-<ul>
-<li>Acoustic sensors</li>
-<li>Cabled networks and instruments</li>
-<li>Resurfacing equipment</li>
-</ul></li>
-</ul>
-<!-- ## Observation Methods
+          <img
+            data-src="https://oceanservice.noaa.gov/facts/lightinocean2.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="light-attenuation-in-the-ocean-1" class="slide level2">
+          <h2>Light Attenuation in the Ocean</h2>
+          <ul>
+            <li>Remote sensing only observes top few meters of ocean</li>
+            <li>Cameras and optical instruments are ineffective at depth</li>
+            <li>
+              Alternative methods required:
+              <ul>
+                <li>Acoustic sensors</li>
+                <li>Cabled networks and instruments</li>
+                <li>Resurfacing equipment</li>
+              </ul>
+            </li>
+          </ul>
+          <!-- ## Observation Methods
 
 - **Coastal Observatories**: Shore-based radar, tide gauges, and sensor networks
 - **Moored Buoys**: Fixed platforms for continuous time-series measurements
 - **Argo Floats and Gliders**: Autonomous floats and vehicles for extended ocean monitoring
 - **Animal-Borne Sensors**: Tags on marine animals collecting oceanographic data
 - **Research Vessels**: Ship-based surveys and deep-sea exploration -->
-</section>
-<section id="observation-methods" class="slide level2">
-<h2>Observation Methods</h2>
+        </section>
+        <section id="observation-methods" class="slide level2">
+          <h2>Observation Methods</h2>
 
-<img data-src="https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp" class="r-stretch"></section>
-<section id="hms-challenger-1872-1876" class="slide level2">
-<h2>HMS Challenger (1872-1876)</h2>
+          <img
+            data-src="https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp"
+            class="r-stretch"
+          />
+        </section>
+        <section id="hms-challenger-1872-1876" class="slide level2">
+          <h2>HMS Challenger (1872-1876)</h2>
 
-<img data-src="https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg" class="r-stretch"></section>
-<section id="section-2" class="slide level2">
-<h2></h2>
-<iframe width="1200" height="700" src="https://nioz.foleon.com/new-research-fleet/magazine/" title="NIOZ fleet"></iframe>
-</section>
-<section id="ship-based-measurements" class="slide level2">
-<h2>Ship-Based Measurements</h2>
-<ul>
-<li><strong>CTD Casts</strong>: Conductivity, Temperature, and Depth profiling and water samples</li>
-<li><strong>Acoustic Doppler Current Profilers (ADCP)</strong>: Measuring ocean currents</li>
-<li><strong>Multibeam Echosounders</strong>: High-resolution seafloor mapping</li>
-<li><strong>Sediment Cores</strong>: Extracting seafloor samples for geological and climate studies</li>
-<li><strong>Tows</strong>: Biological sampling of plankton and marine organisms</li>
-</ul>
-</section>
-<section id="section-3" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-2" class="slide level2">
+          <h2></h2>
+          <iframe
+            width="1200"
+            height="700"
+            src="https://nioz.foleon.com/new-research-fleet/magazine/"
+            title="NIOZ fleet"
+          ></iframe>
+        </section>
+        <section id="ship-based-measurements" class="slide level2">
+          <h2>Ship-Based Measurements</h2>
+          <ul>
+            <li>
+              <strong>CTD Casts</strong>: Conductivity, Temperature, and Depth
+              profiling and water samples
+            </li>
+            <li>
+              <strong>Acoustic Doppler Current Profilers (ADCP)</strong>:
+              Measuring ocean currents
+            </li>
+            <li>
+              <strong>Multibeam Echosounders</strong>: High-resolution seafloor
+              mapping
+            </li>
+            <li>
+              <strong>Sediment Cores</strong>: Extracting seafloor samples for
+              geological and climate studies
+            </li>
+            <li>
+              <strong>Tows</strong>: Biological sampling of plankton and marine
+              organisms
+            </li>
+          </ul>
+        </section>
+        <section id="section-3" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://www.medclic.es/uploads/filer_public/3d/ab/3dab4a25-0a19-40bb-afd4-a21520911a79/16_buque_oceanografico1_en_web.jpg" class="r-stretch"></section>
-<section id="section-4" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://www.medclic.es/uploads/filer_public/3d/ab/3dab4a25-0a19-40bb-afd4-a21520911a79/16_buque_oceanografico1_en_web.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-4" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://upload.wikimedia.org/wikipedia/commons/d/d3/CSIRO_ScienceImage_10807_Deploying_the_CTD_instrument_from_the_RV_Southern_Surveyor.jpg" class="r-stretch"></section>
-<section id="benefits-of-ctd-measurements" class="slide level2">
-<h2>Benefits of CTD Measurements</h2>
-<ul>
-<li><strong>Multiple Parameters</strong>: Temperature, salinity, depth, plus additional sensors (O₂, chlorophyll, turbidity)</li>
-<li><strong>Water Mass Identification</strong>: Characterize ocean layers and circulation patterns</li>
-<li><strong>High Vertical Resolution</strong>: Continuous profiling from surface to seafloor</li>
-<li><strong>Targeted Sampling</strong>: Niskin bottles collect water at specific depths of interest</li>
-<li><strong>Calibration Standard</strong>: Validates satellite and autonomous sensor data</li>
-</ul>
-</section>
-<section id="section-5" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://upload.wikimedia.org/wikipedia/commons/d/d3/CSIRO_ScienceImage_10807_Deploying_the_CTD_instrument_from_the_RV_Southern_Surveyor.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="benefits-of-ctd-measurements" class="slide level2">
+          <h2>Benefits of CTD Measurements</h2>
+          <ul>
+            <li>
+              <strong>Multiple Parameters</strong>: Temperature, salinity,
+              depth, plus additional sensors (O₂, chlorophyll, turbidity)
+            </li>
+            <li>
+              <strong>Water Mass Identification</strong>: Characterize ocean
+              layers and circulation patterns
+            </li>
+            <li>
+              <strong>High Vertical Resolution</strong>: Continuous profiling
+              from surface to seafloor
+            </li>
+            <li>
+              <strong>Targeted Sampling</strong>: Niskin bottles collect water
+              at specific depths of interest
+            </li>
+            <li>
+              <strong>Calibration Standard</strong>: Validates satellite and
+              autonomous sensor data
+            </li>
+          </ul>
+        </section>
+        <section id="section-5" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-78255-9/MediaObjects/41598_2020_78255_Fig2_HTML.png" class="r-stretch"></section>
-<section id="section-6" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-78255-9/MediaObjects/41598_2020_78255_Fig2_HTML.png"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-6" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://os.copernicus.org/articles/15/1327/2019/os-15-1327-2019-f01-thumb.png" class="r-stretch"></section>
-<section id="plankton-measurements" class="slide level2">
-<h2>Plankton measurements</h2>
-<ul>
-<li>In-Situ Imaging</li>
-<li>Water Sampling and preserving</li>
-<li>Chlorophyll Analysis</li>
-<li>eDNA Filtering</li>
-<li>Tows: nets or CPR</li>
-</ul>
-</section>
-<section id="section-7" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://os.copernicus.org/articles/15/1327/2019/os-15-1327-2019-f01-thumb.png"
+            class="r-stretch"
+          />
+        </section>
+        <section id="plankton-measurements" class="slide level2">
+          <h2>Plankton measurements</h2>
+          <ul>
+            <li>In-Situ Imaging</li>
+            <li>Water Sampling and preserving</li>
+            <li>Chlorophyll Analysis</li>
+            <li>eDNA Filtering</li>
+            <li>Tows: nets or CPR</li>
+          </ul>
+        </section>
+        <section id="section-7" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://upload.wikimedia.org/wikipedia/commons/b/b7/August_5%2C_2011_Friday_night_plankton_tow%21_%286013476640%29.jpgg" class="r-stretch"></section>
-<section id="section-8" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://upload.wikimedia.org/wikipedia/commons/b/b7/August_5%2C_2011_Friday_night_plankton_tow%21_%286013476640%29.jpgg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-8" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg" class="r-stretch"></section>
-<section id="section-9" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-9" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://www.sciencelearn.org.nz/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F117510%2F1722379309-deployment-of-the-cpr20160726-1222-9citkh.jpg%3Fw%3D1840%26h%3D1223.404255319149&amp;w=1080&amp;q=85" class="r-stretch"></section>
-<section id="section-10" class="slide level2">
-<h2></h2>
+          <img
+            data-src="https://www.sciencelearn.org.nz/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F117510%2F1722379309-deployment-of-the-cpr20160726-1222-9citkh.jpg%3Fw%3D1840%26h%3D1223.404255319149&amp;w=1080&amp;q=85"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-10" class="slide level2">
+          <h2></h2>
 
-<img data-src="https://www.cprsurvey.org/media/1196/gacs-map.png?width=1030&amp;height=517" class="r-stretch"></section>
-<section id="section-11" class="slide level2">
-<h2></h2>
-<iframe width="1200" height="700" src="https://data.marine.copernicus.eu/viewer/expert?view=viewer&amp;crs=epsg%3A4326&amp;t=754617600000&amp;z=-0.49402499198913574&amp;center=3.888847711461338%2C0&amp;zoom=9.902376717481406&amp;layers=H4sIABYFE2kAAxXNuw6CMBQA0H_5M0iBxXRDY5QEo.ExEGNuKr1SktYS2oFK_HdxPct5TGC9omFr7SAd8GmOoJPAwZPpU4hAi0BD_Zd9ddoUFR7v1a2sd8UFz4caGUuR5SxpDBmHxkpstcVeBTQB2Yqtc0ktOi9812DGsjxN45hGH8cv4VVIJPVe2eX5lh9JI3C2lLa9NkIT8LfQjubnDzr6GHilAAAA&amp;basemap=dark" title="Copernicus Marine data"></iframe>
-</section>
-<section id="virtualship-expedition" class="slide level2">
-<h2>VirtualShip expedition</h2>
-<ul>
-<li>9 days of ship time</li>
-<li>Depart and arrive from Texel, Netherlands</li>
-<li>Straight transect starting from the deep shelve</li>
-<li>Inslingeren: (zeem.) opnieuw wennen aan het zeemansleven</li>
-<li>Travel and CTD deployment time</li>
-<li>SURF Research Cloud setup by Jamie</li>
-<li>Instructions in Jupyter Notebook</li>
-</ul>
-</section>
-<section id="problems-at-sea-and-vr" class="slide level2">
-<h2>Problems at sea and VR</h2>
+          <img
+            data-src="https://www.cprsurvey.org/media/1196/gacs-map.png?width=1030&amp;height=517"
+            class="r-stretch"
+          />
+        </section>
+        <section id="section-11" class="slide level2">
+          <h2></h2>
+          <iframe
+            width="1200"
+            height="700"
+            src="https://data.marine.copernicus.eu/viewer/expert?view=viewer&amp;crs=epsg%3A4326&amp;t=754617600000&amp;z=-0.49402499198913574&amp;center=3.888847711461338%2C0&amp;zoom=9.902376717481406&amp;layers=H4sIABYFE2kAAxXNuw6CMBQA0H_5M0iBxXRDY5QEo.ExEGNuKr1SktYS2oFK_HdxPct5TGC9omFr7SAd8GmOoJPAwZPpU4hAi0BD_Zd9ddoUFR7v1a2sd8UFz4caGUuR5SxpDBmHxkpstcVeBTQB2Yqtc0ktOi9812DGsjxN45hGH8cv4VVIJPVe2eX5lh9JI3C2lLa9NkIT8LfQjubnDzr6GHilAAAA&amp;basemap=dark"
+            title="Copernicus Marine data"
+          ></iframe>
+        </section>
+        <section id="virtualship-expedition" class="slide level2">
+          <h2>VirtualShip expedition</h2>
+          <ul>
+            <li>9 days of ship time</li>
+            <li>Depart and arrive from Texel, Netherlands</li>
+            <li>Straight transect starting from the deep shelve</li>
+            <li>Inslingeren: (zeem.) opnieuw wennen aan het zeemansleven</li>
+            <li>Travel and CTD deployment time</li>
+            <li>SURF Research Cloud setup by Jamie</li>
+            <li>Instructions in Jupyter Notebook</li>
+          </ul>
+        </section>
+        <section id="problems-at-sea-and-vr" class="slide level2">
+          <h2>Problems at sea and VR</h2>
 
-
-<img data-src="https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1768/9422978/b65410a5b7d1/pone.0272960.g008.jpg" class="r-stretch"></section>
+          <img
+            data-src="https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1768/9422978/b65410a5b7d1/pone.0272960.g008.jpg"
+            class="r-stretch"
+          />
+        </section>
+      </div>
+      <div class="quarto-auto-generated-content" style="display: none">
+        <p>
+          <img
+            src="https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+            class="slide-logo"
+          />
+        </p>
+        <div class="footer footer-default"></div>
+      </div>
     </div>
-  <div class="quarto-auto-generated-content" style="display: none;">
-<p><img src="https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png" class="slide-logo"></p>
-<div class="footer footer-default">
 
-</div>
-</div></div>
+    <script>
+      window.backupDefine = window.define;
+      window.define = undefined;
+    </script>
+    <script src="Presentation_files/libs/revealjs/dist/reveal.js"></script>
+    <!-- reveal.js plugins -->
+    <script src="Presentation_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/pdf-export/pdfexport.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/reveal-menu/menu.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/reveal-menu/quarto-menu.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/quarto-support/support.js"></script>
 
-  <script>window.backupDefine = window.define; window.define = undefined;</script>
-  <script src="Presentation_files/libs/revealjs/dist/reveal.js"></script>
-  <!-- reveal.js plugins -->
-  <script src="Presentation_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/pdf-export/pdfexport.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/reveal-menu/menu.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/reveal-menu/quarto-menu.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/quarto-support/support.js"></script>
-  
+    <script src="Presentation_files/libs/revealjs/plugin/notes/notes.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/search/search.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/zoom/zoom.js"></script>
+    <script src="Presentation_files/libs/revealjs/plugin/math/math.js"></script>
+    <script>
+      window.define = window.backupDefine;
+      window.backupDefine = undefined;
+    </script>
 
-  <script src="Presentation_files/libs/revealjs/plugin/notes/notes.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/search/search.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/zoom/zoom.js"></script>
-  <script src="Presentation_files/libs/revealjs/plugin/math/math.js"></script>
-  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script>
-
-  <script>
-
+    <script>
       // Full list of configuration options available at:
       // https://revealjs.com/config/
       Reveal.initialize({
-'controlsAuto': false,
-'previewLinksAuto': false,
-'pdfSeparateFragments': false,
-'autoAnimateEasing': "ease",
-'autoAnimateDuration': 1,
-'autoAnimateUnmatched': true,
-'jumpToSlide': true,
-'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.togglePdfExport(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.toggleScrollView(event)\"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"5\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
-'smaller': false,
- 
+        controlsAuto: false,
+        previewLinksAuto: false,
+        pdfSeparateFragments: false,
+        autoAnimateEasing: "ease",
+        autoAnimateDuration: 1,
+        autoAnimateUnmatched: true,
+        jumpToSlide: true,
+        menu: {
+          side: "left",
+          useTextContentForMissingTitles: true,
+          markers: false,
+          loadIcons: false,
+          custom: [
+            {
+              title: "Tools",
+              icon: '<i class="fas fa-gear"></i>',
+              content:
+                '<ul class="slide-menu-items">\n<li class="slide-tool-item active" data-item="0"><a href="#" onclick="RevealMenuToolHandlers.fullscreen(event)"><kbd>f</kbd> Fullscreen</a></li>\n<li class="slide-tool-item" data-item="1"><a href="#" onclick="RevealMenuToolHandlers.speakerMode(event)"><kbd>s</kbd> Speaker View</a></li>\n<li class="slide-tool-item" data-item="2"><a href="#" onclick="RevealMenuToolHandlers.overview(event)"><kbd>o</kbd> Slide Overview</a></li>\n<li class="slide-tool-item" data-item="3"><a href="#" onclick="RevealMenuToolHandlers.togglePdfExport(event)"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class="slide-tool-item" data-item="4"><a href="#" onclick="RevealMenuToolHandlers.toggleScrollView(event)"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class="slide-tool-item" data-item="5"><a href="#" onclick="RevealMenuToolHandlers.keyboardHelp(event)"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>',
+            },
+          ],
+          openButton: true,
+        },
+        smaller: false,
+
         // Display controls in the bottom right corner
         controls: true,
 
@@ -346,20 +560,20 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
         controlsTutorial: false,
 
         // Determines where controls appear, "edges" or "bottom-right"
-        controlsLayout: 'edges',
+        controlsLayout: "edges",
 
         // Visibility rule for backwards navigation arrows; "faded", "hidden"
         // or "visible"
-        controlsBackArrows: 'faded',
+        controlsBackArrows: "faded",
 
         // Display a presentation progress bar
         progress: true,
 
         // Display the page number of the current slide
-        slideNumber: 'c/t',
+        slideNumber: "c/t",
 
         // 'all', 'print', or 'speaker'
-        showSlideNumber: 'all',
+        showSlideNumber: "all",
 
         // Add the current slide number to the URL hash so that reloading the
         // page/copying the URL will return you to the same slide
@@ -397,7 +611,7 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
         rtl: false,
 
         // see https://revealjs.com/vertical-slides/#navigation-mode
-        navigationMode: 'linear',
+        navigationMode: "linear",
 
         // Randomizes the order of slides each time the presentation loads
         shuffle: false,
@@ -449,7 +663,7 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
         mouseWheel: false,
 
         // The display mode that will be used to show slides
-        display: 'block',
+        display: "block",
 
         // Hide cursor if inactive
         hideInactiveCursor: true,
@@ -461,14 +675,14 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
         previewLinks: false,
 
         // Transition style (none/fade/slide/convex/concave/zoom)
-        transition: 'none',
+        transition: "none",
 
         // Transition speed (default/fast/slow)
-        transitionSpeed: 'default',
+        transitionSpeed: "default",
 
         // Transition style for full page slide backgrounds
         // (none/fade/slide/convex/concave/zoom)
-        backgroundTransition: 'none',
+        backgroundTransition: "none",
 
         // Number of slides away from the current that are visible
         viewDistance: 3,
@@ -489,53 +703,64 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
         margin: 0.1,
 
         math: {
-          mathjax: 'https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js',
-          config: 'TeX-AMS_HTML-full',
+          mathjax: "https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js",
+          config: "TeX-AMS_HTML-full",
           tex2jax: {
-            inlineMath: [['\\(','\\)']],
-            displayMath: [['\\[','\\]']],
+            inlineMath: [["\\(", "\\)"]],
+            displayMath: [["\\[", "\\]"]],
             balanceBraces: true,
             processEscapes: false,
             processRefs: true,
             processEnvironments: true,
-            preview: 'TeX',
-            skipTags: ['script','noscript','style','textarea','pre','code'],
-            ignoreClass: 'tex2jax_ignore',
-            processClass: 'tex2jax_process'
+            preview: "TeX",
+            skipTags: [
+              "script",
+              "noscript",
+              "style",
+              "textarea",
+              "pre",
+              "code",
+            ],
+            ignoreClass: "tex2jax_ignore",
+            processClass: "tex2jax_process",
           },
         },
 
         // reveal.js plugins
-        plugins: [QuartoLineHighlight, PdfExport, RevealMenu, QuartoSupport,
+        plugins: [
+          QuartoLineHighlight,
+          PdfExport,
+          RevealMenu,
+          QuartoSupport,
 
           RevealMath,
           RevealNotes,
           RevealSearch,
-          RevealZoom
-        ]
+          RevealZoom,
+        ],
       });
     </script>
     <script id="quarto-html-after-body" type="application/javascript">
       window.document.addEventListener("DOMContentLoaded", function (event) {
-        const tabsets =  window.document.querySelectorAll(".panel-tabset-tabby")
-        tabsets.forEach(function(tabset) {
-          const tabby = new Tabby('#' + tabset.id);
+        const tabsets = window.document.querySelectorAll(".panel-tabset-tabby");
+        tabsets.forEach(function (tabset) {
+          const tabby = new Tabby("#" + tabset.id);
         });
         const isCodeAnnotation = (el) => {
           for (const clz of el.classList) {
-            if (clz.startsWith('code-annotation-')) {                     
+            if (clz.startsWith("code-annotation-")) {
               return true;
             }
           }
           return false;
-        }
-        const onCopySuccess = function(e) {
+        };
+        const onCopySuccess = function (e) {
           // button target
           const button = e.trigger;
           // don't keep focus
           button.blur();
           // flash "checked"
-          button.classList.add('code-copy-button-checked');
+          button.classList.add("code-copy-button-checked");
           var currentTitle = button.getAttribute("title");
           button.setAttribute("title", "Copied!");
           let tooltip;
@@ -543,13 +768,14 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
             button.setAttribute("data-bs-toggle", "tooltip");
             button.setAttribute("data-bs-placement", "left");
             button.setAttribute("data-bs-title", "Copied!");
-            tooltip = new bootstrap.Tooltip(button, 
-              { trigger: "manual", 
-                customClass: "code-copy-button-tooltip",
-                offset: [0, -8]});
-            tooltip.show();    
+            tooltip = new bootstrap.Tooltip(button, {
+              trigger: "manual",
+              customClass: "code-copy-button-tooltip",
+              offset: [0, -8],
+            });
+            tooltip.show();
           }
-          setTimeout(function() {
+          setTimeout(function () {
             if (tooltip) {
               tooltip.hide();
               button.removeAttribute("data-bs-title");
@@ -557,63 +783,81 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
               button.removeAttribute("data-bs-placement");
             }
             button.setAttribute("title", currentTitle);
-            button.classList.remove('code-copy-button-checked');
+            button.classList.remove("code-copy-button-checked");
           }, 1000);
           // clear code selection
           e.clearSelection();
-        }
-        const getTextToCopy = function(trigger) {
+        };
+        const getTextToCopy = function (trigger) {
           const outerScaffold = trigger.parentElement.cloneNode(true);
-          const codeEl = outerScaffold.querySelector('code');
+          const codeEl = outerScaffold.querySelector("code");
           for (const childEl of codeEl.children) {
             if (isCodeAnnotation(childEl)) {
               childEl.remove();
             }
           }
           return codeEl.innerText;
-        }
-        const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
-          text: getTextToCopy
-        });
-        clipboard.on('success', onCopySuccess);
-        if (window.document.getElementById('quarto-embedded-source-code-modal')) {
-          const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        };
+        const clipboard = new window.ClipboardJS(
+          ".code-copy-button:not([data-in-quarto-modal])",
+          {
             text: getTextToCopy,
-            container: window.document.getElementById('quarto-embedded-source-code-modal')
-          });
-          clipboardModal.on('success', onCopySuccess);
+          },
+        );
+        clipboard.on("success", onCopySuccess);
+        if (
+          window.document.getElementById("quarto-embedded-source-code-modal")
+        ) {
+          const clipboardModal = new window.ClipboardJS(
+            ".code-copy-button[data-in-quarto-modal]",
+            {
+              text: getTextToCopy,
+              container: window.document.getElementById(
+                "quarto-embedded-source-code-modal",
+              ),
+            },
+          );
+          clipboardModal.on("success", onCopySuccess);
         }
-          var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
-          var mailtoRegex = new RegExp(/^mailto:/);
-            var filterRegex = new RegExp('/' + window.location.host + '/');
-          var isInternal = (href) => {
-              return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
-          }
-          // Inspect non-navigation links and adorn them if external
-         var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
-          for (var i=0; i<links.length; i++) {
-            const link = links[i];
-            if (!isInternal(link.href)) {
-              // undo the damage that might have been done by quarto-nav.js in the case of
-              // links that we want to consider external
-              if (link.dataset.originalHref !== undefined) {
-                link.href = link.dataset.originalHref;
-              }
+        var localhostRegex = new RegExp(
+          /^(?:http|https):\/\/localhost\:?[0-9]*\//,
+        );
+        var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("/" + window.location.host + "/");
+        var isInternal = (href) => {
+          return (
+            filterRegex.test(href) ||
+            localhostRegex.test(href) ||
+            mailtoRegex.test(href)
+          );
+        };
+        // Inspect non-navigation links and adorn them if external
+        var links = window.document.querySelectorAll(
+          "a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)",
+        );
+        for (var i = 0; i < links.length; i++) {
+          const link = links[i];
+          if (!isInternal(link.href)) {
+            // undo the damage that might have been done by quarto-nav.js in the case of
+            // links that we want to consider external
+            if (link.dataset.originalHref !== undefined) {
+              link.href = link.dataset.originalHref;
             }
           }
+        }
         function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
           const config = {
             allowHTML: true,
             maxWidth: 500,
             delay: 100,
             arrow: false,
-            appendTo: function(el) {
-                return el.closest('section.slide') || el.parentElement;
+            appendTo: function (el) {
+              return el.closest("section.slide") || el.parentElement;
             },
             interactive: true,
             interactiveBorder: 10,
-            theme: 'light-border',
-            placement: 'bottom-start',
+            theme: "light-border",
+            placement: "bottom-start",
           };
           if (contentFn) {
             config.content = contentFn;
@@ -624,17 +868,23 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
           if (onUntriggerFn) {
             config.onUntrigger = onUntriggerFn;
           }
-            config['offset'] = [0,0];
-            config['maxWidth'] = 700;
-          window.tippy(el, config); 
+          config["offset"] = [0, 0];
+          config["maxWidth"] = 700;
+          window.tippy(el, config);
         }
-        const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
-        for (var i=0; i<noterefs.length; i++) {
+        const noterefs = window.document.querySelectorAll(
+          'a[role="doc-noteref"]',
+        );
+        for (var i = 0; i < noterefs.length; i++) {
           const ref = noterefs[i];
-          tippyHover(ref, function() {
+          tippyHover(ref, function () {
             // use id or data attribute instead here
-            let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
-            try { href = new URL(href).hash; } catch {}
+            let href =
+              ref.getAttribute("data-footnote-href") ||
+              ref.getAttribute("href");
+            try {
+              href = new URL(href).hash;
+            } catch {}
             const id = href.replace(/^#\/?/, "");
             const note = window.document.getElementById(id);
             if (note) {
@@ -651,27 +901,29 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
             if (cites) {
               return {
                 el,
-                cites: cites.split(' ')
+                cites: cites.split(" "),
               };
             } else {
-              return findCites(el.parentElement)
+              return findCites(el.parentElement);
             }
           } else {
             return undefined;
           }
         };
-        var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
-        for (var i=0; i<bibliorefs.length; i++) {
+        var bibliorefs = window.document.querySelectorAll(
+          'a[role="doc-biblioref"]',
+        );
+        for (var i = 0; i < bibliorefs.length; i++) {
           const ref = bibliorefs[i];
           const citeInfo = findCites(ref);
           if (citeInfo) {
-            tippyHover(citeInfo.el, function() {
-              var popup = window.document.createElement('div');
-              citeInfo.cites.forEach(function(cite) {
-                var citeDiv = window.document.createElement('div');
-                citeDiv.classList.add('hanging-indent');
-                citeDiv.classList.add('csl-entry');
-                var biblioDiv = window.document.getElementById('ref-' + cite);
+            tippyHover(citeInfo.el, function () {
+              var popup = window.document.createElement("div");
+              citeInfo.cites.forEach(function (cite) {
+                var citeDiv = window.document.createElement("div");
+                citeDiv.classList.add("hanging-indent");
+                citeDiv.classList.add("csl-entry");
+                var biblioDiv = window.document.getElementById("ref-" + cite);
                 if (biblioDiv) {
                   citeDiv.innerHTML = biblioDiv.innerHTML;
                 }
@@ -682,7 +934,6 @@ Emma Daniels &amp; Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom
           }
         }
       });
-      </script>
-    
-
-</body></html>
+    </script>
+  </body>
+</html>
