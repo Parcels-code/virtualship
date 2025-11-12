@@ -24,3 +24,12 @@ caption: Teaching material
 
 ILOs.md
 ```
+
+## UU Ocean of the Future
+
+```{nbgallery}
+---
+maxdepth: 1
+---
+UU-ocean-of-future/Tutorial1.ipynb
+```
