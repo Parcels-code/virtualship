@@ -1,6 +1,7 @@
 import abc
+import re
 from collections import OrderedDict
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -156,51 +157,11 @@ class Instrument(abc.ABC):
             coordinates_selection_method="outside",
         )
 
-    def _load_local_ds(self, filename) -> xr.Dataset:
-        """
-        Load local dataset from specified data directory.
-
-        Sliced according to expedition.schedule.space_time_region and buffer specs.
-        """
-        ds = xr.open_dataset(self.from_data.joinpath(filename))
-
-        coord_rename = {}
-        if "lat" in ds.coords:
-            coord_rename["lat"] = "latitude"
-        if "lon" in ds.coords:
-            coord_rename["lon"] = "longitude"
-        if coord_rename:
-            ds = ds.rename(coord_rename)
-
-        min_lon = (
-            self.expedition.schedule.space_time_region.spatial_range.minimum_longitude
-            - self._get_spec_value(
-                "buffer", "latlon", 3.0
-            )  # always add min 3 deg buffer for local data to avoid edge issues with ds.sel()
-        )
-        max_lon = (
-            self.expedition.schedule.space_time_region.spatial_range.maximum_longitude
-            + self._get_spec_value("buffer", "latlon", 3.0)
-        )
-        min_lat = (
-            self.expedition.schedule.space_time_region.spatial_range.minimum_latitude
-            - self._get_spec_value("buffer", "latlon", 3.0)
-        )
-        max_lat = (
-            self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
-            + self._get_spec_value("buffer", "latlon", 3.0)
-        )
-
-        return ds.sel(
-            latitude=slice(min_lat, max_lat),
-            longitude=slice(min_lon, max_lon),
-        )
-
     def _generate_fieldset(self) -> FieldSet:
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
-        Avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
+        Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -208,12 +169,34 @@ class Instrument(abc.ABC):
         for key in keys:
             var = self.variables[key]
             if self.from_data is not None:  # load from local data
-                filename, full_var_name = _find_nc_file_with_variable(
-                    self.from_data, var
+                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
+                if physical:
+                    data_dir = self.from_data.joinpath("phys")
+                else:
+                    data_dir = self.from_data.joinpath("bgc")
+
+                schedule_start = (
+                    self.expedition.schedule.space_time_region.time_range.start_time
                 )
-                ds = self._load_local_ds(filename)
-                fs = FieldSet.from_xarray_dataset(
-                    ds, {key: full_var_name}, self.dimensions, mesh="spherical"
+                schedule_end = (
+                    self.expedition.schedule.space_time_region.time_range.end_time
+                )
+
+                files = self._find_files_in_timerange(
+                    data_dir,
+                    schedule_start,
+                    schedule_end,
+                )
+
+                _, full_var_name = _find_nc_file_with_variable(
+                    data_dir, var
+                )  # get full variable name from one of the files; var may only appear as substring in variable name in file
+
+                fs = FieldSet.from_netcdf(
+                    filenames=[data_dir.joinpath(f) for f in files],
+                    variables={key: full_var_name},
+                    dimensions=self.dimensions,
+                    mesh="spherical",
                 )
             else:  # steam via Copernicus Marine
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
@@ -233,3 +216,28 @@ class Instrument(abc.ABC):
         """Helper to extract a value from buffer_spec or limit_spec."""
         spec = self.buffer_spec if spec_type == "buffer" else self.limit_spec
         return spec.get(key) if spec and spec.get(key) is not None else default
+
+    def _find_files_in_timerange(
+        self,
+        data_dir: Path,
+        schedule_start,
+        schedule_end,
+        date_pattern=r"\d{4}_\d{2}_\d{2}",
+        date_fmt="%Y_%m_%d",
+    ) -> list:
+        """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
+        # TODO: scope to make this more flexible for different date patterns / formats ...
+        files_with_dates = []
+        start_date = schedule_start.date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
+        end_date = schedule_end.date()
+        for file in data_dir.iterdir():
+            if file.is_file():
+                match = re.search(date_pattern, file.name)
+                if match:
+                    file_date = datetime.strptime(match.group(), date_fmt).date()
+                    if start_date <= file_date <= end_date:
+                        files_with_dates.append((file_date, file.name))
+        files_with_dates.sort(
+            key=lambda x: x[0]
+        )  # sort by extracted date; more robust than relying on filesystem order
+        return [fname for _, fname in files_with_dates]

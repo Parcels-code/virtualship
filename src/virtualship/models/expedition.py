@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 import pydantic
@@ -16,10 +15,6 @@ from virtualship.utils import _get_bathy_data, _validate_numeric_mins_to_timedel
 
 from .location import Location
 from .space_time_region import SpaceTimeRegion
-
-if TYPE_CHECKING:
-    pass
-
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
 

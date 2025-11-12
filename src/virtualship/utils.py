@@ -419,13 +419,15 @@ def _get_bathy_data(
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
     if from_data is not None:  # load from local data
         var = "deptho"
+        bathy_dir = from_data.joinpath("bathymetry/")
         try:
-            filename, _ = _find_nc_file_with_variable(from_data, var)
+            filename, _ = _find_nc_file_with_variable(bathy_dir, var)
         except Exception as e:
+            # TODO: link to documentation on expected data structure!!
             raise RuntimeError(
-                f"Could not find bathymetry variable '{var}' in provided data directory '{from_data}'."
+                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See for more information on expectations: <<<INSERT LINK TO DOCS>>>\n"
             ) from e
-        ds_bathymetry = xr.open_dataset(from_data.joinpath(filename))
+        ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
         bathymetry_variables = {"bathymetry": "deptho"}
         bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
         return FieldSet.from_xarray_dataset(
