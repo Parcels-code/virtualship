@@ -2,13 +2,13 @@
 title: "Ocean observations"
 subtitle: "Ocean of the future <br> 13-11-2025"
 author: "Emma Daniels & Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom"
-format: 
+format:
     revealjs:
         slide-number: true
         theme: sky
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
         controls: true
-        # incremental: true 
+        # incremental: true
 title-slide-attributes:
     data-background-image: "https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg"
     data-background-size: contain
@@ -74,7 +74,7 @@ Note that it's not possible to investigate the interior ocean with satellites
 ## Observation Methods
 ![](https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp)
 
-## HMS Challenger (1872-1876) 
+## HMS Challenger (1872-1876)
 ![](https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg)
 
 ##
@@ -118,7 +118,7 @@ Note that it's not possible to investigate the interior ocean with satellites
 - eDNA Filtering
 - Tows: nets or CPR
 
-## 
+##
 ![](https://www.researchgate.net/profile/Ronald-Pouwer-2/publication/348566554/figure/fig2/AS:11431281090974442@1666259598493/Sampling-of-zooplankton-with-a-Bongo-net-during-Atlantic-Meridional-Transect-27-in-2017.png)
 
 ##
