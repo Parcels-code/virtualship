@@ -1,0 +1,149 @@
+---
+title: "Ocean observations"
+subtitle: "Ocean of the future <br> 13-11-2025"
+author: "Emma Daniels & Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom"
+format: 
+    revealjs:
+        slide-number: true
+        theme: sky
+        logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+        controls: true
+        # incremental: true 
+title-slide-attributes:
+    data-background-image: "https://cloudfront-us-east-2.images.arcpublishing.com/reuters/CQFY2GVMTNJ45KAVHBVEWJYZ44.jpg"
+    data-background-size: contain
+    # data-background-iframe: "https://www.youtube.com/embed/qeeipUefe8A?autoplay=1&controls=0&loop=1"
+    # data-background-video-loop: true
+    # data-background-video-muted: true
+---
+
+##
+![](https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg)
+
+## {background-iframe="https://wordwall.net/embed/4f6b5ced54d644c2bab35354305bb0eb?themeId=65&templateId=30&fontStackId=1" background-interactive="true"}
+
+## Difficulties of Measuring
+
+- **Vast Scale**: Covers 71% of Earth's surface, average depth 3,688m
+- **Real-Time Monitoring**: Difficulty transmitting data from deep or remote locations
+- **Extreme conditions**: Pressure, storms and salt require specialized equipment
+- **Accessibility**: Remote locations, harsh weather, high operational costs
+- **Light Limitation**: Optical methods only work in top ~200m
+
+## Satellite Observations
+
+![](https://climate.esa.int/media/images/Screenshot_2024-01-15_at_13.10.35.max-2000x2000.png)
+Note that it's not possible to investigate the interior ocean with satellites
+
+## Satellite Observations
+
+::: {.nonincremental}
+- **Advantages**:
+    - Global coverage and accessibility
+    - Continuous monitoring of large areas
+    - Cost-effective compared to ship-based surveys
+
+- **Limitations**:
+    - Affected by atmospheric conditions
+    - Cannot penetrate deep into the ocean
+:::
+
+## PACE Satellite (2024)
+![](https://pace.oceansciences.org/images/pace_first_light_composite.png)
+
+## Light Attenuation in the Ocean
+![](https://oceanservice.noaa.gov/facts/lightinocean2.jpg)
+
+## Light Attenuation in the Ocean
+
+- Remote sensing only observes top few meters of ocean
+- Cameras and optical instruments are ineffective at depth
+- Alternative methods required:
+    - Acoustic sensors
+    - Cabled networks and instruments
+    - Resurfacing equipment
+
+<!-- ## Observation Methods
+
+- **Coastal Observatories**: Shore-based radar, tide gauges, and sensor networks
+- **Moored Buoys**: Fixed platforms for continuous time-series measurements
+- **Argo Floats and Gliders**: Autonomous floats and vehicles for extended ocean monitoring
+- **Animal-Borne Sensors**: Tags on marine animals collecting oceanographic data
+- **Research Vessels**: Ship-based surveys and deep-sea exploration -->
+
+## Observation Methods
+![](https://marine.copernicus.eu/sites/default/files/styles/1370px_width/public/media/image/2023-10/Obs_In_Situ_Horizontal.png.webp)
+
+## HMS Challenger (1872-1876) 
+![](https://upload.wikimedia.org/wikipedia/commons/0/0b/HMS_Challenger_%281858%29.jpg)
+
+##
+```{=html}
+<iframe width="1200" height="700" src="https://nioz.foleon.com/new-research-fleet/magazine/" title="NIOZ fleet"></iframe>
+```
+
+## Ship-Based Measurements
+
+- **CTD Casts**: Conductivity, Temperature, and Depth profiling and water samples
+- **Acoustic Doppler Current Profilers (ADCP)**: Measuring ocean currents
+- **Multibeam Echosounders**: High-resolution seafloor mapping
+- **Sediment Cores**: Extracting seafloor samples for geological and climate studies
+- **Tows**: Biological sampling of plankton and marine organisms
+
+##
+![](https://www.medclic.es/uploads/filer_public/3d/ab/3dab4a25-0a19-40bb-afd4-a21520911a79/16_buque_oceanografico1_en_web.jpg)
+
+##
+![](https://upload.wikimedia.org/wikipedia/commons/d/d3/CSIRO_ScienceImage_10807_Deploying_the_CTD_instrument_from_the_RV_Southern_Surveyor.jpg)
+
+## Benefits of CTD Measurements
+
+- **Multiple Parameters**: Temperature, salinity, depth, plus additional sensors (O₂, chlorophyll, turbidity)
+- **Water Mass Identification**: Characterize ocean layers and circulation patterns
+- **High Vertical Resolution**: Continuous profiling from surface to seafloor
+- **Targeted Sampling**: Niskin bottles collect water at specific depths of interest
+- **Calibration Standard**: Validates satellite and autonomous sensor data
+
+##
+![](https://media.springernature.com/lw685/springer-static/image/art%3A10.1038%2Fs41598-020-78255-9/MediaObjects/41598_2020_78255_Fig2_HTML.png)
+
+##
+![](https://os.copernicus.org/articles/15/1327/2019/os-15-1327-2019-f01-thumb.png)
+
+## Plankton measurements
+
+- In-Situ Imaging
+- Water Sampling and preserving
+- Chlorophyll Analysis
+- eDNA Filtering
+- Tows: nets or CPR
+
+## 
+![](https://www.researchgate.net/profile/Ronald-Pouwer-2/publication/348566554/figure/fig2/AS:11431281090974442@1666259598493/Sampling-of-zooplankton-with-a-Bongo-net-during-Atlantic-Meridional-Transect-27-in-2017.png)
+
+##
+![](https://s30991.pcdn.co/news/wp-content/uploads/2022/07/biomonitoring-research.jpg)
+
+##
+![](https://www.sciencelearn.org.nz/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F117510%2F1722379309-deployment-of-the-cpr20160726-1222-9citkh.jpg%3Fw%3D1840%26h%3D1223.404255319149&w=1080&q=85)
+
+##
+![](https://www.cprsurvey.org/media/1196/gacs-map.png?width=1030&height=517)
+
+##
+```{=html}
+<iframe width="1200" height="700" src="https://data.marine.copernicus.eu/viewer/expert?view=viewer&crs=epsg%3A4326&t=754617600000&z=-0.49402499198913574&center=3.888847711461338%2C0&zoom=9.902376717481406&layers=H4sIABYFE2kAAxXNuw6CMBQA0H_5M0iBxXRDY5QEo.ExEGNuKr1SktYS2oFK_HdxPct5TGC9omFr7SAd8GmOoJPAwZPpU4hAi0BD_Zd9ddoUFR7v1a2sd8UFz4caGUuR5SxpDBmHxkpstcVeBTQB2Yqtc0ktOi9812DGsjxN45hGH8cv4VVIJPVe2eX5lh9JI3C2lLa9NkIT8LfQjubnDzr6GHilAAAA&basemap=dark" title="Copernicus Marine data"></iframe>
+```
+
+## VirtualShip expedition
+
+- 9 days of ship time
+- Depart and arrive from Texel, Netherlands
+- Straight transect starting from the deep shelve
+- Inslingeren: (zeem.) opnieuw wennen aan het zeemansleven
+- Travel and CTD deployment time
+- SURF Research Cloud setup by Jamie
+- Instructions in Jupyter Notebook
+
+## Problems at sea and VR
+![](https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1768/9422978/b65410a5b7d1/pone.0272960.g008.jpg)
