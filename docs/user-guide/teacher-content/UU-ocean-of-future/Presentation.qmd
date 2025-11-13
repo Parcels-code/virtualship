@@ -98,10 +98,10 @@ Note that it's not possible to investigate the interior ocean with satellites
 
 ## Benefits of CTD Measurements
 
-- **Multiple Parameters**: Temperature, salinity, depth, plus additional sensors (O₂, chlorophyll, turbidity)
-- **Water Mass Identification**: Characterize ocean layers and circulation patterns
 - **High Vertical Resolution**: Continuous profiling from surface to seafloor
 - **Targeted Sampling**: Niskin bottles collect water at specific depths of interest
+- **Multiple Parameters**: Temperature, salinity, depth, plus additional sensors (O₂, chlorophyll, turbidity)
+- **Water Mass Identification**: Characterize ocean layers and circulation patterns
 - **Calibration Standard**: Validates satellite and autonomous sensor data
 
 ##
