@@ -24,11 +24,6 @@ if TYPE_CHECKING:
     from virtualship.models import Expedition
 
 
-# TODO: from-data should default to None and only be overwritten if specified in `virtualship run` ...
-
-# TODO: update CMS credentials automation workflow so not all using the same credentials if running in a Jupyter Collaborative Session...!
-
-
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
@@ -108,24 +103,18 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True
-
-        if TMP:
-            if not self.verbose_progress:
-                with yaspin(
-                    text=f"Simulating {self.name} measurements... ",
-                    side="right",
-                    spinner=ship_spinner,
-                ) as spinner:
-                    self.simulate(measurements, out_path)
-                    spinner.ok("✅\n")
-            else:
-                print(f"Simulating {self.name} measurements... ")
+        if not self.verbose_progress:
+            with yaspin(
+                text=f"Simulating {self.name} measurements... ",
+                side="right",
+                spinner=ship_spinner,
+            ) as spinner:
                 self.simulate(measurements, out_path)
-                print("\n")
-
+                spinner.ok("✅\n")
         else:
+            print(f"Simulating {self.name} measurements... ")
             self.simulate(measurements, out_path)
+            print("\n")
 
     def _get_copernicus_ds(
         self,
@@ -201,7 +190,8 @@ class Instrument(abc.ABC):
 
                 ds = xr.open_mfdataset(
                     [data_dir.joinpath(f) for f in files]
-                )  # as ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+                )  # using: ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+
                 fs = FieldSet.from_xarray_dataset(
                     ds,
                     variables={key: full_var_name},
@@ -236,7 +226,7 @@ class Instrument(abc.ABC):
         date_fmt="%Y_%m_%d",
     ) -> list:
         """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
-        # TODO: scope to make this more flexible for different date patterns / formats ...
+        # TODO: scope to make this more flexible for different date patterns / formats ... ?
 
         all_files = glob.glob(str(data_dir.joinpath("*")))
         if not all_files:

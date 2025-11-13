@@ -77,7 +77,6 @@ def plan(path):
     _plan(Path(path))
 
 
-# TODO: also add option to 'stream' via link to dir elsewhere, e.g. simlink or path to data stored elsewhere that isn't expedition dir!
 @click.command()
 @click.argument(
     "path",

@@ -151,5 +151,3 @@ It might take up to an hour to simulate the measurements depending on your choic
 Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written as [Zarr](https://zarr.dev/) files.
 
 From here you can carry on your analysis (offline). We encourage you to explore and analyse these data using [Xarray](https://docs.xarray.dev/en/stable/). We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments.
-
-<!-- TODO: Add a link to visualisation tool as an alternate option to own visualisation when/if this feature is implemented?! -->

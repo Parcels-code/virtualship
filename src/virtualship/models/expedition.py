@@ -125,7 +125,6 @@ class Schedule(pydantic.BaseModel):
             )
 
         # check if all waypoints are in water using bathymetry data
-        # TODO: write test that checks that will flag when waypoint is on land!! [add to existing suite of fail .verify() tests in test_expedition.py]
         land_waypoints = []
         if not ignore_land_test:
             try:

@@ -122,8 +122,7 @@ class _ScheduleSimulator:
             # check if waypoint was reached in time
             if waypoint.time is not None and self._time > waypoint.time:
                 print(
-                    # TODO: I think this should be wp_i + 1, not wp_i; otherwise it will be off by one
-                    f"Waypoint {wp_i} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
+                    f"Waypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:

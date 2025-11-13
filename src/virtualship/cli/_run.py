@@ -51,7 +51,7 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     if from_data is None:
         # TODO: caution, if collaborative environments, will this mean everyone uses the same credentials file?
-        # TODO: may need to think about how to deal with this if using collaborative environments AND streaming data via copernicusmarine
+        # TODO: need to think about how to deal with this for when using collaborative environments AND streaming data via copernicusmarine
         COPERNICUS_CREDS_FILE = os.path.expandvars(
             "$HOME/.copernicusmarine/.copernicusmarine-credentials"
         )
