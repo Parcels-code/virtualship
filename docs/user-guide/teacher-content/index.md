@@ -22,5 +22,5 @@ maxdepth: 1
 caption: Teaching material
 ---
 
-ILOs.md
+ILOs.ipynb
 ```
