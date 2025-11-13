@@ -4,7 +4,7 @@ VirtualShip is used as part of the VirtualShip Classroom, that combines authenti
 
 All VirtualShip Classroom (VSC) material is open under an MIT licence and freely available! You can use the VSC to teach anything from a 4 hour masterclass up to an open assignment of more than 40 hours. Example assignments are available below and please feel free to customize anything offline or [contribute](../../contributing/index.md) to the assignments provided here.
 
-Our core learning outcome is for students to appreciate the difficulty of measuring the ocean, making the VSC a valuable tool for students that will go into fieldwork, modelling or anything else. Additional Intended Learning Outcomes [(ILOs)](ILOs.md) were formulated in collaboration with ocean scientists from the Royal Netherlands Institute for Sea Research [(NIOZ)](https://www.nioz.nl/en) and Utrecht University [(UU)](https://www.uu.nl/en).
+Our core learning outcome is for students to appreciate the difficulty of measuring the ocean, making the VSC a valuable tool for students that will go into fieldwork, modelling or anything else. Additional Intended Learning Outcomes [(ILOs)](ILOs.ipnb) were formulated in collaboration with ocean scientists from the Royal Netherlands Institute for Sea Research [(NIOZ)](https://www.nioz.nl/en) and Utrecht University [(UU)](https://www.uu.nl/en).
 
 The 360 videos are available on our YouTube channel [**_@VirtualShip Classroom_**](https://www.youtube.com/@VirtualShipClassroom) and in high resolution upon request. The videos can be viewed in the classroom or at home using:
 
@@ -22,7 +22,7 @@ maxdepth: 1
 caption: Teaching material
 ---
 
-ILOs.md
+ILOs.ipynb
 ```
 
 ## UU Ocean of the Future
