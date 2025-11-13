@@ -168,7 +168,8 @@ def test_get_bathy_data_local(tmp_path, dummy_space_time_region):
             "latitude": (("x", "y"), np.array([[0, 0], [1, 1]])),
         },
     )
-    nc_path = tmp_path / "dummy.nc"
+    nc_path = tmp_path / "bathymetry/dummy.nc"
+    nc_path.parent.mkdir(parents=True, exist_ok=True)
     ds.to_netcdf(nc_path)
 
     # should return a FieldSet
