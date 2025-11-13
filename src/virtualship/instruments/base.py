@@ -1,4 +1,5 @@
 import abc
+import glob
 import re
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -107,18 +108,24 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {self.name} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+        TMP = True
+
+        if TMP:
+            if not self.verbose_progress:
+                with yaspin(
+                    text=f"Simulating {self.name} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+            else:
+                print(f"Simulating {self.name} measurements... ")
                 self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
+                print("\n")
+
         else:
-            print(f"Simulating {self.name} measurements... ")
             self.simulate(measurements, out_path)
-            print("\n")
 
     def _get_copernicus_ds(
         self,
@@ -192,8 +199,11 @@ class Instrument(abc.ABC):
                     data_dir, var
                 )  # get full variable name from one of the files; var may only appear as substring in variable name in file
 
-                fs = FieldSet.from_netcdf(
-                    filenames=[data_dir.joinpath(f) for f in files],
+                ds = xr.open_mfdataset(
+                    [data_dir.joinpath(f) for f in files]
+                )  # as ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+                fs = FieldSet.from_xarray_dataset(
+                    ds,
                     variables={key: full_var_name},
                     dimensions=self.dimensions,
                     mesh="spherical",
@@ -227,17 +237,58 @@ class Instrument(abc.ABC):
     ) -> list:
         """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
         # TODO: scope to make this more flexible for different date patterns / formats ...
+
+        all_files = glob.glob(str(data_dir.joinpath("*")))
+        if not all_files:
+            raise ValueError(
+                f"No files found in data directory {data_dir}. Please ensure the directory contains files with 'P1D' or 'P1M' in their names as per Copernicus Marine Product ID naming conventions."
+            )
+
+        if all("P1D" in s for s in all_files):
+            t_resolution = "daily"
+        elif all("P1M" in s for s in all_files):
+            t_resolution = "monthly"
+        else:
+            raise ValueError(
+                f"Could not determine time resolution from filenames in data directory. Please ensure all filenames in {data_dir} contain either 'P1D' (daily) or 'P1M' (monthly), "
+                f"as per the Copernicus Marine Product ID naming conventions."
+            )
+
+        if t_resolution == "monthly":
+            t_min = schedule_start.date()
+            t_max = (
+                schedule_end.date()
+                + timedelta(
+                    days=32
+                )  # buffer to ensure fieldset end date is always longer than schedule end date for monthly data
+            )
+        else:  # daily
+            t_min = schedule_start.date()
+            t_max = schedule_end.date()
+
         files_with_dates = []
-        start_date = schedule_start.date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
-        end_date = schedule_end.date()
         for file in data_dir.iterdir():
             if file.is_file():
                 match = re.search(date_pattern, file.name)
                 if match:
-                    file_date = datetime.strptime(match.group(), date_fmt).date()
-                    if start_date <= file_date <= end_date:
+                    file_date = datetime.strptime(
+                        match.group(), date_fmt
+                    ).date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
+                    if t_min <= file_date <= t_max:
                         files_with_dates.append((file_date, file.name))
+
         files_with_dates.sort(
             key=lambda x: x[0]
         )  # sort by extracted date; more robust than relying on filesystem order
+
+        # catch if not enough data coverage found for the requested time range
+        if files_with_dates[-1][0] < schedule_end.date():
+            raise ValueError(
+                f"Not enough data coverage found in {data_dir} for the requested time range {schedule_start} to {schedule_end}. "
+                f"Latest available data is for date {files_with_dates[-1][0]}."
+                f"If using monthly data, please ensure that the last month downloaded covers the schedule end date + 1 month."
+                f"See documentation for more details: <<INSERT LINK>>"
+                # TODO: add link to relevant documentation!
+            )
+
         return [fname for _, fname in files_with_dates]
