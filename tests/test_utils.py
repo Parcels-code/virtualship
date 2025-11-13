@@ -218,13 +218,18 @@ def test_find_nc_file_with_variable_substring(tmp_path):
     assert found_var == "uo_glor"
 
 
-def test_data_dir_structure_compliance():
+def test_data_dir_and_filename_compliance():
     """
-    Test that Instrument._generate_fieldset and _get_bathy_data use the expected subdirectory names.
+    Test compliance of data directory structure and filename patterns as sought by base.py methods relative to as is described in the docs.
+
+    Test that:
+        - Instrument._generate_fieldset and _get_bathy_data use the expected subdirectory names.
+        - The expected filename date pattern (YYYY_MM_DD) is used in _find_files_in_timerange.
+
 
     ('phys', 'bgc', 'bathymetry') for local data loading, as required by documentation.
 
-    To avoid drift from what expecations are laid out in the docs.
+    To avoid drift between code implementation and what expectations are laid out in the docs.
     """
     base_path = Path(__file__).parent.parent / "src/virtualship/instruments/base.py"
     utils_path = Path(__file__).parent.parent / "src/virtualship/utils.py"
@@ -234,13 +239,26 @@ def test_data_dir_structure_compliance():
 
     # Check for phys and bgc in Instrument._generate_fieldset
     assert 'self.from_data.joinpath("phys")' in base_code, (
-        "Expected 'phys' subdirectory not found in Instrument._generate_fieldset."
+        "Expected 'phys' subdirectory not found in Instrument._generate_fieldset. This indicates a drift between docs and implementation."
     )
     assert 'self.from_data.joinpath("bgc")' in base_code, (
-        "Expected 'bgc' subdirectory not found in Instrument._generate_fieldset."
+        "Expected 'bgc' subdirectory not found in Instrument._generate_fieldset. This indicates a drift between docs and implementation."
     )
 
     # Check for bathymetry in _get_bathy_data
     assert 'from_data.joinpath("bathymetry")' in utils_code, (
-        "Expected 'bathymetry' subdirectory not found in _get_bathy_data."
+        "Expected 'bathymetry' subdirectory not found in _get_bathy_data. This indicates a drift between docs and implementation."
+    )
+
+    # Check for date_pattern in _find_files_in_timerange
+    assert 'date_pattern=r"\\d{4}_\\d{2}_\\d{2}"' in base_code, (
+        "Expected date_pattern r'\\d{4}_\\d{2}_\\d{2}' not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
+    )
+
+    # Check for P1D and P1M in t_resolution logic
+    assert 'if all("P1D" in s for s in all_files):' in base_code, (
+        "Expected check for 'P1D' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
+    )
+    assert 'elif all("P1M" in s for s in all_files):' in base_code, (
+        "Expected check for 'P1M' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
     )
