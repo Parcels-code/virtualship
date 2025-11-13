@@ -218,4 +218,29 @@ def test_find_nc_file_with_variable_substring(tmp_path):
     assert found_var == "uo_glor"
 
 
-# TODO: add test that pre-downloaded data is in correct directories - when have moved to be able to handle temporally separated .nc files!
+def test_data_dir_structure_compliance():
+    """
+    Test that Instrument._generate_fieldset and _get_bathy_data use the expected subdirectory names.
+
+    ('phys', 'bgc', 'bathymetry') for local data loading, as required by documentation.
+
+    To avoid drift from what expecations are laid out in the docs.
+    """
+    base_path = Path(__file__).parent.parent / "src/virtualship/instruments/base.py"
+    utils_path = Path(__file__).parent.parent / "src/virtualship/utils.py"
+
+    base_code = base_path.read_text(encoding="utf-8")
+    utils_code = utils_path.read_text(encoding="utf-8")
+
+    # Check for phys and bgc in Instrument._generate_fieldset
+    assert 'self.from_data.joinpath("phys")' in base_code, (
+        "Expected 'phys' subdirectory not found in Instrument._generate_fieldset."
+    )
+    assert 'self.from_data.joinpath("bgc")' in base_code, (
+        "Expected 'bgc' subdirectory not found in Instrument._generate_fieldset."
+    )
+
+    # Check for bathymetry in _get_bathy_data
+    assert 'from_data.joinpath("bathymetry")' in utils_code, (
+        "Expected 'bathymetry' subdirectory not found in _get_bathy_data."
+    )

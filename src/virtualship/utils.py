@@ -419,7 +419,7 @@ def _get_bathy_data(
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
     if from_data is not None:  # load from local data
         var = "deptho"
-        bathy_dir = from_data.joinpath("bathymetry/")
+        bathy_dir = from_data.joinpath("bathymetry")
         try:
             filename, _ = _find_nc_file_with_variable(bathy_dir, var)
         except Exception as e:
