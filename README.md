@@ -54,7 +54,7 @@ conda activate ship
 
 which creates an environment named `ship` with the latest version of `virtualship`. You can replace `ship` with any name you like.
 
-For a development installation, please follow the instructions detailed in the [contributing page](https://virtualship.oceanparcels.org/en/latest/contributing/index.html).
+For a development installation, please follow the instructions detailed in the [contributing page](https://virtualship.readthedocs.io/en/latest/contributing/index.html).
 
 ## Usage
 
@@ -113,7 +113,7 @@ Options:
   --help  Show this message and exit.
 ```
 
-For examples, see [the tutorials section of our documentation](https://virtualship.oceanparcels.org/en/latest/user-guide/tutorials/index.html).
+For examples, see [the tutorials section of our documentation](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html).
 
 ## Input data
 
@@ -129,5 +129,5 @@ The code for this project is [hosted on GitHub](https://github.com/OceanParcels/
   <img src="https://contrib.rocks/image?repo=oceanparcels/virtualship" />
 </a>
 
-**All contributions are welcome! See the [contributing page](https://virtualship.oceanparcels.org/en/latest/contributing/index.html) in our documentation to see how to get involved.**
+**All contributions are welcome! See the [contributing page](https://virtualship.readthedocs.io/en/latest/contributing/index.html) in our documentation to see how to get involved.**
 Image made with [contrib.rocks](https://contrib.rocks).

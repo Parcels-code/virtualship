@@ -14,6 +14,10 @@ ctd_config:
   max_depth_meter: -2000.0
   min_depth_meter: -11.0
   stationkeeping_time_minutes: 20.0
+ctd_bgc_config:
+  max_depth_meter: -2000.0
+  min_depth_meter: -11.0
+  stationkeeping_time_minutes: 20.0
 drifter_config:
   depth_meter: 0.0
   lifetime_minutes: 60480.0

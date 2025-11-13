@@ -6,13 +6,9 @@ import click
 import pydantic
 import yaml
 
+from virtualship.errors import CredentialFileError
+
 CREDENTIALS_FILE = "credentials.yaml"
-
-
-class CredentialFileError(Exception):
-    """Exception raised for errors in the input file format."""
-
-    pass
 
 
 class Credentials(pydantic.BaseModel):

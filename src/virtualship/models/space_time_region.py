@@ -9,6 +9,7 @@ from typing_extensions import Self
 Longitude = Annotated[float, Field(..., ge=-180, le=180)]
 Latitude = Annotated[float, Field(..., ge=-90, le=90)]
 Depth = float  # TODO: insert a minimum depth here? e.g., `Annotated[float, Field(..., ge=0)]`
+# TODO: is_valid_depth in validator_utils.py will alse need to be updated if this TODO is implemented
 
 
 class SpatialRange(BaseModel):

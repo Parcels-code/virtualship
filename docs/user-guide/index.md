@@ -4,6 +4,15 @@
 :maxdepth: 1
 
 quickstart
+teacher-content/index
 tutorials/index
 assignments/index
+```
+
+# Documentation
+
+```{toctree}
+:maxdepth: 1
+
+documentation/copernicus_products.md
 ```

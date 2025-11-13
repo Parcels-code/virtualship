@@ -32,9 +32,8 @@ html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
     "logo": {
-        "text": "Virtual Ship Parcels",
-        "image_light": "virtual_ship_logo_no_text.png",
-        "image_dark": "virtual_ship_logo_inverted_no_text.png",
+        "image_light": "virtual_ship_logo.png",
+        "image_dark": "virtual_ship_logo_inverted.png",
     },
     "use_edit_page_button": True,
     "github_url": "https://github.com/OceanParcels/virtualship",
@@ -79,3 +78,7 @@ nbsphinx_thumbnails = {
     "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
 }
+
+sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
+
+nbsphinx_execute = "never"

@@ -7,16 +7,19 @@ from datetime import datetime, timedelta
 
 import pyproj
 
-from ..instruments.argo_float import ArgoFloat
-from ..instruments.ctd import CTD
-from ..instruments.drifter import Drifter
-from ..instruments.xbt import XBT
-from ..location import Location
-from ..spacetime import Spacetime
-from .instrument_type import InstrumentType
-from .schedule import Schedule
-from .ship_config import ShipConfig
-from .waypoint import Waypoint
+from virtualship.instruments.argo_float import ArgoFloat
+from virtualship.instruments.ctd import CTD
+from virtualship.instruments.ctd_bgc import CTD_BGC
+from virtualship.instruments.drifter import Drifter
+from virtualship.instruments.xbt import XBT
+from virtualship.models import (
+    InstrumentType,
+    Location,
+    Schedule,
+    ShipConfig,
+    Spacetime,
+    Waypoint,
+)
 
 
 @dataclass
@@ -44,6 +47,7 @@ class MeasurementsToSimulate:
     argo_floats: list[ArgoFloat] = field(default_factory=list, init=False)
     drifters: list[Drifter] = field(default_factory=list, init=False)
     ctds: list[CTD] = field(default_factory=list, init=False)
+    ctd_bgcs: list[CTD_BGC] = field(default_factory=list, init=False)
     xbts: list[XBT] = field(default_factory=list, init=False)
 
 
@@ -104,9 +108,14 @@ class _ScheduleSimulator:
             # check if waypoint was reached in time
             if waypoint.time is not None and self._time > waypoint.time:
                 print(
+                    # TODO: I think this should be wp_i + 1, not wp_i; otherwise it will be off by one
                     f"Waypoint {wp_i} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                 )
                 return ScheduleProblem(self._time, wp_i)
+            else:
+                self._time = (
+                    waypoint.time
+                )  # wait at the waypoint until ship is schedules to be there
 
             # note measurements made at waypoint
             time_passed = self._make_measurements(waypoint)
@@ -122,7 +131,7 @@ class _ScheduleSimulator:
             lons2=location.lon,
             lats2=location.lat,
         )
-        ship_speed_meter_per_second = self._ship_config.ship_speed_knots * 3600 / 1852
+        ship_speed_meter_per_second = self._ship_config.ship_speed_knots * 1852 / 3600
         azimuth1 = geodinv[0]
         distance_to_next_waypoint = geodinv[2]
         time_to_reach = timedelta(
@@ -249,6 +258,15 @@ class _ScheduleSimulator:
                     )
                 )
                 time_costs.append(self._ship_config.ctd_config.stationkeeping_time)
+            elif instrument is InstrumentType.CTD_BGC:
+                self._measurements_to_simulate.ctd_bgcs.append(
+                    CTD_BGC(
+                        spacetime=Spacetime(self._location, self._time),
+                        min_depth=self._ship_config.ctd_bgc_config.min_depth_meter,
+                        max_depth=self._ship_config.ctd_bgc_config.max_depth_meter,
+                    )
+                )
+                time_costs.append(self._ship_config.ctd_bgc_config.stationkeeping_time)
             elif instrument is InstrumentType.DRIFTER:
                 self._measurements_to_simulate.drifters.append(
                     Drifter(

@@ -1,4 +1,4 @@
-from virtualship.expedition import Schedule, ShipConfig
+from virtualship.models import Schedule, ShipConfig
 from virtualship.utils import get_example_config, get_example_schedule
 
 

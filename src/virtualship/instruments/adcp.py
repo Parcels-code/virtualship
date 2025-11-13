@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
 
-from ..spacetime import Spacetime
+from virtualship.models import Spacetime
 
 # we specifically use ScipyParticle because we have many small calls to execute
 # there is some overhead with JITParticle and this ends up being significantly faster

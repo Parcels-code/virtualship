@@ -11,15 +11,19 @@ dependencies:
   - pydantic >=2, <3
   - pip
   - pyyaml
-  - copernicusmarine >= 2
+  - copernicusmarine >= 2.2.2
   - openpyxl
+  - yaspin
+  - textual
 
   # linting
   - pre-commit
+  - mypy
 
   # Testing
   - pytest
   - pytest-cov
+  - pytest-asyncio
   - codecov
   - seabird
   - setuptools

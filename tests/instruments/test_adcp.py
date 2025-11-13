@@ -6,8 +6,8 @@ import numpy as np
 import xarray as xr
 from parcels import FieldSet
 
-from virtualship import Location, Spacetime
 from virtualship.instruments.adcp import simulate_adcp
+from virtualship.models import Location, Spacetime
 
 
 def test_simulate_adcp(tmpdir) -> None:
