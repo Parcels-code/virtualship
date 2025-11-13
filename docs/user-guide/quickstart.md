@@ -1,5 +1,13 @@
 # VirtualShip Quickstart Guide 🚢
 
+```{warning}
+This quickstart guide is currently out of date with the latest version of VirtualShip (v1.0.0).
+
+It will be updated soon.
+
+In particular, the `virtualship fetch` command is no longer supported. Instead, data fetching is now integrated into the `virtualship run` command. See [#226](https://github.com/Parcels-code/virtualship/pull/226) for more details in the meantime.
+```
+
 Welcome to this Quickstart to using VirtualShip. In this guide we will conduct a virtual expedition in the North Sea. Note, however, that you can plan your own expedition anywhere in the global ocean and conduct whatever set of measurements you wish!
 
 This Quickstart is available as an instructional video below, or you can continue with the step-by-step guide.
