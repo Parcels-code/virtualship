@@ -12,7 +12,7 @@ See the [for example...](#for-example) section for an example data download work
 
 ### Data requirements
 
-When using pre-downloaded data with VirtualShip, the software supports only: daily and monthly resolution physical and biogeochemical data, along with a static bathymetry file.
+For pre-downloaded data, VirtualShip only supports daily and monthly resolution physical and biogeochemical data, along with a static bathymetry file.
 
 In addition, all pre-downloaded data must be split into separate files per timestep (i.e. one .nc file per day or month).
 
