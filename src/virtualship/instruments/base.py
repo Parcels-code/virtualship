@@ -1,0 +1,284 @@
+import abc
+import glob
+import re
+from collections import OrderedDict
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import copernicusmarine
+import xarray as xr
+from parcels import FieldSet
+from yaspin import yaspin
+
+from virtualship.errors import CopernicusCatalogueError
+from virtualship.utils import (
+    COPERNICUSMARINE_PHYS_VARIABLES,
+    _find_nc_file_with_variable,
+    _get_bathy_data,
+    _select_product_id,
+    ship_spinner,
+)
+
+if TYPE_CHECKING:
+    from virtualship.models import Expedition
+
+
+class Instrument(abc.ABC):
+    """Base class for instruments and their simulation."""
+
+    def __init__(
+        self,
+        name: str,
+        expedition: "Expedition",
+        directory: Path | str,
+        filenames: dict,
+        variables: dict,
+        add_bathymetry: bool,
+        allow_time_extrapolation: bool,
+        verbose_progress: bool,
+        from_data: Path | None,
+        buffer_spec: dict | None = None,
+        limit_spec: dict | None = None,
+    ):
+        """Initialise instrument."""
+        self.name = name
+        self.expedition = expedition
+        self.directory = directory
+        self.filenames = filenames
+        self.from_data = from_data
+
+        self.variables = OrderedDict(variables)
+        self.dimensions = {
+            "lon": "longitude",
+            "lat": "latitude",
+            "time": "time",
+            "depth": "depth",
+        }  # same dimensions for all instruments
+        self.add_bathymetry = add_bathymetry
+        self.allow_time_extrapolation = allow_time_extrapolation
+        self.verbose_progress = verbose_progress
+        self.buffer_spec = buffer_spec
+        self.limit_spec = limit_spec
+
+    def load_input_data(self) -> FieldSet:
+        """Load and return the input data as a FieldSet for the instrument."""
+        try:
+            fieldset = self._generate_fieldset()
+        except Exception as e:
+            raise CopernicusCatalogueError(
+                f"Failed to load input data directly from Copernicus Marine (or local data) for instrument '{self.name}'. Original error: {e}"
+            ) from e
+
+        # interpolation methods
+        for var in (v for v in self.variables if v not in ("U", "V")):
+            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+
+        # depth negative
+        for g in fieldset.gridset.grids:
+            g.negate_depth()
+
+        # bathymetry data
+        if self.add_bathymetry:
+            bathymetry_field = _get_bathy_data(
+                self.expedition.schedule.space_time_region,
+                latlon_buffer=self.buffer_spec.get("latlon")
+                if self.buffer_spec
+                else None,
+                from_data=self.from_data,
+            ).bathymetry
+            bathymetry_field.data = -bathymetry_field.data
+            fieldset.add_field(bathymetry_field)
+
+        return fieldset
+
+    @abc.abstractmethod
+    def simulate(
+        self,
+        data_dir: Path,
+        measurements: list,
+        out_path: str | Path,
+    ) -> None:
+        """Simulate instrument measurements."""
+
+    def execute(self, measurements: list, out_path: str | Path) -> None:
+        """Run instrument simulation."""
+        if not self.verbose_progress:
+            with yaspin(
+                text=f"Simulating {self.name} measurements... ",
+                side="right",
+                spinner=ship_spinner,
+            ) as spinner:
+                self.simulate(measurements, out_path)
+                spinner.ok("✅\n")
+        else:
+            print(f"Simulating {self.name} measurements... ")
+            self.simulate(measurements, out_path)
+            print("\n")
+
+    def _get_copernicus_ds(
+        self,
+        physical: bool,
+        var: str,
+    ) -> xr.Dataset:
+        """Get Copernicus Marine dataset for direct ingestion."""
+        product_id = _select_product_id(
+            physical=physical,
+            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
+            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
+            variable=var if not physical else None,
+        )
+
+        latlon_buffer = self._get_spec_value("buffer", "latlon", 0.0)
+        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+        depth_min = self._get_spec_value("limit", "depth_min", None)
+        depth_max = self._get_spec_value("limit", "depth_max", None)
+
+        return copernicusmarine.open_dataset(
+            dataset_id=product_id,
+            minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude
+            - latlon_buffer,
+            maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude
+            + latlon_buffer,
+            minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude
+            - latlon_buffer,
+            maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
+            + latlon_buffer,
+            variables=[var],
+            start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
+            end_datetime=self.expedition.schedule.space_time_region.time_range.end_time
+            + timedelta(days=time_buffer),
+            minimum_depth=depth_min,
+            maximum_depth=depth_max,
+            coordinates_selection_method="outside",
+        )
+
+    def _generate_fieldset(self) -> FieldSet:
+        """
+        Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
+
+        Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
+        """
+        fieldsets_list = []
+        keys = list(self.variables.keys())
+
+        for key in keys:
+            var = self.variables[key]
+            if self.from_data is not None:  # load from local data
+                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
+                if physical:
+                    data_dir = self.from_data.joinpath("phys")
+                else:
+                    data_dir = self.from_data.joinpath("bgc")
+
+                schedule_start = (
+                    self.expedition.schedule.space_time_region.time_range.start_time
+                )
+                schedule_end = (
+                    self.expedition.schedule.space_time_region.time_range.end_time
+                )
+
+                files = self._find_files_in_timerange(
+                    data_dir,
+                    schedule_start,
+                    schedule_end,
+                )
+
+                _, full_var_name = _find_nc_file_with_variable(
+                    data_dir, var
+                )  # get full variable name from one of the files; var may only appear as substring in variable name in file
+
+                ds = xr.open_mfdataset(
+                    [data_dir.joinpath(f) for f in files]
+                )  # using: ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+
+                fs = FieldSet.from_xarray_dataset(
+                    ds,
+                    variables={key: full_var_name},
+                    dimensions=self.dimensions,
+                    mesh="spherical",
+                )
+            else:  # stream via Copernicus Marine Service
+                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
+                ds = self._get_copernicus_ds(physical=physical, var=var)
+                fs = FieldSet.from_xarray_dataset(
+                    ds, {key: var}, self.dimensions, mesh="spherical"
+                )
+            fieldsets_list.append(fs)
+
+        base_fieldset = fieldsets_list[0]
+        for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
+            base_fieldset.add_field(getattr(fs, key))
+
+        return base_fieldset
+
+    def _get_spec_value(self, spec_type: str, key: str, default=None):
+        """Helper to extract a value from buffer_spec or limit_spec."""
+        spec = self.buffer_spec if spec_type == "buffer" else self.limit_spec
+        return spec.get(key) if spec and spec.get(key) is not None else default
+
+    def _find_files_in_timerange(
+        self,
+        data_dir: Path,
+        schedule_start,
+        schedule_end,
+        date_pattern=r"\d{4}_\d{2}_\d{2}",
+        date_fmt="%Y_%m_%d",
+    ) -> list:
+        """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
+        # TODO: scope to make this more flexible for different date patterns / formats ... ?
+
+        all_files = glob.glob(str(data_dir.joinpath("*")))
+        if not all_files:
+            raise ValueError(
+                f"No files found in data directory {data_dir}. Please ensure the directory contains files with 'P1D' or 'P1M' in their names as per Copernicus Marine Product ID naming conventions."
+            )
+
+        if all("P1D" in s for s in all_files):
+            t_resolution = "daily"
+        elif all("P1M" in s for s in all_files):
+            t_resolution = "monthly"
+        else:
+            raise ValueError(
+                f"Could not determine time resolution from filenames in data directory. Please ensure all filenames in {data_dir} contain either 'P1D' (daily) or 'P1M' (monthly), "
+                f"as per the Copernicus Marine Product ID naming conventions."
+            )
+
+        if t_resolution == "monthly":
+            t_min = schedule_start.date()
+            t_max = (
+                schedule_end.date()
+                + timedelta(
+                    days=32
+                )  # buffer to ensure fieldset end date is always longer than schedule end date for monthly data
+            )
+        else:  # daily
+            t_min = schedule_start.date()
+            t_max = schedule_end.date()
+
+        files_with_dates = []
+        for file in data_dir.iterdir():
+            if file.is_file():
+                match = re.search(date_pattern, file.name)
+                if match:
+                    file_date = datetime.strptime(
+                        match.group(), date_fmt
+                    ).date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
+                    if t_min <= file_date <= t_max:
+                        files_with_dates.append((file_date, file.name))
+
+        files_with_dates.sort(
+            key=lambda x: x[0]
+        )  # sort by extracted date; more robust than relying on filesystem order
+
+        # catch if not enough data coverage found for the requested time range
+        if files_with_dates[-1][0] < schedule_end.date():
+            raise ValueError(
+                f"Not enough data coverage found in {data_dir} for the requested time range {schedule_start} to {schedule_end}. "
+                f"Latest available data is for date {files_with_dates[-1][0]}."
+                f"If using monthly data, please ensure that the last month downloaded covers the schedule end date + 1 month."
+                f"See documentation for more details: <<INSERT LINK>>"
+                # TODO: add link to relevant documentation!
+            )
+
+        return [fname for _, fname in files_with_dates]

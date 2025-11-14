@@ -9,7 +9,8 @@ import pytest
 import yaml
 from textual.widgets import Button, Collapsible, Input
 
-from virtualship.cli._plan import ConfigEditor, PlanApp, ScheduleEditor
+from virtualship.cli._plan import ExpeditionEditor, PlanApp
+from virtualship.utils import EXPEDITION
 
 NEW_SPEED = "8.0"
 NEW_LAT = "0.05"
@@ -33,12 +34,8 @@ async def test_UI_changes():
     tmpdir = Path(tempfile.mkdtemp())
 
     shutil.copy(
-        files("virtualship.static").joinpath("ship_config.yaml"),
-        tmpdir / "ship_config.yaml",
-    )
-    shutil.copy(
-        files("virtualship.static").joinpath("schedule.yaml"),
-        tmpdir / "schedule.yaml",
+        files("virtualship.static").joinpath(EXPEDITION),
+        tmpdir / EXPEDITION,
     )
 
     app = PlanApp(path=tmpdir)
@@ -47,22 +44,23 @@ async def test_UI_changes():
         await pilot.pause(0.5)
 
         plan_screen = pilot.app.screen
-        config_editor = plan_screen.query_one(ConfigEditor)
-        schedule_editor = plan_screen.query_one(ScheduleEditor)
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
 
         # get mock of UI notify method
         plan_screen.notify = MagicMock()
 
         # change ship speed
-        speed_collapsible = config_editor.query_one("#speed_collapsible", Collapsible)
+        speed_collapsible = expedition_editor.query_one(
+            "#speed_collapsible", Collapsible
+        )
         if speed_collapsible.collapsed:
             speed_collapsible.collapsed = False
             await pilot.pause()
-        ship_speed_input = config_editor.query_one("#speed", Input)
+        ship_speed_input = expedition_editor.query_one("#speed", Input)
         await simulate_input(pilot, ship_speed_input, NEW_SPEED)
 
         # change waypoint lat/lon (e.g. first waypoint)
-        waypoints_collapsible = schedule_editor.query_one("#waypoints", Collapsible)
+        waypoints_collapsible = expedition_editor.query_one("#waypoints", Collapsible)
         if waypoints_collapsible.collapsed:
             waypoints_collapsible.collapsed = False
             await pilot.pause()
@@ -104,11 +102,11 @@ async def test_UI_changes():
         )
 
         # verify changes to speed, lat, lon in saved YAML
-        ship_config_path = os.path.join(tmpdir, "ship_config.yaml")
-        with open(ship_config_path) as f:
-            saved_config = yaml.safe_load(f)
+        expedition_path = os.path.join(tmpdir, EXPEDITION)
+        with open(expedition_path) as f:
+            saved_expedition = yaml.safe_load(f)
 
-        assert saved_config["ship_speed_knots"] == float(NEW_SPEED)
+        assert saved_expedition["ship_config"]["ship_speed_knots"] == float(NEW_SPEED)
 
         # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"

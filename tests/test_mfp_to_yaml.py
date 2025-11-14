@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from virtualship.models import Schedule
+from virtualship.models import Expedition
 from virtualship.utils import mfp_to_yaml
 
 
@@ -88,7 +88,7 @@ def test_mfp_to_yaml_success(request, fixture_name, tmp_path):
     """Test that mfp_to_yaml correctly processes a valid MFP file."""
     valid_mfp_file = request.getfixturevalue(fixture_name)
 
-    yaml_output_path = tmp_path / "schedule.yaml"
+    yaml_output_path = tmp_path / "expedition.yaml"
 
     # Run function (No need to mock open() for YAML, real file is created)
     mfp_to_yaml(valid_mfp_file, yaml_output_path)
@@ -97,9 +97,9 @@ def test_mfp_to_yaml_success(request, fixture_name, tmp_path):
     assert yaml_output_path.exists()
 
     # Load YAML and validate contents
-    data = Schedule.from_yaml(yaml_output_path)
+    data = Expedition.from_yaml(yaml_output_path)
 
-    assert len(data.waypoints) == 3
+    assert len(data.schedule.waypoints) == 3
 
 
 @pytest.mark.parametrize(
@@ -138,7 +138,7 @@ def test_mfp_to_yaml_exceptions(request, fixture_name, error, match, tmp_path):
     """Test that mfp_to_yaml raises an error when input file is not valid."""
     fixture = request.getfixturevalue(fixture_name)
 
-    yaml_output_path = tmp_path / "schedule.yaml"
+    yaml_output_path = tmp_path / "expedition.yaml"
 
     with pytest.raises(error, match=match):
         mfp_to_yaml(fixture, yaml_output_path)
@@ -146,7 +146,7 @@ def test_mfp_to_yaml_exceptions(request, fixture_name, error, match, tmp_path):
 
 def test_mfp_to_yaml_extra_headers(unexpected_header_mfp_file, tmp_path):
     """Test that mfp_to_yaml prints a warning when extra columns are found."""
-    yaml_output_path = tmp_path / "schedule.yaml"
+    yaml_output_path = tmp_path / "expedition.yaml"
 
     with pytest.warns(UserWarning, match="Found additional unexpected columns.*"):
         mfp_to_yaml(unexpected_header_mfp_file, yaml_output_path)

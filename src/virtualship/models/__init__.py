@@ -1,18 +1,20 @@
 """Pydantic models and data classes used to configure virtualship (i.e., in the configuration files or settings)."""
 
-from .location import Location
-from .schedule import Schedule, Waypoint
-from .ship_config import (
+from .expedition import (
     ADCPConfig,
     ArgoFloatConfig,
     CTD_BGCConfig,
     CTDConfig,
     DrifterConfig,
-    InstrumentType,
+    Expedition,
+    InstrumentsConfig,
+    Schedule,
     ShipConfig,
     ShipUnderwaterSTConfig,
+    Waypoint,
     XBTConfig,
 )
+from .location import Location
 from .space_time_region import (
     SpaceTimeRegion,
     SpatialRange,
@@ -25,8 +27,8 @@ from .spacetime import (
 __all__ = [  # noqa: RUF022
     "Location",
     "Schedule",
+    "ShipConfig",
     "Waypoint",
-    "InstrumentType",
     "ArgoFloatConfig",
     "ADCPConfig",
     "CTDConfig",
@@ -34,9 +36,10 @@ __all__ = [  # noqa: RUF022
     "ShipUnderwaterSTConfig",
     "DrifterConfig",
     "XBTConfig",
-    "ShipConfig",
     "SpatialRange",
     "TimeRange",
     "SpaceTimeRegion",
     "Spacetime",
+    "Expedition",
+    "InstrumentsConfig",
 ]

@@ -1,6 +1,14 @@
-"""Measurement instrument that can be used with Parcels."""
+"""Instruments in VirtualShip."""
 
-from . import adcp, argo_float, ctd, ctd_bgc, drifter, ship_underwater_st, xbt
+from . import (
+    adcp,
+    argo_float,
+    ctd,
+    ctd_bgc,
+    drifter,
+    ship_underwater_st,
+    xbt,
+)
 
 __all__ = [
     "adcp",

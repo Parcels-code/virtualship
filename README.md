@@ -30,6 +30,8 @@
     </tr>
 </table>
 
+<!-- TODO: README needs updating for v1-dev! -->
+
 <!-- Insert catchy summary -->
 
 VirtualShipParcels is a command line simulator allowing students to plan and conduct a virtual research expedition, receiving measurements as if they were coming from actual oceanographic instruments including:

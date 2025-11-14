@@ -1,5 +1,11 @@
 # VirtualShip Quickstart Guide 🚢
 
+```{warning}
+This quickstart guide is designed for use with VirtualShip v0.2.2 and currently out of date with the latest version of VirtualShip (v1.0.0). It will be updated soon.
+
+In particular, the `virtualship fetch` command is no longer supported. Instead, data fetching is now integrated into the `virtualship run` command. See [#226](https://github.com/Parcels-code/virtualship/pull/226) for details in the meantime.
+```
+
 Welcome to this Quickstart to using VirtualShip. In this guide we will conduct a virtual expedition in the North Sea. Note, however, that you can plan your own expedition anywhere in the global ocean and conduct whatever set of measurements you wish!
 
 This Quickstart is available as an instructional video below, or you can continue with the step-by-step guide.
@@ -46,10 +52,10 @@ virtualship init EXPEDITION_NAME --from-mfp CoordinatesExport.xlsx
 The `CoordinatesExport.xlsx` in the `virtualship init` command refers to the .xlsx file exported from MFP. Replace the filename with the name of your exported .xlsx file (and make sure to move it from the Downloads to the folder/directory in which you are running the expedition).
 ```
 
-This will create a folder/directory called `EXPEDITION_NAME` with two files: `schedule.yaml` and `ship_config.yaml` based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indictates that the exported coordinates will be used.
+This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates will be used.
 
 ```{note}
-For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write example `schedule.yaml` and `ship_config.yaml` files in the `EXPEDITION_NAME` folder/directory. These files contain example waypoints, timings and instrument selections, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.
+For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write an example `expedition.yaml` file in the `EXPEDITION_NAME` folder/directory. This file contains example waypoints, timings, instrument selections, and ship configuration, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.
 ```
 
 ## Expedition scheduling & ship configuration
@@ -61,7 +67,7 @@ virtualship plan EXPEDITION_NAME
 ```
 
 ```{tip}
-Using the `virtualship plan` tool is optional. Advanced users can also edit the `schedule.yaml` and `ship_config.yaml` files directly if preferred.
+Using the `virtualship plan` tool is optional. Advanced users can also edit the `expedition.yaml` file directly if preferred.
 ```
 
 The planning tool should look something like this and offers an intuitive way to make your selections:
@@ -115,7 +121,7 @@ For advanced users: you can also make further customisations to behaviours of al
 When you are happy with your ship configuration and schedule plan, press _Save Changes_.
 
 ```{note}
-On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `ship_config.yaml` and `schedule.yaml` files, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
+On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
 ```
 
 ## Fetch the data
@@ -151,5 +157,3 @@ It might take up to an hour to simulate the measurements depending on your choic
 Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written as [Zarr](https://zarr.dev/) files.
 
 From here you can carry on your analysis (offline). We encourage you to explore and analyse these data using [Xarray](https://docs.xarray.dev/en/stable/). We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments.
-
-<!-- TODO: Add a link to visualisation tool as an alternate option to own visualisation when/if this feature is implemented?! -->
