@@ -434,7 +434,7 @@ def _get_bathy_data(
             ds_bathymetry, bathymetry_variables, bathymetry_dimensions
         )
 
-    else:  # stream via Copernicus Marine
+    else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
             minimum_longitude=space_time_region.spatial_range.minimum_longitude

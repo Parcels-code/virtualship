@@ -48,7 +48,7 @@ Within these subdirectories, the expected filename conventions are:
   - `cmems_mod_glo_phy_anfc_0.083deg_static_bathymetry.nc`
 
 ```{tip}
-Careful to use an underscore (`_`) as the separator between date components in the filenames (i.e. `YYYY_MM_DD`).
+Take care to use an underscore (`_`) as the separator between date components in the filenames (i.e. `YYYY_MM_DD`).
 ```
 
 ```{note}
@@ -76,7 +76,7 @@ The following assumptions are also made about the data:
 
 #### Also of note
 
-1. Whilst not mandatory to use data downloaded only from Copernicus Marine (any existing data you may hold can be re-organised accordingly), the assumptions made by VirtualShip regarding directory structure and filename conventions are motivated by alignment with the Copernicus Marine's practices.
+1. Whilst not mandatory to use data downloaded only from the Copernicus Marine Service (any existing data you may hold can be re-organised accordingly), the assumptions made by VirtualShip regarding directory structure and filename conventions are motivated by alignment with the Copernicus Marine Service's practices.
    - If you want to use pre-existing data with VirtualShip, which you may have accessed from a different source, it is possible to do so by restructuring and/or renaming your data files as necessary.
 2. The whole VirtualShip pre-downloaded data workflow should support global data or subsets thereof, provided the data files contain the necessary variables and are structured as outlined above.
 

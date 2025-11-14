@@ -198,7 +198,7 @@ class Instrument(abc.ABC):
                     dimensions=self.dimensions,
                     mesh="spherical",
                 )
-            else:  # steam via Copernicus Marine
+            else:  # stream via Copernicus Marine Service
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
                 ds = self._get_copernicus_ds(physical=physical, var=var)
                 fs = FieldSet.from_xarray_dataset(
