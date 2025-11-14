@@ -7,6 +7,7 @@ __pycache__/
 *.jpg
 *.gif
 !docs/**/*.gif
+**/Presentation_files
 
 # Data files created
 /results
