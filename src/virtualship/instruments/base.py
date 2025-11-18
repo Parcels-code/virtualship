@@ -245,7 +245,9 @@ class Instrument(abc.ABC):
             )
 
         if t_resolution == "monthly":
-            t_min = schedule_start.date()
+            t_min = schedule_start.date().replace(
+                day=1
+            )  # first day of month of the schedule start date
             t_max = (
                 schedule_end.date()
                 + timedelta(
