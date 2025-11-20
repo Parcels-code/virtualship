@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import pyproj
 
+from virtualship.errors import ScheduleError
 from virtualship.instruments.argo_float import ArgoFloat
 from virtualship.instruments.ctd import CTD
 from virtualship.instruments.ctd_bgc import CTD_BGC
@@ -121,8 +122,9 @@ class _ScheduleSimulator:
 
             # check if waypoint was reached in time
             if waypoint.time is not None and self._time > waypoint.time:
-                print(
+                raise ScheduleError(
                     f"Waypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
+                    "\n\nHave you ensured that your schedule includes sufficient time for taking measurements such as CTD casts (in addition to the time it takes to sail between waypoints)?\n\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:
