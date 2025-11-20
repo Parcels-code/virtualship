@@ -23,7 +23,7 @@ class ScheduleError(RuntimeError):
 
 
 class InstrumentsConfigError(RuntimeError):
-    """An error in the config."""
+    """An error in the InstrumentsConfig."""
 
     pass
 
