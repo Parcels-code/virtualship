@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import glob
 import os
+import re
 import warnings
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
@@ -11,8 +13,8 @@ from typing import TYPE_CHECKING, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -491,3 +493,71 @@ def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
         except Exception:
             continue
     return None
+
+
+def _find_files_in_timerange(
+    data_dir: Path,
+    schedule_start,
+    schedule_end,
+    date_pattern=r"\d{4}_\d{2}_\d{2}",
+    date_fmt="%Y_%m_%d",
+) -> list:
+    """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
+    # TODO: scope to make this more flexible for different date patterns / formats ... ?
+
+    all_files = glob.glob(str(data_dir.joinpath("*")))
+    if not all_files:
+        raise ValueError(
+            f"No files found in data directory {data_dir}. Please ensure the directory contains files with 'P1D' or 'P1M' in their names as per Copernicus Marine Product ID naming conventions."
+        )
+
+    if all("P1D" in s for s in all_files):
+        t_resolution = "daily"
+    elif all("P1M" in s for s in all_files):
+        t_resolution = "monthly"
+    else:
+        raise ValueError(
+            f"Could not determine time resolution from filenames in data directory. Please ensure all filenames in {data_dir} contain either 'P1D' (daily) or 'P1M' (monthly), "
+            f"as per the Copernicus Marine Product ID naming conventions."
+        )
+
+    if t_resolution == "monthly":
+        t_min = schedule_start.date().replace(
+            day=1
+        )  # first day of month of the schedule start date
+        t_max = (
+            schedule_end.date()
+            + timedelta(
+                days=32
+            )  # buffer to ensure fieldset end date is always longer than schedule end date for monthly data
+        )
+    else:  # daily
+        t_min = schedule_start.date()
+        t_max = schedule_end.date()
+
+    files_with_dates = []
+    for file in data_dir.iterdir():
+        if file.is_file():
+            match = re.search(date_pattern, file.name)
+            if match:
+                file_date = datetime.strptime(
+                    match.group(), date_fmt
+                ).date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
+                if t_min <= file_date <= t_max:
+                    files_with_dates.append((file_date, file.name))
+
+    files_with_dates.sort(
+        key=lambda x: x[0]
+    )  # sort by extracted date; more robust than relying on filesystem order
+
+    # catch if not enough data coverage found for the requested time range
+    if files_with_dates[-1][0] < schedule_end.date():
+        raise ValueError(
+            f"Not enough data coverage found in {data_dir} for the requested time range {schedule_start} to {schedule_end}. "
+            f"Latest available data is for date {files_with_dates[-1][0]}."
+            f"If using monthly data, please ensure that the last month downloaded covers the schedule end date + 1 month."
+            f"See documentation for more details: <<INSERT LINK>>"
+            # TODO: add link to relevant documentation!
+        )
+
+    return [fname for _, fname in files_with_dates]
