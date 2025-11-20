@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
 from virtualship.models import Location, Spacetime
 
