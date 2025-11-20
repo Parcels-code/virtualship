@@ -8,7 +8,7 @@ from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -79,7 +79,7 @@ class XBTInstrument(Instrument):
 
     def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
-        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+        variables = {"T": "thetao"}
         super().__init__(
             expedition,
             variables,
@@ -94,7 +94,7 @@ class XBTInstrument(Instrument):
     def simulate(self, measurements, out_path) -> None:
         """Simulate XBT measurements."""
         DT = 10.0  # dt of XBT simulation integrator
-        OUTPUT_DT = timedelta(seconds=1)
+        OUTPUT_DT = timedelta(seconds=10)
 
         if len(measurements) == 0:
             print(
@@ -105,8 +105,15 @@ class XBTInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        fieldset_starttime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[0])
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+
+        fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[0]
+        )
+        fieldset_endtime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[-1]
+        )
 
         # deploy time for all xbts should be later than fieldset start time
         if not all(
