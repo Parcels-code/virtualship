@@ -71,7 +71,18 @@ class ADCPInstrument(Instrument):
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate ADCP measurements."""
-        MAX_DEPTH = self.expedition.instruments_config.adcp_config.max_depth_meter
+        config_max_depth = (
+            self.expedition.instruments_config.adcp_config.max_depth_meter
+        )
+
+        if config_max_depth < -1600.0:
+            print(
+                f"\n\n⚠️  Warning: The configured ADCP max depth of {abs(config_max_depth)} m exceeds the 1600 m limit for the technology (e.g. https://www.geomar.de/en/research/fb1/fb1-po/observing-systems/adcp)."
+                "\n\n This expedition will continue using the prescribed configuration. However, note, the results will not necessarily represent authentic ADCP instrument readings and could also lead to slower simulations ."
+                "\n\n If this was unintented, consider re-adjusting your ADCP configuration in your expedition.yaml or via `virtualship plan`.\n\n"
+            )
+
+        MAX_DEPTH = config_max_depth
         MIN_DEPTH = -5.0
         NUM_BINS = self.expedition.instruments_config.adcp_config.num_bins
 
