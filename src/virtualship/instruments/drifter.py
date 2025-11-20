@@ -66,7 +66,7 @@ class DrifterInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize DrifterInstrument."""
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
-        buffer_spec = {
+        spacetime_buffer_size = {
             "latlon": 6.0,  # [degrees]
             "time": 21.0,  # [days]
         }
@@ -81,7 +81,7 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
-            buffer_spec=buffer_spec,
+            spacetime_buffer_size=spacetime_buffer_size,
             limit_spec=limit_spec,
             from_data=from_data,
         )

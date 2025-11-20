@@ -37,7 +37,7 @@ class Instrument(abc.ABC):
         allow_time_extrapolation: bool,
         verbose_progress: bool,
         from_data: Path | None,
-        buffer_spec: dict | None = None,
+        spacetime_buffer_size: dict | None = None,
         limit_spec: dict | None = None,
     ):
         """Initialise instrument."""
@@ -54,7 +54,7 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
-        self.buffer_spec = buffer_spec
+        self.spacetime_buffer_size = spacetime_buffer_size
         self.limit_spec = limit_spec
 
     def load_input_data(self) -> FieldSet:
@@ -78,8 +78,8 @@ class Instrument(abc.ABC):
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(
                 self.expedition.schedule.space_time_region,
-                latlon_buffer=self.buffer_spec.get("latlon")
-                if self.buffer_spec
+                latlon_buffer=self.spacetime_buffer_size.get("latlon")
+                if self.spacetime_buffer_size
                 else None,
                 from_data=self.from_data,
             ).bathymetry
@@ -209,8 +209,8 @@ class Instrument(abc.ABC):
         return base_fieldset
 
     def _get_spec_value(self, spec_type: str, key: str, default=None):
-        """Helper to extract a value from buffer_spec or limit_spec."""
-        spec = self.buffer_spec if spec_type == "buffer" else self.limit_spec
+        """Helper to extract a value from spacetime_buffer_size or limit_spec."""
+        spec = self.spacetime_buffer_size if spec_type == "buffer" else self.limit_spec
         return spec.get(key) if spec and spec.get(key) is not None else default
 
     def _find_files_in_timerange(

@@ -67,7 +67,7 @@ def test_get_spec_value_buffer_and_limit():
         add_bathymetry=False,
         allow_time_extrapolation=False,
         verbose_progress=False,
-        buffer_spec={"latlon": 5.0},
+        spacetime_buffer_size={"latlon": 5.0},
         limit_spec={"depth_min": 10.0},
         from_data=None,
     )

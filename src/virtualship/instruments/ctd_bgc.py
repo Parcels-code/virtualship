@@ -118,7 +118,7 @@ class CTD_BGCInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            buffer_spec=None,
+            spacetime_buffer_size=None,
             limit_spec=None,
             from_data=from_data,
         )

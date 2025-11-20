@@ -65,7 +65,7 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            buffer_spec=None,
+            spacetime_buffer_size=None,
             limit_spec=None,
             from_data=from_data,
         )

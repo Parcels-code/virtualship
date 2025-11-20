@@ -140,7 +140,7 @@ class ArgoFloatInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize ArgoFloatInstrument."""
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
-        buffer_spec = {
+        spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
             "time": 21.0,  # [days]
         }
@@ -151,7 +151,7 @@ class ArgoFloatInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
-            buffer_spec=buffer_spec,
+            spacetime_buffer_size=spacetime_buffer_size,
             limit_spec=None,
             from_data=from_data,
         )
