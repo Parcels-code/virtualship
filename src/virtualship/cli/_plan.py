@@ -590,14 +590,6 @@ class ExpeditionEditor(Static):
             )
 
     def _update_schedule(self):
-        spatial_range = SpatialRange(
-            minimum_longitude=self.query_one("#min_lon").value,
-            maximum_longitude=self.query_one("#max_lon").value,
-            minimum_latitude=self.query_one("#min_lat").value,
-            maximum_latitude=self.query_one("#max_lat").value,
-            minimum_depth=self.query_one("#min_depth").value,
-            maximum_depth=self.query_one("#max_depth").value,
-        )
         start_time_input = self.query_one("#start_time").value
         end_time_input = self.query_one("#end_time").value
         waypoint_times = [
@@ -614,8 +606,8 @@ class ExpeditionEditor(Static):
         else:
             end_time = end_time_input
         time_range = TimeRange(start_time=start_time, end_time=end_time)
-        self.expedition.schedule.space_time_region.spatial_range = spatial_range
         self.expedition.schedule.space_time_region.time_range = time_range
+
         for i, wp in enumerate(self.expedition.schedule.waypoints):
             wp.location = Location(
                 latitude=float(self.query_one(f"#wp{i}_lat").value),
@@ -639,6 +631,57 @@ class ExpeditionEditor(Static):
                     wp.instrument.extend([InstrumentType.DRIFTER] * count)
                 elif switch_on:
                     wp.instrument.append(instrument)
+
+        # take min/max lat/lon to be most extreme values of waypoints or space_time_region inputs (so as to cover possibility of user edits in either place)
+        # also prevents situation where e.g. user defines a space time region inconsistent with waypoint locations and vice versa (warning also provided)
+        waypoint_lats = [
+            wp.location.latitude for wp in self.expedition.schedule.waypoints
+        ]
+        waypoint_lons = [
+            wp.location.longitude for wp in self.expedition.schedule.waypoints
+        ]
+        wp_min_lat, wp_max_lat = (
+            min(waypoint_lats) if waypoint_lats else -90.0,
+            max(waypoint_lats) if waypoint_lats else 90.0,
+        )
+        wp_min_lon, wp_max_lon = (
+            min(waypoint_lons) if waypoint_lons else -180.0,
+            max(waypoint_lons) if waypoint_lons else 180.0,
+        )
+
+        st_reg_min_lat = float(self.query_one("#min_lat").value)
+        st_reg_max_lat = float(self.query_one("#max_lat").value)
+        st_reg_min_lon = float(self.query_one("#min_lon").value)
+        st_reg_max_lon = float(self.query_one("#max_lon").value)
+
+        min_lat = min(wp_min_lat, st_reg_min_lat)
+        max_lat = max(wp_max_lat, st_reg_max_lat)
+        min_lon = min(wp_min_lon, st_reg_min_lon)
+        max_lon = max(wp_max_lon, st_reg_max_lon)
+
+        spatial_range = SpatialRange(
+            minimum_longitude=min_lon,
+            maximum_longitude=max_lon,
+            minimum_latitude=min_lat,
+            maximum_latitude=max_lat,
+            minimum_depth=self.query_one("#min_depth").value,
+            maximum_depth=self.query_one("#max_depth").value,
+        )
+        self.expedition.schedule.space_time_region.spatial_range = spatial_range
+
+        # provide warning if user defines a space time region inconsistent with waypoint locations
+        if (
+            (wp_min_lat < st_reg_min_lat)
+            or (wp_max_lat > st_reg_max_lat)
+            or (wp_min_lon < st_reg_min_lon)
+            or (wp_max_lon > st_reg_max_lon)
+        ):
+            self.notify(
+                "[b]WARNING[/b]. One or more waypoint locations lie outside the defined space-time region. Take care if manually adjusting the space-time region."
+                "\n\nThe space-time region will be automatically adjusted on saving to include all waypoint locations.",
+                severity="warning",
+                timeout=10,
+            )
 
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:

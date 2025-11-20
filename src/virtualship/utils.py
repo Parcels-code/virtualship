@@ -427,7 +427,7 @@ def _get_bathy_data(
         except Exception as e:
             # TODO: link to documentation on expected data structure!!
             raise RuntimeError(
-                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See for more information on expectations: <<<INSERT LINK TO DOCS>>>\n"
+                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
         ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
         bathymetry_variables = {"bathymetry": "deptho"}
@@ -556,8 +556,7 @@ def _find_files_in_timerange(
             f"Not enough data coverage found in {data_dir} for the requested time range {schedule_start} to {schedule_end}. "
             f"Latest available data is for date {files_with_dates[-1][0]}."
             f"If using monthly data, please ensure that the last month downloaded covers the schedule end date + 1 month."
-            f"See documentation for more details: <<INSERT LINK>>"
-            # TODO: add link to relevant documentation!
+            f"See the docs for more details: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation"
         )
 
     return [fname for _, fname in files_with_dates]

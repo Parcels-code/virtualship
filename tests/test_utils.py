@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     _find_nc_file_with_variable,
@@ -251,14 +251,14 @@ def test_data_dir_and_filename_compliance():
     )
 
     # Check for date_pattern in _find_files_in_timerange
-    assert 'date_pattern=r"\\d{4}_\\d{2}_\\d{2}"' in base_code, (
+    assert 'date_pattern=r"\\d{4}_\\d{2}_\\d{2}"' in utils_code, (
         "Expected date_pattern r'\\d{4}_\\d{2}_\\d{2}' not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
     )
 
     # Check for P1D and P1M in t_resolution logic
-    assert 'if all("P1D" in s for s in all_files):' in base_code, (
+    assert 'if all("P1D" in s for s in all_files):' in utils_code, (
         "Expected check for 'P1D' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
     )
-    assert 'elif all("P1M" in s for s in all_files):' in base_code, (
+    assert 'elif all("P1M" in s for s in all_files):' in utils_code, (
         "Expected check for 'P1M' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
     )
