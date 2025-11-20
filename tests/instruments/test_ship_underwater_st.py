@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
 from virtualship.models import Location, Spacetime
 

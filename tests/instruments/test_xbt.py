@@ -8,8 +8,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-
 from parcels import Field, FieldSet
+
 from virtualship.instruments.xbt import XBT, XBTInstrument
 from virtualship.models import Location, Spacetime
 
