@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
+
 from parcels import (
     AdvectionRK4,
     JITParticle,
@@ -11,7 +12,6 @@ from parcels import (
     StatusCode,
     Variable,
 )
-
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -137,14 +137,8 @@ def _check_error(particle, fieldset, time):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize ArgoFloatInstrument."""
-        filenames = {
-            "U": f"{ArgoFloat.name}_uv.nc",
-            "V": f"{ArgoFloat.name}_uv.nc",
-            "S": f"{ArgoFloat.name}_s.nc",
-            "T": f"{ArgoFloat.name}_t.nc",
-        }
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         buffer_spec = {
             "latlon": 3.0,  # [degrees]
@@ -152,10 +146,7 @@ class ArgoFloatInstrument(Instrument):
         }
 
         super().__init__(
-            ArgoFloat.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=False,

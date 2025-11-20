@@ -8,8 +8,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
+from parcels import Field, FieldSet
 from virtualship.instruments.ctd import CTD, CTDInstrument
 from virtualship.models import Location, Spacetime
 
@@ -129,10 +129,10 @@ def test_simulate_ctds(tmpdir) -> None:
                 )()
 
     expedition = DummyExpedition()
-    directory = tmpdir
+
     from_data = None
 
-    ctd_instrument = CTDInstrument(expedition, directory, from_data)
+    ctd_instrument = CTDInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     ctd_instrument.load_input_data = lambda: fieldset

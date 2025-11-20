@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -101,17 +101,8 @@ def _ctd_bgc_cast(particle, fieldset, time):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize CTD_BGCInstrument."""
-        filenames = {
-            "o2": f"{CTD_BGC.name}_o2.nc",
-            "chl": f"{CTD_BGC.name}_chl.nc",
-            "no3": f"{CTD_BGC.name}_no3.nc",
-            "po4": f"{CTD_BGC.name}_po4.nc",
-            "ph": f"{CTD_BGC.name}_ph.nc",
-            "phyc": f"{CTD_BGC.name}_phyc.nc",
-            "nppv": f"{CTD_BGC.name}_nppv.nc",
-        }
         variables = {
             "o2": "o2",
             "chl": "chl",
@@ -122,10 +113,7 @@ class CTD_BGCInstrument(Instrument):
             "nppv": "nppv",
         }
         super().__init__(
-            CTD_BGC.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,

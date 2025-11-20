@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
 from virtualship.models import Location, Spacetime
 
@@ -72,10 +72,10 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
         pass
 
     expedition = DummyExpedition()
-    directory = tmpdir
+
     from_data = None
 
-    st_instrument = Underwater_STInstrument(expedition, directory, from_data)
+    st_instrument = Underwater_STInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     st_instrument.load_input_data = lambda: fieldset

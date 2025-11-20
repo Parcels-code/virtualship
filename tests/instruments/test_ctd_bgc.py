@@ -8,8 +8,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
+from parcels import Field, FieldSet
 from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
 from virtualship.models import Location, Spacetime
 
@@ -167,10 +167,9 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
         pass
 
     expedition = DummyExpedition()
-    directory = tmpdir
     from_data = None
 
-    ctd_bgc_instrument = CTD_BGCInstrument(expedition, directory, from_data)
+    ctd_bgc_instrument = CTD_BGCInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     ctd_bgc_instrument.load_input_data = lambda: fieldset

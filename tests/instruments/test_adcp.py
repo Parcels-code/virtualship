@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.adcp import ADCPInstrument
 from virtualship.models import Location, Spacetime
 
@@ -85,10 +85,10 @@ def test_simulate_adcp(tmpdir) -> None:
                 num_bins = NUM_BINS
 
     expedition = DummyExpedition()
-    directory = tmpdir
+
     from_data = None
 
-    adcp_instrument = ADCPInstrument(expedition, directory, from_data)
+    adcp_instrument = ADCPInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     adcp_instrument.load_input_data = lambda: fieldset

@@ -142,7 +142,6 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
         # initialise instrument
         instrument = instrument_class(
             expedition=expedition,
-            directory=expedition_dir,
             from_data=Path(from_data) if from_data is not None else None,
         )
 

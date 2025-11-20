@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 
@@ -79,19 +79,12 @@ def _ctd_cast(particle, fieldset, time):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
-        filenames = {
-            "S": f"{CTD.name}_s.nc",
-            "T": f"{CTD.name}_t.nc",
-        }
         variables = {"S": "so", "T": "thetao"}
 
         super().__init__(
-            CTD.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,

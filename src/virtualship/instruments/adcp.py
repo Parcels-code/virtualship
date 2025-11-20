@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
@@ -54,19 +54,12 @@ def _sample_velocity(particle, fieldset, time):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
-        filenames = {
-            "U": f"{ADCP.name}_uv.nc",
-            "V": f"{ADCP.name}_uv.nc",
-        }
         variables = {"U": "uo", "V": "vo"}
 
         super().__init__(
-            ADCP.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=True,

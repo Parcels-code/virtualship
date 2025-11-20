@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import glob
 import re
@@ -8,9 +10,9 @@ from typing import TYPE_CHECKING
 
 import copernicusmarine
 import xarray as xr
-from parcels import FieldSet
 from yaspin import yaspin
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -29,10 +31,7 @@ class Instrument(abc.ABC):
 
     def __init__(
         self,
-        name: str,
-        expedition: "Expedition",
-        directory: Path | str,
-        filenames: dict,
+        expedition: Expedition,
         variables: dict,
         add_bathymetry: bool,
         allow_time_extrapolation: bool,
@@ -42,10 +41,7 @@ class Instrument(abc.ABC):
         limit_spec: dict | None = None,
     ):
         """Initialise instrument."""
-        self.name = name
         self.expedition = expedition
-        self.directory = directory
-        self.filenames = filenames
         self.from_data = from_data
 
         self.variables = OrderedDict(variables)
@@ -67,7 +63,7 @@ class Instrument(abc.ABC):
             fieldset = self._generate_fieldset()
         except Exception as e:
             raise CopernicusCatalogueError(
-                f"Failed to load input data directly from Copernicus Marine (or local data) for instrument '{self.name}'. Original error: {e}"
+                f"Failed to load input data directly from Copernicus Marine (or local data) for instrument '{self.__class__.__name__}'. Original error: {e}"
             ) from e
 
         # interpolation methods
@@ -105,14 +101,14 @@ class Instrument(abc.ABC):
         """Run instrument simulation."""
         if not self.verbose_progress:
             with yaspin(
-                text=f"Simulating {self.name} measurements... ",
+                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
                 side="right",
                 spinner=ship_spinner,
             ) as spinner:
                 self.simulate(measurements, out_path)
                 spinner.ok("✅\n")
         else:
-            print(f"Simulating {self.name} measurements... ")
+            print(f"Simulating {self.__class__.__name__} measurements... ")
             self.simulate(measurements, out_path)
             print("\n")
 

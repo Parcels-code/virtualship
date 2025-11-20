@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -77,20 +77,11 @@ def _xbt_cast(particle, fieldset, time):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
-        filenames = {
-            "U": f"{XBT.name}_uv.nc",
-            "V": f"{XBT.name}_uv.nc",
-            "S": f"{XBT.name}_s.nc",
-            "T": f"{XBT.name}_t.nc",
-        }
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         super().__init__(
-            XBT.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=True,
             allow_time_extrapolation=True,

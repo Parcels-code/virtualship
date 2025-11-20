@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import add_dummy_UV, register_instrument
@@ -55,19 +55,12 @@ def _sample_temperature(particle, fieldset, time):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
-        filenames = {
-            "S": f"{Underwater_ST.name}_s.nc",
-            "T": f"{Underwater_ST.name}_t.nc",
-        }
         variables = {"S": "so", "T": "thetao"}
 
         super().__init__(
-            Underwater_ST.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=True,

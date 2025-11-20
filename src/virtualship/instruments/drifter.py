@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -63,13 +63,8 @@ def _check_lifetime(particle, fieldset, time):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    def __init__(self, expedition, directory, from_data):
+    def __init__(self, expedition, from_data):
         """Initialize DrifterInstrument."""
-        filenames = {
-            "U": f"{Drifter.name}_uv.nc",
-            "V": f"{Drifter.name}_uv.nc",
-            "T": f"{Drifter.name}_t.nc",
-        }
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         buffer_spec = {
             "latlon": 6.0,  # [degrees]
@@ -81,10 +76,7 @@ class DrifterInstrument(Instrument):
         }
 
         super().__init__(
-            Drifter.name,
             expedition,
-            directory,
-            filenames,
             variables,
             add_bathymetry=False,
             allow_time_extrapolation=False,

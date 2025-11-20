@@ -19,10 +19,9 @@ def _simulate_schedule(projection, expedition):
 class DummyInstrument:
     """Dummy instrument class that just creates empty output directories."""
 
-    def __init__(self, expedition, directory, from_data=None):
+    def __init__(self, expedition, from_data=None):
         """Initialize DummyInstrument."""
         self.expedition = expedition
-        self.directory = Path(directory)
         self.from_data = from_data
 
     def execute(self, measurements, out_path):

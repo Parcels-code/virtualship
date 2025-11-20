@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.models import Location, Spacetime
 
@@ -57,10 +57,10 @@ def test_simulate_drifters(tmpdir) -> None:
         pass
 
     expedition = DummyExpedition()
-    directory = tmpdir
+
     from_data = None
 
-    drifter_instrument = DrifterInstrument(expedition, directory, from_data)
+    drifter_instrument = DrifterInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     drifter_instrument.load_input_data = lambda: fieldset

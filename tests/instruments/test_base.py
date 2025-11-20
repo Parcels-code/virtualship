@@ -33,10 +33,7 @@ def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_Fie
     mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
     mock_copernicusmarine.open_dataset.return_value = MagicMock()
     dummy = DummyInstrument(
-        name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
-        directory="/tmp",
-        filenames={"A": "a.nc"},
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -51,10 +48,7 @@ def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_Fie
 
 def test_execute_calls_simulate(monkeypatch):
     dummy = DummyInstrument(
-        name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
-        directory="/tmp",
-        filenames={"A": "a.nc"},
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -68,10 +62,7 @@ def test_execute_calls_simulate(monkeypatch):
 
 def test_get_spec_value_buffer_and_limit():
     dummy = DummyInstrument(
-        name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
-        directory="/tmp",
-        filenames={"A": "a.nc"},
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -87,10 +78,7 @@ def test_get_spec_value_buffer_and_limit():
 
 def test_generate_fieldset_combines_fields(monkeypatch):
     dummy = DummyInstrument(
-        name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
-        directory="/tmp",
-        filenames={"A": "a.nc", "B": "b.nc"},
         variables={"A": "a", "B": "b"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -115,10 +103,7 @@ def test_generate_fieldset_combines_fields(monkeypatch):
 
 def test_load_input_data_error(monkeypatch):
     dummy = DummyInstrument(
-        name="test",
         expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
-        directory="/tmp",
-        filenames={"A": "a.nc"},
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
