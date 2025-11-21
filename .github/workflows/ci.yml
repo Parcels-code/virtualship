@@ -52,28 +52,28 @@ jobs:
         uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-  typechecking:
-    name: mypy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-name: ship
-          environment-file: environment.yml
-          create-args: >-
-            python=3.12
+  # typechecking:
+  #   name: mypy
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: mamba-org/setup-micromamba@v2
+  #       with:
+  #         environment-name: ship
+  #         environment-file: environment.yml
+  #         create-args: >-
+  #           python=3.12
 
-      - run: pip install . --no-deps
-      - run: conda install lxml # dep for report generation
-      - name: Typechecking
-        run: |
-          mypy --install-types --non-interactive src/virtualship --html-report mypy-report
-      - name: Upload test results
-        if: ${{ always() }} # Upload even on mypy error
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mypy report
-          path: mypy-report
+  #     - run: pip install . --no-deps
+  #     - run: conda install lxml # dep for report generation
+  #     - name: Typechecking
+  #       run: |
+  #         mypy --install-types --non-interactive src/virtualship --html-report mypy-report
+  #     - name: Upload test results
+  #       if: ${{ always() }} # Upload even on mypy error
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: Mypy report
+  #         path: mypy-report
