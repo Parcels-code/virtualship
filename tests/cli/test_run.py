@@ -55,8 +55,6 @@ def test_run(tmp_path, monkeypatch):
 
     _run(expedition_dir, from_data=fake_data_dir)
 
-    breakpoint()
-
     results_dir = expedition_dir / "results"
 
     assert results_dir.exists() and results_dir.is_dir()
