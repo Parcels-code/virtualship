@@ -125,7 +125,7 @@ On pressing _Save Changes_ the tool will check the selections are valid (for exa
 ```
 
 ```{caution}
-The `virtualship plan` tool will check that the ship can reach each waypoint according to the prescribed ship speed. However, before the ultimate [simulation step](#run-the-expedition) there will be a final, automated check that the schedule also accounts for the time taken to conduct the measurements at each site (e.g. a CTD cast in deeper waters will take longer). Therefore, it is recommended to account for this time at this stage of the planning by estimating how long each measurement will take and adding this time on.
+The `virtualship plan` tool will check that the ship can reach each waypoint according to the prescribed ship speed. However, before the ultimate [simulation step](#run-the-expedition) there will be a final, automated check that the schedule also accounts for the time taken to conduct the measurements at each site (e.g. a CTD cast in deeper waters will take longer). Therefore, we recommend to take this extra time into account at this stage of the planning by estimating how long each measurement will take and adding this time on.
 ```
 
 ## 4) Run the expedition
@@ -146,13 +146,13 @@ Your command line output should look something like this...
 
 ![GIF of example VirtualShip log output](example_log_instruments.gif)
 
-Low complexity simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
+Small simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 
 Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
 
 #### Using pre-downloaded data (optional)
 
-By default, VirtualShip will stream data 'on-the-fly' from the Copernicus Marine Data Store, meaning no prior data download is necessary. However, should you wish to use pre-downloaded data instead (e.g. due to limited internet connection or wanting to use different input data) you can do so by adding the `--from-data` flag to the `virtualship run` command and specifying a `<PATH_TO_DATA_DIR>`.
+By default, VirtualShip will stream data 'on-the-fly' from the Copernicus Marine Data Store, meaning no prior data download is necessary. However, if you prefer to use pre-downloaded data instead (e.g. due to limited internet connection or wanting to use different input data) you can do so by running `virtualship run EXPEDITION_NAME --from-data <PATH_TO_DATA_DIR>`.
 
 Enter `virtualship run --help` to see the full description of the `--from-data` flag and its usage.
 

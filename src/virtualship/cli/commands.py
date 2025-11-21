@@ -86,7 +86,7 @@ def plan(path):
     "--from-data",
     type=str,
     default=None,
-    help="Use pre-downloaded data, saved to disk, for expedition, instead of streaming directly via Copernicus Marine "
+    help="Use pre-downloaded data, saved to disk, for expedition, instead of streaming directly via Copernicus Marine Service."
     "Assumes all data is stored in prescribed directory, and all variables (as listed below) are present. "
     f"Required variables are: {set(COPERNICUSMARINE_PHYS_VARIABLES + COPERNICUSMARINE_BGC_VARIABLES)} "
     "Assumes that variable names at least contain the standard Copernicus Marine variable name as a substring. "
