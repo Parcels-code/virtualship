@@ -110,7 +110,7 @@ You should now consider which measurements are to be taken at each sampling site
 Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) for more information on what measurement options are available, and a brief introduction to each instrument.
 ```
 
-Instrument selections can be made for each waypoint in the same sub-panels as the [waypoint time](#waypoint-datetimes) selection by simply switching each on or off. Multiple instruments are allowed at each waypoint.
+You can make instrument selections for each waypoint in the same sub-panels as the [waypoint time](#waypoint-datetimes) selection by simply switching each on or off. Multiple instruments are allowed at each waypoint.
 
 ```{note}
 For advanced users: you can also make further customisations to behaviours of all instruments under _Ship Config Editor_ > _Instrument Configurations_.
