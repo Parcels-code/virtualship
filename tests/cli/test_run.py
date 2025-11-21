@@ -50,9 +50,12 @@ def test_run(tmp_path, monkeypatch):
         "virtualship.cli._run.get_instrument_class", lambda itype: DummyInstrument
     )
 
-    fake_data_dir = None
+    fake_data_dir = tmp_path / "fake_data"
+    fake_data_dir.mkdir()
 
     _run(expedition_dir, from_data=fake_data_dir)
+
+    breakpoint()
 
     results_dir = expedition_dir / "results"
 
