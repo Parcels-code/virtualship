@@ -1,0 +1,46 @@
+schedule:
+  waypoints:
+    - instrument:
+        - CTD
+      location:
+        latitude: 0
+        longitude: 0
+      time: 2023-01-01 00:00:00
+    - instrument:
+        - DRIFTER
+        - ARGO_FLOAT
+      location:
+        latitude: 0.01
+        longitude: 0.01
+      time: 2023-01-02 00:00:00
+    - location: # empty waypoint
+        latitude: 0.02
+        longitude: 0.01
+      time: 2023-01-02 03:00:00
+instruments_config:
+  adcp_config:
+    num_bins: 40
+    max_depth_meter: -1000.0
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 20.0
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 20.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_minutes: 40320.0
+  ship_underwater_st_config:
+    period_minutes: 5.0
+ship_config:
+  ship_speed_knots: 10.0

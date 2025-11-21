@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 from parcels import FieldSet
 
-from virtualship.instruments.drifter import Drifter, simulate_drifters
+from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.models import Location, Spacetime
 
 
@@ -52,17 +52,19 @@ def test_simulate_drifters(tmpdir) -> None:
         ),
     ]
 
-    # perform simulation
+    # dummy expedition and directory for DrifterInstrument
+    class DummyExpedition:
+        pass
+
+    expedition = DummyExpedition()
+
+    from_data = None
+
+    drifter_instrument = DrifterInstrument(expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
-    simulate_drifters(
-        fieldset=fieldset,
-        out_path=out_path,
-        drifters=drifters,
-        outputdt=datetime.timedelta(hours=1),
-        dt=datetime.timedelta(minutes=5),
-        endtime=None,
-    )
+    drifter_instrument.load_input_data = lambda: fieldset
+    drifter_instrument.simulate(drifters, out_path)
 
     # test if output is as expected
     results = xr.open_zarr(out_path)

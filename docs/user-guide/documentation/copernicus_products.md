@@ -2,7 +2,7 @@
 
 VirtualShip supports running experiments anywhere in the global ocean from 1993 through to the present day (and approximately two weeks into the future), using the suite of products available from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 
-The data sourcing task is handled by the `virtualship fetch` command. The three products relied on by `fetch` to source data for all [VirtualShip instruments](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) (both physical and biogeochemical) are:
+The data sourcing task is handled by the `virtualship run` command, which in turn relies on the [copernicusmarine toolbox](https://github.com/mercator-ocean/copernicus-marine-toolbox?tab=readme-ov-file) for 'streaming' data from the Copernicus Marine Data Store. The three products relied on in `run` to source data for all [VirtualShip instruments](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) (both physical and biogeochemical) are:
 
 1. **Reanalysis** (or "hindcast" for biogeochemistry).
 2. **Renalysis interim** (or "hindcast interim" for biogeochemistry).
@@ -15,7 +15,7 @@ The Copernicus Marine Service describe the differences between the three product
 As a general rule of thumb the three different products span different periods across the historical period to present and are intended to allow for continuity across the previous ~ 30 years.
 
 ```{note}
-The ethos for automated dataset selection in `virtualship fetch` is to prioritise the Reanalysis/Hindcast products where possible (the 'work horse'), then _interim products where possible for continuity, and finally filling the very near-present (and near-future) temporal range with the Analysis & Forecast products.
+The ethos for automated dataset selection in `virtualship run` is to prioritise the Reanalysis/Hindcast products where possible (the 'work horse'), then _interim products where possible for continuity, and finally filling the very near-present (and near-future) temporal range with the Analysis & Forecast products.
 ```
 
 ```{warning}
@@ -24,13 +24,13 @@ In the rare situation where the start and end times of an expedition schedule sp
 
 ### Data availability
 
-The following tables summarise which Copernicus product is selected by `virtualship fetch` per combination of time period and variable (see legend below).
+The following tables summarise which Copernicus product is selected by `virtualship run` per combination of time period and variable (see legend below).
 
 For biogeochemical variables `ph` and `phyc`, monthly products are required for hindcast and hindcast interim periods. For all other variables, daily products are available.
 
 #### Physical products
 
-| Period              | Product ID                               | Temporal Resolution | Typical Years Covered               | Variables                  |
+| Period              | Dataset ID                               | Temporal Resolution | Typical Years Covered               | Variables                  |
 | :------------------ | :--------------------------------------- | :------------------ | :---------------------------------- | :------------------------- |
 | Reanalysis          | `cmems_mod_glo_phy_my_0.083deg_P1D-m`    | Daily               | ~30 years ago to ~5 years ago       | `uo`, `vo`, `so`, `thetao` |
 | Reanalysis Interim  | `cmems_mod_glo_phy_myint_0.083deg_P1D-m` | Daily               | ~5 years ago to ~2 months ago       | `uo`, `vo`, `so`, `thetao` |
@@ -40,7 +40,7 @@ For biogeochemical variables `ph` and `phyc`, monthly products are required for 
 
 #### Biogeochemical products
 
-| Period                        | Product ID                                 | Temporal Resolution | Typical Years Covered               | Variables                         | Notes                                  |
+| Period                        | Dataset ID                                 | Temporal Resolution | Typical Years Covered               | Variables                         | Notes                                  |
 | :---------------------------- | :----------------------------------------- | :------------------ | :---------------------------------- | :-------------------------------- | :------------------------------------- |
 | Hindcast                      | `cmems_mod_glo_bgc_my_0.25deg_P1D-m`       | Daily               | ~30 years ago to ~5 years ago       | `o2`, `chl`, `no3`, `po4`, `nppv` | Most BGC variables except `ph`, `phyc` |
 | Hindcast (monthly)            | `cmems_mod_glo_bgc_my_0.25deg_P1M-m`       | Monthly             | ~30 years ago to ~5 years ago       | `ph`, `phyc`                      | Only `ph`, `phyc` (monthly only)       |
