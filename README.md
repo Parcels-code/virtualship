@@ -37,11 +37,11 @@
 VirtualShipParcels is a command line simulator allowing students to plan and conduct a virtual research expedition, receiving measurements as if they were coming from actual oceanographic instruments including:
 
 - ADCP (currents)
-- CTD (conductivity and temperature)
+- CTD (conductivity and temperature + biogeochemical variables)
 - XBT (temperature)
-- underwater measurements (salinity and temperature)
-- surface drifters
-- argo float deployments
+- Ship-mounted underwater measurements (salinity and temperature)
+- Surface drifters
+- Argo float deployments
 
 <!-- TODO: future. Along the way students will encounter difficulties such as: -->
 
@@ -60,6 +60,12 @@ For a development installation, please follow the instructions detailed in the [
 
 ## Usage
 
+```{tip}
+See the [Quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) in our documentation for a step-by-step introduction to using VirtualShip.
+```
+
+VirtualShip is run via the command line interface (CLI) using the `virtualship` command. It has three subcommands: `init`, `plan`, and `run`.
+
 ```console
 $ virtualship --help
 Usage: virtualship [OPTIONS] COMMAND [ARGS]...
@@ -69,53 +75,65 @@ Options:
   --help     Show this message and exit.
 
 Commands:
-  fetch  Download input data for an expedition.
-  init   Initialize a directory for a new expedition, with an example...
-  run    Run the expedition.
+  init  Initialize a directory for a new expedition, with an...
+  plan  Launch UI to help build expedition configuration (YAML) file.
+  run   Execute the expedition simulations.
 ```
 
 ```console
 $ virtualship init --help
 Usage: virtualship init [OPTIONS] PATH
 
-  Initialize a directory for a new expedition, with an example schedule and
-  ship config files.
+  Initialize a directory for a new expedition, with an expedition.yaml file.
+
+  If --mfp-file is provided, it will generate the expedition.yaml from the MPF
+  file instead.
 
 Options:
-  --help  Show this message and exit.
+  --from-mfp TEXT  Partially initialise a project from an exported xlsx or csv
+                   file from NIOZ' Marine Facilities Planning tool
+                   (specifically the "Export Coordinates > DD" option). User
+                   edits are required after initialisation.
+  --help           Show this message and exit.
 ```
 
 ```console
 
-$ virtualship fetch --help
-Usage: virtualship fetch [OPTIONS] PATH
+$ virtualship plan --help
+Usage: virtualship plan [OPTIONS] PATH
 
-  Download input data for an expedition.
+  Launch UI to help build expedition configuration (YAML) file.
 
-  Entrypoint for the tool to download data based on space-time region provided
-  in the schedule file. Data is downloaded from Copernicus Marine, credentials
-  for which can be obtained via registration:
-  https://data.marine.copernicus.eu/register . Credentials can be provided on
-  prompt, via command line arguments, or via a YAML config file. Run
-  `virtualship fetch` on a expedition for more info.
+  Should you encounter any issues with using this tool, please report an issue
+  describing the problem to the VirtualShip issue tracker at:
+  https://github.com/OceanParcels/virtualship/issues"
 
 Options:
-  --username TEXT  Copernicus Marine username.
-  --password TEXT  Copernicus Marine password.
-  --help           Show this message and exit.
+  --help  Show this message and exit.
 ```
 
 ```console
 $ virtualship run --help
 Usage: virtualship run [OPTIONS] PATH
 
-  Run the expedition.
+  Execute the expedition simulations.
 
 Options:
-  --help  Show this message and exit.
+  --from-data TEXT  Use pre-downloaded data, saved to disk, for expedition,
+                    instead of streaming directly via Copernicus Marine
+                    Assumes all data is stored in prescribed directory, and
+                    all variables (as listed below) are present. Required
+                    variables are: {'phyc', 'o2', 'so', 'uo', 'po4', 'thetao',
+                    'no3', 'vo', 'chl', 'ph', 'nppv'} Assumes that variable
+                    names at least contain the standard Copernicus Marine
+                    variable name as a substring. Will also take the first
+                    file found containing the variable name substring. CAUTION
+                    if multiple files contain the same variable name
+                    substring.
+  --help            Show this message and exit.
 ```
 
-For examples, see [the tutorials section of our documentation](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html).
+For examples of VirtualShip simulation output post-processing, see [the tutorials section of our documentation](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html).
 
 ## Input data
 
