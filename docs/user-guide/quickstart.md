@@ -1,22 +1,20 @@
 # VirtualShip Quickstart Guide 🚢
 
-```{warning}
-This quickstart guide is designed for use with VirtualShip v0.2.2 and currently out of date with the latest version of VirtualShip (v1.0.0). It will be updated soon.
-
-In particular, the `virtualship fetch` command is no longer supported. Instead, data fetching is now integrated into the `virtualship run` command. See [#226](https://github.com/Parcels-code/virtualship/pull/226) for details in the meantime.
-```
-
 Welcome to this Quickstart to using VirtualShip. In this guide we will conduct a virtual expedition in the North Sea. Note, however, that you can plan your own expedition anywhere in the global ocean and conduct whatever set of measurements you wish!
 
 This Quickstart is available as an instructional video below, or you can continue with the step-by-step guide.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/ypafzoTBj_A?si=m8BpYN_08OJ9aagq" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+```{warning}
+Please note the video below may show output from an earlier version of VirtualShip, as the codebase is in active development. The instructions in the video are still generally applicable for the current version. However, for the most up-to-date instructions, please follow the text in this Quickstart guide.
+```
+
+<iframe width="720" height="400" src="https://www.youtube.com/embed/yymj5fImnRc?si=04Nt3YEhGRMBcEBI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ---
 
 This guide is intended to give a basic overview of how to plan, initialise and execute a virtual expedition. Data post-processing, analysis and visualisation advice is provided in other sections of the documentation (see [Results](#results) section).
 
-## Expedition route planning
+## 1) Expedition route planning
 
 ```{note}
 This section describes the _custom_ expedition route planning procedure. There is also an option to proceed without your own route and you can instead use an example route, schedule and selection of measurements (see [Expedition initialisation](#expedition-initialisation) for more details).
@@ -36,7 +34,7 @@ Feel free to design your expedition as you wish! There is no need to copy these 
 
 Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an .xlsx (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
 
-## Expedition initialisation
+## 2) Expedition initialisation
 
 ```{note}
 VirtualShip is a command line interface (CLI) based tool. From this point on in the Quickstart we will be working predominantly via the command line in the Terminal. If you are unfamiliar with what a CLI is, see [here](https://www.w3schools.com/whatis/whatis_cli.asp) for more information.
@@ -58,7 +56,7 @@ This will create a folder/directory called `EXPEDITION_NAME` with a single file:
 For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write an example `expedition.yaml` file in the `EXPEDITION_NAME` folder/directory. This file contains example waypoints, timings, instrument selections, and ship configuration, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.
 ```
 
-## Expedition scheduling & ship configuration
+## 3) Expedition scheduling & ship configuration
 
 The next step is to finalise the expedition schedule plan, including setting times and instrument selection choices for each waypoint, as well as configuring the ship (such as its speed and underway measurement instruments). The easiest way to do so is to use the bespoke VirtualShip planning tool via the following command:
 
@@ -86,8 +84,10 @@ For the underway ADCP, there is a choice of using the 38 kHz OceanObserver or th
 
 ### Waypoint datetimes
 
+<!-- TODO: change this to a reference to `Run the data` instead of `Fetch the data` and talk a bit about data in the run step -->
+
 ```{note}
-VirtualShip supports simulating experiments in the years 1993 through to the present day (and up to two weeks in the future) by leveraging the suite of products available Copernicus Marine Data Store (see [Fetch the data](#fetch-the-data)). The data download is automated based on the time period selected in the schedule. Different periods will rely on different products from the Copernicus Marine catalogue (see [Documentation](documentation/copernicus_products.md)).
+VirtualShip supports simulating experiments in the years 1993 through to the present day (and up to two weeks in the future) by leveraging the suite of products available Copernicus Marine Data Store (see [Run the expedition](#run-the-expedition)). The data access is automated based on the time period selected in the schedule. Different periods will rely on different products from the Copernicus Marine catalogue (see [Documentation](documentation/copernicus_products.md)).
 ```
 
 You will need to enter dates and times for each of the sampling stations/waypoints selected in the MFP route planning stage. This can be done under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
@@ -124,35 +124,41 @@ When you are happy with your ship configuration and schedule plan, press _Save C
 On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
 ```
 
-## Fetch the data
-
-You are now ready to retrieve the input data required for simulating your virtual expedition from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products). You will need to register for an account via https://data.marine.copernicus.eu/register.
-
-To retrieve the data, run the following command in your CLI:
-
-```
-virtualship fetch EXPEDITION_NAME --username <USERNAME> --password <PASSWORD>
+```{caution}
+The `virtualship plan` tool will check that the ship can reach each waypoint according to the prescribed ship speed. However, before the ultimate [simulation step](#run-the-expedition) there will be a final, automated check that the schedule also accounts for the time taken to conduct the measurements at each site (e.g. a CTD cast in deeper waters will take longer). Therefore, it is recommended to account for this time at this stage of the planning by estimating how long each measurement will take and adding this time on.
 ```
 
-Replace `<USERNAME>` and `<PASSWORD>` with your own Copernicus Marine Data Store credentials. Alternatively, you can simply run `virtualship fetch EXPEDITION_NAME` and you will be prompted for your credentials instead.
+## 4) Run the expedition
 
-Waiting for your data download is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
+You are now ready to run your virtual expedition! This stage will simulate the measurements taken by the instruments you selected at each waypoint in your expedition schedule, using input data sourced from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 
-## Run the expedition
+You will need to register for Copernicus Marine Service account (see [here](https://data.marine.copernicus.eu/register)), but the data access in VirtualShip will be automated.
 
-Once your input data has finished downloading you can run your expedition using the command:
+You can run your expedition simulation using the command:
 
 ```
 virtualship run EXPEDITION_NAME
 ```
 
+If this is your first time running VirtualShip, you will be prompted to enter your own Copernicus Marine Data Store credentials (these will be saved automatically for future use).
+
 Your command line output should look something like this...
 
 ![GIF of example VirtualShip log output](example_log_instruments.gif)
 
-It might take up to an hour to simulate the measurements depending on your choices. Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
+Low complexity simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 
-## Results
+Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
+
+#### Using pre-downloaded data (optional)
+
+By default, VirtualShip will stream data 'on-the-fly' from the Copernicus Marine Data Store, meaning no prior data download is necessary. However, should you wish to use pre-downloaded data instead (e.g. due to limited internet connection or wanting to use different input data) you can do so by adding the `--from-data` flag to the `virtualship run` command and specifying a `<PATH_TO_DATA_DIR>`.
+
+Enter `virtualship run --help` to see the full description of the `--from-data` flag and its usage.
+
+See the relevant [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/documentation/pre_download_data.html#) for more detail on how to prepare data for offline use.
+
+## 5) Results
 
 Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written as [Zarr](https://zarr.dev/) files.
 
