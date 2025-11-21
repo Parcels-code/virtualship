@@ -98,7 +98,7 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
     )
     if isinstance(schedule_results, ScheduleProblem):
         print(
-            "Update your schedule and continue the expedition by running the tool again."
+            f"SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
         )
         _save_checkpoint(
             Checkpoint(
