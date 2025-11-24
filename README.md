@@ -60,9 +60,8 @@ For a development installation, please follow the instructions detailed in the [
 
 ## Usage
 
-```{tip}
-See the [Quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) in our documentation for a step-by-step introduction to using VirtualShip.
-```
+> [!TIP]
+> See the [Quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) in our documentation for a step-by-step introduction to using VirtualShip.
 
 You can run the VirtualShip via the command line interface (CLI) using the `virtualship` command. It has three subcommands: `init`, `plan`, and `run`.
 
