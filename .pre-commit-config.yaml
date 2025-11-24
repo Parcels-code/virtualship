@@ -25,4 +25,3 @@ repos:
     rev: v3.5.1
     hooks:
       - id: prettier
-        exclude: "docs/user-guide/developer-content/parcels-meeting-Nov2025/presentation/.*" # these quarto files break prettier
