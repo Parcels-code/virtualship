@@ -18,6 +18,14 @@ REGIONS = {
     "Somali current": {"label": "8", "coords": (6.0, 53.0)},
     "East Australian Current": {"label": "9", "coords": (-28.0, 156)},
     "Drake passage": {"label": "10", "coords": (-58.0, -57.0)},
+    "Agulhas Leakage": {"label": "11", "coords": (-42.0, 15.0)},
+    "Bay of Bengal": {"label": "12", "coords": (11.0, 83.0)},
+    "Brazil-Malvinas Confluence": {"label": "13", "coords": (-35.0, -48.0)},
+    "Cross-shelf exchange on the European North-West Shelf Seas": {
+        "label": "14",
+        "coords": (48.0, -21.0),
+    },
+    "European North-West Shelf Seas": {"label": "15", "coords": (54.0, -3.0)},
 }
 
 
