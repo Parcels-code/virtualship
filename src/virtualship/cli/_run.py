@@ -28,8 +28,8 @@ projection = pyproj.Geod(ellps="WGS84")
 
 
 # parcels logger (suppress INFO messages to prevent log being flooded)
-external_logger = logging.getLogger("parcels.tools.loggers")
-external_logger.setLevel(logging.WARNING)
+parcels_logger = logging.getLogger("src.parcels._logger")
+parcels_logger.setLevel(logging.WARNING)
 
 # copernicusmarine logger (suppress INFO messages to prevent log being flooded)
 logging.getLogger("copernicusmarine").setLevel("ERROR")

@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -293,6 +293,9 @@ def add_dummy_UV(fieldset: FieldSet):
 
 # Copernicus Marine product IDs
 
+# TODO: tests to make sure these names are still in use in the Copernicus Marine catalogue!
+# TODO: and tests that var names (incl. for bathymetry) are still as expected!
+
 PRODUCT_IDS = {
     "phys": {
         "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
@@ -324,6 +327,8 @@ MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
     "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
     "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
 }
+
+BATHYMETRY_PRODUCT_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
 # variables used in VirtualShip which are physical or biogeochemical variables, respectively
 COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
@@ -438,26 +443,23 @@ def _get_bathy_data(
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
-            dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
-            minimum_longitude=space_time_region.spatial_range.minimum_longitude
-            - (latlon_buffer if latlon_buffer is not None else 0),
-            maximum_longitude=space_time_region.spatial_range.maximum_longitude
-            + (latlon_buffer if latlon_buffer is not None else 0),
-            minimum_latitude=space_time_region.spatial_range.minimum_latitude
-            - (latlon_buffer if latlon_buffer is not None else 0),
-            maximum_latitude=space_time_region.spatial_range.maximum_latitude
-            + (latlon_buffer if latlon_buffer is not None else 0),
-            variables=["deptho"],
-            start_datetime=space_time_region.time_range.start_time,
-            end_datetime=space_time_region.time_range.end_time,
-            coordinates_selection_method="outside",
+            dataset_id=BATHYMETRY_PRODUCT_ID,
         )
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
 
-    return FieldSet.from_xarray_dataset(
-        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
-    )
+        ds_bathymetry["depth"] = -ds_bathymetry["depth"]
+        ds_bathymetry = ds_bathymetry.reindex(depth=ds_bathymetry.depth[::-1])
+        ds_bathymetry = ds_bathymetry.rename({"deptho": "bathymetry"})
+
+        ### HACK UNTIL THERE'S SUPPORT IN PARCELS V4 FOR 2D SPATIAL FIELDS ###
+        # TODO: remove hack when parcels v4 supports 2d spatial fields (as per TODO in fieldset.py)
+        ds_bathymetry = ds_bathymetry.expand_dims({"time": 1})
+        ds_bathymetry["time"] = np.array(
+            ["2000-01-01T00:00:00"], dtype="datetime64[ns]"
+        )
+        ds_bathymetry.time.attrs["axis"] = "T"
+        ### HACK UNTIL THERE'S SUPPORT IN PARCELS V4 FOR 2D SPATIAL FIELDS ###
+
+    return FieldSet.from_copernicusmarine(ds_bathymetry)
 
 
 def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:

@@ -1,9 +1,9 @@
-name: ship
+name: ship_parcelsv4
 channels:
   - conda-forge
 dependencies:
   - click
-  - parcels >3.1.0
+    # - parcels >3.1.0  # replaced by git install below
   - pyproj >= 3, < 4
   - sortedcontainers == 2.4.0
   - opensimplex == 0.4.5
@@ -38,3 +38,7 @@ dependencies:
   # - sphinx-autodoc-typehints # https://github.com/OceanParcels/virtualship/pull/125#issuecomment-2668766302
   - pydata-sphinx-theme
   - sphinx-autobuild
+
+  # Install parcels from v4-dev branch via pip
+  - pip:
+      - git+https://github.com/Parcels-code/Parcels@v4-dev

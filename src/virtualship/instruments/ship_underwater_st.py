@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import Particle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -24,7 +24,7 @@ class Underwater_ST:
 # SECTION: Particle Class
 # =====================================================
 
-_ShipSTParticle = ScipyParticle.add_variables(
+_ShipSTParticle = Particle.add_variable(
     [
         Variable("S", dtype=np.float32, initial=np.nan),
         Variable("T", dtype=np.float32, initial=np.nan),
@@ -37,13 +37,13 @@ _ShipSTParticle = ScipyParticle.add_variables(
 
 
 # define function sampling Salinity
-def _sample_salinity(particle, fieldset, time):
-    particle.S = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+def _sample_salinity(particles, fieldset):
+    particles.S = fieldset.S[particles.time, particles.z, particles.lat, particles.lon]
 
 
 # define function sampling Temperature
-def _sample_temperature(particle, fieldset, time):
-    particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.T = fieldset.T[particles.time, particles.z, particles.lat, particles.lon]
 
 
 # =====================================================
@@ -77,9 +77,6 @@ class Underwater_STInstrument(Instrument):
         measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
-
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
         particleset = ParticleSet.from_list(
             fieldset=fieldset,

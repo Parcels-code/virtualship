@@ -3,12 +3,13 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import Particle, ParticleFile, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -29,7 +30,7 @@ class CTD_BGC:
 # SECTION: Particle Class
 # =====================================================
 
-_CTD_BGCParticle = JITParticle.add_variables(
+_CTD_BGCParticle = Particle.add_variable(
     [
         Variable("o2", dtype=np.float32, initial=np.nan),
         Variable("chl", dtype=np.float32, initial=np.nan),
@@ -50,46 +51,66 @@ _CTD_BGCParticle = JITParticle.add_variables(
 # =====================================================
 
 
-def _sample_o2(particle, fieldset, time):
-    particle.o2 = fieldset.o2[time, particle.depth, particle.lat, particle.lon]
+def _sample_o2(particles, fieldset):
+    particles.o2 = fieldset.o2[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_chlorophyll(particle, fieldset, time):
-    particle.chl = fieldset.chl[time, particle.depth, particle.lat, particle.lon]
+def _sample_chlorophyll(particles, fieldset):
+    particles.chl = fieldset.chl[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_nitrate(particle, fieldset, time):
-    particle.no3 = fieldset.no3[time, particle.depth, particle.lat, particle.lon]
+def _sample_nitrate(particles, fieldset):
+    particles.no3 = fieldset.no3[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phosphate(particle, fieldset, time):
-    particle.po4 = fieldset.po4[time, particle.depth, particle.lat, particle.lon]
+def _sample_phosphate(particles, fieldset):
+    particles.po4 = fieldset.po4[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_ph(particle, fieldset, time):
-    particle.ph = fieldset.ph[time, particle.depth, particle.lat, particle.lon]
+def _sample_ph(particles, fieldset):
+    particles.ph = fieldset.ph[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phytoplankton(particle, fieldset, time):
-    particle.phyc = fieldset.phyc[time, particle.depth, particle.lat, particle.lon]
+def _sample_phytoplankton(particles, fieldset):
+    particles.phyc = fieldset.phyc[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_primary_production(particle, fieldset, time):
-    particle.nppv = fieldset.nppv[time, particle.depth, particle.lat, particle.lon]
+def _sample_primary_production(particles, fieldset):
+    particles.nppv = fieldset.nppv[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _ctd_bgc_cast(particle, fieldset, time):
-    # lowering
-    if particle.raising == 0:
-        particle_ddepth = -particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth < particle.max_depth:
-            particle.raising = 1
-            particle_ddepth = -particle_ddepth
-    # raising
-    else:
-        particle_ddepth = particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth > particle.min_depth:
-            particle.delete()
+# TODO: these kernels are not the same as CTD_BGC?!
+
+
+def _ctd_bgc_sinking(particles, fieldset):
+    def ctd_lowering(p):
+        p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
+        p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
+        p.dz = np.where(p.z + p.dz < p.max_depth, -p.dz, p.dz)
+
+    ctd_lowering(particles[particles.raising == 0])
+
+
+def _ctd_bgc_rising(particles, fieldset):
+    def ctd_rising(p):
+        p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
+        p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
+
+    ctd_rising(particles[particles.raising == 1])
 
 
 # =====================================================
@@ -126,7 +147,7 @@ class CTD_BGCInstrument(Instrument):
     def simulate(self, measurements, out_path) -> None:
         """Simulate BGC CTD measurements using Parcels."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
-        DT = 10.0  # dt of CTD_BGC simulation integrator
+        DT = 10  # dt of CTD_BGC simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD_BGC simulation
 
         if len(measurements) == 0:
@@ -138,20 +159,10 @@ class CTD_BGCInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
-
-        fieldset_starttime = fieldset.o2.grid.time_origin.fulltime(
-            fieldset.o2.grid.time_full[0]
-        )
-        fieldset_endtime = fieldset.o2.grid.time_origin.fulltime(
-            fieldset.o2.grid.time_full[-1]
-        )
-
         # deploy time for all ctds should be later than fieldset start time
         if not all(
             [
-                np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
+                np.datetime64(ctd_bgc.spacetime.time) >= fieldset.time_interval.left
                 for ctd_bgc in measurements
             ]
         ):
@@ -162,10 +173,10 @@ class CTD_BGCInstrument(Instrument):
             max(
                 ctd_bgc.max_depth,
                 fieldset.bathymetry.eval(
-                    z=0,
-                    y=ctd_bgc.spacetime.location.lat,
-                    x=ctd_bgc.spacetime.location.lon,
-                    time=0,
+                    z=np.array([0], dtype=np.float32),
+                    y=np.array([ctd_bgc.spacetime.location.lat], dtype=np.float32),
+                    x=np.array([ctd_bgc.spacetime.location.lon], dtype=np.float32),
+                    time=fieldset.time_interval.left,
                 ),
             )
             for ctd_bgc in measurements
@@ -184,15 +195,15 @@ class CTD_BGCInstrument(Instrument):
             pclass=_CTD_BGCParticle,
             lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in measurements],
             lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in measurements],
-            depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
-            time=[ctd_bgc.spacetime.time for ctd_bgc in measurements],
+            z=[ctd_bgc.min_depth for ctd_bgc in measurements],
+            time=[np.datetime64(ctd_bgc.spacetime.time) for ctd_bgc in measurements],
             max_depth=max_depths,
             min_depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation
-        out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(store=out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_bgc_particleset.execute(
@@ -204,10 +215,11 @@ class CTD_BGCInstrument(Instrument):
                 _sample_ph,
                 _sample_phytoplankton,
                 _sample_primary_production,
-                _ctd_bgc_cast,
+                _ctd_bgc_sinking,
+                _ctd_bgc_rising,
             ],
-            endtime=fieldset_endtime,
-            dt=DT,
+            endtime=fieldset.time_interval.right,
+            dt=np.timedelta64(DT, "s"),
             verbose_progress=self.verbose_progress,
             output_file=out_file,
         )

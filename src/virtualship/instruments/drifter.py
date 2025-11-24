@@ -3,8 +3,10 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import Particle, ParticleFile, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
+from parcels.kernels import AdvectionRK4
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -29,7 +31,7 @@ class Drifter:
 # SECTION: Particle Class
 # =====================================================
 
-_DrifterParticle = JITParticle.add_variables(
+_DrifterParticle = Particle.add_variable(
     [
         Variable("temperature", dtype=np.float32, initial=np.nan),
         Variable("has_lifetime", dtype=np.int8),  # bool
@@ -43,15 +45,18 @@ _DrifterParticle = JITParticle.add_variables(
 # =====================================================
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _check_lifetime(particle, fieldset, time):
-    if particle.has_lifetime == 1:
-        particle.age += particle.dt
-        if particle.age >= particle.lifetime:
-            particle.delete()
+def _check_lifetime(particles, fieldset):
+    for i in range(len(particles)):
+        if particles[i].has_lifetime == 1:
+            particles[i].age += particles[i].dt / np.timedelta64(1, "s")
+            if particles[i].age >= particles[i].lifetime:
+                particles[i].state = StatusCode.Delete
 
 
 # =====================================================
@@ -107,26 +112,28 @@ class DrifterInstrument(Instrument):
             pclass=_DrifterParticle,
             lat=[drifter.spacetime.location.lat for drifter in measurements],
             lon=[drifter.spacetime.location.lon for drifter in measurements],
-            depth=[drifter.depth for drifter in measurements],
-            time=[drifter.spacetime.time for drifter in measurements],
+            z=[drifter.depth for drifter in measurements],
+            time=[np.datetime64(drifter.spacetime.time) for drifter in measurements],
             has_lifetime=[
                 1 if drifter.lifetime is not None else 0 for drifter in measurements
             ],
             lifetime=[
-                0 if drifter.lifetime is None else drifter.lifetime.total_seconds()
+                0
+                if drifter.lifetime is None
+                else drifter.lifetime / np.timedelta64(1, "s")
                 for drifter in measurements
             ],
         )
 
         # define output file for the simulation
-        out_file = drifter_particleset.ParticleFile(
-            name=out_path,
-            outputdt=OUTPUT_DT,
-            chunks=[len(drifter_particleset), 100],
+        out_file = ParticleFile(
+            store=out_path, outputdt=OUTPUT_DT, chunks=(len(drifter_particleset), 100)
         )
 
         # get earliest between fieldset end time and prescribed end time
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        fieldset_endtime = fieldset.time_interval.right - np.timedelta64(
+            1, "s"
+        )  # TODO remove hack stopping 1 second too early when v4 is fixed
         if ENDTIME is None:
             actual_endtime = fieldset_endtime
         elif ENDTIME > fieldset_endtime:
@@ -145,7 +152,7 @@ class DrifterInstrument(Instrument):
         )
 
         # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
-        if len(drifter_particleset.particledata) > len(
+        if len(drifter_particleset) > len(
             [d for d in measurements if d.lifetime is None]
         ):
             print(
