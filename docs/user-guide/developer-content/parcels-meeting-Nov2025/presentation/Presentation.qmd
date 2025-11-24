@@ -1,0 +1,279 @@
+---
+# TODO: add background to title slide
+title: "VirtualShip for simulating oceanographic fieldwork anywhere in the global ocean"
+subtitle: "Parcels Meeting <br> 19-11-2025"
+author: "Jamie Atkins, Emma Daniels, Nick Hodgskin, Aart Stuurman, Iury Simoes-Sousa, Erik van Sebille"
+format:
+    revealjs:
+        slide-number: true
+        theme: default
+        logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+
+        controls: true
+        include-in-header:
+            - text: |
+                <style>
+                    #title-slide .title {
+                    font-size: 1.4em;
+                    font-weight: 600;
+                    }
+                </style>
+                <style>
+                    #title-slide .subtitle {
+                    font-size: 1.0em;
+                    }
+                </style>
+
+# title-slide-attributes:
+#     data-background-image: "https://virtualship.parcels-code.org/homepage_image.png"
+#     data-background-size: contain
+---
+
+## ![](https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png) {.smaller}
+- Marine Science relies on fieldwork for data collection, yet sea-going opportunities are limited.
+- Open-source **VirtualShip** platform provides students and researchers with an authentic experience of oceanographic expeditions anywhere in the global ocean. <br>
+
+:::{.callout-note}
+**N.B.** I will be talking about the VirtualShip *software*. We also run the **VirtualShip Classroom**, which incorporates educational material (incl. VR) to complement the code. See Emma's new paper!
+:::
+
+## Instruments {.smaller}
+
+- **CTD** (Conductivity, Temperature, Depth) + biogeochemistry
+- **ADCP** (Acoustic Doppler Current Profiler)
+- **Argo Floats**
+- **XBT** (Expendable Bathythermograph)
+- **Drifters**
+
+::: {layout-ncol=3 layout-valign="bottom"}
+
+![](https://www.euro-argo.eu/var/storage/images/_aliases/content_embed_page/medias-ifremer/medias-euro_argo/outreach/educational-material/illustration-ocean-observers-pour-visuel-onglet/1837322-1-eng-GB/illustration-Ocean-Observers-pour-visuel-onglet.jpg){width=350}
+
+![](https://github.com/Parcels-code/parcels-code.org/blob/main/public/parcels-assets/logo-original.png?raw=true){width=200}
+
+![](images/download (1).png){width=400}
+
+:::
+
+## VirtualShip applications 🚢 {.smaller}
+
+<div class="incremental">
+- A command-line tool
+    - e.g. `virtualship run MY_EXPEDITION_DIR`
+
+- Teaching at UU (and beyond?)
+- Researchers
+    - Model data at fingertips (even: `from virtualship import CTDInstrument`)
+    - Observing System Simulation Experiments (OSSEs)?
+- And more...
+</div>
+
+## VirtualShip applications 🚢 {.smaller}
+
+- A command-line tool
+    - e.g. `virtualship run MY_EXPEDITION_DIR`
+
+- Teaching at UU (and beyond?)
+- Researchers
+    - Model data at fingertips (even: `from virtualship import CTDInstrument`)
+    - Observing System Simulation Experiments (OSSEs)?
+- And more...
+
+::: {layout-ncol=5 layout-valign="top"}
+
+![](https://www.uu.nl/sites/default/files/styles/image_1085x580/public/6e3dfc45%20BAMA-shoot_GW_Tim-Vermeire_2022_048Lage%20resolutie%20%281%29.jpg?mt=1687770151&itok=S2J3gu6g)
+
+![RIP](https://www.nioz.nl/application/files/7816/3482/2454/nsc-facilities-research_vessels-rvpelagia.jpg)
+
+![](https://www.chadagreene.com/CDT/transect_documentation_16.png)
+
+![](https://assets.canarymedia.com/content/uploads/resized-walney2.jpg)
+
+![](https://i.guim.co.uk/img/media/1588141b113b909f91dda6427afacb14a8a1d25c/1_105_1321_793/master/1321.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=22789c8e7db8c18f318eef090acd4121){width=150}
+
+:::
+
+## VirtualShip internals {.smaller}
+
+:::{.callout-note}
+Currenlty on v0.2.2 ... v0.3 (v1.0) is incoming!
+:::
+
+- Built on:
+    - **Parcels**
+        - VirtualShip = instrument kernels + expedition config (schedule)
+        - Recent design choices made with incoming Parcels v4 in mind...
+    - **Copernicus Marine Service**
+        - Source data for expedition simulations
+        - As of v0.3, FieldSet ingestion is by default 'streamed' via `copernicusmarine` toolbox (on-the-fly)
+        - With an option to pre-download to ingest (any forcing data) from disk
+            - Relatively strict structure and naming conventions, aligning with Copernicus
+
+
+## A note on `copernicusmarine` {.smaller}
+
+- A few of us participated in the EDITO (European Digital Twin Ocean) hackathon recently
+
+
+:::{.callout-important}
+We now *love* `copernicusmarine`
+:::
+
+- In the context of Parcels (I/O bound):
+    - ~~Download forcing data.~~
+    - Define a (lazily loaded) `ds` via `copernicusmarine.open_dataset()` --> feed to `FieldSet.from_xarray_dataset()`
+    - Outsources data download (on-the-fly) to `copernicusmarine` --> outsources to `xarray`
+        - Pangeo alignment - our workflows improve as `xarray` improves.
+    - This should work even better with Parcels v4 and `FieldSet.from_copernicusmarine()`
+
+
+## An example VirtualShip workflow {.smaller}
+
+<div class="incremental">
+- **June 2023 MHW (again...)**
+</div>
+
+## An example VirtualShip workflow {.smaller}
+
+- **June 2023 MHW (again...)**
+
+::: {layout-ncol=1 layout-valign="bottom" .grow}
+
+![](images/figure1.png){width=500}
+:::
+
+## An example VirtualShip workflow
+
+#### <br> Route planning via NIOZ MFP
+
+[Open NIOZ Marine Facilities Planning](https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#)<br><br>
+
+## An example VirtualShip workflow<br><br>
+
+Live demo via Terminal<br><br>
+
+```{sh}
+virtualship init <EXPEDITION> # <- initialise the expedition dir with config YAML
+
+virtualship plan <EXPEDITION> # <- schedule the waypoints
+
+virtualship run <EXPEDITION> # <- run the expedition simulations
+
+```
+
+## Expedition output (CTD) {.smaller}
+
+```{=html}
+<iframe width="1200" height="700" src="images/sample_slider_temperature.html" title="slider"></iframe>
+```
+
+## Expedition output (CTD) {.smaller}
+
+```{=html}
+<iframe width="1000" height="700" src="images/sample_3D_temperature.html" title="3d"></iframe>
+```
+
+
+## Performance {.smaller}
+
+- `copernicusmarine` is great, but does mean there's a lot 'under-the-hood'
+- Back to the example MHW expedition...
+
+![](images/snapshot2.png)
+
+## Performance {.smaller}
+
+::: {layout-ncol=1 layout-valign="bottom"}
+
+![](images/Figure_copernicusonly.png){width=900}
+
+Figure 1: MHW expedition execution time [64GB RAM, 8 cores]
+
+:::
+
+## Performance {.smaller}
+
+::: {layout-ncol=1 layout-valign="bottom"}
+
+![](images/Figure_fromdata_nolast.png){width=900}
+
+Figure 1: MHW expedition execution time [64GB RAM, 8 cores]
+
+:::
+
+## Performance {.smaller}
+
+::: {layout-ncol=1 layout-valign="bottom"}
+
+![](images/Figure_fromdata_hiddenlast.png){width=900}
+
+Figure 1: MHW expedition execution time [64GB RAM, 8 cores]
+
+:::
+
+## Performance {.smaller}
+
+::: {layout-ncol=1 layout-valign="bottom"}
+
+![](images/Figure_fromdata_showlast.png){width=900}
+
+Figure 1: MHW expedition execution time [64GB RAM, 8 cores]
+
+:::
+
+## Performance {.smaller}
+
+::: {layout-ncol=1 layout-valign="bottom"}
+
+![](images/Figure_fromdata_showlast.png){width=500}
+
+Figure 1: MHW expedition execution time [64GB RAM, 8 cores]
+
+:::
+
+:::{.callout-note}
+ADCP and Underway S/T are the only `ScipyParticle` kernels... Also, this is using global FieldSets. Therefore, I would expect easing with Parcels v4.
+:::
+
+
+## Your turn! {.smaller}
+
+::: {.fragment}
+
+::: {.callout-note}
+In the classroom (50+ students), we use SURF Research Cloud workspaces to set everyone up with a pre-configured environment. I'm keen to see the interaction between the cloud instance and the (new) version of VirtualShip. I expect to see performance suffer a bit - but now's the time to stress test! **I have pre-configured an expedition, you can all execute it sepearately!**
+
+:::
+:::
+
+::: {.fragment}
+
+::: {.callout-important}
+Questions?! Let's discuss as we work on SURF... there will be plenty of waiting time.
+:::
+
+:::
+
+## Your turn! {.smaller}
+
+::: {.callout-note style="font-size:0.8em; line-height:1.0;"}
+In the classroom (50+ students), we use SURF Research Cloud workspaces to set everyone up with a pre-configured environment. I'm keen to see the interaction between the cloud instance and the (new) version of VirtualShip. I expect to see performance suffer a bit - but now's the time to stress test! **I have pre-configured an expedition, you can all execute it sepearately!**
+
+:::
+
+<div style="font-size:0.85em; line-height:1.15;">
+<strong>Instructions:</strong>
+
+1. Accept the SURF invite (email) and go to the SURF dashboard.<br>
+2. Press <strong>Access</strong> on <em>virtualship-env-store</em> workspace to launch remote JupyterLab instance (you may have to try a few times).<br>
+3. Open Terminal and enter: `/etc/miniconda/bin/conda init`
+4. Close and re-open Terminal.
+5. Activate the virtualship environment: `conda activate virtualship`
+6. Navigate to persistence storage: `cd data/storage-17-november/`
+7. Run VirtualShip simulations: `virtualship run PARCELS_TEAM`
+    - This will run the MHWs expedition with CTDs (BGC) and Drifters
+</div>
+
+::: {.callout-tip style="font-size:0.8em; line-height:1.0;"}
+Adjust the expedition schedule etc. with `virtualship plan PARCELS_TEAM` if there's time! Add some **ARGO_FLOATs**!
+:::
