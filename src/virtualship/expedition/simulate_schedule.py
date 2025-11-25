@@ -114,8 +114,29 @@ class _ScheduleSimulator:
         self._next_adcp_time = self._time
         self._next_ship_underwater_st_time = self._time
 
+    def _calc_prob(self, waypoint: Waypoint, wp_instruments) -> float:
+        """
+        Calcuates the probability of a problem occurring at a given waypoint based on the instruments being used.
+
+        1) check if want a problem before waypoint 0
+        2) then by waypoint
+        """
+
+    def _return_specific_problem(self):
+        """
+        Return the problem class (e.g. CTDPRoblem_Winch_Failure) based on the instrument type causing the problem OR if general problem (e.g. EngineProblem_FuelLeak).
+
+        With instructions for re-processing the schedule afterwards.
+
+        """
+
     def simulate(self) -> ScheduleOk | ScheduleProblem:
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
+            probability_of_problem = self._calc_prob(waypoint, wp_instruments)  # noqa: F821
+
+            if probability_of_problem > 1.0:
+                return self._return_specific_problem()
+
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 

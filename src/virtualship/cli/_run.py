@@ -112,6 +112,27 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
         )
         return
 
+    """
+    PROBLEMS:
+    - Post verification of schedule:
+        - There will be a problem in the expedition, and the problem is tied to an instrument type
+        - JAMIE DETERMINES **WHERE** THE LOGIC OF WHETHER THE PROBLEM IS INITIATED LIVES (probably simulate_schedule .simulate() )
+        - assume it's assigned to be a problem at waypoint e.g. 4 (can get more creative with this later; and e.g. some that are only before waypoiny 1, delays with food, fuel)
+        - extract from schedule, way the time absolutley it should take to get to the next waypoint (based on speed and distance)
+        - compare to the extracted value of what the user has scheduled,
+            - if they have not scheduled enough time for the time associated with the specific problem, then we have a problem
+            - if they have scheduled enough time then can continue and give a message that there was a problem but they had enough time scheduled to deal with it - well done etc.
+        - return to `virtualship plan` [with adequate messaging to say waypoint N AND BEYOND need updating to account for x hour/days delay]
+            for user to update schedule (or directly in YAML)
+        - once updated, run `virtualship run` again, will check from the checkpoint and check that the new schedule is suitable (do checkpoint.verify methods need updating?)
+        - if not suitable, return to `virtualship plan` again etc.
+        - Also give error + messaging if the user has made changes to waypoints PREVIOUS to the problem waypoint
+        - proceed with run
+
+
+    - Ability to turn on and off problems
+    """
+
     # delete and create results directory
     if os.path.exists(expedition_dir.joinpath("results")):
         shutil.rmtree(expedition_dir.joinpath("results"))
