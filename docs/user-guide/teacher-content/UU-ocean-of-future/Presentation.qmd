@@ -4,6 +4,7 @@ subtitle: "Ocean of the future <br> 13-11-2025"
 author: "Emma Daniels & Jamie Atkins <br> Postdocs @ UU <br> Virtual Ship Classroom"
 format:
     revealjs:
+        embed-resources: true
         slide-number: true
         theme: sky
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"

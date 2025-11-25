@@ -18,18 +18,18 @@ We evaluated in several (under)graduate courses and find that the VirtualShip Cl
 
 ```{nbgallery}
 ---
-maxdepth: 1
+maxdepth: 2
 caption: Teaching material
 ---
-
 ILOs.ipynb
 ```
-
-## UU Ocean of the Future
-
 ```{nbgallery}
 ---
-maxdepth: 1
+caption: UU Ocean of the Future
 ---
 UU-ocean-of-future/Tutorial1.ipynb
+UU-ocean-of-future/CoordinatesExport-Transect.xlsx
+UU-ocean-of-future/Tutorial2.ipynb
+UU-ocean-of-future/CTD_transects.ipynb
+UU-ocean-of-future/plot_slider.py
 ```

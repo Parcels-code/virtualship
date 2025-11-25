@@ -78,6 +78,8 @@ nbsphinx_thumbnails = {
     # "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
+    "user-guide/teacher-content/UU-ocean-of-future/Tutorial1": "user-guide/_images/freepik_assignment.png",
+    "user-guide/teacher-content/UU-ocean-of-future/Tutorial2": "user-guide/_images/freepik_assignment.png",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
