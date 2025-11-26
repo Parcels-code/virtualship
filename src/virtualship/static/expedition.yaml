@@ -53,6 +53,7 @@ instruments_config:
     max_depth_meter: -2000.0
     min_depth_meter: 0.0
     vertical_speed_meter_per_second: -0.1
+    stationkeeping_time_minutes: 20.0
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
@@ -64,6 +65,7 @@ instruments_config:
   drifter_config:
     depth_meter: -1.0
     lifetime_minutes: 60480.0
+    stationkeeping_time_minutes: 20.0
   xbt_config:
     max_depth_meter: -285.0
     min_depth_meter: -2.0
