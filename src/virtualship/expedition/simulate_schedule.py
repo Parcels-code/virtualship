@@ -255,6 +255,12 @@ class _ScheduleSimulator:
         # time costs of each measurement
         time_costs = [timedelta()]
 
+        # check if both CTD and CTD_BGC are present
+        # TODO: this can be avoided if CTD and CTD_BGC are merged into a single instrument
+        both_ctd_and_bgc = (
+            InstrumentType.CTD in instruments and InstrumentType.CTD_BGC in instruments
+        )
+
         for instrument in instruments:
             if instrument is InstrumentType.ARGO_FLOAT:
                 self._measurements_to_simulate.argo_floats.append(
@@ -268,7 +274,7 @@ class _ScheduleSimulator:
                         drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
-            ## TODO: time for CTD and CTD_BGC should only be added on once if both instruments are used, in reality they would be the same cast
+
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
                     CTD(
@@ -288,9 +294,12 @@ class _ScheduleSimulator:
                         max_depth=self._expedition.instruments_config.ctd_bgc_config.max_depth_meter,
                     )
                 )
-                time_costs.append(
-                    self._expedition.instruments_config.ctd_bgc_config.stationkeeping_time
-                )
+                if both_ctd_and_bgc:  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+                    pass
+                else:
+                    time_costs.append(
+                        self._expedition.instruments_config.ctd_bgc_config.stationkeeping_time
+                    )
             elif instrument is InstrumentType.DRIFTER:
                 self._measurements_to_simulate.drifters.append(
                     Drifter(
