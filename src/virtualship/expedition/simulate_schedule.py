@@ -280,7 +280,6 @@ class _ScheduleSimulator:
                 time_costs.append(
                     self._expedition.instruments_config.ctd_config.stationkeeping_time
                 )
-                breakpoint()
             elif instrument is InstrumentType.CTD_BGC:
                 self._measurements_to_simulate.ctd_bgcs.append(
                     CTD_BGC(
