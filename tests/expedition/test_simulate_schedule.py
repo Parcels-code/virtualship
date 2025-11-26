@@ -54,8 +54,8 @@ def test_time_in_minutes_in_ship_schedule() -> None:
         "expedition_dir/expedition.yaml"
     ).instruments_config
     assert instruments_config.adcp_config.period == timedelta(minutes=5)
-    assert instruments_config.ctd_config.stationkeeping_time == timedelta(minutes=35)
+    assert instruments_config.ctd_config.stationkeeping_time == timedelta(minutes=50)
     assert instruments_config.ctd_bgc_config.stationkeeping_time == timedelta(
-        minutes=35
+        minutes=50
     )
     assert instruments_config.ship_underwater_st_config.period == timedelta(minutes=5)

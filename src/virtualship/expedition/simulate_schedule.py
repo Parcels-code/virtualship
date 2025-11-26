@@ -268,6 +268,7 @@ class _ScheduleSimulator:
                         drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
+            ## TODO: time for CTD and CTD_BGC should only be added on once if both instruments are used, in reality they would be the same cast
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
                     CTD(
@@ -279,6 +280,7 @@ class _ScheduleSimulator:
                 time_costs.append(
                     self._expedition.instruments_config.ctd_config.stationkeeping_time
                 )
+                breakpoint()
             elif instrument is InstrumentType.CTD_BGC:
                 self._measurements_to_simulate.ctd_bgcs.append(
                     CTD_BGC(
