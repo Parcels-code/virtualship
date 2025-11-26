@@ -32,11 +32,11 @@ instruments_config:
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
-    stationkeeping_time_minutes: 35.0
+    stationkeeping_time_minutes: 50.0
   ctd_bgc_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
-    stationkeeping_time_minutes: 35.0
+    stationkeeping_time_minutes: 50.0
   drifter_config:
     depth_meter: -1.0
     lifetime_minutes: 40320.0
