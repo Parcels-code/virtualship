@@ -132,10 +132,10 @@ class _ScheduleSimulator:
 
     def simulate(self) -> ScheduleOk | ScheduleProblem:
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
-            probability_of_problem = self._calc_prob(waypoint, wp_instruments)  # noqa: F821
+            # probability_of_problem = self._calc_prob(waypoint, wp_instruments)  # noqa: F821
 
-            if probability_of_problem > 1.0:
-                return self._return_specific_problem()
+            # if probability_of_problem > 1.0:
+            #     return self._return_specific_problem()
 
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)

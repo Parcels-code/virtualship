@@ -9,24 +9,33 @@ from virtualship.instruments.adcp import ADCP
 from virtualship.instruments.drifter import Drifter
 from virtualship.instruments.argo_float import ArgoFloat
 
-# base classes
+from abc import ABC
 
 
-class GeneralProblem(pydantic.BaseModel):
-    """Base class for general problems."""
+
+class GeneralProblem:
+    """Base class for general problems.
+    
+    Problems occur at each waypoint."""
 
     message: str
     can_reoccur: bool
+    base_probability: float # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
     delay_duration: float  # in hours
 
 
-class InstrumentProblem(pydantic.BaseModel):
+
+
+class InstrumentProblem:
     """Base class for instrument-specific problems."""
 
     instrument_dataclass: type
     message: str
     can_reoccur: bool
+    base_probability: float # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
     delay_duration: float  # in hours
+
+
 
 
 # General problems
