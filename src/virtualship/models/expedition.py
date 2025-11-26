@@ -229,6 +229,8 @@ class ArgoFloatConfig(pydantic.BaseModel):
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_mins_to_timedelta(value)
 
+    model_config = pydantic.ConfigDict(populate_by_name=True)
+
 
 class ADCPConfig(pydantic.BaseModel):
     """Configuration for ADCP instrument."""
