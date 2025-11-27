@@ -141,6 +141,7 @@ INSTRUMENT_FIELDS = {
             {"name": "vertical_speed_meter_per_second"},
             {"name": "cycle_days"},
             {"name": "drift_days"},
+            {"name": "stationkeeping_time", "minutes": True},
         ],
     },
     "drifter_config": {
@@ -149,6 +150,7 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "depth_meter"},
             {"name": "lifetime", "minutes": True},
+            {"name": "stationkeeping_time", "minutes": True},
         ],
     },
 }
