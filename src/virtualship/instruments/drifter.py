@@ -3,12 +3,12 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import _random_noise, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -102,11 +102,18 @@ class DrifterInstrument(Instrument):
         fieldset = self.load_input_data()
 
         # define parcel particles
+        lat_release = [
+            drifter.spacetime.location.lat + _random_noise() for drifter in measurements
+        ]  # with small random noise to get different trajectories for multiple drifters released at same waypoint
+        lon_release = [
+            drifter.spacetime.location.lon + _random_noise() for drifter in measurements
+        ]
+
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=[drifter.spacetime.location.lat for drifter in measurements],
-            lon=[drifter.spacetime.location.lon for drifter in measurements],
+            lat=lat_release,
+            lon=lon_release,
             depth=[drifter.depth for drifter in measurements],
             time=[drifter.spacetime.time for drifter in measurements],
             has_lifetime=[

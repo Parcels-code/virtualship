@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -560,3 +560,8 @@ def _find_files_in_timerange(
         )
 
     return [fname for _, fname in files_with_dates]
+
+
+def _random_noise(scale: float = 0.01) -> float:
+    """Generate a small random noise value for drifter seeding locations."""
+    return np.random.normal(loc=0.0, scale=scale)
