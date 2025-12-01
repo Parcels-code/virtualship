@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import ParticleSet, ScipyParticle, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import add_dummy_UV, register_instrument
@@ -58,6 +58,10 @@ class Underwater_STInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
         variables = {"S": "so", "T": "thetao"}
+        spacetime_buffer_size = {
+            "latlon": 0.25,  # [degrees]
+            "time": 0.0,  # [days]
+        }
 
         super().__init__(
             expedition,
@@ -65,7 +69,7 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=None,
+            spacetime_buffer_size=spacetime_buffer_size,
             limit_spec=None,
             from_data=from_data,
         )
