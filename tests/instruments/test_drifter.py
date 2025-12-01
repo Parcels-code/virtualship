@@ -4,8 +4,8 @@ import datetime
 
 import numpy as np
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.models import Location, Spacetime
 
