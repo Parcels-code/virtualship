@@ -71,7 +71,6 @@ instruments_config:
     min_depth_meter: -2.0
     fall_speed_meter_per_second: 6.7
     deceleration_coefficient: 0.00225
-  ship_underwater_st_config:
-    period_minutes: 5.0
+  ship_underwater_st_config: null
 ship_config:
   ship_speed_knots: 10.0
