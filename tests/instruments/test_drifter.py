@@ -36,7 +36,7 @@ def test_simulate_drifters(tmpdir) -> None:
     drifters = [
         Drifter(
             spacetime=Spacetime(
-                location=Location(latitude=0, longitude=0),
+                location=Location(latitude=0.05, longitude=0.05),
                 time=base_time + datetime.timedelta(days=0),
             ),
             depth=0.0,
