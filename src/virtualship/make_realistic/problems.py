@@ -2,16 +2,59 @@
 
 from dataclasses import dataclass
 
-import pydantic
-
 from virtualship.instruments.ctd import CTD
 from virtualship.instruments.adcp import ADCP
 from virtualship.instruments.drifter import Drifter
 from virtualship.instruments.argo_float import ArgoFloat
+from virtualship.models import Waypoint
 
-from abc import ABC
+@dataclass
+class ProblemConfig:
+    message: str
+    can_reoccur: bool
+    base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
+    delay_duration: float  # in hours
 
 
+def general_proba_function(config: ProblemConfig, waypoint: Waypoint) -> bool:
+    """Determine if a general problem should occur at a given waypoint."""
+    # some random calculation based on the base_probability
+    return True
+
+# Pseudo-code for problem probability functions
+# def instrument_specific_proba(
+#     instrument: type,
+# ) -> Callable([ProblemConfig, Waypoint], bool):
+#     """Return a function to determine if an instrument-specific problem should occur."""
+
+#     def should_occur(config: ProblemConfig, waypoint) -> bool:
+#         if instrument not in waypoint.instruments:
+#             return False
+
+#         return general_proba_function(config, waypoint)
+
+#     return should_occur
+
+# PROBLEMS: list[Tuple[ProblemConfig, Callable[[ProblemConfig, Waypoint], bool]]] = [
+#     (
+#         ProblemConfig(
+#             message="General problem occurred",
+#             can_reoccur=True,
+#             base_probability=0.1,
+#             delay_duration=2.0,
+#         ),
+#         general_proba_function,
+#     ),
+#     (
+#         ProblemConfig(
+#             message="Instrument-specific problem occurred",
+#             can_reoccur=False,
+#             base_probability=0.05,
+#             delay_duration=4.0,
+#         ),
+#         instrument_specific_proba(CTD),
+#     ),
+# ]
 
 class GeneralProblem:
     """Base class for general problems.
@@ -21,8 +64,7 @@ class GeneralProblem:
     message: str
     can_reoccur: bool
     base_probability: float # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
-    delay_duration: float  # in hours
-
+    delay_duration: float  # in hours    
 
 
 
@@ -50,6 +92,7 @@ class VenomousCentipedeOnboard:
     )
     can_reoccur: bool = False
     delay_duration: float = 2.0
+    base_probability: float = 0.05
 
 @dataclass
 class CaptainSafetyDrill:
@@ -60,16 +103,17 @@ class CaptainSafetyDrill:
     )
     can_reoccur: bool = False
     delay_duration: float = 2.
+    base_probability: float = 0.1
 
-@dataclass
-class FoodDeliveryDelayed:
-    message: str = (
-        "The scheduled food delivery prior to departure has not arrived. Until the supply truck reaches the pier, "
-        "we cannot leave. Once it arrives, unloading and stowing the provisions in the ship’s cold storage "
-        "will also take additional time. These combined delays postpone departure by approximately 5 hours."
-    )
-    can_reoccur: bool = False
-    delay_duration: float = 5.0
+# @dataclass
+# class FoodDeliveryDelayed:
+#     message: str = (
+#         "The scheduled food delivery prior to departure has not arrived. Until the supply truck reaches the pier, "
+#         "we cannot leave. Once it arrives, unloading and stowing the provisions in the ship’s cold storage "
+#         "will also take additional time. These combined delays postpone departure by approximately 5 hours."
+#     )
+#     can_reoccur: bool = False
+#     delay_duration: float = 5.0
 
 # @dataclass
 # class FuelDeliveryIssue:
@@ -102,6 +146,7 @@ class MarineMammalInDeploymentArea:
     )
     can_reoccur: bool = True
     delay_duration: float = 0.5
+    base_probability: float = 0.1
 
 @dataclass
 class BallastPumpFailure:
@@ -113,6 +158,7 @@ class BallastPumpFailure:
     )
     can_reoccur: bool = True
     delay_duration: float = 1.0
+    base_probability: float = 0.1
 
 @dataclass
 class ThrusterConverterFault:
@@ -123,6 +169,7 @@ class ThrusterConverterFault:
     )
     can_reoccur: bool = False
     delay_duration: float = 1.0
+    base_probability: float = 0.1
 
 @dataclass
 class AFrameHydraulicLeak:
@@ -133,6 +180,7 @@ class AFrameHydraulicLeak:
     )
     can_reoccur: bool = True
     delay_duration: float = 2.0
+    base_probability: float = 0.1
 
 @dataclass
 class CoolingWaterIntakeBlocked:
@@ -143,6 +191,7 @@ class CoolingWaterIntakeBlocked:
     )
     can_reoccur: bool = True
     delay_duration: float = 1.0
+    base_probability: float = 0.1
 
 # Instrument-specific problems
 
@@ -156,6 +205,7 @@ class CTDCableJammed:
     )
     can_reoccur: bool = True
     delay_duration: float = 3.0
+    base_probability: float = 0.1
     instrument_dataclass = CTD
 
 @dataclass
@@ -168,6 +218,7 @@ class CTDTemperatureSensorFailure:
     )
     can_reoccur: bool = True
     delay_duration: float = 2.0
+    base_probability: float = 0.1
     instrument_dataclass = CTD
 
 @dataclass
@@ -179,6 +230,7 @@ class CTDSalinitySensorFailureWithCalibration:
     )
     can_reoccur: bool = True
     delay_duration: float = 4.0
+    base_probability: float = 0.1
     instrument_dataclass = CTD
 
 @dataclass
@@ -191,6 +243,7 @@ class WinchHydraulicPressureDrop:
     )
     can_reoccur: bool = True
     delay_duration: float = 1.5
+    base_probability: float = 0.1
     instrument_dataclass = CTD
 
 @dataclass
@@ -203,6 +256,8 @@ class RosetteTriggerFailure:
     )
     can_reoccur: bool = True
     delay_duration: float = 2.5
+    base_probability: float = 0.1
+    instrument_dataclass = CTD
 
 @dataclass
 class ADCPMalfunction:
@@ -214,6 +269,7 @@ class ADCPMalfunction:
     )
     can_reoccur: bool = True
     delay_duration: float = 1.0
+    base_probability: float = 0.1
     instrument_dataclass = ADCP
 
 @dataclass
@@ -226,6 +282,7 @@ class DrifterSatelliteConnectionDelay:
     )
     can_reoccur: bool = True
     delay_duration: float = 2.0
+    base_probability: float = 0.1
     instrument_dataclass = Drifter
 
 @dataclass
@@ -238,4 +295,5 @@ class ArgoSatelliteConnectionDelay:
     )
     can_reoccur: bool = True
     delay_duration: float = 2.0
+    base_probability: float = 0.1
     instrument_dataclass = ArgoFloat
