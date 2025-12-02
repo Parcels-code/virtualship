@@ -67,7 +67,7 @@ class DrifterInstrument(Instrument):
         """Initialize DrifterInstrument."""
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         spacetime_buffer_size = {
-            "latlon": 6.0,  # [degrees]
+            "latlon": 12.0,  # [degrees]
             "time": 63.0,  # [days]
         }
         limit_spec = {
