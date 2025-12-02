@@ -245,7 +245,6 @@ class ExpeditionEditor(Static):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
                     config_class = info["class"]
                     attributes = info["attributes"]
-                    # instrument-specific configs now live under instruments_config
                     config_instance = getattr(
                         self.expedition.instruments_config, instrument_name, None
                     )
@@ -262,7 +261,6 @@ class ExpeditionEditor(Static):
                                 f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
                             )
                         with Container(classes="instrument-config"):
-                            # TODO: add validator that Drifter cannot exceed the time buffer defined in DrifterInstrument; and similarly for Argo Float
                             for attr_meta in attributes:
                                 attr = attr_meta["name"]
                                 is_minutes = attr_meta.get("minutes", False)
