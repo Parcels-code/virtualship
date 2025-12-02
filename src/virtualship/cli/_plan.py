@@ -22,10 +22,8 @@ from textual.widgets import (
 from virtualship.cli.validator_utils import (
     get_field_type,
     group_validators,
-    is_valid_depth,
     is_valid_lat,
     is_valid_lon,
-    is_valid_timestr,
     type_to_textual,
 )
 from virtualship.errors import UnexpectedError, UserError
@@ -40,8 +38,6 @@ from virtualship.models import (
     Location,
     ShipConfig,
     ShipUnderwaterSTConfig,
-    SpatialRange,
-    TimeRange,
     Waypoint,
     XBTConfig,
 )
@@ -331,181 +327,6 @@ class ExpeditionEditor(Static):
 
                 yield VerticalScroll(id="waypoint_list", classes="waypoint-list")
 
-            # SECTION: "Space-Time Region"
-
-            with Collapsible(
-                title="[b]Space-Time Region[/b] (advanced users only)",
-                collapsed=True,
-            ):
-                if self.expedition.schedule.space_time_region:
-                    str_data = self.expedition.schedule.space_time_region
-
-                    yield Label("Minimum Latitude:")
-                    yield Input(
-                        id="min_lat",
-                        value=str(str_data.spatial_range.minimum_latitude)
-                        if str_data.spatial_range.minimum_latitude
-                        else "",
-                        validators=[
-                            Function(
-                                is_valid_lat,
-                                f"INVALID: value must be {is_valid_lat.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="°N",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-min_lat",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label("Maximum Latitude:")
-                    yield Input(
-                        id="max_lat",
-                        value=str(str_data.spatial_range.maximum_latitude),
-                        validators=[
-                            Function(
-                                is_valid_lat,
-                                f"INVALID: value must be {is_valid_lat.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="°N",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-max_lat",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label("Minimum Longitude:")
-                    yield Input(
-                        id="min_lon",
-                        value=str(str_data.spatial_range.minimum_longitude),
-                        validators=[
-                            Function(
-                                is_valid_lon,
-                                f"INVALID: value must be {is_valid_lon.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="°E",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-min_lon",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label("Maximum Longitude:")
-                    yield Input(
-                        id="max_lon",
-                        value=str(str_data.spatial_range.maximum_longitude),
-                        validators=[
-                            Function(
-                                is_valid_lon,
-                                f"INVALID: value must be {is_valid_lon.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="°E",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-max_lon",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label("Minimum Depth (meters):")
-                    yield Input(
-                        id="min_depth",
-                        value=str(str_data.spatial_range.minimum_depth),
-                        validators=[
-                            Function(
-                                is_valid_depth,
-                                f"INVALID: value must be {is_valid_depth.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="m",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-min_depth",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label("Maximum Depth (meters):")
-                    yield Input(
-                        id="max_depth",
-                        value=str(str_data.spatial_range.maximum_depth),
-                        validators=[
-                            Function(
-                                is_valid_depth,
-                                f"INVALID: value must be {is_valid_depth.__doc__.lower()}",
-                            )
-                        ],
-                        type="number",
-                        placeholder="m",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-max_depth",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label(
-                        "Start Time (will be auto determined from waypoints if left blank):"
-                    )
-                    yield Input(
-                        id="start_time",
-                        placeholder="YYYY-MM-DD hh:mm:ss",
-                        value=(
-                            str(str_data.time_range.start_time)
-                            if str_data.time_range and str_data.time_range.start_time
-                            else ""
-                        ),
-                        validators=[
-                            Function(
-                                is_valid_timestr,
-                                f"INVALID: value must be {is_valid_timestr.__doc__.lower()}",
-                            )
-                        ],
-                        type="text",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-start_time",
-                        classes="-hidden validation-failure",
-                    )
-
-                    yield Label(
-                        "End Time (will be auto determined from waypoints if left blank):"
-                    )
-                    yield Input(
-                        id="end_time",
-                        placeholder="YYYY-MM-DD hh:mm:ss",
-                        value=(
-                            str(str_data.time_range.end_time)
-                            if str_data.time_range and str_data.time_range.end_time
-                            else ""
-                        ),
-                        validators=[
-                            Function(
-                                is_valid_timestr,
-                                f"INVALID: value must be {is_valid_timestr.__doc__.lower()}",
-                            )
-                        ],
-                        type="text",
-                    )
-                    yield Label(
-                        "",
-                        id="validation-failure-label-end_time",
-                        classes="-hidden validation-failure",
-                    )
-
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
@@ -592,24 +413,6 @@ class ExpeditionEditor(Static):
             )
 
     def _update_schedule(self):
-        start_time_input = self.query_one("#start_time").value
-        end_time_input = self.query_one("#end_time").value
-        waypoint_times = [
-            wp.time
-            for wp in self.expedition.schedule.waypoints
-            if hasattr(wp, "time") and wp.time
-        ]
-        if not start_time_input and waypoint_times:
-            start_time = min(waypoint_times)
-        else:
-            start_time = start_time_input
-        if not end_time_input and waypoint_times:
-            end_time = max(waypoint_times) + datetime.timedelta(minutes=60480.0)
-        else:
-            end_time = end_time_input
-        time_range = TimeRange(start_time=start_time, end_time=end_time)
-        self.expedition.schedule.space_time_region.time_range = time_range
-
         for i, wp in enumerate(self.expedition.schedule.waypoints):
             wp.location = Location(
                 latitude=float(self.query_one(f"#wp{i}_lat").value),
@@ -633,57 +436,6 @@ class ExpeditionEditor(Static):
                     wp.instrument.extend([InstrumentType.DRIFTER] * count)
                 elif switch_on:
                     wp.instrument.append(instrument)
-
-        # take min/max lat/lon to be most extreme values of waypoints or space_time_region inputs (so as to cover possibility of user edits in either place)
-        # also prevents situation where e.g. user defines a space time region inconsistent with waypoint locations and vice versa (warning also provided)
-        waypoint_lats = [
-            wp.location.latitude for wp in self.expedition.schedule.waypoints
-        ]
-        waypoint_lons = [
-            wp.location.longitude for wp in self.expedition.schedule.waypoints
-        ]
-        wp_min_lat, wp_max_lat = (
-            min(waypoint_lats) if waypoint_lats else -90.0,
-            max(waypoint_lats) if waypoint_lats else 90.0,
-        )
-        wp_min_lon, wp_max_lon = (
-            min(waypoint_lons) if waypoint_lons else -180.0,
-            max(waypoint_lons) if waypoint_lons else 180.0,
-        )
-
-        st_reg_min_lat = float(self.query_one("#min_lat").value)
-        st_reg_max_lat = float(self.query_one("#max_lat").value)
-        st_reg_min_lon = float(self.query_one("#min_lon").value)
-        st_reg_max_lon = float(self.query_one("#max_lon").value)
-
-        min_lat = min(wp_min_lat, st_reg_min_lat)
-        max_lat = max(wp_max_lat, st_reg_max_lat)
-        min_lon = min(wp_min_lon, st_reg_min_lon)
-        max_lon = max(wp_max_lon, st_reg_max_lon)
-
-        spatial_range = SpatialRange(
-            minimum_longitude=min_lon,
-            maximum_longitude=max_lon,
-            minimum_latitude=min_lat,
-            maximum_latitude=max_lat,
-            minimum_depth=self.query_one("#min_depth").value,
-            maximum_depth=self.query_one("#max_depth").value,
-        )
-        self.expedition.schedule.space_time_region.spatial_range = spatial_range
-
-        # provide warning if user defines a space time region inconsistent with waypoint locations
-        if (
-            (wp_min_lat < st_reg_min_lat)
-            or (wp_max_lat > st_reg_max_lat)
-            or (wp_min_lon < st_reg_min_lon)
-            or (wp_max_lon > st_reg_max_lon)
-        ):
-            self.notify(
-                "[b]WARNING[/b]. One or more waypoint locations lie outside the defined space-time region. Take care if manually adjusting the space-time region."
-                "\n\nThe space-time region will be automatically adjusted on saving to include all waypoint locations.",
-                severity="warning",
-                timeout=10,
-            )
 
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:
@@ -1091,7 +843,6 @@ class PlanScreen(Screen):
             # verify schedule
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
-                check_space_time_region=True,
                 ignore_land_test=True,
             )
 
