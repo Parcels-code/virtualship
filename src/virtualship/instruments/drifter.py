@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -68,7 +68,7 @@ class DrifterInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 6.0,  # [degrees]
-            "time": 21.0,  # [days]
+            "time": 63.0,  # [days]
         }
         limit_spec = {
             "depth_min": 1.0,  # [meters]

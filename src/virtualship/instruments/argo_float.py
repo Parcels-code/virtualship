@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
+
 from parcels import (
     AdvectionRK4,
     JITParticle,
@@ -11,7 +12,6 @@ from parcels import (
     StatusCode,
     Variable,
 )
-
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -142,7 +142,7 @@ class ArgoFloatInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
-            "time": 21.0,  # [days]
+            "time": 63.0,  # [days]
         }
 
         super().__init__(

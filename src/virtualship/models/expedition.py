@@ -11,7 +11,11 @@ import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import _get_bathy_data, _validate_numeric_mins_to_timedelta
+from virtualship.utils import (
+    _get_bathy_data,
+    _get_waypoint_latlons,
+    _validate_numeric_mins_to_timedelta,
+)
 
 from .location import Location
 
@@ -120,9 +124,12 @@ class Schedule(pydantic.BaseModel):
         land_waypoints = []
         if not ignore_land_test:
             try:
+                wp_lats, wp_lons = _get_waypoint_latlons(self.waypoints)
                 bathymetry_field = _get_bathy_data(
-                    self.space_time_region,  # TODO: replace!
-                    latlon_buffer=None,
+                    min(wp_lats),
+                    max(wp_lats),
+                    min(wp_lons),
+                    max(wp_lons),
                     from_data=from_data,
                 ).bathymetry
             except Exception as e:

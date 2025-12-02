@@ -41,7 +41,7 @@ from virtualship.models import (
     Waypoint,
     XBTConfig,
 )
-from virtualship.utils import EXPEDITION
+from virtualship.utils import EXPEDITION, _get_waypoint_latlons
 
 UNEXPECTED_MSG_ONSAVE = (
     "Please ensure that:\n"
@@ -262,6 +262,7 @@ class ExpeditionEditor(Static):
                                 f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
                             )
                         with Container(classes="instrument-config"):
+                            # TODO: add validator that Drifter cannot exceed the time buffer defined in DrifterInstrument; and similarly for Argo Float
                             for attr_meta in attributes:
                                 attr = attr_meta["name"]
                                 is_minutes = attr_meta.get("minutes", False)
@@ -841,6 +842,9 @@ class PlanScreen(Screen):
             self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
 
             # verify schedule
+            wp_lats, wp_lons = _get_waypoint_latlons(
+                expedition_editor.expedition.schedule.waypoints
+            )
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
                 ignore_land_test=True,
