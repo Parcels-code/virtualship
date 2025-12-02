@@ -14,7 +14,6 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.utils import _get_bathy_data, _validate_numeric_mins_to_timedelta
 
 from .location import Location
-from .space_time_region import SpaceTimeRegion
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
 
@@ -77,7 +76,6 @@ class Schedule(pydantic.BaseModel):
     """Schedule of the virtual ship."""
 
     waypoints: list[Waypoint]
-    space_time_region: SpaceTimeRegion | None = None
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
@@ -86,7 +84,6 @@ class Schedule(pydantic.BaseModel):
         ship_speed: float,
         ignore_land_test: bool = False,
         *,
-        check_space_time_region: bool = False,
         from_data: Path | None = None,
     ) -> None:
         """
@@ -100,11 +97,6 @@ class Schedule(pydantic.BaseModel):
         5. The ship can arrive on time at each waypoint given its speed.
         """
         print("\nVerifying route... ")
-
-        if check_space_time_region and self.space_time_region is None:
-            raise ScheduleError(
-                "space_time_region not found in schedule, please define it to proceed."
-            )
 
         if len(self.waypoints) == 0:
             raise ScheduleError("At least one waypoint must be provided.")
@@ -129,7 +121,7 @@ class Schedule(pydantic.BaseModel):
         if not ignore_land_test:
             try:
                 bathymetry_field = _get_bathy_data(
-                    self.space_time_region,
+                    self.space_time_region,  # TODO: replace!
                     latlon_buffer=None,
                     from_data=from_data,
                 ).bathymetry
@@ -150,7 +142,7 @@ class Schedule(pydantic.BaseModel):
                         land_waypoints.append((wp_i, wp))
                 except Exception as e:
                     raise ScheduleError(
-                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. There may be a problem with the waypoint location being outside of the space_time_region or with the bathymetry data itself.\n\n Original error: {e}"
+                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
                     ) from e
 
             if len(land_waypoints) > 0:

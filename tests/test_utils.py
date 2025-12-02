@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     _find_nc_file_with_variable,
@@ -22,37 +22,6 @@ def expedition(tmp_file):
     with open(tmp_file, "w") as file:
         file.write(get_example_expedition())
     return Expedition.from_yaml(tmp_file)
-
-
-@pytest.fixture
-def dummy_spatial_range():
-    class DummySpatialRange:
-        minimum_longitude = 0
-        maximum_longitude = 1
-        minimum_latitude = 0
-        maximum_latitude = 1
-        minimum_depth = 0
-        maximum_depth = 4
-
-    return DummySpatialRange()
-
-
-@pytest.fixture
-def dummy_time_range():
-    class DummyTimeRange:
-        start_time = "2020-01-01"
-        end_time = "2020-01-02"
-
-    return DummyTimeRange()
-
-
-@pytest.fixture
-def dummy_space_time_region(dummy_spatial_range, dummy_time_range):
-    class DummySpaceTimeRegion:
-        spatial_range = dummy_spatial_range
-        time_range = dummy_time_range
-
-    return DummySpaceTimeRegion()
 
 
 @pytest.fixture
@@ -155,7 +124,7 @@ def test_start_end_in_product_timerange(expedition):
     )
 
 
-def test_get_bathy_data_local(tmp_path, dummy_space_time_region):
+def test_get_bathy_data_local(tmp_path):
     """Test that _get_bathy_data returns a FieldSet when given a local directory for --from-data."""
     # dummy .nc file with 'deptho' variable
     data = np.array([[1, 2], [3, 4]])
@@ -173,13 +142,15 @@ def test_get_bathy_data_local(tmp_path, dummy_space_time_region):
     ds.to_netcdf(nc_path)
 
     # should return a FieldSet
-    fieldset = _get_bathy_data(dummy_space_time_region, from_data=tmp_path)
+    fieldset = _get_bathy_data(
+        from_data=tmp_path
+    )  # TODO: will need domain coords; from waypoints?
     assert isinstance(fieldset, FieldSet)
     assert hasattr(fieldset, "bathymetry")
     assert np.allclose(fieldset.bathymetry.data, data)
 
 
-def test_get_bathy_data_copernicusmarine(monkeypatch, dummy_space_time_region):
+def test_get_bathy_data_copernicusmarine(monkeypatch):
     """Test that _get_bathy_data calls copernicusmarine by default."""
 
     def dummy_copernicusmarine(*args, **kwargs):
@@ -190,7 +161,7 @@ def test_get_bathy_data_copernicusmarine(monkeypatch, dummy_space_time_region):
     )
 
     try:
-        _get_bathy_data(dummy_space_time_region)
+        _get_bathy_data()  # TODO: will need domain coords; from waypoints?
     except RuntimeError as e:
         assert "copernicusmarine called" in str(e)
 

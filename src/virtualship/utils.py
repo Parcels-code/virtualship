@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -144,9 +144,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         InstrumentsConfig,
         Location,
         Schedule,
-        SpaceTimeRegion,
-        SpatialRange,
-        TimeRange,
         Waypoint,
     )
 
@@ -154,30 +151,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     coordinates_data = load_coordinates(coordinates_file_path)
 
     coordinates_data = validate_coordinates(coordinates_data)
-
-    # maximum depth (in meters), buffer (in degrees) for each instrument
-    instrument_max_depths = {
-        "XBT": 2000,
-        "CTD": 5000,
-        "CTD_BGC": 5000,
-        "DRIFTER": 1,
-        "ARGO_FLOAT": 2000,
-    }
-
-    spatial_range = SpatialRange(
-        minimum_longitude=coordinates_data["Longitude"].min(),
-        maximum_longitude=coordinates_data["Longitude"].max(),
-        minimum_latitude=coordinates_data["Latitude"].min(),
-        maximum_latitude=coordinates_data["Latitude"].max(),
-        minimum_depth=0,
-        maximum_depth=max(instrument_max_depths.values()),
-    )
-
-    # Create space-time region object
-    space_time_region = SpaceTimeRegion(
-        spatial_range=spatial_range,
-        time_range=TimeRange(),
-    )
 
     # Generate waypoints
     waypoints = []
@@ -192,7 +165,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     # Create Schedule object
     schedule = Schedule(
         waypoints=waypoints,
-        space_time_region=space_time_region,
     )
 
     # extract instruments config from static
