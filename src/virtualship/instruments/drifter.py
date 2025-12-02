@@ -68,7 +68,8 @@ class DrifterInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 12.0,  # [degrees]
-            "time": 63.0,  # [days]
+            "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
         }
         limit_spec = {
             "depth_min": 1.0,  # [meters]
@@ -90,7 +91,6 @@ class DrifterInstrument(Instrument):
         """Simulate Drifter measurements."""
         OUTPUT_DT = timedelta(hours=5)
         DT = timedelta(minutes=5)
-        ENDTIME = None
 
         if len(measurements) == 0:
             print(
@@ -132,29 +132,14 @@ class DrifterInstrument(Instrument):
             chunks=[len(drifter_particleset), 100],
         )
 
-        # get earliest between fieldset end time and prescribed end time
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-        if ENDTIME is None:
-            actual_endtime = fieldset_endtime
-        elif ENDTIME > fieldset_endtime:
-            print("WARN: Requested end time later than fieldset end time.")
-            actual_endtime = fieldset_endtime
-        else:
-            actual_endtime = np.timedelta64(ENDTIME)
+        # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
+        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
         # execute simulation
         drifter_particleset.execute(
             [AdvectionRK4, _sample_temperature, _check_lifetime],
-            endtime=actual_endtime,
+            endtime=endtime,
             dt=DT,
             output_file=out_file,
             verbose_progress=self.verbose_progress,
         )
-
-        # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
-        if len(drifter_particleset.particledata) > len(
-            [d for d in measurements if d.lifetime is None]
-        ):
-            print(
-                "WARN: Some drifters had a life time beyond the end time of the fieldset or the requested end time."
-            )
