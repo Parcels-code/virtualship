@@ -63,7 +63,7 @@ class Instrument(abc.ABC):
             wp.time for wp in expedition.schedule.waypoints if wp.time is not None
         ]
         assert all(earlier <= later for earlier, later in pairwise(wp_times)), (
-            "wp_times is not ascending order"
+            "Waypoint times are not in ascending order"
         )
         self.wp_times = wp_times
 
