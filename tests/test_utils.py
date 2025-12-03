@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -101,11 +102,13 @@ def test_add_dummy_UV_adds_fields():
 
 @pytest.mark.usefixtures("copernicus_no_download")
 def test_select_product_id(expedition):
-    """Should return the physical reanalysis product id via the timings prescribed in the static schedule.yaml file."""
+    """Should return the physical reanalysis product id via the timings prescribed."""
     result = _select_product_id(
         physical=True,
-        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
-        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
+        schedule_start=datetime.datetime(
+            1995, 6, 1, 0, 0, 0
+        ),  # known to be in reanalysis range
+        schedule_end=datetime.datetime(1995, 6, 30, 0, 0, 0),
         username="test",
         password="test",
     )
@@ -114,11 +117,11 @@ def test_select_product_id(expedition):
 
 @pytest.mark.usefixtures("copernicus_no_download")
 def test_start_end_in_product_timerange(expedition):
-    """Should return True for valid range ass determined by the static schedule.yaml file."""
+    """Should return True for valid range as determined by the static schedule.yaml file."""
     assert _start_end_in_product_timerange(
         selected_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        schedule_start=expedition.schedule.space_time_region.time_range.start_time,
-        schedule_end=expedition.schedule.space_time_region.time_range.end_time,
+        schedule_start=datetime.datetime(1995, 6, 1, 0, 0, 0),
+        schedule_end=datetime.datetime(1995, 6, 30, 0, 0, 0),
         username="test",
         password="test",
     )
@@ -143,8 +146,8 @@ def test_get_bathy_data_local(tmp_path):
 
     # should return a FieldSet
     fieldset = _get_bathy_data(
-        from_data=tmp_path
-    )  # TODO: will need domain coords; from waypoints?
+        min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75, from_data=tmp_path
+    )
     assert isinstance(fieldset, FieldSet)
     assert hasattr(fieldset, "bathymetry")
     assert np.allclose(fieldset.bathymetry.data, data)
@@ -161,7 +164,7 @@ def test_get_bathy_data_copernicusmarine(monkeypatch):
     )
 
     try:
-        _get_bathy_data()  # TODO: will need domain coords; from waypoints?
+        _get_bathy_data(min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75)
     except RuntimeError as e:
         assert "copernicusmarine called" in str(e)
 

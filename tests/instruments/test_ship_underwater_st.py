@@ -4,10 +4,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_ship_underwater_st(tmpdir) -> None:
@@ -67,12 +68,18 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
         },
     )
 
-    # dummy expedition and directory for Underwater_STInstrument
+    # dummy expedition for Underwater_STInstrument
     class DummyExpedition:
-        pass
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
 
     expedition = DummyExpedition()
-
     from_data = None
 
     st_instrument = Underwater_STInstrument(expedition, from_data)

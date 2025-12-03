@@ -8,6 +8,7 @@ from parcels import FieldSet
 
 from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_argo_floats(tmpdir) -> None:
@@ -53,9 +54,16 @@ def test_simulate_argo_floats(tmpdir) -> None:
         )
     ]
 
-    # dummy expedition and directory for ArgoFloatInstrument
+    # dummy expedition for ArgoFloatInstrument
     class DummyExpedition:
-        pass
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
 
     expedition = DummyExpedition()
     from_data = None

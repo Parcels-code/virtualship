@@ -8,10 +8,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
+from parcels import Field, FieldSet
 from virtualship.instruments.xbt import XBT, XBTInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_xbts(tmpdir) -> None:
@@ -95,12 +96,18 @@ def test_simulate_xbts(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition and directory for XBTInstrument
+    # dummy expedition for XBTInstrument
     class DummyExpedition:
-        pass
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
 
     expedition = DummyExpedition()
-
     from_data = None
 
     xbt_instrument = XBTInstrument(expedition, from_data)
