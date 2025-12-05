@@ -148,18 +148,11 @@ class Instrument(abc.ABC):
             variable=var if not physical else None,
         )
 
-        latlon_buffer = self._get_spec_value(
-            "buffer", "latlon", 0.25
-        )  # [degrees]; default 0.25 deg buffer to ensure coverage in cell edge cases
         depth_min = self._get_spec_value("limit", "depth_min", None)
         depth_max = self._get_spec_value("limit", "depth_max", None)
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            minimum_longitude=self.min_lon - latlon_buffer,
-            maximum_longitude=self.max_lon + latlon_buffer,
-            minimum_latitude=self.min_lat - latlon_buffer,
-            maximum_latitude=self.max_lat + latlon_buffer,
             variables=[var],
             start_datetime=self.min_time,
             end_datetime=self.max_time + timedelta(days=time_buffer),
