@@ -415,8 +415,14 @@ def _get_bathy_data(
         )
 
     else:  # stream via Copernicus Marine Service
+        buffer = 0.1  # degrees buffer, always to 0.1 to ensure coverage in edge cases (bathy data grid resolution ~0.8 deg)
+
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id=BATHYMETRY_ID,
+            minimum_longitude=min_lon - buffer,
+            maximum_longitude=max_lon + buffer,
+            minimum_latitude=min_lat - buffer,
+            maximum_latitude=max_lat + buffer,
             variables=["deptho"],
             coordinates_selection_method="outside",
         )

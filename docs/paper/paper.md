@@ -63,6 +63,8 @@ The software is designed to be accessible for the user. It is wrapped into three
 3. `run`
    - Executes ...
 
+Emphasis is placed on making the expedition planning procedure as realistic as possible, with users needing to consider ship speed and instrument deployment/recovery times to ensure that their expedition is feasible within given time constraints.
+
 A full example workflow is outlined in the [Quickstart Guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) documentation.
 
 # Implementation
@@ -81,14 +83,17 @@ Both the customisability of the `VirtualShip` platform and the exciting potentia
 
 As the `Parcels` underpinnings themselves continue to evolve, with a future `v4.0` release focussed on alignment with [Pangeo](https://pangeo.io/) standards and specifically `xarray` data structures, `VirtualShip` will also benefit from these improvements, further enhancing its capabilities, extensibility and compatability with modern cloud-based data pipelines.
 
+We also plan to soon introduce a (optional) 'problems' bolt-on module, where users must take decisions to overcome common issues encountered during real-life fieldwork, such as instrument failures, adverse weather conditions and logistical delays.
+
 <!-- TODO: INSERT SOME IMAGES OF EXAMPLE OUTPUT; MULTI-PANEL FOR DIFFERENT INSTRUMENTS...CTDs, DRIFTERS, ADCP perhaps -->
 <!-- TODO: make a python script which does this and plots up the results -->
 <!-- TODO: this could be a big of a big multi-panel figure which also has an MFP screenshot of the  -->
+<!-- TODO: think about extending the final waypoints to go deeper into the OMZ to show this nicely with BGC CTDs! -->
 
 # Acknowledgements
 
 <!-- TODO: Do co-authors have anyone else they want to acknowledge? -->
 
-JRCA, ED and NH were funded by ..., EvS was supported by ...
+The VirtualShip project is funded through the Utrecht University-NIOZ (Royal Netherlands Institute for Sea Research) collaboration.
 
 # References
