@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
+
 from parcels import (
     AdvectionRK4,
     JITParticle,
@@ -11,7 +12,6 @@ from parcels import (
     StatusCode,
     Variable,
 )
-
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -53,6 +53,7 @@ _ArgoParticle = JITParticle.add_variables(
         Variable("vertical_speed", dtype=np.float32),
         Variable("cycle_days", dtype=np.int32),
         Variable("drift_days", dtype=np.int32),
+        Variable("grounded", dtype=np.int32, initial=0),
     ]
 )
 
@@ -64,10 +65,24 @@ _ArgoParticle = JITParticle.add_variables(
 def _argo_float_vertical_movement(particle, fieldset, time):
     if particle.cycle_phase == 0:
         # Phase 0: Sinking with vertical_speed until depth is drift_depth
-        particle_ddepth += (  # noqa Parcels defines particle_* variables, which code checkers cannot know.
+        particle_ddepth += (  # noqa
             particle.vertical_speed * particle.dt
         )
-        if particle.depth + particle_ddepth <= particle.drift_depth:
+
+        # bathymetry at particle location
+        loc_bathy = fieldset.bathymetry.eval(
+            time, particle.depth, particle.lat, particle.lon
+        )
+        if particle.depth + particle_ddepth <= loc_bathy:
+            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
+            particle.cycle_phase = 1
+            particle.grounded = 1
+            # TODO: print statments not working properly with JIT compiler...
+            # print(
+            #     f"Argo float grounded at bathymetry depth: {loc_bathy}m during sinking to drift depth. Location: ({particle.lat}, {particle.lon}). Raising by 50m above bathymetry and continuing cycle."
+            # )
+
+        elif particle.depth + particle_ddepth <= particle.drift_depth:
             particle_ddepth = particle.drift_depth - particle.depth
             particle.cycle_phase = 1
 
@@ -81,7 +96,17 @@ def _argo_float_vertical_movement(particle, fieldset, time):
     elif particle.cycle_phase == 2:
         # Phase 2: Sinking further to max_depth
         particle_ddepth += particle.vertical_speed * particle.dt
-        if particle.depth + particle_ddepth <= particle.max_depth:
+        loc_bathy = fieldset.bathymetry.eval(
+            time, particle.depth, particle.lat, particle.lon
+        )
+        if particle.depth + particle_ddepth <= loc_bathy:
+            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
+            particle.cycle_phase = 3
+            particle.grounded = 1
+            # print(
+            #     f"Argo float grounded at bathymetry depth: {loc_bathy}m during sinking to max depth. Location: ({particle.lat}, {particle.lon}). Raising by 50m above bathymetry and continuing cycle."
+            # )
+        elif particle.depth + particle_ddepth <= particle.max_depth:
             particle_ddepth = particle.max_depth - particle.depth
             particle.cycle_phase = 3
 
@@ -91,6 +116,7 @@ def _argo_float_vertical_movement(particle, fieldset, time):
         particle.cycle_age += (
             particle.dt
         )  # solve issue of not updating cycle_age during ascent
+        particle.grounded = 0
         if particle.depth + particle_ddepth >= particle.min_depth:
             particle_ddepth = particle.min_depth - particle.depth
             particle.temperature = (
@@ -148,7 +174,7 @@ class ArgoFloatInstrument(Instrument):
         super().__init__(
             expedition,
             variables,
-            add_bathymetry=False,
+            add_bathymetry=True,
             allow_time_extrapolation=False,
             verbose_progress=True,
             spacetime_buffer_size=spacetime_buffer_size,
@@ -161,6 +187,8 @@ class ArgoFloatInstrument(Instrument):
         DT = 10.0  # dt of Argo float simulation integrator
         OUTPUT_DT = timedelta(minutes=5)
         ENDTIME = None
+
+        # TODO: insert checker that none of the waypoints are under 50m depth; if so, raise error.
 
         if len(measurements) == 0:
             print(
@@ -191,7 +219,7 @@ class ArgoFloatInstrument(Instrument):
         out_file = argo_float_particleset.ParticleFile(
             name=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(argo_float_particleset), 100],
+            chunks=[len(argo_float_particleset), 100],  # TODO: is this necessary?
         )
 
         # get earliest between fieldset end time and provide end time
