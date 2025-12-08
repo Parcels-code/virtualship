@@ -73,13 +73,15 @@ Under the hood, `VirtualShip` is highly modular and extensible. The workflows ar
 
 Moreover, the data ingestion system, relies on streaming ARCO (FILL IN FULL NAME AND REF THAT ABERNATHY PAPER) data directly from the Copernicus Marine Data Store, via the [`copernicusmarine`](https://github.com/mercator-ocean/copernicus-marine-toolbox) Python toolbox. This means users can simulate expeditions anywhere in the global ocean without downloading large datasets by default. Leveraging the suite of [physics and biogeochemical products](https://virtualship.readthedocs.io/en/latest/user-guide/documentation/copernicus_products.html) available on the Copernicus plaform, expeditions are possible from 1993 to present day and forecasted two weeks into the future. There is also an option for the user to specify local `NetCDF` files for data ingestion, if preferred, with the necessary file stuctures and naming conventions outlined in the relevant [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/documentation/example_copernicus_download.html).
 
-# Applications and future directions
+# Applications
 
 `VirtualShip` has already been extensvely applied in Master's teaching settings at Utrecht University as part of the "VirtualShip Classroom" initiative. Educational assignments have been developed alongside to integrate the tool into coursework, including projects where students design their own research question(s) and execute their fieldwork and analysis using `VirtualShip`. Its application has been shown to be successful, with students reporting increased self-efficacy and knowledge in executing oceanographic fieldwork [@Daniels2025].
 
 We provide extensive documentation and tutorials to help users use `VirtualShip` and also provide a starting point for their post-processing analysis and visualisation of the virtual expedition data.
 
-Both the customisability of the `VirtualShip` platform and the exciting potential for new ARCO-based data hosting services in domains beyond oceanography (e.g., atmospheric science; INSERT C3S ARCO BLOG POST) means there is potential to extend VirtualShip (or "VirtualShip-like" tools) to other domains in the future.
+Encourage researchers to use `VirtualShip` to ...
+
+<!-- Both the customisability of the `VirtualShip` platform and the exciting potential for new ARCO-based data hosting services in domains beyond oceanography (e.g., atmospheric science; INSERT C3S ARCO BLOG POST) means there is potential to extend VirtualShip (or "VirtualShip-like" tools) to other domains in the future. -->
 
 As the `Parcels` underpinnings themselves continue to evolve, with a future `v4.0` release focussed on alignment with [Pangeo](https://pangeo.io/) standards and specifically `xarray` data structures, `VirtualShip` will also benefit from these improvements, further enhancing its capabilities, extensibility and compatability with modern cloud-based data pipelines.
 
