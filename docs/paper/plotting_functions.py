@@ -124,7 +124,7 @@ def plot_ctd(ds, ax, plot_variable, vmin, vmax, axes_labels=False):
         True, which="both", color="lightgrey", linestyle="-", linewidth=0.7, alpha=0.5
     )
 
-    ax.pcolormesh(
+    pm = ax.pcolormesh(
         distance_regular / 1000,  # distance in km
         z1d,
         var_masked.T,
@@ -146,6 +146,8 @@ def plot_ctd(ds, ax, plot_variable, vmin, vmax, axes_labels=False):
     if axes_labels:
         ax.set_ylabel("Depth (m)")
         ax.set_xlabel("Distance from start (km)")
+
+    return pm, distance_regular, var_masked
 
 
 # ADCP
@@ -172,6 +174,8 @@ def plot_adcp(ds, ax, axes_labels=False):
         landmask,
         cmap=mcolors.ListedColormap([mcolors.to_rgba("tan"), mcolors.to_rgba("white")]),
     )
+
+    ax.set_xlim(0, distance_1d.max() / 1000)
 
     # legend for sea bed
     tan_patch = mpatches.Patch(color=mcolors.to_rgba("tan"), label="Land / sea bed")

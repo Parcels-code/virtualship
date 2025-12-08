@@ -28,30 +28,28 @@ adcp_ds = xr.open_dataset(f"{SAMPLE_DIR}{EXPEDITION}/results/adcp.zarr")
 
 # %%
 
-
-# TODO: fix waypoint markers!
-
 PROJ = ccrs.PlateCarree()
 
 waypoint_distances = np.unique(_ctd_distance_from_start(ctd_ds)["distance"])
 
 
-def add_waypoint_markers(ax, distances, offset=0):
+def add_waypoint_markers(ax, distances, offset=15, marker_size=70):
     ax.scatter(
-        (distances / 1000) + offset,
-        np.zeros_like(distances),
+        (distances / 1000),
+        np.zeros_like(distances) - offset,
         marker="v",
         color="black",
         edgecolors="white",
-        s=100,
+        s=marker_size,
+        clip_on=False,
     )
 
 
 # fig
-fig = plt.figure(figsize=(12, 12), dpi=300)
+fig = plt.figure(figsize=(12, 13), dpi=300)
 
 # custom layout
-gs = gridspec.GridSpec(3, 2, height_ratios=[1, 1, 1])
+gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 1, 1])
 ax0 = fig.add_subplot(gs[0, :])
 ax1 = fig.add_subplot(gs[1, 0])
 ax2 = fig.add_subplot(gs[1, 1], projection=PROJ)
@@ -69,7 +67,7 @@ ax1.set_title(r"$\bf{b}$" + ") ADCP (flow velocity)")
 ax1.set_ylabel("Depth (m)")
 ax1.set_xlabel("Distance from start (km)")
 plot_adcp(adcp_ds, ax1)
-add_waypoint_markers(ax1, waypoint_distances, offset=0)
+add_waypoint_markers(ax1, waypoint_distances)
 
 # drifters
 ax2.set_title(r"$\bf{c}$" + ") Surface drifters")
@@ -84,14 +82,16 @@ plot_drifters(
 ax3.set_title(r"$\bf{d}$" + ") CTD (temperature)")
 ax3.set_ylabel("Depth (m)")
 ax3.set_xlabel("Distance from start (km)")
-plot_ctd(
+_, _distances_regular, _var_masked = plot_ctd(
     ctd_ds,
     ax3,
     plot_variable="temperature",
     vmin=ctd_ds.temperature.min(),
     vmax=ctd_ds.temperature.max(),
 )
-add_waypoint_markers(ax3, waypoint_distances, offset=25)
+
+ctd_wp_distances = _distances_regular[np.nansum(_var_masked, axis=1) > 0]
+add_waypoint_markers(ax3, ctd_wp_distances, offset=45, marker_size=60)
 
 # CTD (oxygen)
 ax4.set_title(r"$\bf{e}$" + ") CTD (oxygen)")
@@ -99,7 +99,7 @@ ax4.set_xlabel("Distance from start (km)")
 plot_ctd(
     ctd_bgc_ds, ax4, plot_variable="oxygen", vmin=0, vmax=ctd_bgc_ds.o2.max()
 )  # vmin tailored to mark red as approximate oxygen minimum zone (~ 45 mmol/m-3)
-add_waypoint_markers(ax4, waypoint_distances, offset=0)
+add_waypoint_markers(ax4, ctd_wp_distances, offset=45, marker_size=60)
 
 
 plt.tight_layout()
