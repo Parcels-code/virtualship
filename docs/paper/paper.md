@@ -87,11 +87,6 @@ As the `Parcels` underpinnings themselves continue to evolve, with a future `v4.
 
 We also plan to soon introduce a (optional) 'problems' bolt-on module, where users must take decisions to overcome common issues encountered during real-life fieldwork, such as instrument failures, adverse weather conditions and logistical delays.
 
-<!-- TODO: INSERT SOME IMAGES OF EXAMPLE OUTPUT; MULTI-PANEL FOR DIFFERENT INSTRUMENTS...CTDs, DRIFTERS, ADCP perhaps -->
-<!-- TODO: make a python script which does this and plots up the results -->
-<!-- TODO: this could be a big of a big multi-panel figure which also has an MFP screenshot of the  -->
-<!-- TODO: think about extending the final waypoints to go deeper into the OMZ to show this nicely with BGC CTDs! -->
-
 # Acknowledgements
 
 <!-- TODO: Do co-authors have anyone else they want to acknowledge? -->
