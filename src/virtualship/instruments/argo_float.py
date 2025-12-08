@@ -187,8 +187,6 @@ class ArgoFloatInstrument(Instrument):
         OUTPUT_DT = timedelta(minutes=5)
         ENDTIME = None
 
-        # TODO: insert checker that none of the waypoints are under 50m depth; if so, raise error.
-
         if len(measurements) == 0:
             print(
                 "No Argo floats provided. Parcels currently crashes when providing an empty particle set, so no argo floats simulation will be done and no files will be created."
@@ -197,6 +195,24 @@ class ArgoFloatInstrument(Instrument):
             return
 
         fieldset = self.load_input_data()
+
+        breakpoint()
+
+        shallow_waypoints = {}
+        for i, m in enumerate(measurements):
+            loc_bathy = fieldset.bathymetry.eval(
+                time=0,
+                z=0,
+                y=m.spacetime.location.lat,
+                x=m.spacetime.location.lon,
+            )
+            if abs(loc_bathy) < 50.0:
+                shallow_waypoints[f"Waypoint {i + 1}"] = f"{abs(loc_bathy):.2f}m depth"
+
+        if len(shallow_waypoints) > 0:
+            raise ValueError(
+                f"{self.__class__.__name__} cannot be deployed in waters shallower than 50m. The following waypoints are too shallow: {shallow_waypoints}."
+            )
 
         # define parcel particles
         argo_float_particleset = ParticleSet(
