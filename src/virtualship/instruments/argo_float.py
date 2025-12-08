@@ -4,7 +4,6 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-
 from parcels import (
     AdvectionRK4,
     JITParticle,
@@ -12,6 +11,7 @@ from parcels import (
     StatusCode,
     Variable,
 )
+
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
