@@ -77,10 +77,9 @@ def _argo_float_vertical_movement(particle, fieldset, time):
             particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
             particle.cycle_phase = 1
             particle.grounded = 1
-            # TODO: print statments not working properly with JIT compiler...
-            # print(
-            #     f"Argo float grounded at bathymetry depth: {loc_bathy}m during sinking to drift depth. Location: ({particle.lat}, {particle.lon}). Raising by 50m above bathymetry and continuing cycle."
-            # )
+            print(
+                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to drift depth. Raising by 50m above bathymetry and continuing cycle."
+            )
 
         elif particle.depth + particle_ddepth <= particle.drift_depth:
             particle_ddepth = particle.drift_depth - particle.depth
@@ -103,9 +102,9 @@ def _argo_float_vertical_movement(particle, fieldset, time):
             particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
             particle.cycle_phase = 3
             particle.grounded = 1
-            # print(
-            #     f"Argo float grounded at bathymetry depth: {loc_bathy}m during sinking to max depth. Location: ({particle.lat}, {particle.lon}). Raising by 50m above bathymetry and continuing cycle."
-            # )
+            print(
+                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to max depth. Raising by 50m above bathymetry and continuing cycle."
+            )
         elif particle.depth + particle_ddepth <= particle.max_depth:
             particle_ddepth = particle.max_depth - particle.depth
             particle.cycle_phase = 3
