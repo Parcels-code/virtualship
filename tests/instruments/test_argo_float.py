@@ -20,6 +20,7 @@ def test_simulate_argo_floats(tmpdir) -> None:
     VERTICAL_SPEED = -0.10
     CYCLE_DAYS = 10
     DRIFT_DAYS = 9
+    LIFETIME = timedelta(days=1)
 
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
     CONST_SALINITY = 1.0  # constant salinity in fieldset
@@ -74,6 +75,10 @@ def test_simulate_argo_floats(tmpdir) -> None:
                     time=base_time,
                 ),
             ]
+
+        class instruments_config:
+            class argo_float_config:
+                lifetime = LIFETIME
 
     expedition = DummyExpedition()
     from_data = None
