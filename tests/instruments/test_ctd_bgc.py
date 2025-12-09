@@ -8,10 +8,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
+from parcels import Field, FieldSet
 from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_ctd_bgcs(tmpdir) -> None:
@@ -162,9 +163,16 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition and directory for CTD_BGCInstrument
+    # dummy expedition for CTD_BGCInstrument
     class DummyExpedition:
-        pass
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
 
     expedition = DummyExpedition()
     from_data = None

@@ -8,10 +8,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import Field, FieldSet
 
+from parcels import Field, FieldSet
 from virtualship.instruments.ctd import CTD, CTDInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_ctds(tmpdir) -> None:
@@ -101,35 +102,18 @@ def test_simulate_ctds(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition and directory for CTDInstrument
+    # dummy expedition for CTDInstrument
     class DummyExpedition:
         class schedule:
-            class space_time_region:
-                time_range = type(
-                    "TimeRange",
-                    (),
-                    {
-                        "start_time": fieldset.T.grid.time_origin.fulltime(
-                            fieldset.T.grid.time_full[0]
-                        ),
-                        "end_time": fieldset.T.grid.time_origin.fulltime(
-                            fieldset.T.grid.time_full[-1]
-                        ),
-                    },
-                )()
-                spatial_range = type(
-                    "SpatialRange",
-                    (),
-                    {
-                        "minimum_longitude": 0,
-                        "maximum_longitude": 1,
-                        "minimum_latitude": 0,
-                        "maximum_latitude": 1,
-                    },
-                )()
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
 
     expedition = DummyExpedition()
-
     from_data = None
 
     ctd_instrument = CTDInstrument(expedition, from_data)

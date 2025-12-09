@@ -15,11 +15,6 @@ from .expedition import (
     XBTConfig,
 )
 from .location import Location
-from .space_time_region import (
-    SpaceTimeRegion,
-    SpatialRange,
-    TimeRange,
-)
 from .spacetime import (
     Spacetime,
 )
@@ -36,9 +31,6 @@ __all__ = [  # noqa: RUF022
     "ShipUnderwaterSTConfig",
     "DrifterConfig",
     "XBTConfig",
-    "SpatialRange",
-    "TimeRange",
-    "SpaceTimeRegion",
     "Spacetime",
     "Expedition",
     "InstrumentsConfig",
