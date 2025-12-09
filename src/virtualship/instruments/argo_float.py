@@ -53,6 +53,7 @@ _ArgoParticle = JITParticle.add_variables(
         Variable("vertical_speed", dtype=np.float32),
         Variable("cycle_days", dtype=np.int32),
         Variable("drift_days", dtype=np.int32),
+        Variable("grounded", dtype=np.int32, initial=0),
     ]
 )
 
@@ -64,10 +65,23 @@ _ArgoParticle = JITParticle.add_variables(
 def _argo_float_vertical_movement(particle, fieldset, time):
     if particle.cycle_phase == 0:
         # Phase 0: Sinking with vertical_speed until depth is drift_depth
-        particle_ddepth += (  # noqa Parcels defines particle_* variables, which code checkers cannot know.
+        particle_ddepth += (  # noqa
             particle.vertical_speed * particle.dt
         )
-        if particle.depth + particle_ddepth <= particle.drift_depth:
+
+        # bathymetry at particle location
+        loc_bathy = fieldset.bathymetry.eval(
+            time, particle.depth, particle.lat, particle.lon
+        )
+        if particle.depth + particle_ddepth <= loc_bathy:
+            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
+            particle.cycle_phase = 1
+            particle.grounded = 1
+            print(
+                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to drift depth. Raising by 50m above bathymetry and continuing cycle."
+            )
+
+        elif particle.depth + particle_ddepth <= particle.drift_depth:
             particle_ddepth = particle.drift_depth - particle.depth
             particle.cycle_phase = 1
 
@@ -81,7 +95,17 @@ def _argo_float_vertical_movement(particle, fieldset, time):
     elif particle.cycle_phase == 2:
         # Phase 2: Sinking further to max_depth
         particle_ddepth += particle.vertical_speed * particle.dt
-        if particle.depth + particle_ddepth <= particle.max_depth:
+        loc_bathy = fieldset.bathymetry.eval(
+            time, particle.depth, particle.lat, particle.lon
+        )
+        if particle.depth + particle_ddepth <= loc_bathy:
+            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
+            particle.cycle_phase = 3
+            particle.grounded = 1
+            print(
+                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to max depth. Raising by 50m above bathymetry and continuing cycle."
+            )
+        elif particle.depth + particle_ddepth <= particle.max_depth:
             particle_ddepth = particle.max_depth - particle.depth
             particle.cycle_phase = 3
 
@@ -91,6 +115,7 @@ def _argo_float_vertical_movement(particle, fieldset, time):
         particle.cycle_age += (
             particle.dt
         )  # solve issue of not updating cycle_age during ascent
+        particle.grounded = 0
         if particle.depth + particle_ddepth >= particle.min_depth:
             particle_ddepth = particle.min_depth - particle.depth
             particle.temperature = (
@@ -148,7 +173,7 @@ class ArgoFloatInstrument(Instrument):
         super().__init__(
             expedition,
             variables,
-            add_bathymetry=False,
+            add_bathymetry=True,
             allow_time_extrapolation=False,
             verbose_progress=True,
             spacetime_buffer_size=spacetime_buffer_size,
@@ -170,6 +195,22 @@ class ArgoFloatInstrument(Instrument):
             return
 
         fieldset = self.load_input_data()
+
+        shallow_waypoints = {}
+        for i, m in enumerate(measurements):
+            loc_bathy = fieldset.bathymetry.eval(
+                time=0,
+                z=0,
+                y=m.spacetime.location.lat,
+                x=m.spacetime.location.lon,
+            )
+            if abs(loc_bathy) < 50.0:
+                shallow_waypoints[f"Waypoint {i + 1}"] = f"{abs(loc_bathy):.2f}m depth"
+
+        if len(shallow_waypoints) > 0:
+            raise ValueError(
+                f"{self.__class__.__name__} cannot be deployed in waters shallower than 50m. The following waypoints are too shallow: {shallow_waypoints}."
+            )
 
         # define parcel particles
         argo_float_particleset = ParticleSet(
