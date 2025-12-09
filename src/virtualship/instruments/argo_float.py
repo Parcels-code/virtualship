@@ -232,7 +232,7 @@ class ArgoFloatInstrument(Instrument):
         out_file = argo_float_particleset.ParticleFile(
             name=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(argo_float_particleset), 100],  # TODO: is this necessary?
+            chunks=[len(argo_float_particleset), 100],
         )
 
         # get earliest between fieldset end time and provide end time
