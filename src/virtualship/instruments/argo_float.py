@@ -169,6 +169,9 @@ class ArgoFloatInstrument(Instrument):
             "latlon": 3.0,  # [degrees]
             "time": 63.0,  # [days]
         }
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -177,7 +180,7 @@ class ArgoFloatInstrument(Instrument):
             allow_time_extrapolation=False,
             verbose_progress=True,
             spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 

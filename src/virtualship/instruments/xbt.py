@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -80,6 +80,10 @@ class XBTInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
         variables = {"T": "thetao"}
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
+
         super().__init__(
             expedition,
             variables,
@@ -87,7 +91,7 @@ class XBTInstrument(Instrument):
             allow_time_extrapolation=True,
             verbose_progress=False,
             spacetime_buffer_size=None,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 
