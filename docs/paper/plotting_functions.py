@@ -52,7 +52,9 @@ def plot_drifters(drifter_ds, ax, vmin, vmax, PLOT_VARIABLE="temperature"):
             edgecolor="black",
             zorder=4,
             transform=PROJ,
-            label="Release" if i == 0 else None,  # only label first for legend
+            label="Waypoint/release location"
+            if i == 0
+            else None,  # only label first for legend
         )
 
     # additional map features
@@ -67,6 +69,7 @@ def plot_drifters(drifter_ds, ax, vmin, vmax, PLOT_VARIABLE="temperature"):
     )
     ax.coastlines(linewidth=0.5, color="black")
     ax.add_feature(cfeature.LAND, facecolor="tan")
+
     gl = ax.gridlines(
         draw_labels=True,
         linewidth=0.5,
@@ -83,9 +86,8 @@ def plot_drifters(drifter_ds, ax, vmin, vmax, PLOT_VARIABLE="temperature"):
         drifter_ds[PLOT_VARIABLE], cmo.thermal, ax, "Temperature (°C)", vmin, vmax
     )
 
-    # legend (incl. for sea bed)
-    tan_patch = mpatches.Patch(color=mcolors.to_rgba("tan"), label="Land / sea bed")
-    ax.legend(loc="best", handles=[tan_patch], fontsize=10)
+    # legend
+    ax.legend(loc="best", fontsize=10)
 
 
 # CTDs
@@ -101,7 +103,7 @@ def plot_ctd(ds, ax, plot_variable, vmin, vmax, axes_labels=False):
         "oxygen": "Oxygen (mmol m$^{-3}$)",
     }
 
-    ctd_distance = _ctd_distance_from_start(ds)
+    ctd_distance = _ctd_distance_along_expedition(ds)
 
     # exract descent-only data
     z_down = _ctd_descent_only(ctd_distance, "z")
@@ -155,7 +157,7 @@ def plot_adcp(ds, ax, axes_labels=False):
     """Absolute velocity plot."""
     CMAP = cmo.tempo
 
-    distance_1d = _adcp_distance_from_start(ds.isel(trajectory=0))
+    distance_1d = _adcp_distance_along_expedition(ds.isel(trajectory=0))
     vel, _, _, _ = calc_velocities(ds)
     landmask = xr.where(((ds["U"] == 0) & (ds["V"] == 0)), 1, np.nan)
 
@@ -178,7 +180,7 @@ def plot_adcp(ds, ax, axes_labels=False):
     ax.set_xlim(0, distance_1d.max() / 1000)
 
     # legend for sea bed
-    tan_patch = mpatches.Patch(color=mcolors.to_rgba("tan"), label="Land / sea bed")
+    tan_patch = mpatches.Patch(color=mcolors.to_rgba("tan"), label="Seabed")
     ax.legend(handles=[tan_patch], loc="lower right")
 
     _add_cmap(
@@ -217,29 +219,30 @@ def _haversine(lon1, lat1, lon2, lat2):
     return 6371000 * c
 
 
-def _ctd_distance_from_start(ds):
-    """Add 'distance' variable: meters from first waypoint."""
-    lon0, lat0 = (
-        ds.isel(trajectory=0)["lon"].values[0],
-        ds.isel(trajectory=0)["lat"].values[0],
-    )
-    d = np.zeros_like(ds["lon"].values, dtype=float)
-    for ob, (lon, lat) in enumerate(zip(ds["lon"], ds["lat"], strict=False)):
-        d[ob] = _haversine(lon, lat, lon0, lat0)
+def _ctd_distance_along_expedition(ds):
+    """Add 'distance' variable: cumulative meters travelled."""
+    # cumulative distance travelled along waypoints
+
+    d = np.zeros_like(ds["lon"], dtype=float)
+    for ob in range(1, len(ds["lon"])):
+        d[ob] = d[ob - 1] + _haversine(
+            ds["lon"][ob - 1], ds["lat"][ob - 1], ds["lon"][ob], ds["lat"][ob]
+        )
     ds["distance"] = xr.DataArray(
         d,
         dims=ds["lon"].dims,
-        attrs={"long_name": "distance from first waypoint", "units": "m"},
+        attrs={"long_name": "cumulative distance travelled", "units": "m"},
     )
     return ds
 
 
-def _adcp_distance_from_start(ds):
-    """Array of meters from first waypoint."""
-    lon0, lat0 = ds.isel(obs=0)["lon"].values, ds.isel(obs=0)["lat"].values
-    d = np.zeros_like(ds["lon"].values, dtype=float)
-    for ob, (lon, lat) in enumerate(zip(ds["lon"], ds["lat"], strict=False)):
-        d[ob] = _haversine(lon, lat, lon0, lat0)
+def _adcp_distance_along_expedition(ds):
+    """Array of cumulative meters travelled along ADCP waypoints."""
+    d = np.zeros_like(ds["lon"], dtype=float)
+    for ob in range(1, len(ds["lon"])):
+        d[ob] = d[ob - 1] + _haversine(
+            ds["lon"][ob - 1], ds["lat"][ob - 1], ds["lon"][ob], ds["lat"][ob]
+        )
     return d
 
 
@@ -281,13 +284,13 @@ def _get_profile_indices(distance_1d):
     """
     dist_min, dist_max = float(distance_1d.min()), float(distance_1d.max())
     if dist_max > 1e6:
-        dist_step = 1e5
+        dist_step = 1.5e5
     elif dist_max > 1e5:
-        dist_step = 1e4
+        dist_step = 1.5e4
     elif dist_max > 1e4:
-        dist_step = 1e3
+        dist_step = 1.5e3
     else:
-        dist_step = 1e2  # fallback for very short transects
+        dist_step = 1.5e2  # fallback for very short transects
 
     distance_regular = np.arange(dist_min, dist_max + dist_step, dist_step)
     threshold = dist_step / 2

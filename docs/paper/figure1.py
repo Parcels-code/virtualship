@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from plotting_functions import (
-    _ctd_distance_from_start,
+    _ctd_distance_along_expedition,
     plot_adcp,
     plot_ctd,
     plot_drifters,
@@ -28,9 +28,11 @@ adcp_ds = xr.open_dataset(f"{SAMPLE_DIR}{EXPEDITION}/results/adcp.zarr")
 
 # %%
 
+# plot
+
 PROJ = ccrs.PlateCarree()
 
-waypoint_distances = np.unique(_ctd_distance_from_start(ctd_ds)["distance"])
+waypoint_distances = np.unique(_ctd_distance_along_expedition(ctd_ds)["distance"])
 
 
 def add_waypoint_markers(ax, distances, offset=15, marker_size=70):
