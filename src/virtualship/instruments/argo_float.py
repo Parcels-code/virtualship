@@ -167,7 +167,8 @@ class ArgoFloatInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
-            "time": 63.0,  # [days]
+            "time": expedition.instruments_config.argo_float.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
         }
         limit_spec = {
             "spatial": True
