@@ -138,6 +138,7 @@ INSTRUMENT_FIELDS = {
             {"name": "cycle_days"},
             {"name": "drift_days"},
             {"name": "stationkeeping_time", "minutes": True},
+            {"name": "lifetime", "minutes": True},
         ],
     },
     "drifter_config": {
