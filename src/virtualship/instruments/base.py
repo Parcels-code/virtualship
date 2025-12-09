@@ -113,26 +113,20 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True
-
-        if TMP:
-            if not self.verbose_progress:
-                with yaspin(
-                    text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
-                    side="right",
-                    spinner=ship_spinner,
-                ) as spinner:
-                    self.simulate(measurements, out_path)
-                    spinner.ok("✅\n")
-            else:
-                print(
-                    f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
-                )
+        if not self.verbose_progress:
+            with yaspin(
+                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
+                side="right",
+                spinner=ship_spinner,
+            ) as spinner:
                 self.simulate(measurements, out_path)
-                print("\n")
-
+                spinner.ok("✅\n")
         else:
+            print(
+                f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
+            )
             self.simulate(measurements, out_path)
+            print("\n")
 
     def _get_copernicus_ds(
         self,
