@@ -54,6 +54,7 @@ Marine science relies on fieldwork for data collection, yet sea-going opportunit
 \autoref{fig:fig1} shows an example expedition around the Agulhas Current and South Eastern Atlantic, deploying a suite of instruments to sample physical and biogeochemical properties. Notable oceanographic features, such as the strong Agulhas Current and Agulhas Retroflection (drifters retroflecting back into the Indian Ocean), are clearly visible via the underway ADCP measurements (\autoref{fig:fig1}b) and drifter releases (\autoref{fig:fig1}c), respectively, in the early waypoints. CTD profiles also capture the vertical structure of temperature and oxygen across the expedition route, including the warmer surface waters of the Agulhas region (\autoref{fig:fig1}d, early waypoints) and the Oxygen Minimum Zone in the South Eastern Atlantic (\autoref{fig:fig1}e, final waypoints).
 
 <!-- TODO: may add an example Argo plot here, instead of the CTD (temperature) -->
+<!-- TODO: insert as an .imshow() of the .png exported from the plotly 3D plot -->
 
 ![Example VirtualShip expedition simulated in July/August 2023. Expedition waypoints (a), Underway ADCP measurements across the expedition route (b), Surface drifter releases per waypoint (c; 90-day lifetime per drifter), and CTD vertical profiles per waypoint (as a function of cumulative distance across the expedition) for temperature (d) and oxygen (e). Black triangles in b), d) and e) mark locations of waypoints across the expedition route, corresponding to the purple markers in a).\label{fig:fig1}](figure1.png)
 
