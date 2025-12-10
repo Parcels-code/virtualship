@@ -67,11 +67,12 @@ class DrifterInstrument(Instrument):
         """Initialize DrifterInstrument."""
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         spacetime_buffer_size = {
-            "latlon": 12.0,  # [degrees]
+            "latlon": None,
             "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
         }
         limit_spec = {
+            "spatial": False,  # no spatial limits; generate global fieldset
             "depth_min": 1.0,  # [meters]
             "depth_max": 1.0,  # [meters]
         }

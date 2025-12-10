@@ -167,8 +167,12 @@ class ArgoFloatInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
-            "time": 63.0,  # [days]
+            "time": expedition.instruments_config.argo_float_config.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
         }
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -177,7 +181,7 @@ class ArgoFloatInstrument(Instrument):
             allow_time_extrapolation=False,
             verbose_progress=True,
             spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 

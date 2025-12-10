@@ -144,19 +144,28 @@ class Instrument(abc.ABC):
 
         latlon_buffer = self._get_spec_value(
             "buffer", "latlon", 0.25
-        )  # [degrees]; default 0.25 deg buffer to ensure coverage in cell edge cases
+        )  # [degrees]; default 0.25 deg buffer to ensure coverage in field cell edge cases
         depth_min = self._get_spec_value("limit", "depth_min", None)
         depth_max = self._get_spec_value("limit", "depth_max", None)
+        spatial_constraint = self._get_spec_value("limit", "spatial", True)
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
+            minimum_longitude=self.min_lon - latlon_buffer
+            if spatial_constraint
+            else None,
+            maximum_longitude=self.max_lon + latlon_buffer
+            if spatial_constraint
+            else None,
+            minimum_latitude=self.min_lat - latlon_buffer
+            if spatial_constraint
+            else None,
+            maximum_latitude=self.max_lat + latlon_buffer
+            if spatial_constraint
+            else None,
             variables=[var],
             start_datetime=self.min_time,
             end_datetime=self.max_time + timedelta(days=time_buffer),
-            minimum_longitude=self.min_lon - latlon_buffer,
-            maximum_longitude=self.max_lon + latlon_buffer,
-            minimum_latitude=self.min_lat - latlon_buffer,
-            maximum_latitude=self.max_lat + latlon_buffer,
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             coordinates_selection_method="outside",
