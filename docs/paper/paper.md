@@ -35,7 +35,7 @@ date: 4 December 2025
 bibliography: paper.bib
 ---
 
-<!-- TODO: check all co-authors would like to be on the paper! -->
+<!-- TODO: check all co-authors would like to be on the paper -->
 
 # Summary
 
@@ -47,13 +47,15 @@ Marine science relies on fieldwork for data collection, yet sea-going opportunit
 
 <!-- TODO: VirtualFleet mention? -->
 
-`VirtualShip` goes beyond simply extracting grid-cell averaged values from climate model output. Instead, it uses sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in _exact_ locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing ocean model data analysis tools, such as `OceanSpy` [@Almansi2019], but extends existing capabilities to mesh diverse instrument deployments, with programmable behaviours, into the same expedition simulation. Moreover, `VirtualShip` exploits readily available, streamable data, via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers.
+`VirtualShip` goes beyond simply extracting grid-cell averaged values from climate model output. Instead, it uses sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in exact locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing tools, such as `OceanSpy` [@Almansi2019] and `VirtualFleet` [@Maze2023], but extends capabilities to mesh many different instrument deployments, with programmable behaviours, into a unified expedition simulation framework. Moreover, `VirtualShip` exploits readily available, streamable data, via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers.
 
 # Functionality
 
 `VirtualShip` simulates the deployment of virtual instruments commonly used in oceanographic fieldwork, with empahsis on realism in how users plan and execute expeditions. For example, users must consider ship speed and instrument deployment/recovery times to ensure their expedition is feasible within given time constraints. Possible instrument implementations include surface `Drifter`, `CTD` (Conductivity-Temperature-Depth), `Argo float`, `XBT` (Expendable Bathythermograph), underway `ADCP` (Acoustic Doppler Current Profiler) and underway `Underwater_temperature/salinity` probes. More detail on each instrument is available in the [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options).
 
 \autoref{fig:fig1} shows an example expedition around the Agulhas Current and South Eastern Atlantic, deploying a suite of instruments to sample physical and biogeochemical properties. Notable oceanographic features, such as the strong Agulhas Current and Agulhas Retroflection (drifters retroflecting back into the Indian Ocean), are clearly visible via the underway ADCP measurements and drifter releases in the early waypoints (\autoref{fig:fig1}b and c). CTD profiles (\autoref{fig:fig1}d and e) also capture the vertical structure of temperature and oxygen across the expedition route, including the warmer surface waters of the Agulhas region (early waypoints) and the Oxygen Minimum Zone in the South Eastern Atlantic (final waypoints).
+
+<!-- TODO: may add an example Argo plot here, instead of the CTD (temperature) -->
 
 ![Example VirtualShip expedition simulated in July/August 2023. Expedition waypoints (a), Underway ADCP measurements across the expedition route (b), Surface drifter releases per waypoint (c; 90-day lifetime per drifter), and CTD vertical profiles per waypoint (as a function of cumulative distance across the expedition) for temperature (d) and oxygen (e). Black triangles in b), d) and e) mark locations of waypoints across expedition route, corresponding to the purple markers in a).\label{fig:fig1}](figure1.png)
 
