@@ -67,7 +67,7 @@ ax0.axis("off")
 # adcp
 ax1.set_title(r"$\bf{b}$" + ") ADCP (flow velocity)")
 ax1.set_ylabel("Depth (m)")
-ax1.set_xlabel("Distance from start (km)")
+ax1.set_xlabel("Distance (km)")
 plot_adcp(adcp_ds, ax1)
 add_waypoint_markers(ax1, waypoint_distances)
 
@@ -83,7 +83,7 @@ plot_drifters(
 # CTD (temperature)
 ax3.set_title(r"$\bf{d}$" + ") CTD (temperature)")
 ax3.set_ylabel("Depth (m)")
-ax3.set_xlabel("Distance from start (km)")
+ax3.set_xlabel("Distance (km)")
 _, _distances_regular, _var_masked = plot_ctd(
     ctd_ds,
     ax3,
@@ -97,7 +97,7 @@ add_waypoint_markers(ax3, ctd_wp_distances, offset=45, marker_size=60)
 
 # CTD (oxygen)
 ax4.set_title(r"$\bf{e}$" + ") CTD (oxygen)")
-ax4.set_xlabel("Distance from start (km)")
+ax4.set_xlabel("Distance (km)")
 plot_ctd(
     ctd_bgc_ds, ax4, plot_variable="oxygen", vmin=0, vmax=ctd_bgc_ds.o2.max()
 )  # vmin tailored to mark red as approximate oxygen minimum zone (~ 45 mmol/m-3)

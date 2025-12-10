@@ -1,13 +1,13 @@
 # %%
-import copernicusmarine
 import numpy as np
 import plotly.graph_objects as go
 import xarray as xr
 
-from virtualship.utils import BATHYMETRY_ID
-
 # %%
-bathy_ds = copernicusmarine.open_dataset(BATHYMETRY_ID)
+# bathy_ds = copernicusmarine.open_dataset(BATHYMETRY_ID)
+bathy_ds = xr.open_dataset(
+    "~/Documents/test_expeditions/data_paths/data/bathymetry/cmems_mod_glo_phy_anfc_0.083deg_static_bathymetry.nc"
+)
 
 # %%
 argo_ds = xr.open_zarr("./ARGOS/results/argo_float.zarr")
@@ -56,21 +56,6 @@ depth_traj = np.array(depth)[drift_mask]
 
 MARKERSIZE = 7.5
 
-# waypoint/release location
-fig.add_trace(
-    go.Scatter3d(
-        x=[lons_traj[0]],
-        y=[lats_traj[0]],
-        z=[0],
-        mode="markers",
-        marker=dict(
-            size=MARKERSIZE,
-            color="white",
-            line=dict(color="black", width=4),
-        ),
-    )
-)
-
 # trajectory
 fig.add_trace(
     go.Scatter3d(
@@ -80,7 +65,35 @@ fig.add_trace(
         mode="markers",
         marker=dict(
             size=MARKERSIZE * 0.3,
-            color="gray",
+            color="grey",
+        ),
+    )
+)
+
+# waypoint/release location
+fig.add_trace(
+    go.Scatter3d(
+        x=[lons_traj[0]],
+        y=[lats_traj[0]],
+        z=[0],
+        mode="markers",
+        marker=dict(
+            size=MARKERSIZE,
+            color="black",
+            # line=dict(color="black", width=4),
+        ),
+    )
+)
+fig.add_trace(
+    go.Scatter3d(
+        x=[lons_traj[0]],
+        y=[lats_traj[0]],
+        z=[0],
+        mode="markers",
+        marker=dict(
+            size=MARKERSIZE - 2,
+            color="white",
+            # line=dict(color="black", width=4),
         ),
     )
 )
@@ -129,6 +142,7 @@ z_bathy = bathy_ds["deptho"].sel(
 # meshgrid for plotting
 lon_grid, lat_grid = np.meshgrid(lon_bathy.values, lat_bathy.values)
 
+# bathymetry
 fig.add_trace(
     go.Surface(
         x=lon_grid,
