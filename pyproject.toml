@@ -36,6 +36,7 @@ dependencies = [
     "copernicusmarine >= 2.2.2",
     "yaspin",
     "textual",
+    "openpyxl",
 ]
 
 [project.urls]

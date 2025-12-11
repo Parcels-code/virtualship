@@ -15,4 +15,6 @@ assignments/index
 :maxdepth: 1
 
 documentation/copernicus_products.md
+documentation/pre_download_data.md
+documentation/example_copernicus_download.ipynb
 ```

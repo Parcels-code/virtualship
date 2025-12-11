@@ -1,20 +1,39 @@
-"""Ship salinity and temperature."""
-
-from pathlib import Path
+from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
-from parcels import FieldSet, ParticleSet, ScipyParticle, Variable
+from parcels import ParticleSet, ScipyParticle, Variable
 
-from virtualship.models import Spacetime
+from virtualship.instruments.base import Instrument
+from virtualship.instruments.types import InstrumentType
+from virtualship.utils import add_dummy_UV, register_instrument
 
-# we specifically use ScipyParticle because we have many small calls to execute
-# there is some overhead with JITParticle and this ends up being significantly faster
+# =====================================================
+# SECTION: Dataclass
+# =====================================================
+
+
+@dataclass
+class Underwater_ST:
+    """Underwater_ST configuration."""
+
+    name: ClassVar[str] = "Underwater_ST"
+
+
+# =====================================================
+# SECTION: Particle Class
+# =====================================================
+
 _ShipSTParticle = ScipyParticle.add_variables(
     [
         Variable("S", dtype=np.float32, initial=np.nan),
         Variable("T", dtype=np.float32, initial=np.nan),
     ]
 )
+
+# =====================================================
+# SECTION: Kernels
+# =====================================================
 
 
 # define function sampling Salinity
@@ -27,50 +46,67 @@ def _sample_temperature(particle, fieldset, time):
     particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
-def simulate_ship_underwater_st(
-    fieldset: FieldSet,
-    out_path: str | Path,
-    depth: float,
-    sample_points: list[Spacetime],
-) -> None:
-    """
-    Use Parcels to simulate underway data, measuring salinity and temperature at the given depth along the ship track in a fieldset.
+# =====================================================
+# SECTION: Instrument Class
+# =====================================================
 
-    :param fieldset: The fieldset to simulate the sampling in.
-    :param out_path: The path to write the results to.
-    :param depth: The depth at which to measure. 0 is water surface, negative is into the water.
-    :param sample_points: The places and times to sample at.
-    """
-    sample_points.sort(key=lambda p: p.time)
 
-    particleset = ParticleSet.from_list(
-        fieldset=fieldset,
-        pclass=_ShipSTParticle,
-        lon=0.0,  # initial lat/lon are irrelevant and will be overruled later
-        lat=0.0,
-        depth=depth,
-        time=0,  # same for time
-    )
+@register_instrument(InstrumentType.UNDERWATER_ST)
+class Underwater_STInstrument(Instrument):
+    """Underwater_ST instrument class."""
 
-    # define output file for the simulation
-    # outputdt set to infinie as we want to just want to write at the end of every call to 'execute'
-    out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+    def __init__(self, expedition, from_data):
+        """Initialize Underwater_STInstrument."""
+        variables = {"S": "so", "T": "thetao"}
+        spacetime_buffer_size = {
+            "latlon": 0.25,  # [degrees]
+            "time": 0.0,  # [days]
+        }
 
-    # iterate over each point, manually set lat lon time, then
-    # execute the particle set for one step, performing one set of measurement
-    for point in sample_points:
-        particleset.lon_nextloop[:] = point.location.lon
-        particleset.lat_nextloop[:] = point.location.lat
-        particleset.time_nextloop[:] = fieldset.time_origin.reltime(
-            np.datetime64(point.time)
-        )
-
-        # perform one step using the particleset
-        # dt and runtime are set so exactly one step is made.
-        particleset.execute(
-            [_sample_salinity, _sample_temperature],
-            dt=1,
-            runtime=1,
+        super().__init__(
+            expedition,
+            variables,
+            add_bathymetry=False,
+            allow_time_extrapolation=True,
             verbose_progress=False,
-            output_file=out_file,
+            spacetime_buffer_size=spacetime_buffer_size,
+            limit_spec=None,
+            from_data=from_data,
         )
+
+    def simulate(self, measurements, out_path) -> None:
+        """Simulate underway salinity and temperature measurements."""
+        DEPTH = -2.0
+
+        measurements.sort(key=lambda p: p.time)
+
+        fieldset = self.load_input_data()
+
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+
+        particleset = ParticleSet.from_list(
+            fieldset=fieldset,
+            pclass=_ShipSTParticle,
+            lon=0.0,
+            lat=0.0,
+            depth=DEPTH,
+            time=0,
+        )
+
+        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+
+        for point in measurements:
+            particleset.lon_nextloop[:] = point.location.lon
+            particleset.lat_nextloop[:] = point.location.lat
+            particleset.time_nextloop[:] = fieldset.time_origin.reltime(
+                np.datetime64(point.time)
+            )
+
+            particleset.execute(
+                [_sample_salinity, _sample_temperature],
+                dt=1,
+                runtime=1,
+                verbose_progress=self.verbose_progress,
+                output_file=out_file,
+            )

@@ -1,0 +1,76 @@
+schedule:
+  space_time_region:
+    spatial_range:
+      minimum_longitude: -5
+      maximum_longitude: 5
+      minimum_latitude: -5
+      maximum_latitude: 5
+      minimum_depth: 0
+      maximum_depth: 2000
+    time_range:
+      start_time: 1998-01-01 00:00:00
+      end_time: 1998-02-01 00:00:00
+  waypoints:
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: 0
+        longitude: 0
+      time: 1998-01-01 00:00:00
+    - instrument:
+        - DRIFTER
+        - CTD
+      location:
+        latitude: 0.01
+        longitude: 0.01
+      time: 1998-01-01 01:00:00
+    - instrument:
+        - ARGO_FLOAT
+      location:
+        latitude: 0.02
+        longitude: 0.02
+      time: 1998-01-01 02:00:00
+    - instrument:
+        - XBT
+      location:
+        latitude: 0.03
+        longitude: 0.03
+      time: 1998-01-01 03:00:00
+    - location:
+        latitude: 0.03
+        longitude: 0.03
+      time: 1998-01-01 03:00:00
+instruments_config:
+  adcp_config:
+    num_bins: 40
+    max_depth_meter: -1000.0
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    vertical_speed_meter_per_second: -0.1
+    stationkeeping_time_minutes: 20.0
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_minutes: 60480.0
+    stationkeeping_time_minutes: 20.0
+  xbt_config:
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+    fall_speed_meter_per_second: 6.7
+    deceleration_coefficient: 0.00225
+  ship_underwater_st_config: null
+ship_config:
+  ship_speed_knots: 10.0

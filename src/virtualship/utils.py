@@ -1,24 +1,33 @@
 from __future__ import annotations
 
+import glob
 import os
+import re
 import warnings
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
-from yaspin import Spinner
+import copernicusmarine
+import numpy as np
+import xarray as xr
+from parcels import FieldSet
+
+from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
-    from virtualship.models import Schedule, ShipConfig
+    from virtualship.expedition.simulate_schedule import ScheduleOk
+    from virtualship.models import Expedition
+
 
 import pandas as pd
 import yaml
 from pydantic import BaseModel
+from yaspin import Spinner
 
-SCHEDULE = "schedule.yaml"
-SHIP_CONFIG = "ship_config.yaml"
+EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
 
 
@@ -28,15 +37,10 @@ def load_static_file(name: str) -> str:
 
 
 @lru_cache(None)
-def get_example_config() -> str:
-    """Get the example configuration file."""
-    return load_static_file(SHIP_CONFIG)
-
-
 @lru_cache(None)
-def get_example_schedule() -> str:
-    """Get the example schedule file."""
-    return load_static_file(SCHEDULE)
+def get_example_expedition() -> str:
+    """Get the example unified expedition configuration file."""
+    return load_static_file(EXPEDITION)
 
 
 def _dump_yaml(model: BaseModel, stream: TextIO) -> str | None:
@@ -121,7 +125,7 @@ def validate_coordinates(coordinates_data):
 
 def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
     """
-    Generates a YAML file with spatial and temporal information based on instrument data from MFP excel file.
+    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version.
 
     Parameters
     ----------
@@ -134,7 +138,10 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     4. returns the yaml information.
 
     """
+    # avoid circular imports
     from virtualship.models import (
+        Expedition,
+        InstrumentsConfig,
         Location,
         Schedule,
         SpaceTimeRegion,
@@ -188,8 +195,23 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         space_time_region=space_time_region,
     )
 
+    # extract instruments config from static
+    instruments_config = InstrumentsConfig.model_validate(
+        yaml.safe_load(get_example_expedition()).get("instruments_config")
+    )
+
+    # extract ship config from static
+    ship_config = yaml.safe_load(get_example_expedition()).get("ship_config")
+
+    # combine to Expedition object
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=instruments_config,
+        ship_config=ship_config,
+    )
+
     # Save to YAML file
-    schedule.to_yaml(yaml_output_path)
+    expedition.to_yaml(yaml_output_path)
 
 
 def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timedelta:
@@ -199,26 +221,16 @@ def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timed
     return timedelta(minutes=value)
 
 
-def _get_schedule(expedition_dir: Path) -> Schedule:
-    """Load Schedule object from yaml config file in `expedition_dir`."""
-    from virtualship.models import Schedule
+def _get_expedition(expedition_dir: Path) -> Expedition:
+    """Load Expedition object from yaml config file in `expedition_dir`."""
+    from virtualship.models import Expedition
 
-    file_path = expedition_dir.joinpath(SCHEDULE)
+    file_path = expedition_dir.joinpath(EXPEDITION)
     try:
-        return Schedule.from_yaml(file_path)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f'Schedule not found. Save it to "{file_path}".') from e
-
-
-def _get_ship_config(expedition_dir: Path) -> ShipConfig:
-    from virtualship.models import ShipConfig
-
-    file_path = expedition_dir.joinpath(SHIP_CONFIG)
-    try:
-        return ShipConfig.from_yaml(file_path)
+        return Expedition.from_yaml(file_path)
     except FileNotFoundError as e:
         raise FileNotFoundError(
-            f'Ship config not found. Save it to "{file_path}".'
+            f'{EXPEDITION} not found. Save it to "{file_path}".'
         ) from e
 
 
@@ -238,3 +250,319 @@ ship_spinner = Spinner(
         "🚢     ",
     ],
 )
+
+
+# InstrumentType -> Instrument registry and registration utilities.
+INSTRUMENT_CLASS_MAP = {}
+
+
+def register_instrument(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        return cls
+
+    return decorator
+
+
+def get_instrument_class(instrument_type):
+    return INSTRUMENT_CLASS_MAP.get(instrument_type)
+
+
+def add_dummy_UV(fieldset: FieldSet):
+    """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
+    if "U" not in fieldset.__dict__.keys():
+        for uv_var in ["U", "V"]:
+            dummy_field = getattr(
+                FieldSet.from_data(
+                    {"U": 0, "V": 0}, {"lon": 0, "lat": 0}, mesh="spherical"
+                ),
+                uv_var,
+            )
+            fieldset.add_field(dummy_field)
+            try:
+                fieldset.time_origin = (
+                    fieldset.T.grid.time_origin
+                    if "T" in fieldset.__dict__.keys()
+                    else fieldset.o2.grid.time_origin
+                )
+            except Exception:
+                raise ValueError(
+                    "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
+                ) from None
+
+
+# Copernicus Marine product IDs
+
+PRODUCT_IDS = {
+    "phys": {
+        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
+        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+    },
+    "bgc": {
+        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
+        "analysis": None,  # will be set per variable
+    },
+}
+
+BGC_ANALYSIS_IDS = {
+    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+}
+
+MONTHLY_BGC_REANALYSIS_IDS = {
+    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+}
+MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
+    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+}
+
+# variables used in VirtualShip which are physical or biogeochemical variables, respectively
+COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
+COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
+
+
+def _select_product_id(
+    physical: bool,
+    schedule_start,
+    schedule_end,
+    username: str | None = None,
+    password: str | None = None,
+    variable: str | None = None,
+) -> str:
+    """Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC."""
+    key = "phys" if physical else "bgc"
+    selected_id = None
+
+    for period, pid in PRODUCT_IDS[key].items():
+        # for BGC analysis, set pid per variable
+        if key == "bgc" and period == "analysis":
+            if variable is None or variable not in BGC_ANALYSIS_IDS:
+                continue
+            pid = BGC_ANALYSIS_IDS[variable]
+        # for BGC reanalysis, check if requires monthly product
+        if (
+            key == "bgc"
+            and period == "reanalysis"
+            and variable in MONTHLY_BGC_REANALYSIS_IDS
+        ):
+            monthly_pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
+            ds_monthly = copernicusmarine.open_dataset(
+                monthly_pid,
+                username=username,
+                password=password,
+            )
+            time_end_monthly = ds_monthly["time"][-1].values
+            if np.datetime64(schedule_end) <= time_end_monthly:
+                pid = monthly_pid
+        # for BGC reanalysis_interim, check if requires monthly product
+        if (
+            key == "bgc"
+            and period == "reanalysis_interim"
+            and variable in MONTHLY_BGC_REANALYSIS_INTERIM_IDS
+        ):
+            monthly_pid = MONTHLY_BGC_REANALYSIS_INTERIM_IDS[variable]
+            ds_monthly = copernicusmarine.open_dataset(
+                monthly_pid, username=username, password=password
+            )
+            time_end_monthly = ds_monthly["time"][-1].values
+            if np.datetime64(schedule_end) <= time_end_monthly:
+                pid = monthly_pid
+        if pid is None:
+            continue
+        ds = copernicusmarine.open_dataset(pid, username=username, password=password)
+        time_end = ds["time"][-1].values
+        if np.datetime64(schedule_end) <= time_end:
+            selected_id = pid
+            break
+
+    if selected_id is None:
+        raise CopernicusCatalogueError(
+            "No suitable product found in the Copernicus Marine Catalogue for the scheduled time and variable."
+        )
+
+    if _start_end_in_product_timerange(
+        selected_id, schedule_start, schedule_end, username, password
+    ):
+        return selected_id
+    else:
+        return (
+            PRODUCT_IDS["phys"]["analysis"] if physical else BGC_ANALYSIS_IDS[variable]
+        )
+
+
+def _start_end_in_product_timerange(
+    selected_id, schedule_start, schedule_end, username, password
+):
+    ds_selected = copernicusmarine.open_dataset(
+        selected_id, username=username, password=password
+    )
+    time_values = ds_selected["time"].values
+    import numpy as np
+
+    time_min, time_max = np.min(time_values), np.max(time_values)
+    return (
+        np.datetime64(schedule_start) >= time_min
+        and np.datetime64(schedule_end) <= time_max
+    )
+
+
+def _get_bathy_data(
+    space_time_region, latlon_buffer: float | None = None, from_data: Path | None = None
+) -> FieldSet:
+    """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
+    if from_data is not None:  # load from local data
+        var = "deptho"
+        bathy_dir = from_data.joinpath("bathymetry")
+        try:
+            filename, _ = _find_nc_file_with_variable(bathy_dir, var)
+        except Exception as e:
+            # TODO: link to documentation on expected data structure!!
+            raise RuntimeError(
+                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
+            ) from e
+        ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
+        bathymetry_variables = {"bathymetry": "deptho"}
+        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+        return FieldSet.from_xarray_dataset(
+            ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+        )
+
+    else:  # stream via Copernicus Marine Service
+        ds_bathymetry = copernicusmarine.open_dataset(
+            dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
+            minimum_longitude=space_time_region.spatial_range.minimum_longitude
+            - (latlon_buffer if latlon_buffer is not None else 0),
+            maximum_longitude=space_time_region.spatial_range.maximum_longitude
+            + (latlon_buffer if latlon_buffer is not None else 0),
+            minimum_latitude=space_time_region.spatial_range.minimum_latitude
+            - (latlon_buffer if latlon_buffer is not None else 0),
+            maximum_latitude=space_time_region.spatial_range.maximum_latitude
+            + (latlon_buffer if latlon_buffer is not None else 0),
+            variables=["deptho"],
+            start_datetime=space_time_region.time_range.start_time,
+            end_datetime=space_time_region.time_range.end_time,
+            coordinates_selection_method="outside",
+        )
+        bathymetry_variables = {"bathymetry": "deptho"}
+        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+
+    return FieldSet.from_xarray_dataset(
+        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    )
+
+
+def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:
+    """
+    Calculate the cost of the expedition in US$.
+
+    :param schedule_results: Results from schedule simulation.
+    :param time_past: Time the expedition took.
+    :returns: The calculated cost of the expedition in US$.
+    """
+    SHIP_COST_PER_DAY = 30000
+    DRIFTER_DEPLOY_COST = 2500
+    ARGO_DEPLOY_COST = 15000
+
+    ship_cost = SHIP_COST_PER_DAY / 24 * time_past.total_seconds() // 3600
+    num_argos = len(schedule_results.measurements_to_simulate.argo_floats)
+    argo_cost = num_argos * ARGO_DEPLOY_COST
+    num_drifters = len(schedule_results.measurements_to_simulate.drifters)
+    drifter_cost = num_drifters * DRIFTER_DEPLOY_COST
+
+    cost = ship_cost + argo_cost + drifter_cost
+    return cost
+
+
+def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
+    """Search for a .nc file in the given directory containing the specified variable."""
+    for nc_file in data_dir.glob("*.nc"):
+        try:
+            with xr.open_dataset(nc_file, chunks={}) as ds:
+                matched_vars = [v for v in ds.variables if var in v]
+                if matched_vars:
+                    return nc_file.name, matched_vars[0]
+        except Exception:
+            continue
+    return None
+
+
+def _find_files_in_timerange(
+    data_dir: Path,
+    schedule_start,
+    schedule_end,
+    date_pattern=r"\d{4}_\d{2}_\d{2}",
+    date_fmt="%Y_%m_%d",
+) -> list:
+    """Find all files in data_dir whose filenames contain a date within [schedule_start, schedule_end] (inclusive)."""
+    # TODO: scope to make this more flexible for different date patterns / formats ... ?
+
+    all_files = glob.glob(str(data_dir.joinpath("*")))
+    if not all_files:
+        raise ValueError(
+            f"No files found in data directory {data_dir}. Please ensure the directory contains files with 'P1D' or 'P1M' in their names as per Copernicus Marine Product ID naming conventions."
+        )
+
+    if all("P1D" in s for s in all_files):
+        t_resolution = "daily"
+    elif all("P1M" in s for s in all_files):
+        t_resolution = "monthly"
+    else:
+        raise ValueError(
+            f"Could not determine time resolution from filenames in data directory. Please ensure all filenames in {data_dir} contain either 'P1D' (daily) or 'P1M' (monthly), "
+            f"as per the Copernicus Marine Product ID naming conventions."
+        )
+
+    if t_resolution == "monthly":
+        t_min = schedule_start.date().replace(
+            day=1
+        )  # first day of month of the schedule start date
+        t_max = (
+            schedule_end.date()
+            + timedelta(
+                days=32
+            )  # buffer to ensure fieldset end date is always longer than schedule end date for monthly data
+        )
+    else:  # daily
+        t_min = schedule_start.date()
+        t_max = schedule_end.date()
+
+    files_with_dates = []
+    for file in data_dir.iterdir():
+        if file.is_file():
+            match = re.search(date_pattern, file.name)
+            if match:
+                file_date = datetime.strptime(
+                    match.group(), date_fmt
+                ).date()  # normalise to date only for comparison (given start/end dates have hour/minute components which may exceed those in file_date)
+                if t_min <= file_date <= t_max:
+                    files_with_dates.append((file_date, file.name))
+
+    files_with_dates.sort(
+        key=lambda x: x[0]
+    )  # sort by extracted date; more robust than relying on filesystem order
+
+    # catch if not enough data coverage found for the requested time range
+    if files_with_dates[-1][0] < schedule_end.date():
+        raise ValueError(
+            f"Not enough data coverage found in {data_dir} for the requested time range {schedule_start} to {schedule_end}. "
+            f"Latest available data is for date {files_with_dates[-1][0]}."
+            f"If using monthly data, please ensure that the last month downloaded covers the schedule end date + 1 month."
+            f"See the docs for more details: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation"
+        )
+
+    return [fname for _, fname in files_with_dates]
+
+
+def _random_noise(scale: float = 0.01, limit: float = 0.03) -> float:
+    """Generate a small random noise value for drifter seeding locations."""
+    value = np.random.normal(loc=0.0, scale=scale)
+    return np.clip(value, -limit, limit)  # ensure noise is within limits
