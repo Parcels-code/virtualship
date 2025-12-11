@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.2 20190208//EN"
+                  "JATS-publishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" dtd-version="1.2" article-type="other">
+<front>
+<journal-meta>
+<journal-id></journal-id>
+<journal-title-group>
+<journal-title>Journal of Open Source Software</journal-title>
+<abbrev-journal-title>JOSS</abbrev-journal-title>
+</journal-title-group>
+<issn publication-format="electronic">2475-9066</issn>
+<publisher>
+<publisher-name>Open Journals</publisher-name>
+</publisher>
+</journal-meta>
+<article-meta>
+<article-id pub-id-type="publisher-id">0</article-id>
+<article-id pub-id-type="doi">N/A</article-id>
+<title-group>
+<article-title>VirtualShip for simulating oceanographic fieldwork
+anywhere in the global ocean</article-title>
+</title-group>
+<contrib-group>
+<contrib contrib-type="author" corresp="yes">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0002-5735-3312</contrib-id>
+<name>
+<surname>Atkins</surname>
+<given-names>Jamie R. C.</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+<xref ref-type="corresp" rid="cor-1"><sup>*</sup></xref>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0009-0005-9805-5257</contrib-id>
+<name>
+<surname>Daniels</surname>
+<given-names>Emma</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<contrib contrib-type="author">
+<name>
+<surname>Hodgskin</surname>
+<given-names>Nick</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<contrib contrib-type="author">
+<name>
+<surname>Stuurman</surname>
+<given-names>Aart</given-names>
+</name>
+<xref ref-type="aff" rid="aff-"/>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0002-2484-510X</contrib-id>
+<name>
+<surname>Simoes-Sousa</surname>
+<given-names>Iury</given-names>
+</name>
+<xref ref-type="aff" rid="aff-2"/>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0003-2041-0704</contrib-id>
+<name>
+<surname>van Sebille</surname>
+<given-names> van</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<aff id="aff-1">
+<institution-wrap>
+<institution>Institute for Marine and Atmospheric Research, Utrecht
+University, the Netherlands</institution>
+</institution-wrap>
+</aff>
+<aff id="aff-2">
+<institution-wrap>
+<institution>Woods Hole Oceanographic Institution, Falmouth, MA,
+USA</institution>
+</institution-wrap>
+</aff>
+</contrib-group>
+<author-notes>
+<corresp id="cor-1">* E-mail: <email></email></corresp>
+</author-notes>
+<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2025-12-04">
+<day>4</day>
+<month>12</month>
+<year>2025</year>
+</pub-date>
+<volume>¿VOL?</volume>
+<issue>¿ISSUE?</issue>
+<fpage>¿PAGE?</fpage>
+<permissions>
+<copyright-statement>Authors of papers retain copyright and release the
+work under a Creative Commons Attribution 4.0 International License (CC
+BY 4.0)</copyright-statement>
+<copyright-year>1970</copyright-year>
+<copyright-holder>The article authors</copyright-holder>
+<license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/">
+<license-p>Authors of papers retain copyright and release the work under
+a Creative Commons Attribution 4.0 International License (CC BY
+4.0)</license-p>
+</license>
+</permissions>
+<kwd-group kwd-group-type="author">
+<kwd>Python</kwd>
+<kwd>oceanography</kwd>
+<kwd>fieldwork simulation</kwd>
+<kwd>Lagrangian modelling</kwd>
+<kwd>data ingestion</kwd>
+</kwd-group>
+</article-meta>
+</front>
+<body>
+<sec id="summary">
+  <title>Summary</title>
+  <p><monospace>VirtualShip</monospace> is a Python-based package which
+  exploits the customisability of the open-source
+  <monospace>Parcels</monospace> Lagrangian simulation framework
+  (<xref alt="Delandmeter &amp; van Sebille, 2019" rid="ref-Delandmeter2019" ref-type="bibr">Delandmeter
+  &amp; van Sebille, 2019</xref>;
+  <xref alt="Lange &amp; van Sebille, 2017" rid="ref-Lange2017" ref-type="bibr">Lange
+  &amp; van Sebille, 2017</xref>) to simulate measurements as if they
+  were coming from real-life oceanographic instruments. The software
+  builds a virtual ocean world by streaming data from the
+  <ext-link ext-link-type="uri" xlink:href="https://marine.copernicus.eu/">Copernicus
+  Marine Data Store</ext-link> on-the-fly, facilitating virtual
+  expeditions anywhere on the globe.</p>
+</sec>
+<sec id="statement-of-need">
+  <title>Statement of need</title>
+  <p>Marine science relies on fieldwork for data collection, yet
+  sea-going opportunities are limited due to financial costs, logistical
+  constraints, and environmental burdens. We present an alternative
+  means, namely <monospace>VirtualShip</monospace>, for training
+  scientists to conduct oceanographic fieldwork in an authentic manner,
+  planning future expeditions and deployments, and comparing directly
+  observational strategies with model data.</p>
+  <p><monospace>VirtualShip</monospace> goes beyond simply extracting
+  grid-cell averaged values from climate model output. Instead, it uses
+  sophisticated interpolation techniques (with
+  <monospace>Parcels</monospace> underpinnings) to access data in
+  <italic>exact</italic> locations and timings, as if they were being
+  collected by real-world instruments.
+  <monospace>VirtualShip</monospace> shares some functionality with
+  existing ocean model data analysis tools, such as
+  <monospace>OceanSpy</monospace>
+  (<xref alt="Almansi et al., 2019" rid="ref-Almansi2019" ref-type="bibr">Almansi
+  et al., 2019</xref>), but extends existing capabilities to mesh
+  diverse instrument deployments, with programmable behaviours, into the
+  same expedition simulation. Moreover,
+  <monospace>VirtualShip</monospace> exploits readily available,
+  streamable data, via the Copernicus Marine Data Store, removing the
+  need for users to download and manage large datasets locally and/or
+  arrange for access to remote servers.</p>
+</sec>
+<sec id="functionality">
+  <title>Functionality</title>
+  <p><monospace>VirtualShip</monospace> simulates the deployment of
+  virtual instruments commonly used in oceanographic fieldwork, with
+  empahsis on realism in how users plan and execute expeditions. For
+  example, users must consider ship speed and instrument
+  deployment/recovery times to ensure their expedition is feasible
+  within given time constraints. Possible instrument implementations
+  include surface <monospace>Drifter</monospace>,
+  <monospace>CTD</monospace> (Conductivity-Temperature-Depth),
+  <monospace>Argo float</monospace>, <monospace>XBT</monospace>
+  (Expendable Bathythermograph), underway <monospace>ADCP</monospace>
+  (Acoustic Doppler Current Profiler) and underway
+  <monospace>Underwater_temperature/salinity</monospace> probes. More
+  detail on each instrument is available in the
+  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options">documentation</ext-link>.</p>
+  <p><xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref> shows
+  an example expedition around the Agulhas Current and South Eastern
+  Atlantic, deploying a suite of instruments to sample physical and
+  biogeochemical properties. Notable oceanographic features, such as the
+  strong Agulhas Current and Agulhas Retroflection (drifters
+  retroflecting back into the Indian Ocean), are clearly visible via the
+  underway ADCP measurements and drifter releases in the early waypoints
+  (<xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref>b and c).
+  CTD profiles
+  (<xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref>d and e)
+  also capture the vertical structure of temperature and oxygen across
+  the expedition route, including the warmer surface waters of the
+  Agulhas region (early waypoints) and the Oxygen Minimum Zone in the
+  South Eastern Atlantic (final waypoints).</p>
+  <fig>
+    <caption><p>Example VirtualShip expedition simulated in July/August
+    2023. Expedition waypoints (a), Underway ADCP measurements across
+    the expedition route (b), Surface drifter releases per waypoint (c;
+    90-day lifetime per drifter), and CTD vertical profiles per waypoint
+    (as a function of cumulative distance across the expedition) for
+    temperature (d) and oxygen (e). Black triangles in b), d) and e)
+    mark locations of waypoints across expedition route, corresponding
+    to the purple markers in
+    a).<styled-content id="figU003Afig1"></styled-content></p></caption>
+    <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
+  </fig>
+  <p>The software is designed to be highly accessible to the user. It is
+  wrapped into three high-level command line interface commands (using
+  <ext-link ext-link-type="uri" xlink:href="https://click.palletsprojects.com/en/stable/">Click</ext-link>):</p>
+  <list list-type="order">
+    <list-item>
+      <p><monospace>virtualship init</monospace>: Initialises the
+      expedition directory structure and a
+      <monospace>expedition.yaml</monospace> configuration file, which
+      controls the expedition route, instrument choices and deployment
+      timings. A common workflow is for users to first define expedition
+      waypoint locations via the external
+      <ext-link ext-link-type="uri" xlink:href="https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#">NIOZ
+      Marine Facilities Planning</ext-link> (MFP) mapping tool. The
+      coordinates can be exported and fed into
+      <monospace>init</monospace> via the
+      <monospace>--from-mfp</monospace> CLI flag.</p>
+    </list-item>
+    <list-item>
+      <p><monospace>virtualship plan</monospace>: Launches a
+      user-friendly Terminal-based expedition planning User Interface
+      (UI), built using
+      <ext-link ext-link-type="uri" xlink:href="https://textual.textualize.io/"><monospace>Textual</monospace></ext-link>.
+      This allows users to intuitively modify their expedition waypoint
+      locations, timings and instrument selections.</p>
+    </list-item>
+    <list-item>
+      <p><monospace>virtualship run</monospace>: Executes the virtual
+      expedition according the planned configuration. This includes
+      streaming data via the Copernicus Marine Data Store, simulating
+      the instrument beahviours and sampling, and saving the resulting
+      data in
+      <ext-link ext-link-type="uri" xlink:href="https://zarr.dev/"><monospace>Zarr</monospace></ext-link>
+      format.</p>
+    </list-item>
+  </list>
+  <p>A full example workflow is outlined in the
+  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html">Quickstart
+  Guide</ext-link> documentation.</p>
+</sec>
+<sec id="implementation">
+  <title>Implementation</title>
+  <p>Under the hood, <monospace>VirtualShip</monospace> is modular and
+  extensible. The workflows are designed around
+  <monospace>Instrument</monospace> base classes and instrument-specific
+  subclasses and methods. This means the platform can be easily extended
+  to add new instrument types. Instrument behaviours are encoded as
+  <monospace>Parcels</monospace> kernels, which allows for extensive
+  customisability. For example, a <monospace>Drifter</monospace> advects
+  passively with ocean currents, a <monospace>CTD</monospace> performs
+  vertical profiling in the water column and an
+  <monospace>ArgoFloat</monospace> cycles between ascent, descent and
+  drift phases, all whilst sampling physical and/or biogeochemical
+  fields at their respective locations and times.</p>
+  <p>Moreover, the data ingestion system, relies on streaming
+  Analysis-Ready and Cloud-Optimized (ARCO;
+  (<xref alt="Stern et al., 2022" rid="ref-Stern2022" ref-type="bibr">Stern
+  et al., 2022</xref>),
+  (<xref alt="Abernathey et al., 2021" rid="ref-Abernathey2021" ref-type="bibr">Abernathey
+  et al., 2021</xref>)) data directly from the Copernicus Marine Data
+  Store, via the
+  <ext-link ext-link-type="uri" xlink:href="https://github.com/mercator-ocean/copernicus-marine-toolbox"><monospace>copernicusmarine</monospace></ext-link>
+  Python toolbox. This means users can simulate expeditions anywhere in
+  the global ocean without downloading large datasets by default.
+  Leveraging the suite of
+  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/copernicus_products.html">physics
+  and biogeochemical products</ext-link> available on the Copernicus
+  plaform, expeditions are possible from 1993 to present day and
+  forecasted two weeks into the future. There is also an option for the
+  user to specify local <monospace>NetCDF</monospace> files for data
+  ingestion, if preferred, with the necessary file stuctures and naming
+  conventions outlined in the relevant
+  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/example_copernicus_download.html">documentation</ext-link>.</p>
+</sec>
+<sec id="applications-and-future-outlook">
+  <title>Applications and future outlook</title>
+  <p><monospace>VirtualShip</monospace> has already been extensvely
+  applied in Master’s teaching settings at Utrecht University as part of
+  the “VirtualShip Classroom” initiative. Educational assignments and
+  tutorials have been developed alongside to integrate the tool into
+  coursework, including projects where students design their own
+  research question(s) and execute their fieldwork and analysis using
+  <monospace>VirtualShip</monospace>. Its application has been shown to
+  be successful, with students reporting increased self-efficacy and
+  knowledge in executing oceanographic fieldwork
+  (<xref alt="Daniels et al., 2025" rid="ref-Daniels2025" ref-type="bibr">Daniels
+  et al., 2025</xref>).</p>
+  <p>We encourage researchers to use <monospace>VirtualShip</monospace>
+  a cost-effective means to plan future expeditions, as tool for
+  accessing ocean model data in a realistic manner, and to compare
+  models to observations in a like-for-like manner. Both the
+  customisability of the <monospace>VirtualShip</monospace> platform and
+  the exciting potential for new ARCO-based data hosting services in
+  domains beyond oceanography (e.g.,
+  <ext-link ext-link-type="uri" xlink:href="https://climate.copernicus.eu/work-progress-our-data-stores-turn-arco">atmospheric
+  science</ext-link>) means there is potential to extend VirtualShip (or
+  “VirtualShip-like” tools) to other domains in the future.</p>
+  <p>As the <monospace>Parcels</monospace> underpinnings in themselves
+  continue to evolve, with a future (at time of writing)
+  <ext-link ext-link-type="uri" xlink:href="https://docs.oceanparcels.org/en/v4-dev/v4/">v4.0
+  release</ext-link> focussed on alignment with
+  <ext-link ext-link-type="uri" xlink:href="https://pangeo.io/">Pangeo</ext-link>
+  standards and <monospace>xarray</monospace> data structures,
+  <monospace>VirtualShip</monospace> will also benefit from these
+  improvements, further enhancing its capabilities, extensibility and
+  compatability with modern cloud-based data pipelines.</p>
+</sec>
+<sec id="acknowledgements">
+  <title>Acknowledgements</title>
+  <p>The VirtualShip project is funded through the Utrecht
+  University-NIOZ (Royal Netherlands Institute for Sea Research)
+  collaboration.</p>
+</sec>
+</body>
+<back>
+<ref-list>
+  <title></title>
+  <ref id="ref-Lange2017">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Lange</surname><given-names>Michael</given-names></name>
+        <name><surname>van Sebille</surname><given-names>Erik</given-names></name>
+      </person-group>
+      <article-title>Parcels v0.9: prototyping a Lagrangian ocean analysis framework for the petascale age</article-title>
+      <source>Geoscientific Model Development</source>
+      <publisher-name>Copernicus GmbH</publisher-name>
+      <year iso-8601-date="2017">2017</year>
+      <volume>10</volume>
+      <issue>11</issue>
+      <issn>1991-9603</issn>
+      <uri>http://dx.doi.org/10.5194/gmd-10-4175-2017</uri>
+      <pub-id pub-id-type="doi">10.5194/gmd-10-4175-2017</pub-id>
+      <fpage>4175</fpage>
+      <lpage>4186</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Delandmeter2019">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Delandmeter</surname><given-names>Philippe</given-names></name>
+        <name><surname>van Sebille</surname><given-names>Erik</given-names></name>
+      </person-group>
+      <article-title>The Parcels v2.0 Lagrangian framework: new field interpolation schemes</article-title>
+      <source>Geoscientific Model Development</source>
+      <publisher-name>Copernicus GmbH</publisher-name>
+      <year iso-8601-date="2019">2019</year>
+      <volume>12</volume>
+      <issue>8</issue>
+      <issn>1991-9603</issn>
+      <uri>http://dx.doi.org/10.5194/gmd-12-3571-2019</uri>
+      <pub-id pub-id-type="doi">10.5194/gmd-12-3571-2019</pub-id>
+      <fpage>3571</fpage>
+      <lpage>3584</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Daniels2025">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Daniels</surname><given-names>Emma</given-names></name>
+        <name><surname>Chytas</surname><given-names>Christos</given-names></name>
+        <name><surname>Sebille</surname><given-names>Erik van</given-names></name>
+      </person-group>
+      <article-title>The virtual ship classroom: Developing virtual fieldwork as an authentic learning environment for physical oceanography</article-title>
+      <source>Current: The Journal of Marine Education</source>
+      <year iso-8601-date="2025-09">2025</year><month>09</month>
+      <pub-id pub-id-type="doi">10.5334/cjme.121</pub-id>
+    </element-citation>
+  </ref>
+  <ref id="ref-Almansi2019">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Almansi</surname><given-names>Mattia</given-names></name>
+        <name><surname>Gelderloos</surname><given-names>Renske</given-names></name>
+        <name><surname>Haine</surname><given-names>Thomas W. n.</given-names></name>
+        <name><surname>Saberi</surname><given-names>Atousa</given-names></name>
+        <name><surname>Siddiqui</surname><given-names>Ali H.</given-names></name>
+      </person-group>
+      <article-title>OceanSpy: A python package to facilitate ocean model data analysis and visualization</article-title>
+      <source>Journal of Open Source Software</source>
+      <publisher-name>The Open Journal</publisher-name>
+      <year iso-8601-date="2019">2019</year>
+      <volume>4</volume>
+      <issue>39</issue>
+      <uri>https://doi.org/10.21105/joss.01506</uri>
+      <pub-id pub-id-type="doi">10.21105/joss.01506</pub-id>
+      <fpage>1506</fpage>
+      <lpage></lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Abernathey2021">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Abernathey</surname><given-names>Ryan P.</given-names></name>
+        <name><surname>Augspurger</surname><given-names>Tom</given-names></name>
+        <name><surname>Banihirwe</surname><given-names>Anderson</given-names></name>
+        <name><surname>Blackmon-Luca</surname><given-names>Charles C.</given-names></name>
+        <name><surname>Crone</surname><given-names>Timothy J.</given-names></name>
+        <name><surname>Gentemann</surname><given-names>Chelle L.</given-names></name>
+        <name><surname>Hamman</surname><given-names>Joseph J.</given-names></name>
+        <name><surname>Henderson</surname><given-names>Naomi</given-names></name>
+        <name><surname>Lepore</surname><given-names>Chiara</given-names></name>
+        <name><surname>McCaie</surname><given-names>Theo A.</given-names></name>
+        <name><surname>Robinson</surname><given-names>Niall H.</given-names></name>
+        <name><surname>Signell</surname><given-names>Richard P.</given-names></name>
+      </person-group>
+      <article-title>Cloud-native repositories for big scientific data</article-title>
+      <source>Computing in Science &amp; Engineering</source>
+      <year iso-8601-date="2021">2021</year>
+      <volume>23</volume>
+      <issue>2</issue>
+      <pub-id pub-id-type="doi">10.1109/MCSE.2021.3059437</pub-id>
+      <fpage>26</fpage>
+      <lpage>35</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Stern2022">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Stern</surname><given-names>Charles</given-names></name>
+        <name><surname>Abernathey</surname><given-names>Ryan</given-names></name>
+        <name><surname>Hamman</surname><given-names>Joseph</given-names></name>
+        <name><surname>Wegener</surname><given-names>Rachel</given-names></name>
+        <name><surname>Lepore</surname><given-names>Chiara</given-names></name>
+        <name><surname>Harkins</surname><given-names>Sean</given-names></name>
+        <name><surname>Merose</surname><given-names>Alexander</given-names></name>
+      </person-group>
+      <article-title>Pangeo forge: Crowdsourcing analysis-ready, cloud optimized data production</article-title>
+      <source>Frontiers in Climate</source>
+      <year iso-8601-date="2022">2022</year>
+      <volume>Volume 3 - 2021</volume>
+      <issn>2624-9553</issn>
+      <uri>https://www.frontiersin.org/journals/climate/articles/10.3389/fclim.2021.782909</uri>
+      <pub-id pub-id-type="doi">10.3389/fclim.2021.782909</pub-id>
+    </element-citation>
+  </ref>
+</ref-list>
+</back>
+</article>
