@@ -23,6 +23,7 @@ caption: Teaching material
 ---
 ILOs.ipynb
 ```
+
 ```{nbgallery}
 ---
 caption: UU Ocean of the Future
