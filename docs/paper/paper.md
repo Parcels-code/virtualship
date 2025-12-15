@@ -10,27 +10,27 @@ authors:
   - name: Jamie R. C. Atkins
     orcid: 0000-0002-5735-3312
     corresponding: true
-    affiliation: 1
-  - name: Emma Daniels
+    affiliation: "1, 2"
+  - name: Emma E. Daniels
     orcid: 0009-0005-9805-5257
-    affiliation: 1
+    affiliation: 2
   - name: Nick Hodgskin
     affiliation: 1
-  - name: Aart Stuurman
+  - name: Aart C. Stuurman
   - name: Iury Simoes-Sousa
     orcid: 0000-0002-2484-510X
     affiliation: 2
-  - given-name: Erik
-    dropping-particle: van
-    surname: Sebille
+  - name: Erik van Sebille
     orcid: 0000-0003-2041-0704
-    affiliation: 1
+    affiliation: "1, 2"
 
 affiliations:
   - name: Institute for Marine and Atmospheric Research, Utrecht University, the Netherlands
     index: 1
-  - name: Woods Hole Oceanographic Institution, Falmouth, MA, USA
+  - name: Freudenthal Institute, Utrecht University, the Netherlands
     index: 2
+  - name: Woods Hole Oceanographic Institution, Falmouth, MA, USA
+    index: 3
 date: 4 December 2025
 bibliography: paper.bib
 ---
