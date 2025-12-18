@@ -38,7 +38,7 @@ bibliography: paper.bib
 
 # Summary
 
-`VirtualShip` is a Python-based package for simulating measurements as if they were coming from real-life oceanographic instruments, facilitating student training, expedition planning, and design of instrument/sampling strategies. The software exploits the customisability of the open-source `Parcels` Lagrangian simulation framework [@Lange2017; @Delandmeter2019] and builds a virtual ocean by streaming data from the [Copernicus Marine Data Store](https://marine.copernicus.eu/) on-the-fly, enabling virtual expeditions anywhere on the globe.
+`VirtualShip` is a Python-based package for simulating measurements as if they were coming from real-life oceanographic instruments, facilitating student training, expedition planning, and design of instrument/sampling strategies. The software exploits the customisability of the open-source `Parcels` Lagrangian simulation framework [@Lange2017; @Delandmeter2019] and builds a virtual ocean by streaming data from the [Copernicus Marine Data Store](https://marine.copernicus.eu/) on-the-fly, enabling expeditions anywhere on the globe.
 
 # Statement of need
 
@@ -50,7 +50,7 @@ Marine science relies on fieldwork for data collection, yet sea-going opportunit
 
 <!-- TODO: CTD needs an e.g. reference for the specific cable mounted style! -->
 
-`VirtualShip` simulates the deployment of virtual instruments commonly used in oceanographic fieldwork, with emphasis on realism in how users plan and execute expeditions. For example, users must consider ship speed and instrument deployment/recovery times to ensure their expedition is feasible within given time constraints. Possible instrument selections include surface `Drifter` [@Lumpkin2017], `CTD` (Conductivity-Temperature-Depth), `Argo float` [@Jayne2017], `XBT` (Expendable Bathythermograph; @Goni2019), underway `ADCP` (Acoustic Doppler Current Profiler; @Kostaschuk2005), and underway `Underwater_temperature/salinity` [@Gordon2014] probes. More detail on each instrument is available in the [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options).
+`VirtualShip` simulates the deployment of virtual instruments commonly used in oceanographic fieldwork, with emphasis on realism in how users plan and execute expeditions. For example, users must consider ship speed and instrument deployment/recovery times to ensure their expedition is feasible within given time constraints. Possible instrument selections include surface `Drifter` [@Lumpkin2017], `CTD` (Conductivity-Temperature-Depth; @Johnson2007), `Argo float` [@Jayne2017], `XBT` (Expendable Bathythermograph; @Goni2019), underway `ADCP` (Acoustic Doppler Current Profiler; @Kostaschuk2005), and underway `Underwater_temperature/salinity` [@Gordon2014] probes. More detail on each instrument is available in the [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options).
 
 The software can simulate complex multidisciplinary expeditions. One example is a virtual expedition across the Agulhas Current and the South Eastern Atlantic that deploys a suite of instruments to sample physical and biogeochemical properties (\autoref{fig:fig1}). Key circulation features appear early in the expedition track, with enhanced ADCP velocities marking the strong Agulhas Current (\autoref{fig:fig1}b) and drifters that turn back toward the Indian Ocean indicating the Agulhas Retroflection (\autoref{fig:fig1}c). The CTD profiles capture the vertical structure of temperature and oxygen along the route, including the warmer surface waters of the Agulhas region (\autoref{fig:fig1}d, early waypoints) and the Oxygen Minimum Zone in the South Eastern Atlantic (\autoref{fig:fig1}e, final waypoints).
 
@@ -63,7 +63,7 @@ The software is designed to be highly accessible to the user. It is wrapped into
 
 1. `virtualship init`: Initialises the expedition directory structure and an `expedition.yaml` configuration file, which controls the expedition route, instrument choices and deployment timings. A common workflow is for users to import pre-determined waypoint coordinates using the `--from-mfp` flag in combination with a coordinates `.csv` or `.xlsx` file (e.g. exported from the NIOZ MFP tool).
 2. `virtualship plan`: Launches a user-friendly Terminal-based expedition planning User Interface (UI), built using [`Textual`](https://textual.textualize.io/). This allows users to intuitively set their waypoint timings and instrument selections, and also modify their waypoint locations.
-3. `virtualship run`: Executes the virtual expedition according to the planned configuration. This includes streaming data via the Copernicus Marine Data Store, simulating the instrument beahviours and sampling, and saving the output in [`Zarr`](https://zarr.dev/) format.
+3. `virtualship run`: Executes the virtual expedition according to the planned configuration. This includes streaming data via the [Copernicus Marine Data Store](https://marine.copernicus.eu/), simulating the instrument beahviours and sampling, and saving the output in [`Zarr`](https://zarr.dev/) format.
 
 A full example workflow is outlined in the [Quickstart Guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) documentation.
 
