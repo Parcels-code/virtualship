@@ -59,20 +59,20 @@ ax3 = fig.add_subplot(gs[2, 0])
 ax4 = fig.add_subplot(gs[2, 1])
 
 # overview image
-ax0.set_title(r"$\bf{a}$" + ") MFP expedition overview")
+ax0.set_title(r"$\bf{a}$" + ") MFP expedition overview", loc="left")
 img = mpimg.imread(f"{SAMPLE_DIR}expedition_overview.png")
 ax0.imshow(img)
 ax0.axis("off")
 
 # adcp
-ax1.set_title(r"$\bf{b}$" + ") ADCP (flow velocity)")
+ax1.set_title(r"$\bf{b}$" + ") ADCP (flow speed)", loc="left")
 ax1.set_ylabel("Depth (m)")
 ax1.set_xlabel("Distance (km)")
 plot_adcp(adcp_ds, ax1)
 add_waypoint_markers(ax1, waypoint_distances)
 
 # drifters
-ax2.set_title(r"$\bf{c}$" + ") Surface drifters")
+ax2.set_title(r"$\bf{c}$" + ") Surface drifters", loc="left")
 plot_drifters(
     drifter_ds,
     ax2,
@@ -81,7 +81,7 @@ plot_drifters(
 )
 
 # CTD (temperature)
-ax3.set_title(r"$\bf{d}$" + ") CTD (temperature)")
+ax3.set_title(r"$\bf{d}$" + ") CTD (temperature)", loc="left")
 ax3.set_ylabel("Depth (m)")
 ax3.set_xlabel("Distance (km)")
 _, _distances_regular, _var_masked = plot_ctd(
@@ -96,7 +96,7 @@ ctd_wp_distances = _distances_regular[np.nansum(_var_masked, axis=1) > 0]
 add_waypoint_markers(ax3, ctd_wp_distances, offset=45, marker_size=60)
 
 # CTD (oxygen)
-ax4.set_title(r"$\bf{e}$" + ") CTD (oxygen)")
+ax4.set_title(r"$\bf{e}$" + ") CTD (oxygen)", loc="left")
 ax4.set_xlabel("Distance (km)")
 plot_ctd(
     ctd_bgc_ds, ax4, plot_variable="oxygen", vmin=0, vmax=ctd_bgc_ds.o2.max()

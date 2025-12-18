@@ -187,7 +187,7 @@ def plot_adcp(ds, ax, axes_labels=False):
         vel,
         CMAP,
         ax,
-        "Velocity (m s$^{-1}$)",
+        "Speed (m s$^{-1}$)",
         vel.min(),
         vel.max(),
         shrink=1.00,

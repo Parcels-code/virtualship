@@ -129,8 +129,8 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <p><monospace>VirtualShip</monospace> is a Python-based package for
   simulating measurements as if they were coming from real-life
   oceanographic instruments, facilitating student training, expedition
-  planning, and Observing System Simulation Experiments (OSSEs). The
-  software exploits the customisability of the open-source
+  planning, and design of instrument/sampling strategies. The software
+  exploits the customisability of the open-source
   <monospace>Parcels</monospace> Lagrangian simulation framework
   (<xref alt="Delandmeter &amp; van Sebille, 2019" rid="ref-Delandmeter2019" ref-type="bibr">Delandmeter
   &amp; van Sebille, 2019</xref>;
@@ -138,8 +138,8 @@ a Creative Commons Attribution 4.0 International License (CC BY
   &amp; van Sebille, 2017</xref>) and builds a virtual ocean by
   streaming data from the
   <ext-link ext-link-type="uri" xlink:href="https://marine.copernicus.eu/">Copernicus
-  Marine Data Store</ext-link> on-the-fly, enabling virtual expeditions
-  anywhere on the globe.</p>
+  Marine Data Store</ext-link> on-the-fly, enabling expeditions anywhere
+  on the globe.</p>
 </sec>
 <sec id="statement-of-need">
   <title>Statement of need</title>
@@ -166,7 +166,13 @@ a Creative Commons Attribution 4.0 International License (CC BY
   framework. Moreover, <monospace>VirtualShip</monospace> exploits
   readily available, streamable data via the Copernicus Marine Data
   Store, removing the need for users to download and manage large
-  datasets locally and/or arrange for access to remote servers.</p>
+  datasets locally and/or arrange for access to remote servers.
+  <monospace>VirtualShip</monospace> can also integrate coordinate files
+  exported from the
+  <ext-link ext-link-type="uri" xlink:href="https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#">NIOZ
+  Marine Facilities Planning</ext-link> (MFP) tool, giving users the
+  option to define expedition waypoints via an intuitive web-based
+  mapping interface.</p>
 </sec>
 <sec id="functionality">
   <title>Functionality</title>
@@ -176,21 +182,31 @@ a Creative Commons Attribution 4.0 International License (CC BY
   example, users must consider ship speed and instrument
   deployment/recovery times to ensure their expedition is feasible
   within given time constraints. Possible instrument selections include
-  surface <monospace>Drifter</monospace>, <monospace>CTD</monospace>
-  (Conductivity-Temperature-Depth), <monospace>Argo float</monospace>,
-  <monospace>XBT</monospace> (Expendable Bathythermograph), underway
-  <monospace>ADCP</monospace> (Acoustic Doppler Current Profiler), and
-  underway <monospace>Underwater_temperature/salinity</monospace>
-  probes. More detail on each instrument is available in the
+  surface <monospace>Drifter</monospace>
+  (<xref alt="Lumpkin et al., 2017" rid="ref-Lumpkin2017" ref-type="bibr">Lumpkin
+  et al., 2017</xref>), <monospace>CTD</monospace>
+  (Conductivity-Temperature-Depth; Johnson et al.
+  (<xref alt="2007" rid="ref-Johnson2007" ref-type="bibr">2007</xref>)),
+  <monospace>Argo float</monospace>
+  (<xref alt="Jayne et al., 2017" rid="ref-Jayne2017" ref-type="bibr">Jayne
+  et al., 2017</xref>), <monospace>XBT</monospace> (Expendable
+  Bathythermograph; Goni et al.
+  (<xref alt="2019" rid="ref-Goni2019" ref-type="bibr">2019</xref>)),
+  underway <monospace>ADCP</monospace> (Acoustic Doppler Current
+  Profiler; Kostaschuk et al.
+  (<xref alt="2005" rid="ref-Kostaschuk2005" ref-type="bibr">2005</xref>)),
+  and underway <monospace>Underwater_temperature/salinity</monospace>
+  (<xref alt="Gordon et al., 2014" rid="ref-Gordon2014" ref-type="bibr">Gordon
+  et al., 2014</xref>) probes. More detail on each instrument is
+  available in the
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options">documentation</ext-link>.</p>
-  <p>The software can process data and simulate complex
-  multidisciplinary expeditions. One example is a virtual expedition
-  across the Agulhas Current and the South Eastern Atlantic that deploys
-  a suite of instruments to sample physical and biogeochemical
-  properties
+  <p>The software can simulate complex multidisciplinary expeditions.
+  One example is a virtual expedition across the Agulhas Current and the
+  South Eastern Atlantic that deploys a suite of instruments to sample
+  physical and biogeochemical properties
   (<xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref>). Key
-  circulation features appear early in the track, with enhanced ADCP
-  velocities marking the strong Agulhas Current
+  circulation features appear early in the expedition track, with
+  enhanced ADCP speeds marking the strong Agulhas Current
   (<xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref>b) and
   drifters that turn back toward the Indian Ocean indicating the Agulhas
   Retroflection
@@ -219,30 +235,31 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <list list-type="order">
     <list-item>
       <p><monospace>virtualship init</monospace>: Initialises the
-      expedition directory structure and a
+      expedition directory structure and an
       <monospace>expedition.yaml</monospace> configuration file, which
       controls the expedition route, instrument choices and deployment
-      timings. A common workflow is for users to first define expedition
-      waypoint locations via the external
-      <ext-link ext-link-type="uri" xlink:href="https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#">NIOZ
-      Marine Facilities Planning</ext-link> (MFP) mapping tool. The
-      coordinates can be exported and fed into
-      <monospace>init</monospace> via the
-      <monospace>--from-mfp</monospace> flag.</p>
+      timings. A common workflow is for users to import pre-determined
+      waypoint coordinates using the <monospace>--from-mfp</monospace>
+      flag in combination with a coordinates <monospace>.csv</monospace>
+      or <monospace>.xlsx</monospace> file (e.g. exported from the NIOZ
+      MFP tool).</p>
     </list-item>
     <list-item>
       <p><monospace>virtualship plan</monospace>: Launches a
       user-friendly Terminal-based expedition planning User Interface
       (UI), built using
       <ext-link ext-link-type="uri" xlink:href="https://textual.textualize.io/"><monospace>Textual</monospace></ext-link>.
-      This allows users to intuitively modify their expedition waypoint
-      locations, timings and instrument selections.</p>
+      This allows users to intuitively set their waypoint timings and
+      instrument selections, and also modify their waypoint
+      locations.</p>
     </list-item>
     <list-item>
       <p><monospace>virtualship run</monospace>: Executes the virtual
       expedition according to the planned configuration. This includes
-      streaming data via the Copernicus Marine Data Store, simulating
-      the instrument beahviours and sampling, and saving the output in
+      streaming data via the
+      <ext-link ext-link-type="uri" xlink:href="https://marine.copernicus.eu/">Copernicus
+      Marine Data Store</ext-link>, simulating the instrument beahviours
+      and sampling, and saving the output in
       <ext-link ext-link-type="uri" xlink:href="https://zarr.dev/"><monospace>Zarr</monospace></ext-link>
       format.</p>
     </list-item>
@@ -278,11 +295,10 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/copernicus_products.html">physics
   and biogeochemical products</ext-link> available on the Copernicus
   plaform, expeditions are possible from 1993 to present and forecasted
-  two weeks into the future. There is also an option for the user to
-  specify local <monospace>NetCDF</monospace> files for data ingestion,
-  if preferred, with the necessary file stuctures and naming conventions
-  outlined in the relevant
-  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/example_copernicus_download.html">documentation</ext-link>.</p>
+  two weeks into the future. There is also an
+  <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/pre_download_data.html">option</ext-link>
+  for the user to specify local <monospace>NetCDF</monospace> files for
+  data ingestion, if preferred.</p>
 </sec>
 <sec id="applications-and-future-outlook">
   <title>Applications and future outlook</title>
@@ -298,11 +314,19 @@ a Creative Commons Attribution 4.0 International License (CC BY
   be successful, with students reporting increased self-efficacy and
   knowledge in executing oceanographic fieldwork
   (<xref alt="Daniels et al., 2025" rid="ref-Daniels2025" ref-type="bibr">Daniels
-  et al., 2025</xref>). We encourage researchers to continue to use
-  <monospace>VirtualShip</monospace> as a cost-effective means to plan
-  future expeditions, as a tool for accessing ocean model data in a
-  realistic manner, and to compare models to observations in a
-  like-for-like manner.</p>
+  et al., 2025</xref>).</p>
+  <p>The package opens space for many other research applications. It
+  can support real-life expedition planning by letting users test
+  sampling routes before going to sea. It also provides tooling to
+  explore real-time adaptive strategies in which sampling plans shift as
+  forecasts or observations update. The same workflow can also be used
+  to investigate sampling efficiency, for example, examining how
+  waypoint number or spacing shapes the ability to capture features of
+  interest. Moreover, the software is well-suited for developing
+  Observation System Simulation Experiments (OSSEs; e.g. Errico et al.
+  (<xref alt="2013" rid="ref-Errico2013" ref-type="bibr">2013</xref>))
+  to test and optimise observational strategies in a cost- and
+  time-efficient manner.</p>
   <p>Both the customisability of the <monospace>VirtualShip</monospace>
   platform and the exciting potential for new ARCO-based data hosting
   services in domains beyond oceanography (e.g.,
@@ -476,6 +500,170 @@ a Creative Commons Attribution 4.0 International License (CC BY
       <issue>1</issue>
       <uri>https://doi.org/10.5334/jors.148</uri>
       <pub-id pub-id-type="doi">10.5334/jors.148</pub-id>
+    </element-citation>
+  </ref>
+  <ref id="ref-Errico2013">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Errico</surname><given-names>Ronald M.</given-names></name>
+        <name><surname>Yang</surname><given-names>Runhua</given-names></name>
+        <name><surname>Privé</surname><given-names>Nikki C.</given-names></name>
+        <name><surname>Tai</surname><given-names>King-Sheng</given-names></name>
+        <name><surname>Todling</surname><given-names>Ricardo</given-names></name>
+        <name><surname>Sienkiewicz</surname><given-names>Meta E.</given-names></name>
+        <name><surname>Guo</surname><given-names>Jing</given-names></name>
+      </person-group>
+      <article-title>Development and validation of observing-system simulation experiments at NASA’s global modeling and assimilation office</article-title>
+      <source>Quarterly Journal of the Royal Meteorological Society</source>
+      <year iso-8601-date="2013">2013</year>
+      <volume>139</volume>
+      <issue>674</issue>
+      <uri>https://rmets.onlinelibrary.wiley.com/doi/abs/10.1002/qj.2027</uri>
+      <pub-id pub-id-type="doi">https://doi.org/10.1002/qj.2027</pub-id>
+      <fpage>1162</fpage>
+      <lpage>1178</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Lumpkin2017">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Lumpkin</surname><given-names>Rick</given-names></name>
+        <name><surname>Özgökmen</surname><given-names>Tamay</given-names></name>
+        <name><surname>Centurioni</surname><given-names>Luca</given-names></name>
+      </person-group>
+      <article-title>Advances in the application of surface drifters</article-title>
+      <source>Annual Review of Marine Science</source>
+      <publisher-name>Annual Reviews</publisher-name>
+      <year iso-8601-date="2017">2017</year>
+      <volume>9</volume>
+      <issue>Volume 9, 2017</issue>
+      <issn>1941-0611</issn>
+      <uri>https://www.annualreviews.org/content/journals/10.1146/annurev-marine-010816-060641</uri>
+      <pub-id pub-id-type="doi">https://doi.org/10.1146/annurev-marine-010816-060641</pub-id>
+      <fpage>59</fpage>
+      <lpage>81</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Jayne2017">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Jayne</surname><given-names>Steven R.</given-names></name>
+        <name><surname>Roemmich</surname><given-names>Dean</given-names></name>
+        <name><surname>Zilberman</surname><given-names>Nathalie</given-names></name>
+        <name><surname>Riser</surname><given-names>Stephen C.</given-names></name>
+        <name><surname>Johnson</surname><given-names>Kenneth S.</given-names></name>
+        <name><surname>Johnson</surname><given-names>Gregory C.</given-names></name>
+        <name><surname>Piotrowicz</surname><given-names>Stephen R.</given-names></name>
+      </person-group>
+      <article-title>The argo program: Present and future</article-title>
+      <source>Oceanography</source>
+      <publisher-name>Oceanography Society</publisher-name>
+      <year iso-8601-date="2017">2017</year>
+      <date-in-citation content-type="access-date"><year iso-8601-date="2025-12-17">2025</year><month>12</month><day>17</day></date-in-citation>
+      <volume>30</volume>
+      <issue>2</issue>
+      <uri>http://www.jstor.org/stable/26201840</uri>
+      <fpage>18</fpage>
+      <lpage>28</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Goni2019">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Goni</surname><given-names>Gustavo J.</given-names></name>
+        <name><surname>Sprintall</surname><given-names>Janet</given-names></name>
+        <name><surname>Bringas</surname><given-names>Francis</given-names></name>
+        <name><surname>Cheng</surname><given-names>Lijing</given-names></name>
+        <name><surname>Cirano</surname><given-names>Mauro</given-names></name>
+        <name><surname>Dong</surname><given-names>Shenfu</given-names></name>
+        <name><surname>Domingues</surname><given-names>Ricardo</given-names></name>
+        <name><surname>Goes</surname><given-names>Marlos</given-names></name>
+        <name><surname>Lopez</surname><given-names>Hosmay</given-names></name>
+        <name><surname>Morrow</surname><given-names>Rosemary</given-names></name>
+        <name><surname>Rivero</surname><given-names>Ulises</given-names></name>
+        <name><surname>Rossby</surname><given-names>Thomas</given-names></name>
+        <name><surname>Todd</surname><given-names>Robert E.</given-names></name>
+        <name><surname>Trinanes</surname><given-names>Joaquin</given-names></name>
+        <name><surname>Zilberman</surname><given-names>Nathalie</given-names></name>
+        <name><surname>Baringer</surname><given-names>Molly</given-names></name>
+        <name><surname>Boyer</surname><given-names>Tim</given-names></name>
+        <name><surname>Cowley</surname><given-names>Rebecca</given-names></name>
+        <name><surname>Domingues</surname><given-names>Catia M.</given-names></name>
+        <name><surname>Hutchinson</surname><given-names>Katherine</given-names></name>
+        <name><surname>Kramp</surname><given-names>Martin</given-names></name>
+        <name><surname>Mata</surname><given-names>Mauricio M.</given-names></name>
+        <name><surname>Reseghetti</surname><given-names>Franco</given-names></name>
+        <name><surname>Sun</surname><given-names>Charles</given-names></name>
+        <name><surname>Bhaskar TVS</surname><given-names>Udaya</given-names></name>
+        <name><surname>Volkov</surname><given-names>Denis</given-names></name>
+      </person-group>
+      <article-title>More than 50 years of successful continuous temperature section measurements by the global expendable bathythermograph network, its integrability, societal benefits, and future</article-title>
+      <source>Frontiers in Marine Science</source>
+      <year iso-8601-date="2019">2019</year>
+      <volume>Volume 6 - 2019</volume>
+      <issn>2296-7745</issn>
+      <uri>https://www.frontiersin.org/journals/marine-science/articles/10.3389/fmars.2019.00452</uri>
+      <pub-id pub-id-type="doi">10.3389/fmars.2019.00452</pub-id>
+    </element-citation>
+  </ref>
+  <ref id="ref-Kostaschuk2005">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Kostaschuk</surname><given-names>Ray</given-names></name>
+        <name><surname>Best</surname><given-names>Jim</given-names></name>
+        <name><surname>Villard</surname><given-names>Paul</given-names></name>
+        <name><surname>Peakall</surname><given-names>Jeff</given-names></name>
+        <name><surname>Franklin</surname><given-names>Mark</given-names></name>
+      </person-group>
+      <article-title>Measuring flow velocity and sediment transport with an acoustic doppler current profiler</article-title>
+      <source>Geomorphology</source>
+      <year iso-8601-date="2005">2005</year>
+      <volume>68</volume>
+      <issue>1</issue>
+      <issn>0169-555X</issn>
+      <uri>https://www.sciencedirect.com/science/article/pii/S0169555X04002879</uri>
+      <pub-id pub-id-type="doi">https://doi.org/10.1016/j.geomorph.2004.07.012</pub-id>
+      <fpage>25</fpage>
+      <lpage>37</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Gordon2014">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Gordon</surname><given-names>Arnold L.</given-names></name>
+        <name><surname>Flament</surname><given-names>Pierre</given-names></name>
+        <name><surname>Villanoy</surname><given-names>Cesar</given-names></name>
+        <name><surname>Centurioni</surname><given-names>Luca</given-names></name>
+      </person-group>
+      <article-title>The nascent kuroshio of lamon bay</article-title>
+      <source>Journal of Geophysical Research: Oceans</source>
+      <year iso-8601-date="2014">2014</year>
+      <volume>119</volume>
+      <issue>7</issue>
+      <uri>https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1002/2014JC009882</uri>
+      <pub-id pub-id-type="doi">https://doi.org/10.1002/2014JC009882</pub-id>
+      <fpage>4251</fpage>
+      <lpage>4263</lpage>
+    </element-citation>
+  </ref>
+  <ref id="ref-Johnson2007">
+    <element-citation publication-type="article-journal">
+      <person-group person-group-type="author">
+        <name><surname>Johnson</surname><given-names>Gregory C.</given-names></name>
+        <name><surname>Toole</surname><given-names>John M.</given-names></name>
+        <name><surname>Larson</surname><given-names>Nordeen G.</given-names></name>
+      </person-group>
+      <article-title>Sensor corrections for sea-bird SBE-41CP and SBE-41 CTDs</article-title>
+      <source>Journal of Atmospheric and Oceanic Technology</source>
+      <publisher-name>American Meteorological Society</publisher-name>
+      <publisher-loc>Boston MA, USA</publisher-loc>
+      <year iso-8601-date="2007">2007</year>
+      <volume>24</volume>
+      <issue>6</issue>
+      <uri>https://journals.ametsoc.org/view/journals/atot/24/6/jtech2016_1.xml</uri>
+      <pub-id pub-id-type="doi">10.1175/JTECH2016.1</pub-id>
+      <fpage>1117 </fpage>
+      <lpage> 1130</lpage>
     </element-citation>
   </ref>
 </ref-list>
