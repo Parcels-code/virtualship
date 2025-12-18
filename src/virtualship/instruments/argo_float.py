@@ -172,12 +172,6 @@ class ArgoFloatInstrument(Instrument):
         }
         limit_spec = {
             "spatial": True,  # spatial limits; lat/lon constrained to waypoint locations + buffer
-            "depth_min": abs(
-                expedition.instruments_config.argo_float_config.min_depth_meter
-            ),  # [meters]
-            "depth_max": abs(
-                expedition.instruments_config.argo_float_config.max_depth_meter
-            ),  # [meters]
         }
 
         super().__init__(
