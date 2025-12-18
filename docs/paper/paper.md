@@ -48,14 +48,9 @@ Marine science relies on fieldwork for data collection, yet sea-going opportunit
 
 # Functionality
 
-<!-- TODO: CTD needs an e.g. reference for the specific cable mounted style! -->
-
 `VirtualShip` simulates the deployment of virtual instruments commonly used in oceanographic fieldwork, with emphasis on realism in how users plan and execute expeditions. For example, users must consider ship speed and instrument deployment/recovery times to ensure their expedition is feasible within given time constraints. Possible instrument selections include surface `Drifter` [@Lumpkin2017], `CTD` (Conductivity-Temperature-Depth; @Johnson2007), `Argo float` [@Jayne2017], `XBT` (Expendable Bathythermograph; @Goni2019), underway `ADCP` (Acoustic Doppler Current Profiler; @Kostaschuk2005), and underway `Underwater_temperature/salinity` [@Gordon2014] probes. More detail on each instrument is available in the [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options).
 
 The software can simulate complex multidisciplinary expeditions. One example is a virtual expedition across the Agulhas Current and the South Eastern Atlantic that deploys a suite of instruments to sample physical and biogeochemical properties (\autoref{fig:fig1}). Key circulation features appear early in the expedition track, with enhanced ADCP velocities marking the strong Agulhas Current (\autoref{fig:fig1}b) and drifters that turn back toward the Indian Ocean indicating the Agulhas Retroflection (\autoref{fig:fig1}c). The CTD profiles capture the vertical structure of temperature and oxygen along the route, including the warmer surface waters of the Agulhas region (\autoref{fig:fig1}d, early waypoints) and the Oxygen Minimum Zone in the South Eastern Atlantic (\autoref{fig:fig1}e, final waypoints).
-
-<!-- TODO: may add an example Argo plot here, instead of the CTD (temperature) -->
-<!-- TODO: insert as an .imshow() of the .png exported from the plotly 3D plot -->
 
 ![Example VirtualShip expedition simulated in July/August 2023. Expedition waypoints displayed via the NIOZ MFP tool (a), Underway ADCP measurements (b), Surface drifter releases (c; 90-day lifetime per drifter), and CTD vertical profiles for temperature (d) and oxygen (e). Black triangles in b), d) and e) mark waypoint locations across the expedition route, corresponding to the purple markers in a).\label{fig:fig1}](figure1.png)
 
@@ -75,8 +70,6 @@ Moreover, the data ingestion system relies on Analysis-Ready and Cloud-Optimized
 
 # Applications and future outlook
 
-<!-- TODO: couple of sentences on OSSEs -->
-
 `VirtualShip` has already been extensvely applied in Master's teaching settings at Utrecht University as part of the [VirtualShip Classroom](https://www.uu.nl/en/research/sustainability/sustainable-ocean/education/virtual-ship) initiative. Educational assignments and tutorials have been developed alongside to integrate the tool into coursework, including projects where students design their own research question(s) and execute their fieldwork and analysis using `VirtualShip`. Its application has been shown to be successful, with students reporting increased self-efficacy and knowledge in executing oceanographic fieldwork [@Daniels2025].
 
 The package opens space for many other research applications. It can support real-life expedition planning by letting users test sampling routes before going to sea. It also provides tooling to explore real-time adaptive strategies in which sampling plans shift as forecasts or observations update. The same workflow can also be used to investigate sampling efficiency, for example, examining how waypoint number or spacing shapes the ability to capture features of interest. Moreover, the software is well-suited for developing Observation System Simulation Experiments (OSSEs; e.g. @Errico2013) to test and optimise observational networks in a cost- and time-efficient manner.
@@ -84,8 +77,6 @@ The package opens space for many other research applications. It can support rea
 Both the customisability of the `VirtualShip` platform and the exciting potential for new ARCO-based data hosting services in domains beyond oceanography (e.g., [atmospheric science](https://climate.copernicus.eu/work-progress-our-data-stores-turn-arco)) means there is potential to extend VirtualShip (or "VirtualShip-like" tools) to other domains in the future. Furthermore, as the `Parcels` underpinnings themselves continue to evolve, with a future (at time of writing) [v4.0 release](https://docs.oceanparcels.org/en/v4-dev/v4/) focusing on alignment with [Pangeo](https://pangeo.io/) standards and `Xarray` data structures [@Hoyer2017], `VirtualShip` will also benefit from these improvements, further enhancing its capabilities, extensibility and compatability with modern cloud-based data pipelines.
 
 # Acknowledgements
-
-<!-- TODO: Do co-authors have anyone else they want to acknowledge? -->
 
 The VirtualShip project is funded through the Utrecht University-NIOZ (Royal Netherlands Institute for Sea Research) collaboration.
 
