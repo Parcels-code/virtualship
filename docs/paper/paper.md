@@ -57,7 +57,7 @@ The software can simulate complex multidisciplinary expeditions. One example is 
 
 The software is designed to be highly intuitive to the user. It is wrapped into three high-level command line interface commands (using [Click](https://click.palletsprojects.com/en/stable/)):
 
-1. `virtualship init`: Initialises the expedition directory structure and an `expedition.yaml` configuration file, which controls the expedition route, instrument choices and deployment timings. A common workflow is for users to import pre-determined waypoint coordinates using the `--from-mfp` flag in combination with a coordinates `.csv` or `.xlsx` file (e.g. exported from the NIOZ MFP tool).
+1. `virtualship init`: Initialises the expedition directory structure and an `expedition.yaml` configuration file, which controls the expedition route, instrument choices and deployment timings. A common workflow is for users to import pre-determined waypoint coordinates using the `--from-mfp` flag in combination with a coordinates `.csv` or `.xlsx` file (e.g. exported from the [MFP](https://www.marinefacilitiesplanning.com/cruiselocationplanning#) tool).
 2. `virtualship plan`: Launches a user-friendly Terminal-based expedition planning User Interface (UI), built using [`Textual`](https://textual.textualize.io/). This allows users to intuitively set their waypoint timings and instrument selections, and also modify their waypoint locations.
 3. `virtualship run`: Executes the virtual expedition according to the planned configuration. This includes streaming data via the [Copernicus Marine Data Store](https://marine.copernicus.eu/), simulating the instrument beahviours and sampling, and saving the output in [`Zarr`](https://zarr.dev/) format.
 
