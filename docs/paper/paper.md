@@ -18,7 +18,7 @@ authors:
   - name: Nick Hodgskin
     affiliation: 2
   - name: Aart C. Stuurman
-     affiliation: 1 
+     affiliation: 1
   - name: Iury Simoes-Sousa
     orcid: 0000-0002-2484-510X
     affiliation: 3
