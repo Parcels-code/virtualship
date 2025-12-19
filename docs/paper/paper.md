@@ -14,21 +14,22 @@ authors:
     affiliation: "1, 2"
   - name: Emma E. Daniels
     orcid: 0009-0005-9805-5257
-    affiliation: 2
-  - name: Nick Hodgskin
     affiliation: 1
+  - name: Nick Hodgskin
+    affiliation: 2
   - name: Aart C. Stuurman
+     affiliation: 1 
   - name: Iury Simoes-Sousa
     orcid: 0000-0002-2484-510X
-    affiliation: 2
+    affiliation: 3
   - name: Erik van Sebille
     orcid: 0000-0003-2041-0704
     affiliation: "1, 2"
 
 affiliations:
-  - name: Institute for Marine and Atmospheric Research, Utrecht University, the Netherlands
-    index: 1
   - name: Freudenthal Institute, Utrecht University, the Netherlands
+    index: 1
+  - name: Institute for Marine and Atmospheric Research, Utrecht University, the Netherlands
     index: 2
   - name: Woods Hole Oceanographic Institution, Falmouth, MA, USA
     index: 3
@@ -44,7 +45,7 @@ bibliography: paper.bib
 
 Marine science relies on fieldwork for data collection, yet sea-going opportunities are limited due to financial costs, logistical constraints, and environmental burdens. We present an alternative means, namely `VirtualShip`, for training scientists to conduct oceanographic fieldwork in an authentic manner, to plan future expeditions and deployments, and to directly compare observational and instrumentational strategies with model data.
 
-`VirtualShip` goes beyond simply extracting grid-cell values from model output. Instead, it uses programmable behaviours and sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in exact locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing tools, such as `OceanSpy` [@Almansi2019] and `VirtualFleet` [@Maze2023], but extends capabilities to mesh many different instrument deployments into a unified expedition simulation framework. Moreover, `VirtualShip` exploits readily available, streamable data via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers. `VirtualShip` can also integrate coordinate files exported from the [NIOZ Marine Facilities Planning](https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#) (MFP) tool, giving users the option to define expedition waypoints via an intuitive web-based mapping interface.
+`VirtualShip` goes beyond simply extracting grid-cell values from model output. Instead, it uses programmable behaviours and sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in exact locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing tools, such as `OceanSpy` [@Almansi2019] and `VirtualFleet` [@Maze2023], but extends capabilities to mesh many different instrument deployments into a unified expedition simulation framework. Moreover, `VirtualShip` exploits readily available, streamable data via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers. `VirtualShip` can also integrate coordinate files exported from the [Marine Facilities Planning](https://www.marinefacilitiesplanning.com/cruiselocationplanning#) (MFP) tool, giving users the option to define expedition waypoints via an intuitive web-based mapping interface.
 
 # Functionality
 
@@ -54,7 +55,7 @@ The software can simulate complex multidisciplinary expeditions. One example is 
 
 ![Example VirtualShip expedition simulated in July/August 2023. Expedition waypoints displayed via the NIOZ MFP tool (a), Underway ADCP measurements (b), Surface drifter releases (c; 90-day lifetime per drifter), and CTD vertical profiles for temperature (d) and oxygen (e). Black triangles in b), d) and e) mark waypoint locations across the expedition route, corresponding to the purple markers in a).\label{fig:fig1}](figure1.png)
 
-The software is designed to be highly accessible to the user. It is wrapped into three high-level command line interface commands (using [Click](https://click.palletsprojects.com/en/stable/)):
+The software is designed to be highly intuitive to the user. It is wrapped into three high-level command line interface commands (using [Click](https://click.palletsprojects.com/en/stable/)):
 
 1. `virtualship init`: Initialises the expedition directory structure and an `expedition.yaml` configuration file, which controls the expedition route, instrument choices and deployment timings. A common workflow is for users to import pre-determined waypoint coordinates using the `--from-mfp` flag in combination with a coordinates `.csv` or `.xlsx` file (e.g. exported from the NIOZ MFP tool).
 2. `virtualship plan`: Launches a user-friendly Terminal-based expedition planning User Interface (UI), built using [`Textual`](https://textual.textualize.io/). This allows users to intuitively set their waypoint timings and instrument selections, and also modify their waypoint locations.
