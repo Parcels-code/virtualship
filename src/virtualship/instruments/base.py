@@ -182,8 +182,6 @@ class Instrument(abc.ABC):
 
         time_buffer = self._get_spec_value("buffer", "time", 0.0)
 
-        # TODO: also limit from-data to spatial domain?
-
         for key in keys:
             var = self.variables[key]
             if self.from_data is not None:  # load from local data
