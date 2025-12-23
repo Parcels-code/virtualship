@@ -214,8 +214,8 @@ class ArgoFloatConfig(pydantic.BaseModel):
     cycle_days: float = pydantic.Field(gt=0.0)
     drift_days: float = pydantic.Field(gt=0.0)
     lifetime: timedelta = pydantic.Field(
-        serialization_alias="lifetime_minutes",
-        validation_alias="lifetime_minutes",
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
         gt=timedelta(),
     )
 
@@ -335,8 +335,8 @@ class DrifterConfig(pydantic.BaseModel):
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
-        serialization_alias="lifetime_minutes",
-        validation_alias="lifetime_minutes",
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
         gt=timedelta(),
     )
     stationkeeping_time: timedelta = pydantic.Field(
