@@ -80,7 +80,7 @@ def plot_drifters(drifter_ds, ax, vmin, vmax, PLOT_VARIABLE="temperature"):
     gl.right_labels = False
 
     # add colorbar
-    _add_cmap(
+    _add_cbar(
         drifter_ds[PLOT_VARIABLE], cmo.thermal, ax, "Temperature (°C)", vmin, vmax
     )
 
@@ -133,7 +133,7 @@ def plot_ctd(ds, ax, plot_variable, vmin, vmax, axes_labels=False):
         vmax=vmax,
     )
 
-    _add_cmap(
+    _add_cbar(
         ds[MAP_VARNAMES[plot_variable]],
         MAP_CMAPS[plot_variable],
         ax,
@@ -181,7 +181,7 @@ def plot_adcp(ds, ax, axes_labels=False):
     tan_patch = mpatches.Patch(color=mcolors.to_rgba("tan"), label="Seabed")
     ax.legend(handles=[tan_patch], loc="lower right")
 
-    _add_cmap(
+    _add_cbar(
         vel,
         CMAP,
         ax,
@@ -202,7 +202,7 @@ def plot_adcp(ds, ax, axes_labels=False):
 # =====================================================
 
 
-def _add_cmap(
+def _add_cbar(
     da,
     cmap,
     ax,
