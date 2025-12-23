@@ -220,12 +220,11 @@ a Creative Commons Attribution 4.0 International License (CC BY
   waypoints).</p>
   <fig>
     <caption><p>Example VirtualShip expedition simulated in July/August
-    2023. Expedition waypoints displayed via the NIOZ MFP tool (a),
-    Underway ADCP measurements (b), Surface drifter releases (c; 90-day
-    lifetime per drifter), and CTD vertical profiles for temperature (d)
-    and oxygen (e). Black triangles in b), d) and e) mark waypoint
-    locations across the expedition route, corresponding to the purple
-    markers in
+    2023. Expedition waypoints displayed via the MFP tool (a), Underway
+    ADCP measurements (b), Surface drifter releases (c; 90-day lifetime
+    per drifter), and CTD vertical profiles for temperature (d) and
+    oxygen (e). Black triangles in b), d) and e) mark waypoint locations
+    across the expedition route, corresponding to the purple markers in
     a).<styled-content id="figU003Afig1"></styled-content></p></caption>
     <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
   </fig>
