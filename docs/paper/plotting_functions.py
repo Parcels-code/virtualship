@@ -211,8 +211,6 @@ def _add_cmap(
     vmax,
     orientation="horizontal",
     shrink=0.90,
-    fraction=0.05,
-    pad=0.2,
 ):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=mcolors.Normalize(vmin, vmax))
     sm._A = []
@@ -222,8 +220,6 @@ def _add_cmap(
         orientation=orientation,
         label=label,
         shrink=shrink,
-        fraction=fraction,
-        pad=pad,
     )
 
 
