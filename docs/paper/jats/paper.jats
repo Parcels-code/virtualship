@@ -38,21 +38,21 @@ anywhere in the global ocean</article-title>
 <surname>Daniels</surname>
 <given-names>Emma E.</given-names>
 </name>
-<xref ref-type="aff" rid="aff-2"/>
+<xref ref-type="aff" rid="aff-1"/>
 </contrib>
 <contrib contrib-type="author">
 <name>
 <surname>Hodgskin</surname>
 <given-names>Nick</given-names>
 </name>
-<xref ref-type="aff" rid="aff-1"/>
+<xref ref-type="aff" rid="aff-2"/>
 </contrib>
 <contrib contrib-type="author">
 <name>
 <surname>Stuurman</surname>
 <given-names>Aart C.</given-names>
 </name>
-<xref ref-type="aff" rid="aff-"/>
+<xref ref-type="aff" rid="aff-1"/>
 </contrib>
 <contrib contrib-type="author">
 <contrib-id contrib-id-type="orcid">https://orcid.org/0000-0002-2484-510X</contrib-id>
@@ -60,7 +60,7 @@ anywhere in the global ocean</article-title>
 <surname>Simoes-Sousa</surname>
 <given-names>Iury</given-names>
 </name>
-<xref ref-type="aff" rid="aff-2"/>
+<xref ref-type="aff" rid="aff-3"/>
 </contrib>
 <contrib contrib-type="author">
 <contrib-id contrib-id-type="orcid">https://orcid.org/0000-0003-2041-0704</contrib-id>
@@ -73,14 +73,14 @@ anywhere in the global ocean</article-title>
 </contrib>
 <aff id="aff-1">
 <institution-wrap>
-<institution>Institute for Marine and Atmospheric Research, Utrecht
-University, the Netherlands</institution>
+<institution>Freudenthal Institute, Utrecht University, the
+Netherlands</institution>
 </institution-wrap>
 </aff>
 <aff id="aff-2">
 <institution-wrap>
-<institution>Freudenthal Institute, Utrecht University, the
-Netherlands</institution>
+<institution>Institute for Marine and Atmospheric Research, Utrecht
+University, the Netherlands</institution>
 </institution-wrap>
 </aff>
 <aff id="aff-3">
@@ -169,10 +169,10 @@ a Creative Commons Attribution 4.0 International License (CC BY
   datasets locally and/or arrange for access to remote servers.
   <monospace>VirtualShip</monospace> can also integrate coordinate files
   exported from the
-  <ext-link ext-link-type="uri" xlink:href="https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#">NIOZ
-  Marine Facilities Planning</ext-link> (MFP) tool, giving users the
-  option to define expedition waypoints via an intuitive web-based
-  mapping interface.</p>
+  <ext-link ext-link-type="uri" xlink:href="https://www.marinefacilitiesplanning.com/cruiselocationplanning#">Marine
+  Facilities Planning</ext-link> (MFP) tool, giving users the option to
+  define expedition waypoints via an intuitive web-based mapping
+  interface.</p>
 </sec>
 <sec id="functionality">
   <title>Functionality</title>
@@ -229,7 +229,7 @@ a Creative Commons Attribution 4.0 International License (CC BY
     a).<styled-content id="figU003Afig1"></styled-content></p></caption>
     <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
   </fig>
-  <p>The software is designed to be highly accessible to the user. It is
+  <p>The software is designed to be highly intuitive to the user. It is
   wrapped into three high-level command line interface commands (using
   <ext-link ext-link-type="uri" xlink:href="https://click.palletsprojects.com/en/stable/">Click</ext-link>):</p>
   <list list-type="order">
@@ -241,8 +241,9 @@ a Creative Commons Attribution 4.0 International License (CC BY
       timings. A common workflow is for users to import pre-determined
       waypoint coordinates using the <monospace>--from-mfp</monospace>
       flag in combination with a coordinates <monospace>.csv</monospace>
-      or <monospace>.xlsx</monospace> file (e.g. exported from the NIOZ
-      MFP tool).</p>
+      or <monospace>.xlsx</monospace> file (e.g. exported from the
+      <ext-link ext-link-type="uri" xlink:href="https://www.marinefacilitiesplanning.com/cruiselocationplanning#">MFP</ext-link>
+      tool).</p>
     </list-item>
     <list-item>
       <p><monospace>virtualship plan</monospace>: Launches a
