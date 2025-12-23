@@ -14,7 +14,7 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     _get_bathy_data,
     _get_waypoint_latlons,
-    _validate_numeric_mins_to_timedelta,
+    _validate_numeric_to_timedelta,
 )
 
 from .location import Location
@@ -214,8 +214,8 @@ class ArgoFloatConfig(pydantic.BaseModel):
     cycle_days: float = pydantic.Field(gt=0.0)
     drift_days: float = pydantic.Field(gt=0.0)
     lifetime: timedelta = pydantic.Field(
-        serialization_alias="lifetime_minutes",
-        validation_alias="lifetime_minutes",
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
         gt=timedelta(),
     )
 
@@ -227,11 +227,11 @@ class ArgoFloatConfig(pydantic.BaseModel):
 
     @pydantic.field_serializer("lifetime")
     def _serialize_lifetime(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
+        return value.total_seconds() / 86400.0  # [days]
 
     @pydantic.field_validator("lifetime", mode="before")
     def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "days")
 
     @pydantic.field_serializer("stationkeeping_time")
     def _serialize_stationkeeping_time(self, value: timedelta, _info):
@@ -239,7 +239,7 @@ class ArgoFloatConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
@@ -263,7 +263,7 @@ class ADCPConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class CTDConfig(pydantic.BaseModel):
@@ -285,7 +285,7 @@ class CTDConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class CTD_BGCConfig(pydantic.BaseModel):
@@ -307,7 +307,7 @@ class CTD_BGCConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class ShipUnderwaterSTConfig(pydantic.BaseModel):
@@ -327,7 +327,7 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class DrifterConfig(pydantic.BaseModel):
@@ -335,8 +335,8 @@ class DrifterConfig(pydantic.BaseModel):
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
-        serialization_alias="lifetime_minutes",
-        validation_alias="lifetime_minutes",
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
         gt=timedelta(),
     )
     stationkeeping_time: timedelta = pydantic.Field(
@@ -349,11 +349,11 @@ class DrifterConfig(pydantic.BaseModel):
 
     @pydantic.field_serializer("lifetime")
     def _serialize_lifetime(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
+        return value.total_seconds() / 86400.0  # [days]
 
     @pydantic.field_validator("lifetime", mode="before")
     def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "days")
 
     @pydantic.field_serializer("stationkeeping_time")
     def _serialize_stationkeeping_time(self, value: timedelta, _info):
@@ -361,7 +361,7 @@ class DrifterConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class XBTConfig(pydantic.BaseModel):

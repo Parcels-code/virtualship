@@ -186,11 +186,16 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     expedition.to_yaml(yaml_output_path)
 
 
-def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timedelta:
-    """Convert minutes to timedelta when reading."""
+def _validate_numeric_to_timedelta(
+    value: int | float | timedelta, unit: str
+) -> timedelta:
+    """Convert to timedelta when reading."""
     if isinstance(value, timedelta):
         return value
-    return timedelta(minutes=value)
+    if unit == "minutes":
+        return timedelta(minutes=float(value))
+    elif unit == "days":
+        return timedelta(days=float(value))
 
 
 def _get_expedition(expedition_dir: Path) -> Expedition:

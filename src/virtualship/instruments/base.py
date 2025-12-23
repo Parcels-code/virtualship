@@ -149,20 +149,17 @@ class Instrument(abc.ABC):
         depth_max = self._get_spec_value("limit", "depth_max", None)
         spatial_constraint = self._get_spec_value("limit", "spatial", True)
 
+        min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
+        max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
+        min_lat_bound = self.min_lat - latlon_buffer if spatial_constraint else None
+        max_lat_bound = self.max_lat + latlon_buffer if spatial_constraint else None
+
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            minimum_longitude=self.min_lon - latlon_buffer
-            if spatial_constraint
-            else None,
-            maximum_longitude=self.max_lon + latlon_buffer
-            if spatial_constraint
-            else None,
-            minimum_latitude=self.min_lat - latlon_buffer
-            if spatial_constraint
-            else None,
-            maximum_latitude=self.max_lat + latlon_buffer
-            if spatial_constraint
-            else None,
+            minimum_longitude=min_lon_bound,
+            maximum_longitude=max_lon_bound,
+            minimum_latitude=min_lat_bound,
+            maximum_latitude=max_lat_bound,
             variables=[var],
             start_datetime=self.min_time,
             end_datetime=self.max_time + timedelta(days=time_buffer),
@@ -181,8 +178,6 @@ class Instrument(abc.ABC):
         keys = list(self.variables.keys())
 
         time_buffer = self._get_spec_value("buffer", "time", 0.0)
-
-        # TODO: also limit from-data to spatial domain?
 
         for key in keys:
             var = self.variables[key]

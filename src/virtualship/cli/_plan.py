@@ -138,7 +138,7 @@ INSTRUMENT_FIELDS = {
             {"name": "cycle_days"},
             {"name": "drift_days"},
             {"name": "stationkeeping_time", "minutes": True},
-            {"name": "lifetime", "minutes": True},
+            {"name": "lifetime", "days": True},
         ],
     },
     "drifter_config": {
@@ -146,7 +146,7 @@ INSTRUMENT_FIELDS = {
         "title": "Drifter",
         "attributes": [
             {"name": "depth_meter"},
-            {"name": "lifetime", "minutes": True},
+            {"name": "lifetime", "days": True},
             {"name": "stationkeeping_time", "minutes": True},
         ],
     },
@@ -264,7 +264,10 @@ class ExpeditionEditor(Static):
                         with Container(classes="instrument-config"):
                             for attr_meta in attributes:
                                 attr = attr_meta["name"]
-                                is_minutes = attr_meta.get("minutes", False)
+                                is_minutes, is_days = (
+                                    attr_meta.get("minutes", False),
+                                    attr_meta.get("days", False),
+                                )
                                 validators = group_validators(config_class, attr)
                                 if config_instance:
                                     raw_value = getattr(config_instance, attr, "")
@@ -275,16 +278,23 @@ class ExpeditionEditor(Static):
                                             )
                                         except AttributeError:
                                             value = str(raw_value)
+                                    elif is_days and raw_value != "":
+                                        try:
+                                            value = str(
+                                                raw_value.total_seconds() / 86400.0
+                                            )
+                                        except AttributeError:
+                                            value = str(raw_value)
                                     else:
                                         value = str(raw_value)
                                 else:
                                     value = ""
                                 label = f"{attr.replace('_', ' ').title()}:"
-                                yield Label(
-                                    label
-                                    if not is_minutes
-                                    else label.replace(":", " Minutes:")
-                                )
+                                if is_minutes:
+                                    label = label.replace(":", " Minutes:")
+                                elif is_days:
+                                    label = label.replace(":", " Days:")
+                                yield Label(label)
                                 yield Input(
                                     id=f"{instrument_name}_{attr}",
                                     type=type_to_textual(
@@ -392,11 +402,14 @@ class ExpeditionEditor(Static):
             for attr_meta in attributes:
                 attr = attr_meta["name"]
                 is_minutes = attr_meta.get("minutes", False)
+                is_days = attr_meta.get("days", False)
                 input_id = f"{instrument_name}_{attr}"
                 value = self.query_one(f"#{input_id}").value
                 field_type = get_field_type(config_class, attr)
                 if is_minutes and field_type is datetime.timedelta:
                     value = datetime.timedelta(minutes=float(value))
+                elif is_days and field_type is datetime.timedelta:
+                    value = datetime.timedelta(days=float(value))
                 else:
                     value = field_type(value)
                 kwargs[attr] = value
