@@ -52,9 +52,7 @@ def plot_drifters(drifter_ds, ax, vmin, vmax, PLOT_VARIABLE="temperature"):
             edgecolor="black",
             zorder=4,
             transform=PROJ,
-            label="Waypoint"
-            if i == 0
-            else None,  # only label first for legend
+            label="Waypoint" if i == 0 else None,  # only label first for legend
         )
 
     # additional map features
@@ -204,10 +202,29 @@ def plot_adcp(ds, ax, axes_labels=False):
 # =====================================================
 
 
-def _add_cmap(da, cmap, ax, label, vmin, vmax, orientation="horizontal", shrink=0.90, fraction=0.05, pad=0.2):
+def _add_cmap(
+    da,
+    cmap,
+    ax,
+    label,
+    vmin,
+    vmax,
+    orientation="horizontal",
+    shrink=0.90,
+    fraction=0.05,
+    pad=0.2,
+):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=mcolors.Normalize(vmin, vmax))
     sm._A = []
-    plt.colorbar(sm, ax=ax, orientation=orientation, label=label, shrink=shrink, fraction=fraction, pad=pad)
+    plt.colorbar(
+        sm,
+        ax=ax,
+        orientation=orientation,
+        label=label,
+        shrink=shrink,
+        fraction=fraction,
+        pad=pad,
+    )
 
 
 def _haversine(lon1, lat1, lon2, lat2):
