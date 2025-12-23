@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 
 import copernicusmarine
 import xarray as xr
-from parcels import FieldSet
 from yaspin import yaspin
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -149,20 +149,17 @@ class Instrument(abc.ABC):
         depth_max = self._get_spec_value("limit", "depth_max", None)
         spatial_constraint = self._get_spec_value("limit", "spatial", True)
 
+        min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
+        max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
+        min_lat_bound = self.min_lat - latlon_buffer if spatial_constraint else None
+        max_lat_bound = self.max_lat + latlon_buffer if spatial_constraint else None
+
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            minimum_longitude=self.min_lon - latlon_buffer
-            if spatial_constraint
-            else None,
-            maximum_longitude=self.max_lon + latlon_buffer
-            if spatial_constraint
-            else None,
-            minimum_latitude=self.min_lat - latlon_buffer
-            if spatial_constraint
-            else None,
-            maximum_latitude=self.max_lat + latlon_buffer
-            if spatial_constraint
-            else None,
+            minimum_longitude=min_lon_bound,
+            maximum_longitude=max_lon_bound,
+            minimum_latitude=min_lat_bound,
+            maximum_latitude=max_lat_bound,
             variables=[var],
             start_datetime=self.min_time,
             end_datetime=self.max_time + timedelta(days=time_buffer),
