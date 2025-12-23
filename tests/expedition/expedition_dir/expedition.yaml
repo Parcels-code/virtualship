@@ -30,7 +30,7 @@ instruments_config:
     min_depth_meter: 0.0
     vertical_speed_meter_per_second: -0.1
     stationkeeping_time_minutes: 20.0
-    lifetime_days: 90720.0
+    lifetime_days: 63.0
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
@@ -41,7 +41,7 @@ instruments_config:
     stationkeeping_time_minutes: 50.0
   drifter_config:
     depth_meter: -1.0
-    lifetime_days: 40320.0
+    lifetime_days: 28.0
     stationkeeping_time_minutes: 20.0
   ship_underwater_st_config:
     period_minutes: 5.0
