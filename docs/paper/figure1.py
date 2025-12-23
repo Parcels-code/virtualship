@@ -47,8 +47,21 @@ def add_waypoint_markers(ax, distances, offset=15, marker_size=70):
     )
 
 
+def add_title(ax, title, fontsize=13, y0=1.03):
+    """Add title."""
+    ax.text(
+        0,
+        y0,
+        title,
+        ha="left",
+        va="bottom",
+        transform=ax.transAxes,
+        fontsize=fontsize,
+    )
+
+
 # fig
-fig = plt.figure(figsize=(12, 13), dpi=300)
+fig = plt.figure(figsize=(9, 13), dpi=300)
 
 # custom layout
 gs = gridspec.GridSpec(3, 2, height_ratios=[1.5, 1, 1])
@@ -59,20 +72,20 @@ ax3 = fig.add_subplot(gs[2, 0])
 ax4 = fig.add_subplot(gs[2, 1])
 
 # overview image
-ax0.set_title(r"$\bf{a}$" + ") MFP expedition overview", loc="left")
+add_title(ax0, r"$\bf{a}$" + ") MFP expedition overview", y0=1.01)
 img = mpimg.imread(f"{SAMPLE_DIR}expedition_overview.png")
 ax0.imshow(img)
 ax0.axis("off")
 
 # adcp
-ax1.set_title(r"$\bf{b}$" + ") ADCP (flow speed)", loc="left")
+add_title(ax1, r"$\bf{b}$" + ") ADCP (flow speed)")
 ax1.set_ylabel("Depth (m)")
 ax1.set_xlabel("Distance (km)")
 plot_adcp(adcp_ds, ax1)
 add_waypoint_markers(ax1, waypoint_distances)
 
 # drifters
-ax2.set_title(r"$\bf{c}$" + ") Surface drifters", loc="left")
+add_title(ax2, r"$\bf{c}$" + ") Surface drifters")
 plot_drifters(
     drifter_ds,
     ax2,
@@ -81,7 +94,7 @@ plot_drifters(
 )
 
 # CTD (temperature)
-ax3.set_title(r"$\bf{d}$" + ") CTD (temperature)", loc="left")
+add_title(ax3, r"$\bf{d}$" + ") CTD (temperature)")
 ax3.set_ylabel("Depth (m)")
 ax3.set_xlabel("Distance (km)")
 _, _distances_regular, _var_masked = plot_ctd(
@@ -96,7 +109,7 @@ ctd_wp_distances = _distances_regular[np.nansum(_var_masked, axis=1) > 0]
 add_waypoint_markers(ax3, ctd_wp_distances, offset=45, marker_size=60)
 
 # CTD (oxygen)
-ax4.set_title(r"$\bf{e}$" + ") CTD (oxygen)", loc="left")
+add_title(ax4, r"$\bf{e}$" + ") CTD (oxygen)")
 ax4.set_xlabel("Distance (km)")
 plot_ctd(
     ctd_bgc_ds, ax4, plot_variable="oxygen", vmin=0, vmax=ctd_bgc_ds.o2.max()
@@ -107,6 +120,6 @@ add_waypoint_markers(ax4, ctd_wp_distances, offset=45, marker_size=60)
 plt.tight_layout()
 plt.show()
 
-fig.savefig("figure1.png", dpi=300)
+fig.savefig("figure1.png", dpi=300, bbox_inches="tight")
 
 # %%
