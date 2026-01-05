@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 from collections import OrderedDict
 from datetime import timedelta
+from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,7 @@ from virtualship.utils import (
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
+    _get_waypoint_latlons,
     _select_product_id,
     ship_spinner,
 )
@@ -56,6 +58,19 @@ class Instrument(abc.ABC):
         self.spacetime_buffer_size = spacetime_buffer_size
         self.limit_spec = limit_spec
 
+        wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
+        wp_times = [
+            wp.time for wp in expedition.schedule.waypoints if wp.time is not None
+        ]
+        assert all(earlier <= later for earlier, later in pairwise(wp_times)), (
+            "Waypoint times are not in ascending order"
+        )
+        self.wp_times = wp_times
+
+        self.min_time, self.max_time = wp_times[0], wp_times[-1]
+        self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
+        self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
+
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
         try:
@@ -76,10 +91,10 @@ class Instrument(abc.ABC):
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(
-                self.expedition.schedule.space_time_region,
-                latlon_buffer=self.spacetime_buffer_size.get("latlon")
-                if self.spacetime_buffer_size
-                else None,
+                self.min_lat,
+                self.max_lat,
+                self.min_lon,
+                self.max_lon,
                 from_data=self.from_data,
             ).bathymetry
             bathymetry_field.data = -bathymetry_field.data
@@ -115,36 +130,39 @@ class Instrument(abc.ABC):
 
     def _get_copernicus_ds(
         self,
+        time_buffer: float | None,
         physical: bool,
         var: str,
     ) -> xr.Dataset:
         """Get Copernicus Marine dataset for direct ingestion."""
         product_id = _select_product_id(
             physical=physical,
-            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
-            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
+            schedule_start=self.min_time,
+            schedule_end=self.max_time,
             variable=var if not physical else None,
         )
 
-        latlon_buffer = self._get_spec_value("buffer", "latlon", 0.0)
-        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+        latlon_buffer = self._get_spec_value(
+            "buffer", "latlon", 0.25
+        )  # [degrees]; default 0.25 deg buffer to ensure coverage in field cell edge cases
         depth_min = self._get_spec_value("limit", "depth_min", None)
         depth_max = self._get_spec_value("limit", "depth_max", None)
+        spatial_constraint = self._get_spec_value("limit", "spatial", True)
+
+        min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
+        max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
+        min_lat_bound = self.min_lat - latlon_buffer if spatial_constraint else None
+        max_lat_bound = self.max_lat + latlon_buffer if spatial_constraint else None
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            minimum_longitude=self.expedition.schedule.space_time_region.spatial_range.minimum_longitude
-            - latlon_buffer,
-            maximum_longitude=self.expedition.schedule.space_time_region.spatial_range.maximum_longitude
-            + latlon_buffer,
-            minimum_latitude=self.expedition.schedule.space_time_region.spatial_range.minimum_latitude
-            - latlon_buffer,
-            maximum_latitude=self.expedition.schedule.space_time_region.spatial_range.maximum_latitude
-            + latlon_buffer,
+            minimum_longitude=min_lon_bound,
+            maximum_longitude=max_lon_bound,
+            minimum_latitude=min_lat_bound,
+            maximum_latitude=max_lat_bound,
             variables=[var],
-            start_datetime=self.expedition.schedule.space_time_region.time_range.start_time,
-            end_datetime=self.expedition.schedule.space_time_region.time_range.end_time
-            + timedelta(days=time_buffer),
+            start_datetime=self.min_time,
+            end_datetime=self.max_time + timedelta(days=time_buffer),
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             coordinates_selection_method="outside",
@@ -159,6 +177,8 @@ class Instrument(abc.ABC):
         fieldsets_list = []
         keys = list(self.variables.keys())
 
+        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+
         for key in keys:
             var = self.variables[key]
             if self.from_data is not None:  # load from local data
@@ -168,17 +188,10 @@ class Instrument(abc.ABC):
                 else:
                     data_dir = self.from_data.joinpath("bgc")
 
-                schedule_start = (
-                    self.expedition.schedule.space_time_region.time_range.start_time
-                )
-                schedule_end = (
-                    self.expedition.schedule.space_time_region.time_range.end_time
-                )
-
                 files = _find_files_in_timerange(
                     data_dir,
-                    schedule_start,
-                    schedule_end,
+                    self.min_time,
+                    self.max_time + timedelta(days=time_buffer),
                 )
 
                 _, full_var_name = _find_nc_file_with_variable(
@@ -197,7 +210,11 @@ class Instrument(abc.ABC):
                 )
             else:  # stream via Copernicus Marine Service
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
-                ds = self._get_copernicus_ds(physical=physical, var=var)
+                ds = self._get_copernicus_ds(
+                    time_buffer,
+                    physical=physical,
+                    var=var,
+                )
                 fs = FieldSet.from_xarray_dataset(
                     ds, {key: var}, self.dimensions, mesh="spherical"
                 )

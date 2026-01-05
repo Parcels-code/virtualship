@@ -41,35 +41,6 @@ def is_valid_lon(value: str) -> bool:
     return -180 < v < 360
 
 
-@require_docstring
-def is_valid_depth(value: str) -> bool:
-    """Float."""
-    try:
-        v = float(value)
-    except ValueError:
-        return None
-
-    # NOTE: depth model in space_time_region.py ONLY specifies that depth must be float (and no conditions < 0)
-    # NOTE: therefore, this condition is carried forward here to match what currently exists
-    # NOTE: however, there is a TODO in space_time_region.py to add conditions as Pydantic Field
-    # TODO: update validator here if/when depth model is updated in space_time_region.py
-    return isinstance(v, float)
-
-
-@require_docstring
-def is_valid_timestr(value: str) -> bool:
-    """Format YYYY-MM-DD hh:mm:ss."""
-    if (
-        not value.strip()
-    ):  # return as valid if blank, UI logic will auto fill on save if so
-        return True
-    try:
-        datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        return True
-    except Exception:
-        return False
-
-
 # SHIP CONFIG INPUTS VALIDATION
 
 FIELD_CONSTRAINT_ATTRS = (

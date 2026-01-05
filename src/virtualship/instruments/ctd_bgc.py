@@ -112,6 +112,10 @@ class CTD_BGCInstrument(Instrument):
             "phyc": "phyc",
             "nppv": "nppv",
         }
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
+
         super().__init__(
             expedition,
             variables,
@@ -119,7 +123,7 @@ class CTD_BGCInstrument(Instrument):
             allow_time_extrapolation=True,
             verbose_progress=False,
             spacetime_buffer_size=None,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 

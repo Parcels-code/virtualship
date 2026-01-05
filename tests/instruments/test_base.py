@@ -32,8 +32,14 @@ def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_Fie
     mock_fieldset.gridset.grids = [MagicMock(negate_depth=MagicMock())]
     mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
     mock_copernicusmarine.open_dataset.return_value = MagicMock()
+    # Create a mock waypoint with latitude and longitude
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+    mock_schedule = MagicMock()
+    mock_schedule.waypoints = [mock_waypoint]
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -47,8 +53,13 @@ def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_Fie
 
 
 def test_execute_calls_simulate(monkeypatch):
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+    mock_schedule = MagicMock()
+    mock_schedule.waypoints = [mock_waypoint]
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -61,8 +72,13 @@ def test_execute_calls_simulate(monkeypatch):
 
 
 def test_get_spec_value_buffer_and_limit():
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+    mock_schedule = MagicMock()
+    mock_schedule.waypoints = [mock_waypoint]
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -77,8 +93,13 @@ def test_get_spec_value_buffer_and_limit():
 
 
 def test_generate_fieldset_combines_fields(monkeypatch):
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+    mock_schedule = MagicMock()
+    mock_schedule.waypoints = [mock_waypoint]
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a", "B": "b"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
@@ -87,7 +108,9 @@ def test_generate_fieldset_combines_fields(monkeypatch):
     )
     dummy.from_data = None
 
-    monkeypatch.setattr(dummy, "_get_copernicus_ds", lambda physical, var: MagicMock())
+    monkeypatch.setattr(
+        dummy, "_get_copernicus_ds", lambda *args, **kwargs: MagicMock()
+    )
 
     fs_A = MagicMock()
     fs_B = MagicMock()
@@ -102,8 +125,13 @@ def test_generate_fieldset_combines_fields(monkeypatch):
 
 
 def test_load_input_data_error(monkeypatch):
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+    mock_schedule = MagicMock()
+    mock_schedule.waypoints = [mock_waypoint]
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(space_time_region=MagicMock())),
+        expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,

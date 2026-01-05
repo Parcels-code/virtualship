@@ -167,7 +167,11 @@ class ArgoFloatInstrument(Instrument):
         variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
         spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
-            "time": 21.0,  # [days]
+            "time": expedition.instruments_config.argo_float_config.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
+        }
+        limit_spec = {
+            "spatial": True,  # spatial limits; lat/lon constrained to waypoint locations + buffer
         }
 
         super().__init__(
@@ -177,7 +181,7 @@ class ArgoFloatInstrument(Instrument):
             allow_time_extrapolation=False,
             verbose_progress=True,
             spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 
@@ -185,7 +189,6 @@ class ArgoFloatInstrument(Instrument):
         """Simulate Argo float measurements."""
         DT = 10.0  # dt of Argo float simulation integrator
         OUTPUT_DT = timedelta(minutes=5)
-        ENDTIME = None
 
         if len(measurements) == 0:
             print(
@@ -235,15 +238,8 @@ class ArgoFloatInstrument(Instrument):
             chunks=[len(argo_float_particleset), 100],
         )
 
-        # get earliest between fieldset end time and provide end time
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-        if ENDTIME is None:
-            actual_endtime = fieldset_endtime
-        elif ENDTIME > fieldset_endtime:
-            print("WARN: Requested end time later than fieldset end time.")
-            actual_endtime = fieldset_endtime
-        else:
-            actual_endtime = np.timedelta64(ENDTIME)
+        # endtime
+        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
         # execute simulation
         argo_float_particleset.execute(
@@ -253,7 +249,7 @@ class ArgoFloatInstrument(Instrument):
                 _keep_at_surface,
                 _check_error,
             ],
-            endtime=actual_endtime,
+            endtime=endtime,
             dt=DT,
             output_file=out_file,
             verbose_progress=self.verbose_progress,

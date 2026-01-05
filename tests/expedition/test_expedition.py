@@ -15,11 +15,6 @@ from virtualship.models import (
     Schedule,
     Waypoint,
 )
-from virtualship.models.space_time_region import (
-    SpaceTimeRegion,
-    SpatialRange,
-    TimeRange,
-)
 from virtualship.utils import EXPEDITION, _get_expedition, get_example_expedition
 
 projection = pyproj.Geod(ellps="WGS84")
@@ -136,20 +131,7 @@ def test_verify_on_land():
         ),  # NaN cell
     ]
 
-    spatial_range = SpatialRange(
-        minimum_latitude=min(wp.location.lat for wp in waypoints),
-        maximum_latitude=max(wp.location.lat for wp in waypoints),
-        minimum_longitude=min(wp.location.lon for wp in waypoints),
-        maximum_longitude=max(wp.location.lon for wp in waypoints),
-    )
-    time_range = TimeRange(
-        start_time=min(wp.time for wp in waypoints if wp.time is not None),
-        end_time=max(wp.time for wp in waypoints if wp.time is not None),
-    )
-    space_time_region = SpaceTimeRegion(
-        spatial_range=spatial_range, time_range=time_range
-    )
-    schedule = Schedule(waypoints=waypoints, space_time_region=space_time_region)
+    schedule = Schedule(waypoints=waypoints)
     ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
 
     with patch(
@@ -168,11 +150,10 @@ def test_verify_on_land():
 
 
 @pytest.mark.parametrize(
-    "schedule,check_space_time_region,error,match",
+    "schedule,error,match",
     [
         pytest.param(
             Schedule(waypoints=[]),
-            False,
             ScheduleError,
             "At least one waypoint must be provided.",
             id="NoWaypoints",
@@ -186,7 +167,6 @@ def test_verify_on_land():
                     ),
                 ]
             ),
-            False,
             ScheduleError,
             "First waypoint must have a specified time.",
             id="FirstWaypointHasTime",
@@ -203,7 +183,6 @@ def test_verify_on_land():
                     ),
                 ]
             ),
-            False,
             ScheduleError,
             "Waypoint\\(s\\) : each waypoint should be timed after all previous waypoints",
             id="SequentialWaypoints",
@@ -219,39 +198,19 @@ def test_verify_on_land():
                     ),
                 ]
             ),
-            False,
             ScheduleError,
             "Waypoint planning is not valid: would arrive too late at waypoint number 2...",
             id="NotEnoughTime",
         ),
-        pytest.param(
-            Schedule(
-                waypoints=[
-                    Waypoint(
-                        location=Location(0, 0), time=datetime(2022, 1, 1, 1, 0, 0)
-                    ),
-                    Waypoint(
-                        location=Location(1, 0), time=datetime(2022, 1, 2, 1, 1, 0)
-                    ),
-                ]
-            ),
-            True,
-            ScheduleError,
-            "space_time_region not found in schedule, please define it to proceed.",
-            id="NoSpaceTimeRegion",
-        ),
     ],
 )
-def test_verify_schedule_errors(
-    schedule: Schedule, check_space_time_region: bool, error, match
-) -> None:
+def test_verify_schedule_errors(schedule: Schedule, error, match) -> None:
     expedition = _get_expedition(expedition_dir)
 
     with pytest.raises(error, match=match):
         schedule.verify(
             expedition.ship_config.ship_speed_knots,
             ignore_land_test=True,
-            check_space_time_region=check_space_time_region,
         )
 
 

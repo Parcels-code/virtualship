@@ -11,10 +11,13 @@ import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import _get_bathy_data, _validate_numeric_mins_to_timedelta
+from virtualship.utils import (
+    _get_bathy_data,
+    _get_waypoint_latlons,
+    _validate_numeric_to_timedelta,
+)
 
 from .location import Location
-from .space_time_region import SpaceTimeRegion
 
 projection: pyproj.Geod = pyproj.Geod(ellps="WGS84")
 
@@ -77,7 +80,6 @@ class Schedule(pydantic.BaseModel):
     """Schedule of the virtual ship."""
 
     waypoints: list[Waypoint]
-    space_time_region: SpaceTimeRegion | None = None
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
@@ -86,7 +88,6 @@ class Schedule(pydantic.BaseModel):
         ship_speed: float,
         ignore_land_test: bool = False,
         *,
-        check_space_time_region: bool = False,
         from_data: Path | None = None,
     ) -> None:
         """
@@ -100,11 +101,6 @@ class Schedule(pydantic.BaseModel):
         5. The ship can arrive on time at each waypoint given its speed.
         """
         print("\nVerifying route... ")
-
-        if check_space_time_region and self.space_time_region is None:
-            raise ScheduleError(
-                "space_time_region not found in schedule, please define it to proceed."
-            )
 
         if len(self.waypoints) == 0:
             raise ScheduleError("At least one waypoint must be provided.")
@@ -128,9 +124,12 @@ class Schedule(pydantic.BaseModel):
         land_waypoints = []
         if not ignore_land_test:
             try:
+                wp_lats, wp_lons = _get_waypoint_latlons(self.waypoints)
                 bathymetry_field = _get_bathy_data(
-                    self.space_time_region,
-                    latlon_buffer=None,
+                    min(wp_lats),
+                    max(wp_lats),
+                    min(wp_lons),
+                    max(wp_lons),
                     from_data=from_data,
                 ).bathymetry
             except Exception as e:
@@ -150,7 +149,7 @@ class Schedule(pydantic.BaseModel):
                         land_waypoints.append((wp_i, wp))
                 except Exception as e:
                     raise ScheduleError(
-                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. There may be a problem with the waypoint location being outside of the space_time_region or with the bathymetry data itself.\n\n Original error: {e}"
+                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
                     ) from e
 
             if len(land_waypoints) > 0:
@@ -214,6 +213,11 @@ class ArgoFloatConfig(pydantic.BaseModel):
     vertical_speed_meter_per_second: float = pydantic.Field(lt=0.0)
     cycle_days: float = pydantic.Field(gt=0.0)
     drift_days: float = pydantic.Field(gt=0.0)
+    lifetime: timedelta = pydantic.Field(
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
+        gt=timedelta(),
+    )
 
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
@@ -221,13 +225,21 @@ class ArgoFloatConfig(pydantic.BaseModel):
         gt=timedelta(),
     )
 
+    @pydantic.field_serializer("lifetime")
+    def _serialize_lifetime(self, value: timedelta, _info):
+        return value.total_seconds() / 86400.0  # [days]
+
+    @pydantic.field_validator("lifetime", mode="before")
+    def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
+        return _validate_numeric_to_timedelta(value, "days")
+
     @pydantic.field_serializer("stationkeeping_time")
     def _serialize_stationkeeping_time(self, value: timedelta, _info):
         return value.total_seconds() / 60.0
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
@@ -251,7 +263,7 @@ class ADCPConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class CTDConfig(pydantic.BaseModel):
@@ -273,7 +285,7 @@ class CTDConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class CTD_BGCConfig(pydantic.BaseModel):
@@ -295,7 +307,7 @@ class CTD_BGCConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class ShipUnderwaterSTConfig(pydantic.BaseModel):
@@ -315,7 +327,7 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class DrifterConfig(pydantic.BaseModel):
@@ -323,8 +335,8 @@ class DrifterConfig(pydantic.BaseModel):
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
-        serialization_alias="lifetime_minutes",
-        validation_alias="lifetime_minutes",
+        serialization_alias="lifetime_days",
+        validation_alias="lifetime_days",
         gt=timedelta(),
     )
     stationkeeping_time: timedelta = pydantic.Field(
@@ -337,11 +349,11 @@ class DrifterConfig(pydantic.BaseModel):
 
     @pydantic.field_serializer("lifetime")
     def _serialize_lifetime(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
+        return value.total_seconds() / 86400.0  # [days]
 
     @pydantic.field_validator("lifetime", mode="before")
     def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "days")
 
     @pydantic.field_serializer("stationkeeping_time")
     def _serialize_stationkeeping_time(self, value: timedelta, _info):
@@ -349,7 +361,7 @@ class DrifterConfig(pydantic.BaseModel):
 
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_mins_to_timedelta(value)
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class XBTConfig(pydantic.BaseModel):

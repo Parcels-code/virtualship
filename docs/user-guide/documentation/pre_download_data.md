@@ -20,6 +20,10 @@ In addition, all pre-downloaded data must be split into separate files per times
 **Monthly data**: when using monthly data, ensure that your final .nc file download is for the month *after* your expedition schedule end date. This is to ensure that a Parcels FieldSet can be generated under-the-hood which fully covers the expedition period. For example, if your expedition runs from 1st May to 15th May, your final monthly data file should be in June. Daily data files only need to cover the expedition period exactly.
 ```
 
+```{note}
+**Argo and Drifter data**: if using Argo floats or Drifters in your expedition, ensure that: 1) the temporal extent of the downloaded data also accounts for the full *lifetime* of the instruments, not just the expedition period, and 2) the spatial bounds of the downloaded data also accounts for the likely drift distance of the instruments over their lifetimes. Otherwise, simulations will end prematurely (out-of-bounds errors) when the data runs out.
+```
+
 Further, VirtualShip expects pre-downloaded data to be organised in a specific directory & filename structure within the specified local data directory. The expected structure is as outlined in the subsequent sections.
 
 #### Directory structure
