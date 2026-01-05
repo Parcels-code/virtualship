@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Literal, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -423,8 +423,6 @@ def _get_bathy_data(
         )
 
     else:  # stream via Copernicus Marine Service
-        buffer = 0.1  # degrees buffer, always to 0.1 to ensure coverage in edge cases (bathy data grid resolution ~0.8 deg)
-
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id=BATHYMETRY_ID,
             variables=["deptho"],
