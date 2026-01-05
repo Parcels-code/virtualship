@@ -8,13 +8,13 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -187,7 +187,7 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
 
 
 def _validate_numeric_to_timedelta(
-    value: int | float | timedelta, unit: str
+    value: int | float | timedelta, unit: Literal["minutes", "days"]
 ) -> timedelta:
     """Convert to timedelta when reading."""
     if isinstance(value, timedelta):
@@ -196,6 +196,10 @@ def _validate_numeric_to_timedelta(
         return timedelta(minutes=float(value))
     elif unit == "days":
         return timedelta(days=float(value))
+    else:
+        raise ValueError(
+            f"Unsupported time unit: {unit}. Supported units are: 'minutes', 'days'."
+        )
 
 
 def _get_expedition(expedition_dir: Path) -> Expedition:
