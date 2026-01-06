@@ -412,7 +412,6 @@ def _get_bathy_data(
         try:
             filename, _ = _find_nc_file_with_variable(bathy_dir, var)
         except Exception as e:
-            # TODO: link to documentation on expected data structure!!
             raise RuntimeError(
                 f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
