@@ -18,7 +18,7 @@ authors:
   - name: Nick Hodgskin
     affiliation: 2
   - name: Aart C. Stuurman
-    affiliation: 2
+    affiliation: 1
   - name: Iury Simoes-Sousa
     orcid: 0000-0002-2484-510X
     affiliation: 3
@@ -33,7 +33,7 @@ affiliations:
     index: 2
   - name: Woods Hole Oceanographic Institution, Falmouth, MA, USA
     index: 3
-date: 4 December 2025
+date: 5 January 2026
 bibliography: paper.bib
 ---
 
