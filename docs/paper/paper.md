@@ -1,5 +1,5 @@
 ---
-title: "VirtualShip for simulating oceanographic fieldwork anywhere in the global ocean"
+title: "VirtualShip for simulating oceanographic fieldwork in the global ocean"
 tags:
   - Python
   - oceanography
@@ -18,7 +18,7 @@ authors:
   - name: Nick Hodgskin
     affiliation: 2
   - name: Aart C. Stuurman
-    affiliation: 1
+    affiliation: 2
   - name: Iury Simoes-Sousa
     orcid: 0000-0002-2484-510X
     affiliation: 3
@@ -39,7 +39,7 @@ bibliography: paper.bib
 
 # Summary
 
-`VirtualShip` is a Python-based package for simulating measurements as if they were coming from real-life oceanographic instruments, facilitating student training, expedition planning, and design of instrument/sampling strategies. The software exploits the customisability of the open-source `Parcels` Lagrangian simulation framework [@Lange2017; @Delandmeter2019] and builds a virtual ocean by streaming data from the [Copernicus Marine Data Store](https://marine.copernicus.eu/) on-the-fly, enabling expeditions anywhere on the globe.
+`VirtualShip` is a Python-based package for simulating measurements as if they were coming from real-life oceanographic instruments, facilitating student training, expedition planning, and design of sampling/instrument strategies. The software exploits the customisability of the open-source `Parcels` Lagrangian simulation framework [@Lange2017; @Delandmeter2019] and builds a virtual ocean by streaming data from the [Copernicus Marine Data Store](https://marine.copernicus.eu/) on-the-fly, enabling expeditions anywhere on the globe.
 
 # Statement of need
 
@@ -55,7 +55,7 @@ The software can simulate complex multidisciplinary expeditions. One example is 
 
 ![Example VirtualShip expedition simulated in July/August 2023. Expedition waypoints displayed via the MFP tool (a), Underway ADCP measurements (b), Surface drifter releases (c; 90-day lifetime per drifter), and CTD vertical profiles for temperature (d) and oxygen (e). Black triangles in b), d) and e) mark waypoint locations across the expedition route, corresponding to the purple markers in a).\label{fig:fig1}](figure1.png)
 
-The software is designed to be highly intuitive to the user. It is wrapped into three high-level command line interface commands (using [Click](https://click.palletsprojects.com/en/stable/)):
+The software is designed to be highly intuitive to the user. It is wrapped into three high-level command line interface commands using [Click](https://click.palletsprojects.com/en/stable/):
 
 1. `virtualship init`: Initialises the expedition directory structure and an `expedition.yaml` configuration file, which controls the expedition route, instrument choices and deployment timings. A common workflow is for users to import pre-determined waypoint coordinates using the `--from-mfp` flag in combination with a coordinates `.csv` or `.xlsx` file (e.g. exported from the [MFP](https://www.marinefacilitiesplanning.com/cruiselocationplanning#) tool).
 2. `virtualship plan`: Launches a user-friendly Terminal-based expedition planning User Interface (UI), built using [`Textual`](https://textual.textualize.io/). This allows users to intuitively set their waypoint timings and instrument selections, and also modify their waypoint locations.
