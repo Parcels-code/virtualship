@@ -251,6 +251,7 @@ def get_instrument_class(instrument_type):
 
 def add_dummy_UV(fieldset: FieldSet):
     """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
+    # TODO: can this go in v4?
     if "U" not in fieldset.__dict__.keys():
         for uv_var in ["U", "V"]:
             dummy_field = getattr(

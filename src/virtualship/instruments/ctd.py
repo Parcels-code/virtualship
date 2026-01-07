@@ -63,26 +63,28 @@ def _sample_salinity(particles, fieldset):
 
 # TODO: these kernels are not the same as CTD_BGC?!
 
-
-def _ctd_sinking(particles, fieldset):
-    for i in range(len(particles)):
-        if particles[i].raising == 0:
-            particles[i].dz = (
-                -particles[i].winch_speed * particles[i].dt / np.timedelta64(1, "s")
-            )
-            if particles[i].z + particles[i].dz < particles[i].max_depth:
-                particles[i].raising = 1
-                particles[i].dz = -particles[i].dz
+# TODO: aim for singular _ctd_cast kernel...!
 
 
-def _ctd_rising(particles, fieldset):
-    for i in range(len(particles)):
-        if particles[i].raising == 1:
-            particles[i].dz = (
-                particles[i].winch_speed * particles[i].dt / np.timedelta64(1, "s")
-            )
-            if particles[i].z + particles[i].dz > particles[i].min_depth:
-                particles[i].state = StatusCode.Delete
+def _ctd_cast(particles, fieldset):
+    particles_lowering = particles[particles.raising == 0]
+    particles_raising = particles[particles.raising == 1]
+
+    # lowering
+    particles_lowering.dz = -particles_lowering.winch_speed * particles_lowering.dt
+    particles_lowering.raising = np.where(
+        particles_lowering.z + particles_lowering.dz < particles_lowering.max_depth,
+        1,
+        particles_lowering.raising,
+    )
+
+    # raising
+    particles_raising.dz = particles_raising.winch_speed * particles_raising.dt
+    particles_raising.state = np.where(
+        particles_raising.z + particles_raising.dz > particles_raising.min_depth,
+        StatusCode.Delete,
+        particles_raising.state,
+    )
 
 
 # =====================================================
@@ -176,7 +178,7 @@ class CTDInstrument(Instrument):
 
         # execute simulation
         ctd_particleset.execute(
-            [_sample_salinity, _sample_temperature, _ctd_sinking, _ctd_rising],
+            [_sample_salinity, _sample_temperature, _ctd_cast],
             endtime=fieldset.time_interval.right,
             dt=np.timedelta64(DT, "s"),
             verbose_progress=self.verbose_progress,

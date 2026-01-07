@@ -61,66 +61,65 @@ _ArgoParticle = Particle.add_variable(
 # =====================================================
 
 
-def ArgoPhase1(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+def ArgoVerticalMovement(particles, fieldset):
+    # Split particles based on their current cycle_phase
+    ptcls0 = particles[particles.cycle_phase == 0]
+    ptcls1 = particles[particles.cycle_phase == 1]
+    ptcls2 = particles[particles.cycle_phase == 2]
+    ptcls3 = particles[particles.cycle_phase == 3]
+    ptcls4 = particles[particles.cycle_phase == 4]
 
-    def SinkingPhase(p):
-        """Phase 0: Sinking with p.vertical_speed until depth is driftdepth."""
-        p.dz += p.verticle_speed * dt
-        p.cycle_phase = np.where(p.z + p.dz >= p.drift_depth, 1, p.cycle_phase)
-        p.dz = np.where(p.z + p.dz >= p.drift_depth, p.drift_depth - p.z, p.dz)
+    # Phase 0: Sinking with vertical_speed until depth is driftdepth
+    ptcls0.dz += ptcls0.vertical_speed * ptcls0.dt
+    ptcls0.cycle_phase = np.where(
+        ptcls0.z + ptcls0.dz >= ptcls0.drift_depth, 1, ptcls0.cycle_phase
+    )
+    ptcls0.dz = np.where(
+        ptcls0.z + ptcls0.dz >= ptcls0.drift_depth,
+        ptcls0.drift_depth - ptcls0.z,
+        ptcls0.dz,
+    )
 
-    SinkingPhase(particles[particles.cycle_phase == 0])
+    # Phase 1: Drifting at depth for drifttime seconds
+    ptcls1.drift_age += ptcls1.dt
+    ptcls1.cycle_phase = np.where(
+        ptcls1.drift_age >= ptcls1.drift_days, 2, ptcls1.cycle_phase
+    )
+    ptcls1.drift_age = np.where(
+        ptcls1.drift_age >= ptcls1.drift_days, 0, ptcls1.drift_age
+    )
 
+    # Phase 2: Sinking further to maxdepth
+    ptcls2.dz += ptcls2.vertical_speed * ptcls2.dt
+    ptcls2.cycle_phase = np.where(
+        ptcls2.z + ptcls2.dz >= ptcls2.max_depth, 3, ptcls2.cycle_phase
+    )
+    ptcls2.dz = np.where(
+        ptcls2.z + ptcls2.dz >= ptcls2.max_depth, ptcls2.max_depth - ptcls2.z, ptcls2.dz
+    )
 
-def ArgoPhase2(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
+    # Phase 3: Rising with vertical_speed until at surface
+    ptcls3.dz -= ptcls3.vertical_speed * ptcls3.dt
+    ptcls3.temp = fieldset.thetao[ptcls3.time, ptcls3.z, ptcls3.lat, ptcls3.lon]
+    ptcls3.cycle_phase = np.where(
+        ptcls3.z + ptcls3.dz <= fieldset.mindepth, 4, ptcls3.cycle_phase
+    )
+    ptcls3.dz = np.where(
+        ptcls3.z + ptcls3.dz <= fieldset.mindepth,
+        fieldset.mindepth - ptcls3.z,
+        ptcls3.dz,
+    )
 
-    def DriftingPhase(p):
-        """Phase 1: Drifting at depth for drift_time seconds."""
-        p.drift_age += dt
-        p.cycle_phase = np.where(p.drift_age >= p.drift_time, 2, p.cycle_phase)
-        p.drift_age = np.where(p.drift_age >= p.drift_time, 0, p.drift_age)
+    # Phase 4: Transmitting at surface until cycletime is reached
+    ptcls4.cycle_phase = np.where(
+        ptcls4.cycle_age >= ptcls4.cycle_days, 0, ptcls4.cycle_phase
+    )
+    ptcls4.cycle_age = np.where(
+        ptcls4.cycle_age >= ptcls4.cycle_days, 0, ptcls4.cycle_age
+    )
+    ptcls4.temp = np.nan  # no temperature measurement when at surface
 
-    DriftingPhase(particles[particles.cycle_phase == 1])
-
-
-def ArgoPhase3(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-
-    def SecondSinkingPhase(p):
-        """Phase 2: Sinking further to max_depth."""
-        p.dz += p.vertical_speed * dt
-        p.cycle_phase = np.where(p.z + p.dz >= p.max_depth, 3, p.cycle_phase)
-        p.dz = np.where(p.z + p.dz >= p.max_depth, p.max_depth - p.z, p.dz)
-
-    SecondSinkingPhase(particles[particles.cycle_phase == 2])
-
-
-def ArgoPhase4(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-
-    def RisingPhase(p):
-        """Phase 3: Rising with p.vertical_speed until at surface."""
-        p.dz -= p.vertical_speed * dt
-        p.temp = fieldset.temp[p.time, p.z, p.lat, p.lon]
-        p.cycle_phase = np.where(p.z + p.dz <= fieldset.mindepth, 4, p.cycle_phase)
-
-    RisingPhase(particles[particles.cycle_phase == 3])
-
-
-def ArgoPhase5(particles, fieldset):
-    def TransmittingPhase(p):
-        """Phase 4: Transmitting at surface until cycletime (cycle_days * 86400 [seconds]) is reached."""
-        p.cycle_phase = np.where(p.cycle_age >= p.cycle_days * 86400, 0, p.cycle_phase)
-        p.cycle_age = np.where(p.cycle_age >= p.cycle_days * 86400, 0, p.cycle_age)
-
-    TransmittingPhase(particles[particles.cycle_phase == 4])
-
-
-def ArgoPhase6(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-    particles.cycle_age += dt  # update cycle_age
+    particles.cycle_age += particles.dt  # update cycle_age
 
 
 def _keep_at_surface(particles, fieldset):
@@ -233,12 +232,7 @@ class ArgoFloatInstrument(Instrument):
         # execute simulation
         argo_float_particleset.execute(
             [
-                ArgoPhase1,
-                ArgoPhase2,
-                ArgoPhase3,
-                ArgoPhase4,
-                ArgoPhase5,
-                ArgoPhase6,
+                ArgoVerticalMovement,
                 AdvectionRK4,
                 _keep_at_surface,
                 _check_error,

@@ -93,24 +93,25 @@ def _sample_primary_production(particles, fieldset):
     ]
 
 
-# TODO: these kernels are not the same as CTD_BGC?!
+def _ctd_bgc_cast(particles, fieldset):
+    particles_lowering = particles[particles.raising == 0]
+    particles_raising = particles[particles.raising == 1]
 
+    # lowering
+    particles_lowering.dz = -particles_lowering.winch_speed * particles_lowering.dt
+    particles_lowering.raising = np.where(
+        particles_lowering.z + particles_lowering.dz < particles_lowering.max_depth,
+        1,
+        particles_lowering.raising,
+    )
 
-def _ctd_bgc_sinking(particles, fieldset):
-    def ctd_lowering(p):
-        p.dz = -particles.winch_speed * p.dt / np.timedelta64(1, "s")
-        p.raising = np.where(p.z + p.dz < p.max_depth, 1, p.raising)
-        p.dz = np.where(p.z + p.dz < p.max_depth, -p.dz, p.dz)
-
-    ctd_lowering(particles[particles.raising == 0])
-
-
-def _ctd_bgc_rising(particles, fieldset):
-    def ctd_rising(p):
-        p.dz = p.winch_speed * p.dt / np.timedelta64(1, "s")
-        p.state = np.where(p.z + p.dz > p.min_depth, StatusCode.Delete, p.state)
-
-    ctd_rising(particles[particles.raising == 1])
+    # raising
+    particles_raising.dz = particles_raising.winch_speed * particles_raising.dt
+    particles_raising.state = np.where(
+        particles_raising.z + particles_raising.dz > particles_raising.min_depth,
+        StatusCode.Delete,
+        particles_raising.state,
+    )
 
 
 # =====================================================
@@ -219,8 +220,7 @@ class CTD_BGCInstrument(Instrument):
                 _sample_ph,
                 _sample_phytoplankton,
                 _sample_primary_production,
-                _ctd_bgc_sinking,
-                _ctd_bgc_rising,
+                _ctd_bgc_cast,
             ],
             endtime=fieldset.time_interval.right,
             dt=np.timedelta64(DT, "s"),

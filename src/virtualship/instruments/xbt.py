@@ -54,13 +54,12 @@ def _sample_temperature(particles, fieldset):
 
 
 def _xbt_cast(particles, fieldset):
-    dt = particles.dt / np.timedelta64(1, "s")  # convert dt to seconds
-    particles.dz = -particles.fall_speed * dt
+    particles.dz = -particles.fall_speed * particles.dt
 
     # update the fall speed from the quadractic fall-rate equation
     # check https://doi.org/10.5194/os-7-231-2011
     particles.fall_speed = (
-        particles.fall_speed - 2 * particles.deceleration_coefficient * dt
+        particles.fall_speed - 2 * particles.deceleration_coefficient * particles.dt
     )
 
     # delete particle if depth is exactly max_depth

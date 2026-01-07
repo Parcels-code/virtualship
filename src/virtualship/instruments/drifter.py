@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
+from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -43,15 +43,21 @@ _DrifterParticle = JITParticle.add_variables(
 # =====================================================
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _check_lifetime(particle, fieldset, time):
-    if particle.has_lifetime == 1:
-        particle.age += particle.dt
-        if particle.age >= particle.lifetime:
-            particle.delete()
+def _check_lifetime(particles, fieldset):
+    particles_wlifetime = particles[particles.has_lifetime == 1]
+
+    particles_wlifetime.age += particles_wlifetime.dt
+    particles_wlifetime.state = np.where(
+        particles_wlifetime.age >= particles_wlifetime.lifetime,
+        StatusCode.Delete,
+        particles_wlifetime.state,
+    )
 
 
 # =====================================================
