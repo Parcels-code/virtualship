@@ -4,10 +4,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.adcp import ADCPInstrument
-from virtualship.models import Location, Spacetime
+from virtualship.instruments.types import InstrumentType
+from virtualship.models import Location, Spacetime, Waypoint
 
 
 def test_simulate_adcp(tmpdir) -> None:
@@ -77,15 +78,24 @@ def test_simulate_adcp(tmpdir) -> None:
         },
     )
 
-    # dummy expedition and directory for ADCPInstrument
+    # dummy expedition for ADCPInstrument
     class DummyExpedition:
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                    instrument=InstrumentType.ADCP,
+                ),
+            ]
+
         class instruments_config:
             class adcp_config:
                 max_depth_meter = MAX_DEPTH
                 num_bins = NUM_BINS
 
     expedition = DummyExpedition()
-
     from_data = None
 
     adcp_instrument = ADCPInstrument(expedition, from_data)

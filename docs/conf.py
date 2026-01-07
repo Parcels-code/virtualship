@@ -14,7 +14,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    # "sphinx_autodoc_typehints",# https://github.com/OceanParcels/virtualship/pull/125#issuecomment-2668766302
+    # "sphinx_autodoc_typehints",# https://github.com/Parcels-code/virtualship/pull/125#issuecomment-2668766302
     "sphinx_copybutton",
 ]
 
@@ -36,7 +36,7 @@ html_theme_options = {
         "image_dark": "virtual_ship_logo_inverted.png",
     },
     "use_edit_page_button": True,
-    "github_url": "https://github.com/OceanParcels/virtualship",
+    "github_url": "https://github.com/Parcels-code/virtualship",
     "icon_links": [
         {
             "name": "Conda Forge",
@@ -47,7 +47,7 @@ html_theme_options = {
     ],
 }
 html_context = {
-    "github_user": "OceanParcels",
+    "github_user": "Parcels-code",
     "github_repo": "virtualship",
     "github_version": "main",
     "doc_path": "docs",
@@ -75,9 +75,11 @@ nbsphinx_thumbnails = {
     "user-guide/assignments/Research_Proposal_only": "user-guide/_images/MFP.jpg",
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/sciencecommunication_assignment": "user-guide/_images/marine_ss.jpg",
-    # "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
+    "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
+    "user-guide/teacher-content/UU-ocean-of-future/Tutorial1": "user-guide/_images/freepik_assignment.png",
+    "user-guide/teacher-content/UU-ocean-of-future/Tutorial2": "user-guide/_images/freepik_assignment.png",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}

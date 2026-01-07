@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
@@ -144,9 +144,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
         InstrumentsConfig,
         Location,
         Schedule,
-        SpaceTimeRegion,
-        SpatialRange,
-        TimeRange,
         Waypoint,
     )
 
@@ -154,30 +151,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     coordinates_data = load_coordinates(coordinates_file_path)
 
     coordinates_data = validate_coordinates(coordinates_data)
-
-    # maximum depth (in meters), buffer (in degrees) for each instrument
-    instrument_max_depths = {
-        "XBT": 2000,
-        "CTD": 5000,
-        "CTD_BGC": 5000,
-        "DRIFTER": 1,
-        "ARGO_FLOAT": 2000,
-    }
-
-    spatial_range = SpatialRange(
-        minimum_longitude=coordinates_data["Longitude"].min(),
-        maximum_longitude=coordinates_data["Longitude"].max(),
-        minimum_latitude=coordinates_data["Latitude"].min(),
-        maximum_latitude=coordinates_data["Latitude"].max(),
-        minimum_depth=0,
-        maximum_depth=max(instrument_max_depths.values()),
-    )
-
-    # Create space-time region object
-    space_time_region = SpaceTimeRegion(
-        spatial_range=spatial_range,
-        time_range=TimeRange(),
-    )
 
     # Generate waypoints
     waypoints = []
@@ -192,7 +165,6 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     # Create Schedule object
     schedule = Schedule(
         waypoints=waypoints,
-        space_time_region=space_time_region,
     )
 
     # extract instruments config from static
@@ -214,11 +186,20 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     expedition.to_yaml(yaml_output_path)
 
 
-def _validate_numeric_mins_to_timedelta(value: int | float | timedelta) -> timedelta:
-    """Convert minutes to timedelta when reading."""
+def _validate_numeric_to_timedelta(
+    value: int | float | timedelta, unit: Literal["minutes", "days"]
+) -> timedelta:
+    """Convert to timedelta when reading."""
     if isinstance(value, timedelta):
         return value
-    return timedelta(minutes=value)
+    if unit == "minutes":
+        return timedelta(minutes=float(value))
+    elif unit == "days":
+        return timedelta(days=float(value))
+    else:
+        raise ValueError(
+            f"Unsupported time unit: {unit}. Supported units are: 'minutes', 'days'."
+        )
 
 
 def _get_expedition(expedition_dir: Path) -> Expedition:
@@ -293,9 +274,6 @@ def add_dummy_UV(fieldset: FieldSet):
 
 # Copernicus Marine product IDs
 
-# TODO: tests to make sure these names are still in use in the Copernicus Marine catalogue!
-# TODO: and tests that var names (incl. for bathymetry) are still as expected!
-
 PRODUCT_IDS = {
     "phys": {
         "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
@@ -328,11 +306,11 @@ MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
     "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
 }
 
-BATHYMETRY_PRODUCT_ID = "cmems_mod_glo_phy_my_0.083deg_static"
-
 # variables used in VirtualShip which are physical or biogeochemical variables, respectively
 COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
 COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
+
+BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
 
 def _select_product_id(
@@ -421,7 +399,11 @@ def _start_end_in_product_timerange(
 
 
 def _get_bathy_data(
-    space_time_region, latlon_buffer: float | None = None, from_data: Path | None = None
+    min_lat: float,
+    max_lat: float,
+    min_lon: float,
+    max_lon: float,
+    from_data: Path | None = None,
 ) -> FieldSet:
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
     if from_data is not None:  # load from local data
@@ -443,23 +425,16 @@ def _get_bathy_data(
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
-            dataset_id=BATHYMETRY_PRODUCT_ID,
+            dataset_id=BATHYMETRY_ID,
+            variables=["deptho"],
+            coordinates_selection_method="outside",
         )
+        bathymetry_variables = {"bathymetry": "deptho"}
+        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
 
-        ds_bathymetry["depth"] = -ds_bathymetry["depth"]
-        ds_bathymetry = ds_bathymetry.reindex(depth=ds_bathymetry.depth[::-1])
-        ds_bathymetry = ds_bathymetry.rename({"deptho": "bathymetry"})
-
-        ### HACK UNTIL THERE'S SUPPORT IN PARCELS V4 FOR 2D SPATIAL FIELDS ###
-        # TODO: remove hack when parcels v4 supports 2d spatial fields (as per TODO in fieldset.py)
-        ds_bathymetry = ds_bathymetry.expand_dims({"time": 1})
-        ds_bathymetry["time"] = np.array(
-            ["2000-01-01T00:00:00"], dtype="datetime64[ns]"
-        )
-        ds_bathymetry.time.attrs["axis"] = "T"
-        ### HACK UNTIL THERE'S SUPPORT IN PARCELS V4 FOR 2D SPATIAL FIELDS ###
-
-    return FieldSet.from_copernicusmarine(ds_bathymetry)
+    return FieldSet.from_xarray_dataset(
+        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    )
 
 
 def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:
@@ -470,6 +445,7 @@ def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float
     :param time_past: Time the expedition took.
     :returns: The calculated cost of the expedition in US$.
     """
+    # TODO: refactor to instrument sub-classes attributes...?
     SHIP_COST_PER_DAY = 30000
     DRIFTER_DEPLOY_COST = 2500
     ARGO_DEPLOY_COST = 15000
@@ -562,3 +538,18 @@ def _find_files_in_timerange(
         )
 
     return [fname for _, fname in files_with_dates]
+
+
+def _random_noise(scale: float = 0.01, limit: float = 0.03) -> float:
+    """Generate a small random noise value for drifter seeding locations."""
+    value = np.random.normal(loc=0.0, scale=scale)
+    return np.clip(value, -limit, limit)  # ensure noise is within limits
+
+
+def _get_waypoint_latlons(waypoints):
+    """Extract latitudes and longitudes from waypoints."""
+    wp_lats, wp_lons = zip(
+        *[(wp.location.latitude, wp.location.longitude) for wp in waypoints],
+        strict=True,
+    )
+    return wp_lats, wp_lons

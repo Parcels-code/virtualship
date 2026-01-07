@@ -1,15 +1,4 @@
 schedule:
-  space_time_region:
-    spatial_range:
-      minimum_longitude: -5
-      maximum_longitude: 5
-      minimum_latitude: -5
-      maximum_latitude: 5
-      minimum_depth: 0
-      maximum_depth: 2000
-    time_range:
-      start_time: 1998-01-01 00:00:00
-      end_time: 1998-02-01 00:00:00
   waypoints:
     - instrument:
         - CTD
@@ -53,23 +42,25 @@ instruments_config:
     max_depth_meter: -2000.0
     min_depth_meter: 0.0
     vertical_speed_meter_per_second: -0.1
+    stationkeeping_time_minutes: 20.0
+    lifetime_days: 63.0
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
-    stationkeeping_time_minutes: 20.0
+    stationkeeping_time_minutes: 50.0
   ctd_bgc_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
-    stationkeeping_time_minutes: 20.0
+    stationkeeping_time_minutes: 50.0
   drifter_config:
     depth_meter: -1.0
-    lifetime_minutes: 60480.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
   xbt_config:
     max_depth_meter: -285.0
     min_depth_meter: -2.0
     fall_speed_meter_per_second: 6.7
     deceleration_coefficient: 0.00225
-  ship_underwater_st_config:
-    period_minutes: 5.0
+  ship_underwater_st_config: null
 ship_config:
   ship_speed_knots: 10.0

@@ -58,6 +58,13 @@ class Underwater_STInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
         variables = {"S": "so", "T": "thetao"}
+        spacetime_buffer_size = {
+            "latlon": 0.25,  # [degrees]
+            "time": 0.0,  # [days]
+        }
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -65,8 +72,8 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=None,
-            limit_spec=None,
+            spacetime_buffer_size=spacetime_buffer_size,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 

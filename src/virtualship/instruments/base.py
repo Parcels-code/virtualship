@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import abc
 from collections import OrderedDict
+from datetime import timedelta
+from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,24 +12,19 @@ import xarray as xr
 from yaspin import yaspin
 
 from parcels import FieldSet
-from parcels.interpolators import XLinearInvdistLandTracer
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
-    BATHYMETRY_PRODUCT_ID,
     COPERNICUSMARINE_PHYS_VARIABLES,
     _find_files_in_timerange,
     _find_nc_file_with_variable,
+    _get_bathy_data,
+    _get_waypoint_latlons,
     _select_product_id,
     ship_spinner,
 )
 
 if TYPE_CHECKING:
     from virtualship.models import Expedition
-
-
-### TODO:
-
-# TODO: not done anything for --from-data version!!!
 
 
 class Instrument(abc.ABC):
@@ -49,7 +46,7 @@ class Instrument(abc.ABC):
         self.from_data = from_data
 
         self.variables = OrderedDict(variables)
-        self.dimensions = {  # TODO, not needed in v4?!
+        self.dimensions = {
             "lon": "longitude",
             "lat": "latitude",
             "time": "time",
@@ -61,15 +58,47 @@ class Instrument(abc.ABC):
         self.spacetime_buffer_size = spacetime_buffer_size
         self.limit_spec = limit_spec
 
+        wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
+        wp_times = [
+            wp.time for wp in expedition.schedule.waypoints if wp.time is not None
+        ]
+        assert all(earlier <= later for earlier, later in pairwise(wp_times)), (
+            "Waypoint times are not in ascending order"
+        )
+        self.wp_times = wp_times
+
+        self.min_time, self.max_time = wp_times[0], wp_times[-1]
+        self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
+        self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
+
     def load_input_data(self) -> FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
-        # TODO: this could be one method...?
         try:
-            fieldset = self._generate_fieldset(add_bathymetry=self.add_bathymetry)
+            fieldset = self._generate_fieldset()
         except Exception as e:
             raise CopernicusCatalogueError(
                 f"Failed to load input data directly from Copernicus Marine (or local data) for instrument '{self.__class__.__name__}'. Original error: {e}"
             ) from e
+
+        # interpolation methods
+        for var in (v for v in self.variables if v not in ("U", "V")):
+            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+
+        # depth negative
+        for g in fieldset.gridset.grids:
+            g.negate_depth()
+
+        # bathymetry data
+        if self.add_bathymetry:
+            bathymetry_field = _get_bathy_data(
+                self.min_lat,
+                self.max_lat,
+                self.min_lon,
+                self.max_lon,
+                from_data=self.from_data,
+            ).bathymetry
+            bathymetry_field.data = -bathymetry_field.data
+            fieldset.add_field(bathymetry_field)
 
         return fieldset
 
@@ -84,66 +113,85 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        instrument_name = self.__class__.__name__.split("Instrument")[0]
         if not self.verbose_progress:
             with yaspin(
-                text=f"Simulating {instrument_name} measurements... ",
+                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
                 side="right",
                 spinner=ship_spinner,
             ) as spinner:
                 self.simulate(measurements, out_path)
                 spinner.ok("✅\n")
         else:
-            print(f"Simulating {instrument_name} measurements... ")
+            print(
+                f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
+            )
             self.simulate(measurements, out_path)
             print("\n")
 
     def _get_copernicus_ds(
         self,
+        time_buffer: float | None,
         physical: bool,
         var: str,
     ) -> xr.Dataset:
         """Get Copernicus Marine dataset for direct ingestion."""
         product_id = _select_product_id(
             physical=physical,
-            schedule_start=self.expedition.schedule.space_time_region.time_range.start_time,
-            schedule_end=self.expedition.schedule.space_time_region.time_range.end_time,
+            schedule_start=self.min_time,
+            schedule_end=self.max_time,
             variable=var if not physical else None,
         )
 
-        return copernicusmarine.open_dataset(dataset_id=product_id)
+        latlon_buffer = self._get_spec_value(
+            "buffer", "latlon", 0.25
+        )  # [degrees]; default 0.25 deg buffer to ensure coverage in field cell edge cases
+        depth_min = self._get_spec_value("limit", "depth_min", None)
+        depth_max = self._get_spec_value("limit", "depth_max", None)
+        spatial_constraint = self._get_spec_value("limit", "spatial", True)
 
-    def _generate_fieldset(self, add_bathymetry=False) -> FieldSet:
+        min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
+        max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
+        min_lat_bound = self.min_lat - latlon_buffer if spatial_constraint else None
+        max_lat_bound = self.max_lat + latlon_buffer if spatial_constraint else None
+
+        return copernicusmarine.open_dataset(
+            dataset_id=product_id,
+            minimum_longitude=min_lon_bound,
+            maximum_longitude=max_lon_bound,
+            minimum_latitude=min_lat_bound,
+            maximum_latitude=max_lat_bound,
+            variables=[var],
+            start_datetime=self.min_time,
+            end_datetime=self.max_time + timedelta(days=time_buffer),
+            minimum_depth=depth_min,
+            maximum_depth=depth_max,
+            coordinates_selection_method="outside",
+        )
+
+    def _generate_fieldset(self) -> FieldSet:
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
         Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
         """
         fieldsets_list = []
+        keys = list(self.variables.keys())
 
-        for key, var in self.variables.items():
+        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+
+        for key in keys:
+            var = self.variables[key]
             if self.from_data is not None:  # load from local data
-                # TODO: very out of date! Not done anything for --from-data version!!!
-
-                # TODO: if keeping --from-data, think of cleverer way of space_time_region...can remove and automate instead away from the public API?
-
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
                 if physical:
                     data_dir = self.from_data.joinpath("phys")
                 else:
                     data_dir = self.from_data.joinpath("bgc")
 
-                schedule_start = (
-                    self.expedition.schedule.space_time_region.time_range.start_time
-                )
-                schedule_end = (
-                    self.expedition.schedule.space_time_region.time_range.end_time
-                )
-
                 files = _find_files_in_timerange(
                     data_dir,
-                    schedule_start,
-                    schedule_end,
+                    self.min_time,
+                    self.max_time + timedelta(days=time_buffer),
                 )
 
                 _, full_var_name = _find_nc_file_with_variable(
@@ -162,40 +210,18 @@ class Instrument(abc.ABC):
                 )
             else:  # stream via Copernicus Marine Service
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
-                ds = self._get_copernicus_ds(physical=physical, var=var)[[var]]
-                ds = ds.rename({var: key})
-
-                # negate depth
-                ds["depth"] = -ds["depth"]
-                ds = ds.reindex(depth=ds.depth[::-1])
-                ds.time.attrs["axis"] = "T"
-
-                # add bathymetry if needed (only once)
-                # easier to merge here as ds than later as FieldSet with no time dimension (Parcels wants 'T' axis)
-                if add_bathymetry and key == list(self.variables.keys())[0]:  # noqa: RUF015
-                    ds_bathymetry = copernicusmarine.open_dataset(
-                        BATHYMETRY_PRODUCT_ID,
-                    )
-                    ds_bathymetry = ds_bathymetry.rename({"deptho": "bathymetry"})[
-                        ["bathymetry"]
-                    ]
-                    ds_bathymetry["bathymetry"] = -ds_bathymetry["bathymetry"]
-                    ds = xr.merge([ds, ds_bathymetry], join="inner")
-
-                # to fieldset
-                fs = FieldSet.from_copernicusmarine(ds)
-
-                # add interpolation method
-                if var not in ("uo", "vo"):
-                    getattr(fs, key).interp_method = XLinearInvdistLandTracer
-
+                ds = self._get_copernicus_ds(
+                    time_buffer,
+                    physical=physical,
+                    var=var,
+                )
+                fs = FieldSet.from_xarray_dataset(
+                    ds, {key: var}, self.dimensions, mesh="spherical"
+                )
             fieldsets_list.append(fs)
 
-        # build fieldset, from base fieldset (this way of combining avoids issues which can arise when combining from different Copernicus product IDs, especially BGC variables)
         base_fieldset = fieldsets_list[0]
-        for fs, key in zip(
-            fieldsets_list[1:], list(self.variables.keys())[1:], strict=False
-        ):
+        for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
             base_fieldset.add_field(getattr(fs, key))
 
         return base_fieldset

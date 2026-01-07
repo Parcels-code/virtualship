@@ -4,10 +4,11 @@ import datetime
 
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.models import Location, Spacetime
+from virtualship.models.expedition import Waypoint
 
 
 def test_simulate_drifters(tmpdir) -> None:
@@ -15,6 +16,8 @@ def test_simulate_drifters(tmpdir) -> None:
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
+
+    LIFETIME = datetime.timedelta(days=1)
 
     v = np.full((2, 2, 2), 1.0)
     u = np.full((2, 2, 2), 1.0)
@@ -36,7 +39,7 @@ def test_simulate_drifters(tmpdir) -> None:
     drifters = [
         Drifter(
             spacetime=Spacetime(
-                location=Location(latitude=0, longitude=0),
+                location=Location(latitude=0.05, longitude=0.05),
                 time=base_time + datetime.timedelta(days=0),
             ),
             depth=0.0,
@@ -52,12 +55,22 @@ def test_simulate_drifters(tmpdir) -> None:
         ),
     ]
 
-    # dummy expedition and directory for DrifterInstrument
+    # dummy expedition for DrifterInstrument
     class DummyExpedition:
-        pass
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=base_time,
+                ),
+            ]
+
+        class instruments_config:
+            class drifter_config:
+                lifetime = LIFETIME
 
     expedition = DummyExpedition()
-
     from_data = None
 
     drifter_instrument = DrifterInstrument(expedition, from_data)
