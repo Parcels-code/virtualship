@@ -4,7 +4,8 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
+from parcels import Particle, ParticleSet, StatusCode, Variable
+from parcels.kernels import AdvectionRK4
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -29,7 +30,7 @@ class Drifter:
 # SECTION: Particle Class
 # =====================================================
 
-_DrifterParticle = JITParticle.add_variables(
+_DrifterParticle = Particle.add_variable(
     [
         Variable("temperature", dtype=np.float32, initial=np.nan),
         Variable("has_lifetime", dtype=np.int8),  # bool
