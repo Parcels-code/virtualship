@@ -400,20 +400,17 @@ def _start_end_in_product_timerange(
 
 
 def _get_bathy_data(
-    min_lat: float,
-    max_lat: float,
-    min_lon: float,
-    max_lon: float,
     from_data: Path | None = None,
 ) -> FieldSet:
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
+    # TODO: from_data methods need to be updated for v4?
+
     if from_data is not None:  # load from local data
         var = "deptho"
         bathy_dir = from_data.joinpath("bathymetry")
         try:
             filename, _ = _find_nc_file_with_variable(bathy_dir, var)
         except Exception as e:
-            # TODO: link to documentation on expected data structure!!
             raise RuntimeError(
                 f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e

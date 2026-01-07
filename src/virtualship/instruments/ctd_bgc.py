@@ -4,12 +4,12 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import Particle, ParticleFile, ParticleSet, Variable
+from parcels import Particle, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -152,7 +152,7 @@ class CTD_BGCInstrument(Instrument):
     def simulate(self, measurements, out_path) -> None:
         """Simulate BGC CTD measurements using Parcels."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
-        DT = 10  # dt of CTD_BGC simulation integrator
+        DT = 10.0  # dt of CTD_BGC simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD_BGC simulation
 
         if len(measurements) == 0:
@@ -164,10 +164,20 @@ class CTD_BGCInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+
+        fieldset_starttime = fieldset.o2.grid.time_origin.fulltime(
+            fieldset.o2.grid.time_full[0]
+        )
+        fieldset_endtime = fieldset.o2.grid.time_origin.fulltime(
+            fieldset.o2.grid.time_full[-1]
+        )
+
         # deploy time for all ctds should be later than fieldset start time
         if not all(
             [
-                np.datetime64(ctd_bgc.spacetime.time) >= fieldset.time_interval.left
+                np.datetime64(ctd_bgc.spacetime.time) >= fieldset_starttime
                 for ctd_bgc in measurements
             ]
         ):
@@ -178,10 +188,10 @@ class CTD_BGCInstrument(Instrument):
             max(
                 ctd_bgc.max_depth,
                 fieldset.bathymetry.eval(
-                    z=np.array([0], dtype=np.float32),
-                    y=np.array([ctd_bgc.spacetime.location.lat], dtype=np.float32),
-                    x=np.array([ctd_bgc.spacetime.location.lon], dtype=np.float32),
-                    time=fieldset.time_interval.left,
+                    z=0,
+                    y=ctd_bgc.spacetime.location.lat,
+                    x=ctd_bgc.spacetime.location.lon,
+                    time=0,
                 ),
             )
             for ctd_bgc in measurements
@@ -200,15 +210,15 @@ class CTD_BGCInstrument(Instrument):
             pclass=_CTD_BGCParticle,
             lon=[ctd_bgc.spacetime.location.lon for ctd_bgc in measurements],
             lat=[ctd_bgc.spacetime.location.lat for ctd_bgc in measurements],
-            z=[ctd_bgc.min_depth for ctd_bgc in measurements],
-            time=[np.datetime64(ctd_bgc.spacetime.time) for ctd_bgc in measurements],
+            depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
+            time=[ctd_bgc.spacetime.time for ctd_bgc in measurements],
             max_depth=max_depths,
             min_depth=[ctd_bgc.min_depth for ctd_bgc in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation
-        out_file = ParticleFile(store=out_path, outputdt=OUTPUT_DT)
+        out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_bgc_particleset.execute(
@@ -222,8 +232,8 @@ class CTD_BGCInstrument(Instrument):
                 _sample_primary_production,
                 _ctd_bgc_cast,
             ],
-            endtime=fieldset.time_interval.right,
-            dt=np.timedelta64(DT, "s"),
+            endtime=fieldset_endtime,
+            dt=DT,
             verbose_progress=self.verbose_progress,
             output_file=out_file,
         )

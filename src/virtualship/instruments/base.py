@@ -91,10 +91,6 @@ class Instrument(abc.ABC):
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(
-                self.min_lat,
-                self.max_lat,
-                self.min_lon,
-                self.max_lon,
                 from_data=self.from_data,
             ).bathymetry
             bathymetry_field.data = -bathymetry_field.data

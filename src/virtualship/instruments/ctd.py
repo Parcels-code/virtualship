@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-from parcels import Particle, ParticleFile, ParticleSet, Variable
+from parcels import Particle, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -117,7 +117,7 @@ class CTDInstrument(Instrument):
     def simulate(self, measurements, out_path) -> None:
         """Simulate CTD measurements."""
         WINCH_SPEED = 1.0  # sink and rise speed in m/s
-        DT = 10  # dt of CTD simulation integrator
+        DT = 10.0  # dt of CTD simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD simulation
 
         if len(measurements) == 0:
@@ -129,25 +129,34 @@ class CTDInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+
+        fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[0]
+        )
+        fieldset_endtime = fieldset.T.grid.time_origin.fulltime(
+            fieldset.T.grid.time_full[-1]
+        )
+
         # deploy time for all ctds should be later than fieldset start time
         if not all(
             [
-                np.datetime64(ctd.spacetime.time) >= fieldset.time_interval.left
+                np.datetime64(ctd.spacetime.time) >= fieldset_starttime
                 for ctd in measurements
             ]
         ):
             raise ValueError("CTD deployed before fieldset starts.")
 
         # depth the ctd will go to. shallowest between ctd max depth and bathymetry.
-        # TODO: update with the SampleBathy kernel as before in edito-hackathon branch?
         max_depths = [
             max(
                 ctd.max_depth,
                 fieldset.bathymetry.eval(
-                    z=np.array([0], dtype=np.float32),
-                    y=np.array([ctd.spacetime.location.lat], dtype=np.float32),
-                    x=np.array([ctd.spacetime.location.lon], dtype=np.float32),
-                    time=fieldset.time_interval.left,
+                    z=0,
+                    y=ctd.spacetime.location.lat,
+                    x=ctd.spacetime.location.lon,
+                    time=0,
                 ),
             )
             for ctd in measurements
@@ -166,27 +175,27 @@ class CTDInstrument(Instrument):
             pclass=_CTDParticle,
             lon=[ctd.spacetime.location.lon for ctd in measurements],
             lat=[ctd.spacetime.location.lat for ctd in measurements],
-            z=[ctd.min_depth for ctd in measurements],
-            time=[np.datetime64(ctd.spacetime.time) for ctd in measurements],
+            depth=[ctd.min_depth for ctd in measurements],
+            time=[ctd.spacetime.time for ctd in measurements],
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation
-        out_file = ParticleFile(store=out_path, outputdt=OUTPUT_DT)
+        out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # execute simulation
         ctd_particleset.execute(
             [_sample_salinity, _sample_temperature, _ctd_cast],
-            endtime=fieldset.time_interval.right,
-            dt=np.timedelta64(DT, "s"),
+            endtime=fieldset_endtime,
+            dt=DT,
             verbose_progress=self.verbose_progress,
             output_file=out_file,
         )
 
         # there should be no particles left, as they delete themselves when they resurface
-        if len(ctd_particleset) != 0:
+        if len(ctd_particleset.particledata) != 0:
             raise ValueError(
                 "Simulation ended before CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
             )

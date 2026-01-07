@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     _find_nc_file_with_variable,
@@ -145,9 +145,7 @@ def test_get_bathy_data_local(tmp_path):
     ds.to_netcdf(nc_path)
 
     # should return a FieldSet
-    fieldset = _get_bathy_data(
-        min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75, from_data=tmp_path
-    )
+    fieldset = _get_bathy_data(from_data=tmp_path)
     assert isinstance(fieldset, FieldSet)
     assert hasattr(fieldset, "bathymetry")
     assert np.allclose(fieldset.bathymetry.data, data)
@@ -164,7 +162,7 @@ def test_get_bathy_data_copernicusmarine(monkeypatch):
     )
 
     try:
-        _get_bathy_data(min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75)
+        _get_bathy_data()
     except RuntimeError as e:
         assert "copernicusmarine called" in str(e)
 
