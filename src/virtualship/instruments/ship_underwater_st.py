@@ -6,7 +6,7 @@ import numpy as np
 from parcels import Particle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -85,8 +85,8 @@ class Underwater_STInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+        # # add dummy U
+        # add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
         particleset = ParticleSet.from_list(
             fieldset=fieldset,

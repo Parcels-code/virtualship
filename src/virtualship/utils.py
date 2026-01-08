@@ -427,12 +427,15 @@ def _get_bathy_data(
             variables=["deptho"],
             coordinates_selection_method="outside",
         )
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
+        ds_bathymetry = ds_bathymetry.rename({"deptho": "bathymetry"})
 
-    return FieldSet.from_xarray_dataset(
-        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
-    )
+        # TODO: hack whilst from_copernicusmarine doesn't support 2D fields; add Z and T axes for CF-compliance
+        ds_bathymetry = ds_bathymetry.expand_dims(
+            {"t": [np.datetime64("1970-01-01")], "z": [0]}
+        )  # add dummy time and depth dimensions
+        ds_bathymetry["z"].attrs["axis"], ds_bathymetry["t"].attrs["axis"] = "Z", "T"
+
+        return FieldSet.from_copernicusmarine(ds_bathymetry)
 
 
 def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:

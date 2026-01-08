@@ -84,6 +84,8 @@ class Instrument(abc.ABC):
         for var in (v for v in self.variables if v not in ("U", "V")):
             getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
 
+        breakpoint()
+
         # depth negative
         for g in fieldset.gridset.grids:
             g.negate_depth()
@@ -109,20 +111,25 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+        TMP = False
+
+        if TMP:
+            if not self.verbose_progress:
+                with yaspin(
+                    text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+            else:
+                print(
+                    f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
+                )
                 self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
+                print("\n")
         else:
-            print(
-                f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
-            )
             self.simulate(measurements, out_path)
-            print("\n")
 
     def _get_copernicus_ds(
         self,
@@ -168,7 +175,7 @@ class Instrument(abc.ABC):
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
-        Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
+        N.B. Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs (which can also have different temporal resolutions), which is often the case for BGC variables.
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -211,12 +218,27 @@ class Instrument(abc.ABC):
                     physical=physical,
                     var=var,
                 )
-                fs = FieldSet.from_xarray_dataset(
-                    ds, {key: var}, self.dimensions, mesh="spherical"
-                )
+
+                # TODO: hack whilst from_copernicusmarine doesn't support no U and V; add dummy U and V to all datasets, to force compliance
+
+                if "uo" not in ds.variables:
+                    ds = ds.assign(
+                        uo=(("time", "depth", "lat", "lon"), 0 * ds[var].data)
+                    )
+                    ds.uo.attrs["standard_name"] = "eastward_sea_water_velocity"
+                if "vo" not in ds.variables:
+                    ds = ds.assign(
+                        vo=(("time", "depth", "lat", "lon"), 0 * ds[var].data)
+                    )
+                    ds.vo.attrs["standard_name"] = "northward_sea_water_velocity"
+
+                fs = FieldSet.from_copernicusmarine(ds)
+
             fieldsets_list.append(fs)
 
-        base_fieldset = fieldsets_list[0]
+        base_fieldset = FieldSet(
+            [getattr(fieldsets_list[0], keys[0])]
+        )  # TODO: added hack here to isolate only singular variable; in response to hacking required above to add dummy U and V fields to datasets ^^
         for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
             base_fieldset.add_field(getattr(fs, key))
 
