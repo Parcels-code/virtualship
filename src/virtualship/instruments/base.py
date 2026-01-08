@@ -12,6 +12,7 @@ import xarray as xr
 from yaspin import yaspin
 
 from parcels import FieldSet
+from parcels.interpolators import XLinearInvdistLandTracer
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -82,12 +83,14 @@ class Instrument(abc.ABC):
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
-            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+            getattr(fieldset, var).interp_method = XLinearInvdistLandTracer
 
-        # TODO: depth to negative is removed until Parcels natively supports positive upwards depth convention in from_copernicusmarine (see #2063 in Parcels repo)
-        # # depth negative
-        # for g in fieldset.gridset.grids:
-        #     g.negate_depth()
+        # TODO: this is hacky until Parcels natively supports positive upwards depth convention in from_copernicusmarine (see #2063 in Parcels repo)
+        # depth negative
+        for _, field in fieldset.fields.items():
+            if "depth" in field.data.coords:
+                field.data["depth"] = -field.data["depth"]
+                field.data["depth"].attrs["positive"] = "up"
 
         # bathymetry data
         if self.add_bathymetry:
