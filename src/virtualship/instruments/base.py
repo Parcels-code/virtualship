@@ -84,11 +84,10 @@ class Instrument(abc.ABC):
         for var in (v for v in self.variables if v not in ("U", "V")):
             getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
 
-        breakpoint()
-
-        # depth negative
-        for g in fieldset.gridset.grids:
-            g.negate_depth()
+        # TODO: depth to negative is removed until Parcels natively supports positive upwards depth convention in from_copernicusmarine (see #2063 in Parcels repo)
+        # # depth negative
+        # for g in fieldset.gridset.grids:
+        #     g.negate_depth()
 
         # bathymetry data
         if self.add_bathymetry:
@@ -220,7 +219,6 @@ class Instrument(abc.ABC):
                 )
 
                 # TODO: hack whilst from_copernicusmarine doesn't support no U and V; add dummy U and V to all datasets, to force compliance
-
                 if "uo" not in ds.variables:
                     ds = ds.assign(
                         uo=(("time", "depth", "lat", "lon"), 0 * ds[var].data)

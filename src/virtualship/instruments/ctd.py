@@ -11,7 +11,7 @@ from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -129,8 +129,8 @@ class CTDInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # # add dummy U
-        # add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
+        # add dummy U
+        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
         fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
             fieldset.T.grid.time_full[0]
