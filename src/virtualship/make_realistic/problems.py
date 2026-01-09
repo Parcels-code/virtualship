@@ -1,25 +1,42 @@
 """This can be where we house both general and instrument-specific problems."""  # noqa: D404
 
+from __future__ import annotations
+
+import abc
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from virtualship.instruments.ctd import CTD
 from virtualship.instruments.adcp import ADCP
-from virtualship.instruments.drifter import Drifter
 from virtualship.instruments.argo_float import ArgoFloat
-from virtualship.models import Waypoint
+from virtualship.instruments.ctd import CTD
+from virtualship.instruments.drifter import Drifter
+from virtualship.instruments.types import InstrumentType
+from virtualship.utils import register_general_problem, register_instrument_problem
 
-@dataclass
-class ProblemConfig:
-    message: str
-    can_reoccur: bool
-    base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
-    delay_duration: float  # in hours
+if TYPE_CHECKING:
+    from virtualship.models import Waypoint
+
+# @dataclass
+# class ProblemConfig:
+#     message: str
+#     can_reoccur: bool
+#     base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
+#     delay_duration: float  # in hours
 
 
-def general_proba_function(config: ProblemConfig, waypoint: Waypoint) -> bool:
+def general_problem_select() -> bool:
     """Determine if a general problem should occur at a given waypoint."""
     # some random calculation based on the base_probability
     return True
+
+
+def instrument_problem_select(probability: float, waypoint: Waypoint) -> bool:
+    """Determine if an instrument-specific problem should occur at a given waypoint."""
+    # set: waypoint instruments vs. list of instrument-specific problems (automated registry)
+    # will deterimne which instrument-specific problems are possible at this waypoint
+
+    wp_instruments = waypoint.instruments
+
 
 # Pseudo-code for problem probability functions
 # def instrument_specific_proba(
@@ -56,54 +73,90 @@ def general_proba_function(config: ProblemConfig, waypoint: Waypoint) -> bool:
 #     ),
 # ]
 
-class GeneralProblem:
-    """Base class for general problems.
-    
-    Problems occur at each waypoint."""
+
+##### BASE CLASSES FOR PROBLEMS #####
+
+
+@dataclass
+class GeneralProblem(abc.ABC):
+    """
+    Base class for general problems.
+
+    Problems occur at each waypoint.
+    """
 
     message: str
     can_reoccur: bool
-    base_probability: float # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
-    delay_duration: float  # in hours    
+    base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
+    delay_duration: float  # in hours
+    pre_departure: bool  # True if problem occurs before expedition departure, False if during expedition
+
+    @abc.abstractmethod
+    def is_valid() -> bool:
+        """Check if the problem can occur based on e.g. waypoint location and/or datetime etc."""
+        ...
 
 
-
-class InstrumentProblem:
+@dataclass
+class InstrumentProblem(abc.ABC):
     """Base class for instrument-specific problems."""
 
     instrument_dataclass: type
     message: str
     can_reoccur: bool
-    base_probability: float # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
+    base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
     delay_duration: float  # in hours
+    pre_departure: bool  # True if problem can occur before expedition departure, False if during expedition
+
+    @abc.abstractmethod
+    def is_valid() -> bool:
+        """Check if the problem can occur based on e.g. waypoint location and/or datetime etc."""
+        ...
 
 
+##### Specific Problems #####
 
 
-# General problems
+### General problems
 
-@dataclass
-class VenomousCentipedeOnboard:
+
+@register_general_problem
+class VenomousCentipedeOnboard(GeneralProblem):
+    """Problem: Venomous centipede discovered onboard in tropical waters."""
+
+    # TODO: this needs logic added to the is_valid() method to check if waypoint is in tropical waters
+
     message: str = (
         "A venomous centipede is discovered onboard while operating in tropical waters. "
         "One crew member becomes ill after contact with the creature and receives medical attention, "
         "prompting a full search of the vessel to ensure no further danger. "
         "The medical response and search efforts cause an operational delay of about 2 hours."
     )
-    can_reoccur: bool = False
-    delay_duration: float = 2.0
-    base_probability: float = 0.05
+    can_reoccur = False
+    delay_duration = 2.0
+    base_probability = 0.05
+    pre_departure = False
 
-@dataclass
-class CaptainSafetyDrill:
+    def is_valid(self, waypoint: Waypoint) -> bool:
+        """Check if the waypoint is in tropical waters."""
+        lat_limit = 23.5  # [degrees]
+        return abs(waypoint.latitude) <= lat_limit
+
+
+@register_general_problem
+class CaptainSafetyDrill(GeneralProblem):
+    """Problem: Sudden initiation of a mandatory safety drill."""
+
     message: str = (
         "A miscommunication with the ship’s captain results in the sudden initiation of a mandatory safety drill. "
         "The emergency vessel must be lowered and tested while the ship remains stationary, pausing all scientific "
         "operations for the duration of the exercise. The drill introduces a delay of approximately 2 hours."
     )
-    can_reoccur: bool = False
-    delay_duration: float = 2.
-    base_probability: float = 0.1
+    can_reoccur: False
+    delay_duration: 2.0
+    base_probability = 0.1
+    pre_departure = False
+
 
 # @dataclass
 # class FoodDeliveryDelayed:
@@ -137,8 +190,11 @@ class CaptainSafetyDrill:
 #     delay_duration: None = None  # speed reduction affects ETA instead of fixed delay
 #     ship_speed_knots: float = 8.5
 
-@dataclass
-class MarineMammalInDeploymentArea:
+
+@register_general_problem
+class MarineMammalInDeploymentArea(GeneralProblem):
+    """Problem: Marine mammals observed in deployment area, causing delay."""
+
     message: str = (
         "A pod of dolphins is observed swimming directly beneath the planned deployment area. "
         "To avoid risk to wildlife and comply with environmental protocols, all in-water operations "
@@ -148,8 +204,11 @@ class MarineMammalInDeploymentArea:
     delay_duration: float = 0.5
     base_probability: float = 0.1
 
-@dataclass
-class BallastPumpFailure:
+
+@register_general_problem
+class BallastPumpFailure(GeneralProblem):
+    """Problem: Ballast pump failure during ballasting operations."""
+
     message: str = (
         "One of the ship’s ballast pumps suddenly stops responding during routine ballasting operations. "
         "Without the pump, the vessel cannot safely adjust trim or compensate for equipment movements on deck. "
@@ -160,8 +219,11 @@ class BallastPumpFailure:
     delay_duration: float = 1.0
     base_probability: float = 0.1
 
-@dataclass
-class ThrusterConverterFault:
+
+@register_general_problem
+class ThrusterConverterFault(GeneralProblem):
+    """Problem: Bow thruster's power converter fault during station-keeping."""
+
     message: str = (
         "The bow thruster's power converter reports a fault during station-keeping operations. "
         "Dynamic positioning becomes less stable, forcing a temporary suspension of high-precision sampling. "
@@ -171,8 +233,11 @@ class ThrusterConverterFault:
     delay_duration: float = 1.0
     base_probability: float = 0.1
 
-@dataclass
-class AFrameHydraulicLeak:
+
+@register_general_problem
+class AFrameHydraulicLeak(GeneralProblem):
+    """Problem: Hydraulic fluid leak from A-frame actuator."""
+
     message: str = (
         "A crew member notices hydraulic fluid leaking from the A-frame actuator during equipment checks. "
         "The leak must be isolated immediately to prevent environmental contamination or mechanical failure. "
@@ -182,8 +247,11 @@ class AFrameHydraulicLeak:
     delay_duration: float = 2.0
     base_probability: float = 0.1
 
-@dataclass
-class CoolingWaterIntakeBlocked:
+
+@register_general_problem
+class CoolingWaterIntakeBlocked(GeneralProblem):
+    """Problem: Main engine's cooling water intake blocked."""
+
     message: str = (
         "The main engine's cooling water intake alarms indicate reduced flow, likely caused by marine debris "
         "or biological fouling. The vessel must temporarily slow down while engineering clears the obstruction "
@@ -193,10 +261,14 @@ class CoolingWaterIntakeBlocked:
     delay_duration: float = 1.0
     base_probability: float = 0.1
 
-# Instrument-specific problems
 
-@dataclass
-class CTDCableJammed:
+### Instrument-specific problems
+
+
+@register_instrument_problem(InstrumentType.CTD)
+class CTDCableJammed(InstrumentProblem):
+    """Problem: CTD cable jammed in winch drum, requiring replacement."""
+
     message: str = (
         "During preparation for the next CTD cast, the CTD cable becomes jammed in the winch drum. "
         "Attempts to free it are unsuccessful, and the crew determines that the entire cable must be "
@@ -208,8 +280,11 @@ class CTDCableJammed:
     base_probability: float = 0.1
     instrument_dataclass = CTD
 
-@dataclass
-class CTDTemperatureSensorFailure:
+
+@register_instrument_problem(InstrumentType.CTD)
+class CTDTemperatureSensorFailure(InstrumentProblem):
+    """Problem: CTD temperature sensor failure, requiring replacement."""
+
     message: str = (
         "The primary temperature sensor on the CTD begins returning inconsistent readings. "
         "Troubleshooting confirms that the sensor has malfunctioned. A spare unit can be installed, "
@@ -221,8 +296,11 @@ class CTDTemperatureSensorFailure:
     base_probability: float = 0.1
     instrument_dataclass = CTD
 
-@dataclass
-class CTDSalinitySensorFailureWithCalibration:
+
+@register_instrument_problem(InstrumentType.CTD)
+class CTDSalinitySensorFailureWithCalibration(InstrumentProblem):
+    """Problem: CTD salinity sensor failure, requiring replacement and calibration."""
+
     message: str = (
         "The CTD’s primary salinity sensor fails and must be replaced with a backup. After installation, "
         "a mandatory calibration cast to a minimum depth of 1000 meters is required to verify sensor accuracy. "
@@ -233,8 +311,11 @@ class CTDSalinitySensorFailureWithCalibration:
     base_probability: float = 0.1
     instrument_dataclass = CTD
 
-@dataclass
-class WinchHydraulicPressureDrop:
+
+@register_instrument_problem(InstrumentType.CTD)
+class WinchHydraulicPressureDrop(InstrumentProblem):
+    """Problem: CTD winch hydraulic pressure drop, requiring repair."""
+
     message: str = (
         "The CTD winch begins to lose hydraulic pressure during routine checks prior to deployment. "
         "The engineering crew must stop operations to diagnose the hydraulic pump and replenish or repair "
@@ -246,8 +327,11 @@ class WinchHydraulicPressureDrop:
     base_probability: float = 0.1
     instrument_dataclass = CTD
 
-@dataclass
-class RosetteTriggerFailure:
+
+@register_instrument_problem(InstrumentType.CTD)
+class RosetteTriggerFailure(InstrumentProblem):
+    """Problem: CTD rosette trigger failure, requiring inspection."""
+
     message: str = (
         "During a CTD cast, the rosette's bottle-triggering mechanism fails to actuate. "
         "No discrete water samples can be collected during this cast. The rosette must be brought back "
@@ -259,8 +343,11 @@ class RosetteTriggerFailure:
     base_probability: float = 0.1
     instrument_dataclass = CTD
 
-@dataclass
-class ADCPMalfunction:
+
+@register_instrument_problem(InstrumentType.ADCP)
+class ADCPMalfunction(InstrumentProblem):
+    """Problem: ADCP returns invalid data, requiring inspection."""
+
     message: str = (
         "The hull-mounted ADCP begins returning invalid velocity data. Engineering suspects damage to the cable "
         "from recent maintenance activities. The ship must hold position while a technician enters the cable "
@@ -272,8 +359,11 @@ class ADCPMalfunction:
     base_probability: float = 0.1
     instrument_dataclass = ADCP
 
-@dataclass
-class DrifterSatelliteConnectionDelay:
+
+@register_instrument_problem(InstrumentType.DRIFTER)
+class DrifterSatelliteConnectionDelay(InstrumentProblem):
+    """Problem: Drifter fails to establish satellite connection before deployment."""
+
     message: str = (
         "The drifter scheduled for deployment fails to establish a satellite connection during "
         "pre-launch checks. To improve signal acquisition, the float must be moved to a higher location on deck "
@@ -285,8 +375,11 @@ class DrifterSatelliteConnectionDelay:
     base_probability: float = 0.1
     instrument_dataclass = Drifter
 
-@dataclass
-class ArgoSatelliteConnectionDelay:
+
+@register_instrument_problem(InstrumentType.ARGO_FLOAT)
+class ArgoSatelliteConnectionDelay(InstrumentProblem):
+    """Problem: Argo float fails to establish satellite connection before deployment."""
+
     message: str = (
         "The Argo float scheduled for deployment fails to establish a satellite connection during "
         "pre-launch checks. To improve signal acquisition, the float must be moved to a higher location on deck "

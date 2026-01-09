@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Literal, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -270,6 +270,27 @@ def add_dummy_UV(fieldset: FieldSet):
                 raise ValueError(
                     "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
                 ) from None
+
+
+# problems inventory registry and registration utilities
+INSTRUMENT_PROBLEM_MAP = []
+GENERAL_PROBLEM_REG = []
+
+
+def register_instrument_problem(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_PROBLEM_MAP[instrument_type] = cls
+        return cls
+
+    return decorator
+
+
+def register_general_problem():
+    def decorator(cls):
+        GENERAL_PROBLEM_REG.append(cls)
+        return cls
+
+    return decorator
 
 
 # Copernicus Marine product IDs
