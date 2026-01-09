@@ -132,7 +132,11 @@ class _ScheduleSimulator:
 
     def simulate(self) -> ScheduleOk | ScheduleProblem:
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
-            # probability_of_problem = self._calc_prob(waypoint, wp_instruments)  # noqa: F821
+            # TODO:
+            # TODO: insert method/class here which ingests waypoint model, and handles the logic for determing which problem is occuring at this waypoint/point of this loop
+            # TODO: this method/class should definitely be housed AWAY from this simulate_schedule.py, and with the rest of the problems logic/classes
+
+            probability_of_problem = self._calc_prob(waypoint, wp_instruments)  # noqa: F821 F841
 
             # if probability_of_problem > 1.0:
             #     return self._return_specific_problem()
