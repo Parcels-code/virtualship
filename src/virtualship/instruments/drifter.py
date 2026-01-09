@@ -8,7 +8,7 @@ from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import _random_noise, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -67,10 +67,12 @@ class DrifterInstrument(Instrument):
         """Initialize DrifterInstrument."""
         variables = {"U": "uo", "V": "vo", "T": "thetao"}
         spacetime_buffer_size = {
-            "latlon": 6.0,  # [degrees]
-            "time": 21.0,  # [days]
+            "latlon": None,
+            "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
         }
         limit_spec = {
+            "spatial": False,  # no spatial limits; generate global fieldset
             "depth_min": 1.0,  # [meters]
             "depth_max": 1.0,  # [meters]
         }
@@ -90,7 +92,6 @@ class DrifterInstrument(Instrument):
         """Simulate Drifter measurements."""
         OUTPUT_DT = timedelta(hours=5)
         DT = timedelta(minutes=5)
-        ENDTIME = None
 
         if len(measurements) == 0:
             print(
@@ -102,11 +103,18 @@ class DrifterInstrument(Instrument):
         fieldset = self.load_input_data()
 
         # define parcel particles
+        lat_release = [
+            drifter.spacetime.location.lat + _random_noise() for drifter in measurements
+        ]  # with small random noise to get different trajectories for multiple drifters released at same waypoint
+        lon_release = [
+            drifter.spacetime.location.lon + _random_noise() for drifter in measurements
+        ]
+
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=[drifter.spacetime.location.lat for drifter in measurements],
-            lon=[drifter.spacetime.location.lon for drifter in measurements],
+            lat=lat_release,
+            lon=lon_release,
             depth=[drifter.depth for drifter in measurements],
             time=[drifter.spacetime.time for drifter in measurements],
             has_lifetime=[
@@ -125,29 +133,14 @@ class DrifterInstrument(Instrument):
             chunks=[len(drifter_particleset), 100],
         )
 
-        # get earliest between fieldset end time and prescribed end time
-        fieldset_endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
-        if ENDTIME is None:
-            actual_endtime = fieldset_endtime
-        elif ENDTIME > fieldset_endtime:
-            print("WARN: Requested end time later than fieldset end time.")
-            actual_endtime = fieldset_endtime
-        else:
-            actual_endtime = np.timedelta64(ENDTIME)
+        # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
+        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
         # execute simulation
         drifter_particleset.execute(
             [AdvectionRK4, _sample_temperature, _check_lifetime],
-            endtime=actual_endtime,
+            endtime=endtime,
             dt=DT,
             output_file=out_file,
             verbose_progress=self.verbose_progress,
         )
-
-        # if there are more particles left than the number of drifters with an indefinite endtime, warn the user
-        if len(drifter_particleset.particledata) > len(
-            [d for d in measurements if d.lifetime is None]
-        ):
-            print(
-                "WARN: Some drifters had a life time beyond the end time of the fieldset or the requested end time."
-            )

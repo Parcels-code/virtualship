@@ -82,6 +82,9 @@ class CTDInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
         variables = {"S": "so", "T": "thetao"}
+        limit_spec = {
+            "spatial": True
+        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -90,7 +93,7 @@ class CTDInstrument(Instrument):
             allow_time_extrapolation=True,
             verbose_progress=False,
             spacetime_buffer_size=None,
-            limit_spec=None,
+            limit_spec=limit_spec,
             from_data=from_data,
         )
 
