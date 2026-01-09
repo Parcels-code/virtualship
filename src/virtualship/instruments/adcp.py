@@ -3,7 +3,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import Particle, ParticleSet, Variable
+from parcels import Particle, ParticleFile, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
@@ -98,19 +98,28 @@ class ADCPInstrument(Instrument):
         fieldset = self.load_input_data()
 
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
+
+        breakpoint()
+
+        # TODO: nextloop doesn't exist in v4? Yes... so needs re-evaluation how to implement here...!
+        # TODO: probably in the particeset definition, but need to think how given memory constraints of seeding in 4D all at once...tricky...
+
+        ##### OLD
+        ####
+        ###
+        ##
+        #
         num_particles = len(bins)
-        particleset = ParticleSet.from_list(
+
+        particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ADCPParticle,
-            lon=np.full(
-                num_particles, 0.0
-            ),  # initial lat/lon are irrelevant and will be overruled later.s
+            lon=np.full(num_particles, 0.0),
             lat=np.full(num_particles, 0.0),
-            depth=bins,
-            time=0,
-        )
+            z=bins,
+        )  # initial lat/lon are irrelevant and will be overruled later
 
-        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = ParticleFile(store=out_path, outputdt=np.inf)
 
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
