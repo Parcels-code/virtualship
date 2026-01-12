@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from typing import ClassVar
 
 import pyproj
-from yaspin import yaspin
 
 from virtualship.instruments.argo_float import ArgoFloat
 from virtualship.instruments.ctd import CTD
@@ -15,7 +14,6 @@ from virtualship.instruments.ctd_bgc import CTD_BGC
 from virtualship.instruments.drifter import Drifter
 from virtualship.instruments.types import InstrumentType
 from virtualship.instruments.xbt import XBT
-from virtualship.make_realistic.problems import general_problem_select
 from virtualship.models import (
     Expedition,
     Location,
@@ -116,88 +114,8 @@ class _ScheduleSimulator:
         self._next_adcp_time = self._time
         self._next_ship_underwater_st_time = self._time
 
-    #! TODO:
-    # TODO: ...
-    #! TODO: could all these methods be wrapped up more nicely into a ProblemsSimulator class or similar, imported from problems.py...?
-    #! TODO: not sure how it would intereact with the pre and post departure logic though and per waypoint logic...
-
-    def _calc_general_prob(self, expedition: Expedition, prob_level: int) -> float:
-        """
-        Calcuates probability of a general problem as function of expedition duration and prob-level.
-
-        TODO: and more factors? If not then could combine with _calc_instrument_prob?
-        """
-        if prob_level == 0:
-            return 0.0
-
-    def _calc_instrument_prob(self, expedition: Expedition, prob_level: int) -> float:
-        """
-        Calcuates probability of instrument-specific problems as function of expedition duration and prob-level.
-
-        TODO: and more factors? If not then could combine with _calc_general_prob?
-        """
-        if prob_level == 0:
-            return 0.0
-
-    def _general_problem_occurrence(self, probability: float, delay: float = 7):
-        problems_to_execute = general_problem_select(probability=probability)
-        if len(problems_to_execute) > 0:
-            for i, problem in enumerate(problems_to_execute):
-                if problem.pre_departure:
-                    print(
-                        "\nHang on! There could be a pre-departure problem in-port...\n\n"
-                        if i == 0
-                        else "\nOh no, another pre-departure problem has occurred...!\n\n"
-                    )
-
-                    with yaspin():
-                        time.sleep(delay)
-
-                    problem.execute()
-                else:
-                    print(
-                        "\nOh no! A problem has occurred during the expedition...\n\n"
-                        if i == 0
-                        else "\nOh no, another problem has occurred...!\n\n"
-                    )
-
-                    with yaspin():
-                        time.sleep(delay)
-
-                    return problem.delay_duration
-
     def simulate(self) -> ScheduleOk | ScheduleProblem:
-        # TODO: still need to incorp can_reoccur logic somewhere
-
-        # expedition problem probabilities (one probability per expedition, not waypoint)
-        general_proba = self._calc_general_prob(self._expedition)
-        instrument_proba = self._calc_instrument_prob(self._expedition)
-
-        #! PRE-EXPEDITION PROBLEMS (general problems only)
-        if general_proba > 0.0:
-            # TODO: need to rethink this logic a bit; i.e. needs to feed through that only pre-departure problems are possible here!!!!!
-            delay_duration = self._general_problem_occurrence(general_proba, delay=7)
-
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
-            ##### PROBLEM LOGIC GOES HERE #####
-            ##### PROBLEM LOGIC GOES HERE #####
-            ##### PROBLEM LOGIC GOES HERE #####
-
-            if general_proba > 0.0:
-                delay_duration = self._general_problem_occurrence(
-                    general_proba, delay=7
-                )
-
-            if instrument_proba > 0.0:
-                ...
-
-            # TODO:
-            # TODO: insert method/class here which ingests waypoint model, and handles the logic for determing which problem is occuring at this waypoint/point of this loop
-            # TODO: this method/class should definitely be housed AWAY from this simulate_schedule.py, and with the rest of the problems logic/classes
-
-            #! TODO: do we want the messaging to appear whilst the spinners are running though?! Is it clunky to have it pre all the analysis is actually performed...?
-            # TODO: think of a way to artificially add the instruments as not occuring until part way through simulations...and during the specific instrument's simulation step if it's an instrument-specific problem
-
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 

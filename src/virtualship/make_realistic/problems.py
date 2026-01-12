@@ -3,75 +3,135 @@
 from __future__ import annotations
 
 import abc
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from virtualship.instruments.adcp import ADCP
-from virtualship.instruments.argo_float import ArgoFloat
-from virtualship.instruments.ctd import CTD
-from virtualship.instruments.drifter import Drifter
+from yaspin import yaspin
+
+from virtualship.cli._run import _save_checkpoint
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import register_general_problem, register_instrument_problem
+from virtualship.models.checkpoint import Checkpoint
+from virtualship.utils import (
+    CHECKPOINT,
+    register_general_problem,
+    register_instrument_problem,
+)
 
 if TYPE_CHECKING:
-    from virtualship.models import Waypoint
-
-# @dataclass
-# class ProblemConfig:
-#     message: str
-#     can_reoccur: bool
-#     base_probability: float  # Probability is a function of time - the longer the expedition the more likely something is to go wrong (not a function of waypoints)
-#     delay_duration: float  # in hours
+    from virtualship.models import Schedule, Waypoint
 
 
-def general_problem_select() -> bool:
-    """Determine if a general problem should occur at a given waypoint."""
-    # some random calculation based on the base_probability
-    return True
+LOG_MESSAGING = {
+    "first_pre_departure": "\nHang on! There could be a pre-departure problem in-port...\n\n",
+    "subsequent_pre_departure": "\nOh no, another pre-departure problem has occurred...!\n\n",
+    "first_during_expedition": "\nOh no, a problem has occurred during the expedition...!\n\n",
+    "subsequent_during_expedition": "\nAnother problem has occurred during the expedition...!\n\n",
+}
 
 
-def instrument_problem_select(probability: float, waypoint: Waypoint) -> bool:
-    """Determine if an instrument-specific problem should occur at a given waypoint."""
-    # set: waypoint instruments vs. list of instrument-specific problems (automated registry)
-    # will deterimne which instrument-specific problems are possible at this waypoint
+class ProblemSimulator:
+    """Handle problem simulation during expedition."""
 
-    wp_instruments = waypoint.instruments
+    # TODO: incorporate some kind of knowledge of at which waypoint the problems occur to provide this feedback to the user and also to save in the checkpoint yaml!
 
+    def __init__(self, schedule: Schedule, prob_level: int, expedition_dir: str | Path):
+        """Initialise ProblemSimulator with a schedule and probability level."""
+        self.schedule = schedule
+        self.prob_level = prob_level
+        self.expedition_dir = Path(expedition_dir)
 
-# Pseudo-code for problem probability functions
-# def instrument_specific_proba(
-#     instrument: type,
-# ) -> Callable([ProblemConfig, Waypoint], bool):
-#     """Return a function to determine if an instrument-specific problem should occur."""
+    def select_problems(
+        self,
+    ) -> dict[str, list[GeneralProblem | InstrumentProblem]] | None:
+        """Propagate both general and instrument problems."""
+        probability = self._calc_prob()
+        if probability > 0.0:
+            problems = {}
+            problems["general"] = self._general_problem_select(probability)
+            problems["instrument"] = self._instrument_problem_select(probability)
+            return problems
+        else:
+            return None
 
-#     def should_occur(config: ProblemConfig, waypoint) -> bool:
-#         if instrument not in waypoint.instruments:
-#             return False
+    def execute(
+        self,
+        problems: dict[str, list[GeneralProblem | InstrumentProblem]],
+        pre_departure: bool,
+        instrument_type: InstrumentType | None = None,
+        log_delay: float = 7.0,
+    ):
+        """Execute the selected problems, returning messaging and delay times."""
+        for i, problem in enumerate(problems["general"]):
+            if pre_departure and problem.pre_departure:
+                print(
+                    LOG_MESSAGING["first_pre_departure"]
+                    if i == 0
+                    else LOG_MESSAGING["subsequent_pre_departure"]
+                )
+            else:
+                if not pre_departure and not problem.pre_departure:
+                    print(
+                        LOG_MESSAGING["first_during_expedition"]
+                        if i == 0
+                        else LOG_MESSAGING["subsequent_during_expedition"]
+                    )
+            with yaspin():
+                time.sleep(log_delay)
 
-#         return general_proba_function(config, waypoint)
+            # provide problem-specific messaging
+            print(problem.message)
 
-#     return should_occur
+            # save to pause expedition and save to checkpoint
+            print(
+                f"\n\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {self.expedition_dir.joinpath(CHECKPOINT)}."
+            )
+            _save_checkpoint(
+                Checkpoint(
+                    past_schedule=Schedule(
+                        waypoints=self.schedule.waypoints[
+                            : schedule_results.failed_waypoint_i
+                        ]
+                    )
+                ),
+                self.expedition_dir,
+            )
 
-# PROBLEMS: list[Tuple[ProblemConfig, Callable[[ProblemConfig, Waypoint], bool]]] = [
-#     (
-#         ProblemConfig(
-#             message="General problem occurred",
-#             can_reoccur=True,
-#             base_probability=0.1,
-#             delay_duration=2.0,
-#         ),
-#         general_proba_function,
-#     ),
-#     (
-#         ProblemConfig(
-#             message="Instrument-specific problem occurred",
-#             can_reoccur=False,
-#             base_probability=0.05,
-#             delay_duration=4.0,
-#         ),
-#         instrument_specific_proba(CTD),
-#     ),
-# ]
+    def _propagate_general_problems(self):
+        """Propagate general problems based on probability."""
+        probability = self._calc_general_prob(self.schedule, prob_level=self.prob_level)
+        return self._general_problem_select(probability)
+
+    def _propagate_instrument_problems(self):
+        """Propagate instrument problems based on probability."""
+        probability = self._calc_instrument_prob(
+            self.schedule, prob_level=self.prob_level
+        )
+        return self._instrument_problem_select(probability)
+
+    def _calc_prob(self) -> float:
+        """
+        Calcuates probability of a general problem as function of expedition duration and prob-level.
+
+        TODO: for now, general and instrument-specific problems have the same probability of occurence. Separating this out and allowing their probabilities to be set independently may be useful in future.
+        """
+        if self.prob_level == 0:
+            return 0.0
+
+    def _general_problem_select(self) -> list[GeneralProblem]:
+        """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
+        ...
+        return []
+
+    def _instrument_problem_select(self) -> list[InstrumentProblem]:
+        """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
+        # set: waypoint instruments vs. list of instrument-specific problems (automated registry)
+        # will deterimne which instrument-specific problems are possible at this waypoint
+
+        wp_instruments = self.schedule.waypoints.instruments
+
+        return []
 
 
 ##### BASE CLASSES FOR PROBLEMS #####
@@ -158,37 +218,39 @@ class CaptainSafetyDrill(GeneralProblem):
     pre_departure = False
 
 
-# @dataclass
-# class FoodDeliveryDelayed:
-#     message: str = (
-#         "The scheduled food delivery prior to departure has not arrived. Until the supply truck reaches the pier, "
-#         "we cannot leave. Once it arrives, unloading and stowing the provisions in the ship’s cold storage "
-#         "will also take additional time. These combined delays postpone departure by approximately 5 hours."
-#     )
-#     can_reoccur: bool = False
-#     delay_duration: float = 5.0
+@dataclass
+class FoodDeliveryDelayed:
+    message: str = (
+        "The scheduled food delivery prior to departure has not arrived. Until the supply truck reaches the pier, "
+        "we cannot leave. Once it arrives, unloading and stowing the provisions in the ship’s cold storage "
+        "will also take additional time. These combined delays postpone departure by approximately 5 hours."
+    )
+    can_reoccur: bool = False
+    delay_duration: float = 5.0
 
-# @dataclass
-# class FuelDeliveryIssue:
-#     message: str = (
-#         "The fuel tanker expected to deliver fuel has not arrived. Port authorities are unable to provide "
-#         "a clear estimate for when the delivery might occur. You may choose to [w]ait for the tanker or [g]et a "
-#         "harbor pilot to guide the vessel to an available bunker dock instead. This decision may need to be "
-#         "revisited periodically depending on circumstances."
-#     )
-#     can_reoccur: bool = False
-#     delay_duration: float = 0.0  # dynamic delays based on repeated choices
 
-# @dataclass
-# class EngineOverheating:
-#     message: str = (
-#         "One of the main engines has overheated. To prevent further damage, the engineering team orders a reduction "
-#         "in vessel speed until the engine can be inspected and repaired in port. The ship will now operate at a "
-#         "reduced cruising speed of 8.5 knots for the remainder of the transit."
-#     )
-#     can_reoccur: bool = False
-#     delay_duration: None = None  # speed reduction affects ETA instead of fixed delay
-#     ship_speed_knots: float = 8.5
+@dataclass
+class FuelDeliveryIssue:
+    message: str = (
+        "The fuel tanker expected to deliver fuel has not arrived. Port authorities are unable to provide "
+        "a clear estimate for when the delivery might occur. You may choose to [w]ait for the tanker or [g]et a "
+        "harbor pilot to guide the vessel to an available bunker dock instead. This decision may need to be "
+        "revisited periodically depending on circumstances."
+    )
+    can_reoccur: bool = False
+    delay_duration: float = 0.0  # dynamic delays based on repeated choices
+
+
+@dataclass
+class EngineOverheating:
+    message: str = (
+        "One of the main engines has overheated. To prevent further damage, the engineering team orders a reduction "
+        "in vessel speed until the engine can be inspected and repaired in port. The ship will now operate at a "
+        "reduced cruising speed of 8.5 knots for the remainder of the transit."
+    )
+    can_reoccur: bool = False
+    delay_duration: None = None  # speed reduction affects ETA instead of fixed delay
+    ship_speed_knots: float = 8.5
 
 
 @register_general_problem
@@ -278,70 +340,7 @@ class CTDCableJammed(InstrumentProblem):
     can_reoccur: bool = True
     delay_duration: float = 3.0
     base_probability: float = 0.1
-    instrument_dataclass = CTD
-
-
-@register_instrument_problem(InstrumentType.CTD)
-class CTDTemperatureSensorFailure(InstrumentProblem):
-    """Problem: CTD temperature sensor failure, requiring replacement."""
-
-    message: str = (
-        "The primary temperature sensor on the CTD begins returning inconsistent readings. "
-        "Troubleshooting confirms that the sensor has malfunctioned. A spare unit can be installed, "
-        "but integrating and verifying the replacement will pause operations. "
-        "This procedure leads to an estimated delay of around 2 hours."
-    )
-    can_reoccur: bool = True
-    delay_duration: float = 2.0
-    base_probability: float = 0.1
-    instrument_dataclass = CTD
-
-
-@register_instrument_problem(InstrumentType.CTD)
-class CTDSalinitySensorFailureWithCalibration(InstrumentProblem):
-    """Problem: CTD salinity sensor failure, requiring replacement and calibration."""
-
-    message: str = (
-        "The CTD’s primary salinity sensor fails and must be replaced with a backup. After installation, "
-        "a mandatory calibration cast to a minimum depth of 1000 meters is required to verify sensor accuracy. "
-        "Both the replacement and calibration activities result in a total delay of roughly 4 hours."
-    )
-    can_reoccur: bool = True
-    delay_duration: float = 4.0
-    base_probability: float = 0.1
-    instrument_dataclass = CTD
-
-
-@register_instrument_problem(InstrumentType.CTD)
-class WinchHydraulicPressureDrop(InstrumentProblem):
-    """Problem: CTD winch hydraulic pressure drop, requiring repair."""
-
-    message: str = (
-        "The CTD winch begins to lose hydraulic pressure during routine checks prior to deployment. "
-        "The engineering crew must stop operations to diagnose the hydraulic pump and replenish or repair "
-        "the system. Until pressure is restored to operational levels, the winch cannot safely be used. "
-        "This results in an estimated delay of 1.5 hours."
-    )
-    can_reoccur: bool = True
-    delay_duration: float = 1.5
-    base_probability: float = 0.1
-    instrument_dataclass = CTD
-
-
-@register_instrument_problem(InstrumentType.CTD)
-class RosetteTriggerFailure(InstrumentProblem):
-    """Problem: CTD rosette trigger failure, requiring inspection."""
-
-    message: str = (
-        "During a CTD cast, the rosette's bottle-triggering mechanism fails to actuate. "
-        "No discrete water samples can be collected during this cast. The rosette must be brought back "
-        "on deck for inspection and manual testing of the trigger system. This results in an operational "
-        "delay of approximately 2.5 hours."
-    )
-    can_reoccur: bool = True
-    delay_duration: float = 2.5
-    base_probability: float = 0.1
-    instrument_dataclass = CTD
+    instrument_type = InstrumentType.CTD
 
 
 @register_instrument_problem(InstrumentType.ADCP)
@@ -357,7 +356,70 @@ class ADCPMalfunction(InstrumentProblem):
     can_reoccur: bool = True
     delay_duration: float = 1.0
     base_probability: float = 0.1
-    instrument_dataclass = ADCP
+    instrument_type = InstrumentType.ADCP
+
+
+@register_instrument_problem(InstrumentType.CTD)
+class CTDTemperatureSensorFailure(InstrumentProblem):
+    """Problem: CTD temperature sensor failure, requiring replacement."""
+
+    message: str = (
+        "The primary temperature sensor on the CTD begins returning inconsistent readings. "
+        "Troubleshooting confirms that the sensor has malfunctioned. A spare unit can be installed, "
+        "but integrating and verifying the replacement will pause operations. "
+        "This procedure leads to an estimated delay of around 2 hours."
+    )
+    can_reoccur: bool = True
+    delay_duration: float = 2.0
+    base_probability: float = 0.1
+    instrument_type = InstrumentType.CTD
+
+
+@register_instrument_problem(InstrumentType.CTD)
+class CTDSalinitySensorFailureWithCalibration(InstrumentProblem):
+    """Problem: CTD salinity sensor failure, requiring replacement and calibration."""
+
+    message: str = (
+        "The CTD’s primary salinity sensor fails and must be replaced with a backup. After installation, "
+        "a mandatory calibration cast to a minimum depth of 1000 meters is required to verify sensor accuracy. "
+        "Both the replacement and calibration activities result in a total delay of roughly 4 hours."
+    )
+    can_reoccur: bool = True
+    delay_duration: float = 4.0
+    base_probability: float = 0.1
+    instrument_type = InstrumentType.CTD
+
+
+@register_instrument_problem(InstrumentType.CTD)
+class WinchHydraulicPressureDrop(InstrumentProblem):
+    """Problem: CTD winch hydraulic pressure drop, requiring repair."""
+
+    message: str = (
+        "The CTD winch begins to lose hydraulic pressure during routine checks prior to deployment. "
+        "The engineering crew must stop operations to diagnose the hydraulic pump and replenish or repair "
+        "the system. Until pressure is restored to operational levels, the winch cannot safely be used. "
+        "This results in an estimated delay of 1.5 hours."
+    )
+    can_reoccur: bool = True
+    delay_duration: float = 1.5
+    base_probability: float = 0.1
+    instrument_type = InstrumentType.CTD
+
+
+@register_instrument_problem(InstrumentType.CTD)
+class RosetteTriggerFailure(InstrumentProblem):
+    """Problem: CTD rosette trigger failure, requiring inspection."""
+
+    message: str = (
+        "During a CTD cast, the rosette's bottle-triggering mechanism fails to actuate. "
+        "No discrete water samples can be collected during this cast. The rosette must be brought back "
+        "on deck for inspection and manual testing of the trigger system. This results in an operational "
+        "delay of approximately 2.5 hours."
+    )
+    can_reoccur: bool = True
+    delay_duration: float = 2.5
+    base_probability: float = 0.1
+    instrument_type = InstrumentType.CTD
 
 
 @register_instrument_problem(InstrumentType.DRIFTER)
@@ -373,7 +435,7 @@ class DrifterSatelliteConnectionDelay(InstrumentProblem):
     can_reoccur: bool = True
     delay_duration: float = 2.0
     base_probability: float = 0.1
-    instrument_dataclass = Drifter
+    instrument_type = InstrumentType.DRIFTER
 
 
 @register_instrument_problem(InstrumentType.ARGO_FLOAT)
@@ -389,4 +451,4 @@ class ArgoSatelliteConnectionDelay(InstrumentProblem):
     can_reoccur: bool = True
     delay_duration: float = 2.0
     base_probability: float = 0.1
-    instrument_dataclass = ArgoFloat
+    instrument_type = InstrumentType.ARGO_FLOAT
