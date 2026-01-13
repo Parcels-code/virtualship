@@ -6,15 +6,16 @@ from typing import TYPE_CHECKING
 
 from yaspin import yaspin
 
-from virtualship.cli._run import _save_checkpoint
 from virtualship.instruments.types import InstrumentType
-from virtualship.make_realistic.problems import GeneralProblem, InstrumentProblem
-from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
     CHECKPOINT,
 )
 
 if TYPE_CHECKING:
+    from virtualship.make_realistic.problems.scenarios import (
+        GeneralProblem,
+        InstrumentProblem,
+    )
     from virtualship.models import Schedule
 
 
@@ -23,6 +24,8 @@ LOG_MESSAGING = {
     "subsequent_pre_departure": "\nOh no, another pre-departure problem has occurred...!\n\n",
     "first_during_expedition": "\nOh no, a problem has occurred during the expedition...!\n\n",
     "subsequent_during_expedition": "\nAnother problem has occurred during the expedition...!\n\n",
+    "simulation_paused": "\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
+    "problem_avoided:": "\nPhew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on!\n",
 }
 
 
@@ -77,19 +80,17 @@ class ProblemSimulator:
             print(problem.message)
 
             # save to pause expedition and save to checkpoint
+
             print(
-                f"\n\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {self.expedition_dir.joinpath(CHECKPOINT)}."
+                LOG_MESSAGING["simulation_paused"].format(
+                    checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT)
+                )
             )
-            _save_checkpoint(
-                Checkpoint(
-                    past_schedule=Schedule(
-                        waypoints=self.schedule.waypoints[
-                            : schedule_results.failed_waypoint_i
-                        ]
-                    )
-                ),
-                self.expedition_dir,
-            )
+
+            # TODO: integration with which zarr files have been written so far
+            # TODO: plus a checkpoint file to assess whether the user has indeed also made the necessary changes to the schedule as required by the problem's delay_duration
+            # - in here also comes the logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
+            #! - may have to be that make a note of it during the simulate_schedule (and feed it forward), otherwise won't know which waypoint(s)...
 
     def _propagate_general_problems(self):
         """Propagate general problems based on probability."""

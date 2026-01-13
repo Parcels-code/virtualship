@@ -14,7 +14,7 @@ from virtualship.expedition.simulate_schedule import (
     ScheduleProblem,
     simulate_schedule,
 )
-from virtualship.make_realistic.problems import ProblemSimulator
+from virtualship.make_realistic.problems.simulator import ProblemSimulator
 from virtualship.models import Schedule
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
@@ -74,7 +74,7 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     expedition = _get_expedition(expedition_dir)
 
-    # Verify instruments_config file is consistent with schedule
+    # verify instruments_config file is consistent with schedule
     expedition.instruments_config.verify(expedition)
 
     # load last checkpoint
