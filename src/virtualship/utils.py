@@ -18,9 +18,11 @@ from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
-    from virtualship.expedition.simulate_schedule import ScheduleOk
+    from virtualship.expedition.simulate_schedule import (
+        ScheduleOk,
+    )
     from virtualship.models import Expedition
-
+    from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
 import yaml
@@ -574,3 +576,8 @@ def _get_waypoint_latlons(waypoints):
         strict=True,
     )
     return wp_lats, wp_lons
+
+
+def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
+    file_path = expedition_dir.joinpath(CHECKPOINT)
+    checkpoint.to_yaml(file_path)

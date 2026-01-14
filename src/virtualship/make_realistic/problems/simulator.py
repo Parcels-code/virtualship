@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
+from time import time
 from typing import TYPE_CHECKING
 
+import numpy as np
 from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import (
-    CHECKPOINT,
-)
+from virtualship.models.checkpoint import Checkpoint
+from virtualship.utils import CHECKPOINT, _save_checkpoint
 
 if TYPE_CHECKING:
     from virtualship.make_realistic.problems.scenarios import (
@@ -22,10 +22,11 @@ if TYPE_CHECKING:
 LOG_MESSAGING = {
     "first_pre_departure": "\nHang on! There could be a pre-departure problem in-port...\n\n",
     "subsequent_pre_departure": "\nOh no, another pre-departure problem has occurred...!\n\n",
-    "first_during_expedition": "\nOh no, a problem has occurred during the expedition...!\n\n",
-    "subsequent_during_expedition": "\nAnother problem has occurred during the expedition...!\n\n",
+    "first_during_expedition": "\nOh no, a problem has occurred during at waypoint {waypoint_i}...!\n\n",
+    "subsequent_during_expedition": "\nAnother problem has occurred during the expedition... at waypoint {waypoint_i}!\n\n",
     "simulation_paused": "\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
-    "problem_avoided:": "\nPhew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on!\n",
+    "problem_avoided": "\nPhew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on. \n",
+    "pre_departure_delay": "\nThis problem will cause a delay of {delay_duration} hours to the expedition schedule. Please add this time to your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\n",
 }
 
 
@@ -59,38 +60,50 @@ class ProblemSimulator:
         log_delay: float = 7.0,
     ):
         """Execute the selected problems, returning messaging and delay times."""
-        for i, problem in enumerate(problems["general"]):
-            if pre_departure and problem.pre_departure:
-                print(
+        # TODO: integration with which zarr files have been written so far?
+        # TODO: logic to determine whether user has made the necessary changes to the schedule to account for the problem's delay_duration when next running the simulation... (does this come in here or _run?)
+        # TODO: logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
+        # TODO: need logic for if the problem can reoccur or not / and or that it has already occurred and has been addressed
+
+        # general problems
+        for i, gproblem in enumerate(problems["general"]):
+            if pre_departure and gproblem.pre_departure:
+                alert_msg = (
                     LOG_MESSAGING["first_pre_departure"]
                     if i == 0
                     else LOG_MESSAGING["subsequent_pre_departure"]
                 )
-            else:
-                if not pre_departure and not problem.pre_departure:
-                    print(
-                        LOG_MESSAGING["first_during_expedition"]
-                        if i == 0
-                        else LOG_MESSAGING["subsequent_during_expedition"]
+
+            elif not pre_departure and not gproblem.pre_departure:
+                alert_msg = (
+                    LOG_MESSAGING["first_during_expedition"].format(
+                        waypoint_i=gproblem.waypoint_i
                     )
-            with yaspin():
-                time.sleep(log_delay)
-
-            # provide problem-specific messaging
-            print(problem.message)
-
-            # save to pause expedition and save to checkpoint
-
-            print(
-                LOG_MESSAGING["simulation_paused"].format(
-                    checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT)
+                    if i == 0
+                    else LOG_MESSAGING["subsequent_during_expedition"].format(
+                        waypoint_i=gproblem.waypoint_i
+                    )
                 )
+
+            else:
+                continue  # problem does not occur at this time
+
+            # alert user
+            print(alert_msg)
+
+            # determine failed waypoint index (random if during expedition)
+            failed_waypoint_i = (
+                np.nan
+                if pre_departure
+                else np.random.randint(0, len(self.schedule.waypoints) - 1)
             )
 
-            # TODO: integration with which zarr files have been written so far
-            # TODO: plus a checkpoint file to assess whether the user has indeed also made the necessary changes to the schedule as required by the problem's delay_duration
-            # - in here also comes the logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
-            #! - may have to be that make a note of it during the simulate_schedule (and feed it forward), otherwise won't know which waypoint(s)...
+            # log problem occurrence, save to checkpoint, and pause simulation
+            self._log_problem(gproblem, failed_waypoint_i, log_delay)
+
+        # instrument problems
+        for i, problem in enumerate(problems["instrument"]):
+            ...
 
     def _propagate_general_problems(self):
         """Propagate general problems based on probability."""
@@ -126,3 +139,61 @@ class ProblemSimulator:
         wp_instruments = self.schedule.waypoints.instruments
 
         return []
+
+    def _log_problem(
+        self,
+        problem: GeneralProblem | InstrumentProblem,
+        failed_waypoint_i: int,
+        log_delay: float,
+    ):
+        """Log problem occurrence with spinner and delay, save to checkpoint."""
+        with yaspin():
+            time.sleep(log_delay)
+
+        print(problem.message)
+
+        print("\n\nAssessing impact on expedition schedule...\n")
+
+        # check if enough contingency time has been scheduled to avoid delay
+        failed_waypoint_time = self.schedule.waypoints[failed_waypoint_i].time
+        previous_waypoint_time = self.schedule.waypoints[failed_waypoint_i - 1].time
+        time_diff = (
+            failed_waypoint_time - previous_waypoint_time
+        ).total_seconds() / 3600.0  # in hours
+        if time_diff >= problem.delay_duration.total_seconds() / 3600.0:
+            print(LOG_MESSAGING["problem_avoided"])
+            return
+        else:
+            print(
+                f"\nNot enough contingency time scheduled to avoid delay of {problem.delay_duration.total_seconds() / 3600.0} hours.\n"
+            )
+
+        checkpoint = self._make_checkpoint(failed_waypoint_i)
+        _save_checkpoint(checkpoint, self.expedition_dir)
+
+        if np.isnan(failed_waypoint_i):
+            print(
+                LOG_MESSAGING["pre_departure_delay"].format(
+                    delay_duration=problem.delay_duration.total_seconds() / 3600.0
+                )
+            )
+        else:
+            print(
+                LOG_MESSAGING["simulation_paused"].format(
+                    checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT)
+                )
+            )
+
+    def _make_checkpoint(self, failed_waypoint_i: int | float = np.nan):
+        """Make checkpoint, also handling pre-departure."""
+        if np.isnan(failed_waypoint_i):
+            checkpoint = Checkpoint(
+                past_schedule=self.schedule
+            )  # TODO: and then when it comes to verify checkpoint later, can determine whether the changes have been made to the schedule accordingly?
+        else:
+            checkpoint = Checkpoint(
+                past_schedule=Schedule(
+                    waypoints=self.schedule.waypoints[:failed_waypoint_i]
+                )
+            )
+        return checkpoint

@@ -15,11 +15,11 @@ from virtualship.expedition.simulate_schedule import (
     simulate_schedule,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models import Schedule
-from virtualship.models.checkpoint import Checkpoint
+from virtualship.models import Checkpoint, Schedule
 from virtualship.utils import (
     CHECKPOINT,
     _get_expedition,
+    _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
@@ -92,10 +92,22 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
         from_data=Path(from_data) if from_data else None,
     )
 
+    # TODO: overview:
+    # 1) determine all the general AND instrument problems which will occur across the whole expedition
+    # 2) make a checker function which can be called at various points in the simulation to see if a problem occurs at that point
+    # - e.g. at pre-departure, at each instrument measurement step, etc.
+    # - each time a problem occurs, propagate its effects (e.g. delay), log it, save to checkpoint etc.
+    # TODO: still need to incorp can_reoccur logic somewhere
+
+    # TODO: prob_level needs to be parsed from CLI args
+    problem_simulator = ProblemSimulator(expedition.schedule, prob_level=...)
+    problems = problem_simulator.select_problems()
+
     # simulate the schedule
     schedule_results = simulate_schedule(
         projection=projection,
         expedition=expedition,
+        problems=problems if problems else None,
     )
     if isinstance(schedule_results, ScheduleProblem):
         print(
@@ -130,27 +142,12 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     instruments_in_expedition = expedition.get_instruments()
 
-    # TODO: overview:
-    # 1) determine all the general AND instrument problems which will occur across the whole expedition
-    # 2) make a checker function which can be called at various points in the simulation to see if a problem occurs at that point
-    # - e.g. at pre-departure, at each instrument measurement step, etc.
-    # - each time a problem occurs, propagate its effects (e.g. delay), log it, save to checkpoint etc.
-    # TODO: still need to incorp can_reoccur logic somewhere
-
-    # TODO: prob_level needs to be parsed from CLI args
-    problem_simulator = ProblemSimulator(expedition.schedule, prob_level=...)
-    problems = problem_simulator.select_problems()
-
-    # check for and execute pre-departure problems
-    if problems:
-        problem_simulator.execute(problems, pre_departure=True)
-
-    for itype in instruments_in_expedition:
-        # simulate problems (N.B. it's still possible for general problems to occur during the expedition)
+    for i, itype in enumerate(instruments_in_expedition):
+        # propagate problems (pre-departure problems will only occur in first iteration)
         if problems:
             problem_simulator.execute(
                 problems=problems,
-                pre_departure=False,
+                pre_departure=True if i == 0 else False,
                 instrument_type=itype,
             )
 
@@ -196,11 +193,6 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
         return Checkpoint.from_yaml(file_path)
     except FileNotFoundError:
         return None
-
-
-def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
-    file_path = expedition_dir.joinpath(CHECKPOINT)
-    checkpoint.to_yaml(file_path)
 
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):
