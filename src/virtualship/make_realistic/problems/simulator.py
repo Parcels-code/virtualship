@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import os
 from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
         InstrumentProblem,
     )
     from virtualship.models import Schedule
-
+import json
 
 LOG_MESSAGING = {
     "first_pre_departure": "\nHang on! There could be a pre-departure problem in-port...\n\n",
@@ -26,7 +28,7 @@ LOG_MESSAGING = {
     "subsequent_during_expedition": "\nAnother problem has occurred during the expedition... at waypoint {waypoint_i}!\n\n",
     "simulation_paused": "\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
     "problem_avoided": "\nPhew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on. \n",
-    "pre_departure_delay": "\nThis problem will cause a delay of {delay_duration} hours to the expedition schedule. Please add this time to your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\n",
+    "pre_departure_delay": "\nThis problem will cause a delay of {delay_duration} hours to the expedition schedule. Please account for this for all waypoints in your schedule (`virtualship plan`), then continue the expedition by executing the `virtualship run` command again.\n",
 }
 
 
@@ -43,6 +45,7 @@ class ProblemSimulator:
         self,
     ) -> dict[str, list[GeneralProblem | InstrumentProblem]] | None:
         """Propagate both general and instrument problems."""
+        # TODO: whether a problem can reoccur or not needs to be handled here too!
         probability = self._calc_prob()
         if probability > 0.0:
             problems = {}
@@ -65,8 +68,32 @@ class ProblemSimulator:
         # TODO: logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
         # TODO: need logic for if the problem can reoccur or not / and or that it has already occurred and has been addressed
 
+        #! TODO: logic as well for case where problem can reoccur but it can only reoccur at a waypoint different to the one it has already occurred at
+
         # general problems
         for i, gproblem in enumerate(problems["general"]):
+            # determine failed waypoint index (random if during expedition)
+            failed_waypoint_i = (
+                np.nan
+                if pre_departure
+                else np.random.randint(0, len(self.schedule.waypoints) - 1)
+            )
+
+            # mark problem by unique hash and log to json, use to assess whether problem has already occurred
+            gproblem_hash = self._make_hash(
+                gproblem.message + str(failed_waypoint_i), 8
+            )
+            hash_path = Path(
+                self.expedition_dir
+                / f"problems_encountered/problem_{gproblem_hash}.json"
+            )
+            if hash_path.exists():
+                continue  # problem * waypoint combination has already occurred
+            else:
+                self._hash_to_json(
+                    gproblem, gproblem_hash, failed_waypoint_i, hash_path
+                )
+
             if pre_departure and gproblem.pre_departure:
                 alert_msg = (
                     LOG_MESSAGING["first_pre_departure"]
@@ -86,17 +113,10 @@ class ProblemSimulator:
                 )
 
             else:
-                continue  # problem does not occur at this time
+                continue  # problem does not occur (e.g. wrong combination of pre-departure vs. problem can only occur during expedition)
 
             # alert user
             print(alert_msg)
-
-            # determine failed waypoint index (random if during expedition)
-            failed_waypoint_i = (
-                np.nan
-                if pre_departure
-                else np.random.randint(0, len(self.schedule.waypoints) - 1)
-            )
 
             # log problem occurrence, save to checkpoint, and pause simulation
             self._log_problem(gproblem, failed_waypoint_i, log_delay)
@@ -104,6 +124,7 @@ class ProblemSimulator:
         # instrument problems
         for i, problem in enumerate(problems["instrument"]):
             ...
+            # TODO: similar logic to above for instrument-specific problems... or combine?
 
     def _propagate_general_problems(self):
         """Propagate general problems based on probability."""
@@ -146,7 +167,7 @@ class ProblemSimulator:
         failed_waypoint_i: int,
         log_delay: float,
     ):
-        """Log problem occurrence with spinner and delay, save to checkpoint."""
+        """Log problem occurrence with spinner and delay, save to checkpoint, write hash."""
         with yaspin():
             time.sleep(log_delay)
 
@@ -186,7 +207,7 @@ class ProblemSimulator:
 
     def _make_checkpoint(self, failed_waypoint_i: int | float = np.nan):
         """Make checkpoint, also handling pre-departure."""
-        if np.isnan(failed_waypoint_i):
+        if np.isnan(failed_waypoint_i):  # handles pre-departure problems
             checkpoint = Checkpoint(
                 past_schedule=self.schedule
             )  # TODO: and then when it comes to verify checkpoint later, can determine whether the changes have been made to the schedule accordingly?
@@ -197,3 +218,29 @@ class ProblemSimulator:
                 )
             )
         return checkpoint
+
+    def _make_hash(s: str, length: int) -> str:
+        """Make unique hash for problem occurrence."""
+        assert length % 2 == 0, "Length must be even."
+        half_length = length // 2
+        return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+    def _hash_to_json(
+        self,
+        problem: InstrumentProblem | GeneralProblem,
+        problem_hash: str,
+        failed_waypoint_i: int | float,
+        hash_path: Path,
+    ) -> dict:
+        """Convert problem details + hash to json."""
+        os.makedirs(self.expedition_dir / "problems_encountered", exist_ok=True)
+        hash_data = {
+            "problem_hash": problem_hash,
+            "message": problem.message,
+            "failed_waypoint_i": failed_waypoint_i,
+            "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
+            "timestamp": time.time(),
+            "resolved": False,
+        }
+        with open(hash_path, "w") as f:
+            json.dump(hash_data, f, indent=4)

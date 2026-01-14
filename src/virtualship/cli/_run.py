@@ -1,5 +1,6 @@
 """do_expedition function."""
 
+import glob
 import logging
 import os
 import shutil
@@ -83,7 +84,7 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match
-    checkpoint.verify(expedition.schedule)
+    checkpoint.verify(expedition.schedule, expedition_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -92,23 +93,13 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
         from_data=Path(from_data) if from_data else None,
     )
 
-    # TODO: overview:
-    # 1) determine all the general AND instrument problems which will occur across the whole expedition
-    # 2) make a checker function which can be called at various points in the simulation to see if a problem occurs at that point
-    # - e.g. at pre-departure, at each instrument measurement step, etc.
-    # - each time a problem occurs, propagate its effects (e.g. delay), log it, save to checkpoint etc.
-    # TODO: still need to incorp can_reoccur logic somewhere
-
-    # TODO: prob_level needs to be parsed from CLI args
-    problem_simulator = ProblemSimulator(expedition.schedule, prob_level=...)
-    problems = problem_simulator.select_problems()
-
     # simulate the schedule
     schedule_results = simulate_schedule(
         projection=projection,
         expedition=expedition,
-        problems=problems if problems else None,
     )
+
+    # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
     if isinstance(schedule_results, ScheduleProblem):
         print(
             f"SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
@@ -137,8 +128,15 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
 
+    # identify problems
+    # TODO: prob_level needs to be parsed from CLI args
+    problem_simulator = ProblemSimulator(expedition.schedule, prob_level=...)
+    problems = problem_simulator.select_problems()
+
     # simulate measurements
     print("\nSimulating measurements. This may take a while...\n")
+
+    # TODO: logic for getting simulations to carry on from last checkpoint! Building on .zarr files already created...
 
     instruments_in_expedition = expedition.get_instruments()
 
@@ -193,6 +191,15 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
         return Checkpoint.from_yaml(file_path)
     except FileNotFoundError:
         return None
+
+
+def _load_hashes(expedition_dir: Path) -> set[str]:
+    hashes_path = expedition_dir.joinpath("problems_encountered")
+    if not hashes_path.exists():
+        return set()
+    hash_files = glob.glob(str(hashes_path / "problem_*.txt"))
+    hashes = {Path(f).stem.split("_")[1] for f in hash_files}
+    return hashes
 
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):

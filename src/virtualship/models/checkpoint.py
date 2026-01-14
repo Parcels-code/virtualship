@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import timedelta
 from pathlib import Path
 
 import pydantic
@@ -51,20 +53,8 @@ class Checkpoint(pydantic.BaseModel):
             data = yaml.safe_load(file)
         return Checkpoint(**data)
 
-    def verify(self, schedule: Schedule) -> None:
-        """
-        Verify that the given schedule matches the checkpoint's past schedule.
-
-        This method checks if the waypoints in the given schedule match the waypoints
-        in the checkpoint's past schedule up to the length of the past schedule.
-        If there's a mismatch, it raises a CheckpointError.
-
-        :param schedule: The schedule to verify against the checkpoint.
-        :type schedule: Schedule
-        :raises CheckpointError: If the past waypoints in the given schedule
-                                 have been changed compared to the checkpoint.
-        :return: None
-        """
+    def verify(self, schedule: Schedule, expedition_dir: Path) -> None:
+        """Verify that the given schedule matches the checkpoint's past schedule, and that problems have been resolved."""
         if (
             not schedule.waypoints[: len(self.past_schedule.waypoints)]
             == self.past_schedule.waypoints
@@ -72,3 +62,52 @@ class Checkpoint(pydantic.BaseModel):
             raise CheckpointError(
                 "Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints."
             )
+
+        # TODO: how does this handle pre-departure problems that caused delays? Old schedule will be a complete mismatch then.
+
+        # check that problems have been resolved in the new schedule
+        hash_fpaths = [
+            str(path.resolve())
+            for path in Path(expedition_dir, "problems_encountered").glob(
+                "problem_*.json"
+            )
+        ]
+
+        for file in hash_fpaths:
+            with open(file) as f:
+                problem = json.load(f)
+                if problem["resolved"]:
+                    continue
+                elif not problem["resolved"]:
+                    # check if delay has been accounted for in the schedule
+                    delay_duration = timedelta(
+                        hours=float(problem["delay_duration_hours"])
+                    )  # delay associated with the problem
+
+                    failed_waypoint_i = int(problem["failed_waypoint_i"])
+
+                    time_deltas = [
+                        schedule.waypoints[i].time
+                        - self.past_schedule.waypoints[i].time
+                        for i in range(
+                            failed_waypoint_i, len(self.past_schedule.waypoints)
+                        )
+                    ]  # difference in time between the two schedules from the failed waypoint onwards
+
+                    if all(td >= delay_duration for td in time_deltas):
+                        print(
+                            "\n\nPrevious problem has been resolved in the schedule.\n"
+                        )
+
+                        # save back to json file changing the resolved status to True
+                        problem["resolved"] = True
+                        with open(file, "w") as f_out:
+                            json.dump(problem, f_out, indent=4)
+
+                    else:
+                        raise CheckpointError(
+                            "The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by problem.",
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours starting from waypoint {failed_waypoint_i + 1}.",
+                        )
+
+                    break  # only handle the first unresolved problem found; others will be handled in subsequent runs but are not yet known to the user
