@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 from pathlib import Path
-from time import time
 from typing import TYPE_CHECKING
 
 import numpy as np
 from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
+from virtualship.make_realistic.problems.scenarios import (
+    CTDCableJammed,
+    FoodDeliveryDelayed,
+)
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import CHECKPOINT, _save_checkpoint
 
@@ -22,13 +26,13 @@ if TYPE_CHECKING:
 import json
 
 LOG_MESSAGING = {
-    "first_pre_departure": "\nHang on! There could be a pre-departure problem in-port...\n\n",
-    "subsequent_pre_departure": "\nOh no, another pre-departure problem has occurred...!\n\n",
-    "first_during_expedition": "\nOh no, a problem has occurred during at waypoint {waypoint_i}...!\n\n",
-    "subsequent_during_expedition": "\nAnother problem has occurred during the expedition... at waypoint {waypoint_i}!\n\n",
-    "simulation_paused": "\nSIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
-    "problem_avoided": "\nPhew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on. \n",
-    "pre_departure_delay": "\nThis problem will cause a delay of {delay_duration} hours to the expedition schedule. Please account for this for all waypoints in your schedule (`virtualship plan`), then continue the expedition by executing the `virtualship run` command again.\n",
+    "first_pre_departure": "Hang on! There could be a pre-departure problem in-port...",
+    "subsequent_pre_departure": "Oh no, another pre-departure problem has occurred...!\n",
+    "first_during_expedition": "Oh no, a problem has occurred during at waypoint {waypoint_i}...!\n",
+    "subsequent_during_expedition": "Another problem has occurred during the expedition... at waypoint {waypoint_i}!\n",
+    "simulation_paused": "SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
+    "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on.\n",
+    "pre_departure_delay": "This problem will cause a delay of **{delay_duration} hours** to the expedition schedule. \n\nPlease account for this for **ALL** waypoints in your schedule (`virtualship plan`), then continue the expedition by executing the `virtualship run` command again.\n",
 }
 
 
@@ -47,6 +51,7 @@ class ProblemSimulator:
         """Propagate both general and instrument problems."""
         # TODO: whether a problem can reoccur or not needs to be handled here too!
         probability = self._calc_prob()
+        probability = 1.0  # TODO: temporary override for testing!!
         if probability > 0.0:
             problems = {}
             problems["general"] = self._general_problem_select(probability)
@@ -70,6 +75,8 @@ class ProblemSimulator:
 
         #! TODO: logic as well for case where problem can reoccur but it can only reoccur at a waypoint different to the one it has already occurred at
 
+        # TODO: make the log output stand out more visually
+
         # general problems
         for i, gproblem in enumerate(problems["general"]):
             # determine failed waypoint index (random if during expedition)
@@ -79,6 +86,7 @@ class ProblemSimulator:
                 else np.random.randint(0, len(self.schedule.waypoints) - 1)
             )
 
+            # TODO: some kind of handling for deleting directory if ... simulation encounters error? or just leave it to user to delete manually if they want to restart from scratch?
             # mark problem by unique hash and log to json, use to assess whether problem has already occurred
             gproblem_hash = self._make_hash(
                 gproblem.message + str(failed_waypoint_i), 8
@@ -115,15 +123,12 @@ class ProblemSimulator:
             else:
                 continue  # problem does not occur (e.g. wrong combination of pre-departure vs. problem can only occur during expedition)
 
-            # alert user
-            print(alert_msg)
-
             # log problem occurrence, save to checkpoint, and pause simulation
-            self._log_problem(gproblem, failed_waypoint_i, log_delay)
+            self._log_problem(gproblem, failed_waypoint_i, alert_msg, log_delay)
 
         # instrument problems
         for i, problem in enumerate(problems["instrument"]):
-            ...
+            pass  # TODO: implement!!
             # TODO: similar logic to above for instrument-specific problems... or combine?
 
     def _propagate_general_problems(self):
@@ -147,63 +152,67 @@ class ProblemSimulator:
         if self.prob_level == 0:
             return 0.0
 
-    def _general_problem_select(self) -> list[GeneralProblem]:
+    def _general_problem_select(self, probability) -> list[GeneralProblem]:
         """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
-        ...
-        return []
+        return [FoodDeliveryDelayed]  # TODO: temporary placeholder!!
 
-    def _instrument_problem_select(self) -> list[InstrumentProblem]:
+    def _instrument_problem_select(self, probability) -> list[InstrumentProblem]:
         """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
         # set: waypoint instruments vs. list of instrument-specific problems (automated registry)
         # will deterimne which instrument-specific problems are possible at this waypoint
 
-        wp_instruments = self.schedule.waypoints.instruments
+        # wp_instruments = self.schedule.waypoints.instruments
 
-        return []
+        return [CTDCableJammed]
 
     def _log_problem(
         self,
         problem: GeneralProblem | InstrumentProblem,
-        failed_waypoint_i: int,
+        failed_waypoint_i: int | float,
+        alert_msg: str,
         log_delay: float,
     ):
         """Log problem occurrence with spinner and delay, save to checkpoint, write hash."""
-        with yaspin():
+        time.sleep(3.0)  # brief pause before spinner
+        with yaspin(text=alert_msg) as spinner:
             time.sleep(log_delay)
+            spinner.ok("💥 ")
 
-        print(problem.message)
+        print("\nPROBLEM ENCOUNTERED: " + problem.message)
 
-        print("\n\nAssessing impact on expedition schedule...\n")
-
-        # check if enough contingency time has been scheduled to avoid delay
-        failed_waypoint_time = self.schedule.waypoints[failed_waypoint_i].time
-        previous_waypoint_time = self.schedule.waypoints[failed_waypoint_i - 1].time
-        time_diff = (
-            failed_waypoint_time - previous_waypoint_time
-        ).total_seconds() / 3600.0  # in hours
-        if time_diff >= problem.delay_duration.total_seconds() / 3600.0:
-            print(LOG_MESSAGING["problem_avoided"])
-            return
-        else:
+        if np.isnan(failed_waypoint_i):  # pre-departure problem
             print(
-                f"\nNot enough contingency time scheduled to avoid delay of {problem.delay_duration.total_seconds() / 3600.0} hours.\n"
+                "\nRESULT: "
+                + LOG_MESSAGING["pre_departure_delay"].format(
+                    delay_duration=problem.delay_duration.total_seconds() / 3600.0
+                )
             )
+        else:  # problem occurring during expedition
+            print(
+                "\nRESULT: "
+                + LOG_MESSAGING["simulation_paused"].format(
+                    checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT)
+                )
+            )
+            # check if enough contingency time has been scheduled to avoid delay
+            print("\nAssessing impact on expedition schedule...\n")
+            failed_waypoint_time = self.schedule.waypoints[failed_waypoint_i].time
+            previous_waypoint_time = self.schedule.waypoints[failed_waypoint_i - 1].time
+            time_diff = (
+                failed_waypoint_time - previous_waypoint_time
+            ).total_seconds() / 3600.0  # in hours
+            if time_diff >= problem.delay_duration.total_seconds() / 3600.0:
+                print(LOG_MESSAGING["problem_avoided"])
+                return
+            else:
+                print(
+                    f"\nNot enough contingency time scheduled to avoid delay of {problem.delay_duration.total_seconds() / 3600.0} hours.\n"
+                )
 
         checkpoint = self._make_checkpoint(failed_waypoint_i)
         _save_checkpoint(checkpoint, self.expedition_dir)
 
-        if np.isnan(failed_waypoint_i):
-            print(
-                LOG_MESSAGING["pre_departure_delay"].format(
-                    delay_duration=problem.delay_duration.total_seconds() / 3600.0
-                )
-            )
-        else:
-            print(
-                LOG_MESSAGING["simulation_paused"].format(
-                    checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT)
-                )
-            )
+        return
 
     def _make_checkpoint(self, failed_waypoint_i: int | float = np.nan):
         """Make checkpoint, also handling pre-departure."""
@@ -219,7 +228,7 @@ class ProblemSimulator:
             )
         return checkpoint
 
-    def _make_hash(s: str, length: int) -> str:
+    def _make_hash(self, s: str, length: int) -> str:
         """Make unique hash for problem occurrence."""
         assert length % 2 == 0, "Length must be even."
         half_length = length // 2
@@ -239,7 +248,7 @@ class ProblemSimulator:
             "message": problem.message,
             "failed_waypoint_i": failed_waypoint_i,
             "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
-            "timestamp": time.time(),
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
         }
         with open(hash_path, "w") as f:

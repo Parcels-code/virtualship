@@ -37,7 +37,10 @@ external_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
-def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
+# TODO: prob-level needs to be parsed from CLI args; currently set to 1 override for testing purposes
+def _run(
+    expedition_dir: str | Path, from_data: Path | None = None, prob_level: int = 1
+) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
@@ -130,7 +133,9 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     # identify problems
     # TODO: prob_level needs to be parsed from CLI args
-    problem_simulator = ProblemSimulator(expedition.schedule, prob_level=...)
+    problem_simulator = ProblemSimulator(
+        expedition.schedule, prob_level, expedition_dir
+    )
     problems = problem_simulator.select_problems()
 
     # simulate measurements

@@ -6,12 +6,13 @@ import json
 from datetime import timedelta
 from pathlib import Path
 
+import numpy as np
 import pydantic
 import yaml
 
 from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
-from virtualship.models import Schedule
+from virtualship.models.expedition import Schedule
 
 
 class _YamlDumper(yaml.SafeDumper):
@@ -84,7 +85,11 @@ class Checkpoint(pydantic.BaseModel):
                         hours=float(problem["delay_duration_hours"])
                     )  # delay associated with the problem
 
-                    failed_waypoint_i = int(problem["failed_waypoint_i"])
+                    failed_waypoint_i = (
+                        int(problem["failed_waypoint_i"])
+                        if type(problem["failed_waypoint_i"]) is int
+                        else np.nan
+                    )
 
                     time_deltas = [
                         schedule.waypoints[i].time
