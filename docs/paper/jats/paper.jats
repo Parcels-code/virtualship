@@ -18,8 +18,8 @@
 <article-id pub-id-type="publisher-id">0</article-id>
 <article-id pub-id-type="doi">N/A</article-id>
 <title-group>
-<article-title>VirtualShip for simulating oceanographic fieldwork
-anywhere in the global ocean</article-title>
+<article-title>VirtualShip for simulating oceanographic fieldwork in the
+global ocean</article-title>
 </title-group>
 <contrib-group>
 <contrib contrib-type="author" corresp="yes">
@@ -93,10 +93,10 @@ USA</institution>
 <author-notes>
 <corresp id="cor-1">* E-mail: <email></email></corresp>
 </author-notes>
-<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2025-12-04">
-<day>4</day>
-<month>12</month>
-<year>2025</year>
+<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2026-01-05">
+<day>5</day>
+<month>1</month>
+<year>2026</year>
 </pub-date>
 <volume>¿VOL?</volume>
 <issue>¿ISSUE?</issue>
@@ -129,7 +129,7 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <p><monospace>VirtualShip</monospace> is a Python-based package for
   simulating measurements as if they were coming from real-life
   oceanographic instruments, facilitating student training, expedition
-  planning, and design of instrument/sampling strategies. The software
+  planning, and design of sampling/instrument strategies. The software
   exploits the customisability of the open-source
   <monospace>Parcels</monospace> Lagrangian simulation framework
   (<xref alt="Delandmeter &amp; van Sebille, 2019" rid="ref-Delandmeter2019" ref-type="bibr">Delandmeter
@@ -195,7 +195,7 @@ a Creative Commons Attribution 4.0 International License (CC BY
   underway <monospace>ADCP</monospace> (Acoustic Doppler Current
   Profiler; Kostaschuk et al.
   (<xref alt="2005" rid="ref-Kostaschuk2005" ref-type="bibr">2005</xref>)),
-  and underway <monospace>Underwater_temperature/salinity</monospace>
+  and underway <monospace>temperature/salinity</monospace>
   (<xref alt="Gordon et al., 2014" rid="ref-Gordon2014" ref-type="bibr">Gordon
   et al., 2014</xref>) probes. More detail on each instrument is
   available in the
@@ -218,19 +218,9 @@ a Creative Commons Attribution 4.0 International License (CC BY
   Atlantic
   (<xref alt="[fig:fig1]" rid="figU003Afig1">[fig:fig1]</xref>e, final
   waypoints).</p>
-  <fig>
-    <caption><p>Example VirtualShip expedition simulated in July/August
-    2023. Expedition waypoints displayed via the MFP tool (a), Underway
-    ADCP measurements (b), Surface drifter releases (c; 90-day lifetime
-    per drifter), and CTD vertical profiles for temperature (d) and
-    oxygen (e). Black triangles in b), d) and e) mark waypoint locations
-    across the expedition route, corresponding to the purple markers in
-    a).<styled-content id="figU003Afig1"></styled-content></p></caption>
-    <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
-  </fig>
   <p>The software is designed to be highly intuitive to the user. It is
-  wrapped into three high-level command line interface commands (using
-  <ext-link ext-link-type="uri" xlink:href="https://click.palletsprojects.com/en/stable/">Click</ext-link>):</p>
+  wrapped into three high-level command line interface commands using
+  <ext-link ext-link-type="uri" xlink:href="https://click.palletsprojects.com/en/stable/">Click</ext-link>:</p>
   <list list-type="order">
     <list-item>
       <p><monospace>virtualship init</monospace>: Initialises the
@@ -267,6 +257,16 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <p>A full example workflow is outlined in the
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html">Quickstart
   Guide</ext-link> documentation.</p>
+  <fig>
+    <caption><p>Example VirtualShip expedition simulated in July/August
+    2023. Expedition waypoints displayed via the MFP tool (a), Underway
+    ADCP measurements (b), Surface drifter releases (c; 90-day lifetime
+    per drifter), and CTD vertical profiles for temperature (d) and
+    oxygen (e). Black triangles in b), d) and e) mark waypoint locations
+    across the expedition route, corresponding to the purple markers in
+    a).<styled-content id="figU003Afig1"></styled-content></p></caption>
+    <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
+  </fig>
 </sec>
 <sec id="implementation">
   <title>Implementation</title>
@@ -326,7 +326,13 @@ a Creative Commons Attribution 4.0 International License (CC BY
   Observation System Simulation Experiments (OSSEs; e.g. Errico et al.
   (<xref alt="2013" rid="ref-Errico2013" ref-type="bibr">2013</xref>))
   to test and optimise observational strategies in a cost- and
-  time-efficient manner.</p>
+  time-efficient manner. This framework further enables instrument
+  design experiments that are relevant to autonomous observing systems.
+  There is potential for users to prototype and test control strategies
+  for gliders, REMUS vehicles, and Saildrones, as well as explore
+  concepts for new instruments at early stages of development. Future
+  tutorials could demonstrate how to define custom instruments within
+  the VirtualShip framework.</p>
   <p>Both the customisability of the <monospace>VirtualShip</monospace>
   platform and the exciting potential for new ARCO-based data hosting
   services in domains beyond oceanography (e.g.,
