@@ -173,9 +173,6 @@ a Creative Commons Attribution 4.0 International License (CC BY
   Facilities Planning</ext-link> (MFP) tool, giving users the option to
   define expedition waypoints via an intuitive web-based mapping
   interface.</p>
-</sec>
-<sec id="functionality">
-  <title>Functionality</title>
   <p><monospace>VirtualShip</monospace> simulates the deployment of
   virtual instruments commonly used in oceanographic fieldwork, with
   emphasis on realism in how users plan and execute expeditions. For
@@ -200,6 +197,9 @@ a Creative Commons Attribution 4.0 International License (CC BY
   et al., 2014</xref>) probes. More detail on each instrument is
   available in the
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options">documentation</ext-link>.</p>
+</sec>
+<sec id="software-design">
+  <title>Software design</title>
   <p>The software can simulate complex multidisciplinary expeditions.
   One example is a virtual expedition across the Agulhas Current and the
   South Eastern Atlantic that deploys a suite of instruments to sample
@@ -257,19 +257,6 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <p>A full example workflow is outlined in the
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html">Quickstart
   Guide</ext-link> documentation.</p>
-  <fig>
-    <caption><p>Example VirtualShip expedition simulated in July/August
-    2023. Expedition waypoints displayed via the MFP tool (a), Underway
-    ADCP measurements (b), Surface drifter releases (c; 90-day lifetime
-    per drifter), and CTD vertical profiles for temperature (d) and
-    oxygen (e). Black triangles in b), d) and e) mark waypoint locations
-    across the expedition route, corresponding to the purple markers in
-    a).<styled-content id="figU003Afig1"></styled-content></p></caption>
-    <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
-  </fig>
-</sec>
-<sec id="implementation">
-  <title>Implementation</title>
   <p>Under the hood, <monospace>VirtualShip</monospace> is modular and
   extensible. The workflows are designed around
   <monospace>Instrument</monospace> base classes and instrument-specific
@@ -299,9 +286,19 @@ a Creative Commons Attribution 4.0 International License (CC BY
   <ext-link ext-link-type="uri" xlink:href="https://virtualship.readthedocs.io/en/latest/user-guide/documentation/pre_download_data.html">option</ext-link>
   for the user to specify local <monospace>NetCDF</monospace> files for
   data ingestion, if preferred.</p>
+  <fig>
+    <caption><p>Example VirtualShip expedition simulated in July/August
+    2023. Expedition waypoints displayed via the MFP tool (a), Underway
+    ADCP measurements (b), Surface drifter releases (c; 90-day lifetime
+    per drifter), and CTD vertical profiles for temperature (d) and
+    oxygen (e). Black triangles in b), d) and e) mark waypoint locations
+    across the expedition route, corresponding to the purple markers in
+    a).<styled-content id="figU003Afig1"></styled-content></p></caption>
+    <graphic mimetype="image" mime-subtype="png" xlink:href="figure1.png" />
+  </fig>
 </sec>
-<sec id="applications-and-future-outlook">
-  <title>Applications and future outlook</title>
+<sec id="research-impact-statement">
+  <title>Research impact statement</title>
   <p><monospace>VirtualShip</monospace> has already been extensvely
   applied in Master’s teaching settings at Utrecht University as part of
   the
@@ -350,6 +347,15 @@ a Creative Commons Attribution 4.0 International License (CC BY
   also benefit from these improvements, further enhancing its
   capabilities, extensibility and compatability with modern cloud-based
   data pipelines.</p>
+</sec>
+<sec id="ai-usage-disclosure">
+  <title>AI usage disclosure</title>
+  <p>Generative AI technologies (Gemini v2.0/2.5/3.0, ChatGPT
+  v4o/5.0/5.1/5.2 and GitHub Copilot) were used for code generation,
+  refactoring and test scaffolding. AI-assisted autocompletion tools
+  (via GitHub Copilot) were used in the writing of this manuscript.
+  Authors carefully reviewed and edited all AI-assisted content and made
+  the core desigin decisions.</p>
 </sec>
 <sec id="acknowledgements">
   <title>Acknowledgements</title>
