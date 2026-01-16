@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -32,7 +33,7 @@ LOG_MESSAGING = {
     "subsequent_during_expedition": "Another problem has occurred during the expedition... at waypoint {waypoint_i}!\n",
     "simulation_paused": "SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
     "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on.\n",
-    "pre_departure_delay": "This problem will cause a delay of **{delay_duration} hours** to the expedition schedule. \n\nPlease account for this for **ALL** waypoints in your schedule (`virtualship plan`), then continue the expedition by executing the `virtualship run` command again.\n",
+    "pre_departure_delay": "This problem will cause a delay of **{delay_duration} hours** to the whole expedition schedule. Please account for this for **all** waypoints in your schedule (`virtualship plan`), then continue the expedition by executing the `virtualship run` command again.\n",
 }
 
 
@@ -76,7 +77,6 @@ class ProblemSimulator:
         #! TODO: logic as well for case where problem can reoccur but it can only reoccur at a waypoint different to the one it has already occurred at
 
         # TODO: make the log output stand out more visually
-
         # general problems
         for i, gproblem in enumerate(problems["general"]):
             # determine failed waypoint index (random if during expedition)
@@ -96,7 +96,7 @@ class ProblemSimulator:
                 / f"problems_encountered/problem_{gproblem_hash}.json"
             )
             if hash_path.exists():
-                continue  # problem * waypoint combination has already occurred
+                continue  # problem * waypoint combination has already occurred; don't repeat
             else:
                 self._hash_to_json(
                     gproblem, gproblem_hash, failed_waypoint_i, hash_path
@@ -209,17 +209,26 @@ class ProblemSimulator:
                     f"\nNot enough contingency time scheduled to avoid delay of {problem.delay_duration.total_seconds() / 3600.0} hours.\n"
                 )
 
+        # save checkpoint
         checkpoint = self._make_checkpoint(failed_waypoint_i)
         _save_checkpoint(checkpoint, self.expedition_dir)
 
-        return
+        # cache original schedule for reference and/or restoring later if needed
+        schedule_original_path = (
+            self.expedition_dir / "problems_encountered" / "schedule_original.yaml"
+        )
+        if os.path.exists(schedule_original_path) is False:
+            self._cache_original_schedule(self.schedule, schedule_original_path)
+
+        # pause simulation
+        sys.exit(0)
 
     def _make_checkpoint(self, failed_waypoint_i: int | float = np.nan):
         """Make checkpoint, also handling pre-departure."""
         if np.isnan(failed_waypoint_i):  # handles pre-departure problems
             checkpoint = Checkpoint(
                 past_schedule=self.schedule
-            )  # TODO: and then when it comes to verify checkpoint later, can determine whether the changes have been made to the schedule accordingly?
+            )  # use full schedule as past schedule
         else:
             checkpoint = Checkpoint(
                 past_schedule=Schedule(
@@ -253,3 +262,9 @@ class ProblemSimulator:
         }
         with open(hash_path, "w") as f:
             json.dump(hash_data, f, indent=4)
+
+    def _cache_original_schedule(self, schedule: Schedule, path: Path | str):
+        """Cache original schedule to file for reference, as a checkpoint object."""
+        schedule_original = Checkpoint(past_schedule=schedule)
+        schedule_original.to_yaml(path)
+        print(f"\nOriginal schedule cached to {path}.\n")

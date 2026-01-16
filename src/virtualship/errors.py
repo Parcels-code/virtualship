@@ -50,3 +50,9 @@ class CopernicusCatalogueError(Exception):
     """Error raised when a relevant product is not found in the Copernicus Catalogue."""
 
     pass
+
+
+class ProblemEncountered(Exception):
+    """Error raised when a problem is encountered during simulation."""
+
+    pass
