@@ -77,7 +77,7 @@ Both the customisability of the `VirtualShip` platform and the exciting potentia
 
 # AI usage disclosure
 
-Generative AI technologies (Gemini v2.0/2.5/3.0, ChatGPT v4o/5.0/5.1/5.2 and GitHub Copilot) were used for code generation, refactoring and test scaffolding. AI-assisted autocompletion tools (via GitHub Copilot) were used in the writing of this manuscript. Authors carefully reviewed and edited all AI-assisted content and made the core desigin decisions.
+Generative AI technologies (Gemini v2.0/2.5/3.0, ChatGPT v4o/5.0/5.1/5.2 and GitHub Copilot) were used for code generation, refactoring and test scaffolding. AI-assisted autocompletion tools (via GitHub Copilot) were used in the writing of this manuscript. Authors carefully reviewed and edited all AI-assisted content and made the core desigin decisions without use of AI.
 
 # Acknowledgements
 
