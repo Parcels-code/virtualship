@@ -179,3 +179,7 @@ src/virtualship/_version_setup.py
 
 .vscode/
 .DS_Store
+
+
+# some files created during paper (JOSS) writing
+docs/paper/**/*.txt
