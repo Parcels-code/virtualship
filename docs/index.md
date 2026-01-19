@@ -1,4 +1,4 @@
-# Virtual Ship Parcels
+# VirtualShip
 
 ```{toctree}
 :maxdepth: 1

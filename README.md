@@ -34,7 +34,7 @@
 
 <!-- Insert catchy summary -->
 
-VirtualShipParcels is a command line simulator allowing students to plan and conduct a virtual research expedition, receiving measurements as if they were coming from actual oceanographic instruments including:
+VirtualShip is a command line simulator allowing students to plan and conduct a virtual research expedition, receiving measurements as if they were coming from actual oceanographic instruments including:
 
 - ADCP (currents)
 - CTD (conductivity and temperature + biogeochemical variables)
