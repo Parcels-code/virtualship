@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Literal, TextIO
 import copernicusmarine
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -31,6 +31,8 @@ from yaspin import Spinner
 
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
+SCHEDULE_ORIGINAL = "schedule_original.yaml"
+PROBLEMS_ENCOUNTERED_DIR = "problems_encountered"
 
 
 def load_static_file(name: str) -> str:

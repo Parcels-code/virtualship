@@ -19,6 +19,7 @@ from virtualship.make_realistic.problems.simulator import ProblemSimulator
 from virtualship.models import Checkpoint, Schedule
 from virtualship.utils import (
     CHECKPOINT,
+    PROBLEMS_ENCOUNTERED_DIR,
     _get_expedition,
     _save_checkpoint,
     expedition_cost,
@@ -109,11 +110,8 @@ def _run(
         )
         _save_checkpoint(
             Checkpoint(
-                past_schedule=Schedule(
-                    waypoints=expedition.schedule.waypoints[
-                        : schedule_results.failed_waypoint_i
-                    ]
-                )
+                past_schedule=expedition.schedule,
+                failed_waypoint_i=schedule_results.failed_waypoint_i,
             ),
             expedition_dir,
         )
@@ -145,12 +143,13 @@ def _run(
 
     instruments_in_expedition = expedition.get_instruments()
 
-    for i, itype in enumerate(instruments_in_expedition):
-        # propagate problems (pre-departure problems will only occur in first iteration)
+    for itype in instruments_in_expedition:
+        #! TODO: move this to before the loop; determine problem selection based on instruments_in_expedition to ensure only relevant problems are selected; and then instrument problems are propagated to within the loop
+        # TODO: instrument-specific problems at different waypoints are where see if can get time savings by not re-simulating everything from scratch... but if it's too complex than just leave for now
+        # propagate problems
         if problems:
             problem_simulator.execute(
                 problems=problems,
-                pre_departure=True if i == 0 else False,
                 instrument_type=itype,
             )
 
@@ -182,6 +181,13 @@ def _run(
     print(
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
+
+    if problems:
+        print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
+        print(
+            f"\nA record of problems encountered during the expedition is saved in: {expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)}"
+        )
+
     print("\n------------- END -------------\n")
 
     # end timing
@@ -199,7 +205,7 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
 
 
 def _load_hashes(expedition_dir: Path) -> set[str]:
-    hashes_path = expedition_dir.joinpath("problems_encountered")
+    hashes_path = expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)
     if not hashes_path.exists():
         return set()
     hash_files = glob.glob(str(hashes_path / "problem_*.txt"))

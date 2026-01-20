@@ -6,13 +6,13 @@ import json
 from datetime import timedelta
 from pathlib import Path
 
-import numpy as np
 import pydantic
 import yaml
 
 from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Schedule
+from virtualship.utils import EXPEDITION, PROBLEMS_ENCOUNTERED_DIR
 
 
 class _YamlDumper(yaml.SafeDumper):
@@ -32,6 +32,7 @@ class Checkpoint(pydantic.BaseModel):
     """
 
     past_schedule: Schedule
+    failed_waypoint_i: int | None = None
 
     def to_yaml(self, file_path: str | Path) -> None:
         """
@@ -56,24 +57,27 @@ class Checkpoint(pydantic.BaseModel):
 
     def verify(self, schedule: Schedule, expedition_dir: Path) -> None:
         """Verify that the given schedule matches the checkpoint's past schedule , and/or that any problem has been resolved."""
+        # TODO:
+        #! TODO: needs adapting for new checkpoints model
+
         # 1) check that past waypoints have not been changed, unless is a pre-departure problem
-        if len(self.past_schedule.waypoints) == len(schedule.waypoints):
-            pass  # pre-departure problem checkpoint will match len of current schedule; no past waypoints to compare (any checkpoint file generated because user defined schedule with not enough time between waypoints will always have fewer waypoints than current schedule)
+        if (
+            self.failed_waypoint_i is None
+        ):  # pre-departure problem or empty checkpoint file
+            pass
         elif (
             # TODO: double check this still works as intended for the user defined schedule with not enough time between waypoints case
-            not schedule.waypoints[: len(self.past_schedule.waypoints)]
-            == self.past_schedule.waypoints
+            not schedule.waypoints[: int(self.failed_waypoint_i)]
+            == self.past_schedule.waypoints[: int(self.failed_waypoint_i)]
         ):
             raise CheckpointError(
                 "Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints."
             )
 
-        breakpoint()
-
         # 2) check that problems have been resolved in the new schedule
         hash_fpaths = [
             str(path.resolve())
-            for path in Path(expedition_dir, "problems_encountered").glob(
+            for path in Path(expedition_dir, PROBLEMS_ENCOUNTERED_DIR).glob(
                 "problem_*.json"
             )
         ]
@@ -88,18 +92,11 @@ class Checkpoint(pydantic.BaseModel):
                         delay_duration = timedelta(
                             hours=float(problem["delay_duration_hours"])
                         )  # delay associated with the problem
-
-                        failed_waypoint_i = (
-                            int(problem["failed_waypoint_i"])
-                            if type(problem["failed_waypoint_i"]) is int
-                            else np.nan
-                        )
-
                         waypoint_range = (
                             range(len(self.past_schedule.waypoints))
-                            if np.isnan(failed_waypoint_i)
+                            if self.failed_waypoint_i is None
                             else range(
-                                failed_waypoint_i, len(self.past_schedule.waypoints)
+                                int(self.failed_waypoint_i), len(schedule.waypoints)
                             )
                         )
                         time_deltas = [
@@ -121,11 +118,11 @@ class Checkpoint(pydantic.BaseModel):
                         else:
                             affected_waypoints = (
                                 "all waypoints"
-                                if np.isnan(failed_waypoint_i)
-                                else f"waypoints from {failed_waypoint_i + 1} onwards"
+                                if self.failed_waypoint_i is None
+                                else f"waypoint {int(self.failed_waypoint_i) + 1} onwards"
                             )
                             raise CheckpointError(
-                                "The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem.",
+                                f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
                                 f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours affecting {affected_waypoints}.",
                             )
 

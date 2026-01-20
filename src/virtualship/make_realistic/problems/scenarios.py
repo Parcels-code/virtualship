@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 # =====================================================
 
 
+# TODO: pydantic model to ensure correct types?
 @dataclass
 class GeneralProblem(abc.ABC):
     """
@@ -107,8 +108,8 @@ class CaptainSafetyDrill(GeneralProblem):
         "The emergency vessel must be lowered and tested while the ship remains stationary, pausing all scientific "
         "operations for the duration of the exercise. The drill introduces a delay of approximately 2 hours."
     )
-    can_reoccur: False
-    delay_duration: 2.0
+    can_reoccur = False
+    delay_duration = timedelta(hours=2.0)
     base_probability = 0.1
     pre_departure = False
 
