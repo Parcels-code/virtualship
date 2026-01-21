@@ -182,6 +182,8 @@ def _run(
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
 
+    # TODO: delete checkpoint file at the end of successful expedition? [it inteferes with ability to re-run expedition]
+
     if problems:
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(

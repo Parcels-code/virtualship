@@ -56,14 +56,13 @@ class Checkpoint(pydantic.BaseModel):
         return Checkpoint(**data)
 
     def verify(self, schedule: Schedule, expedition_dir: Path) -> None:
-        """Verify that the given schedule matches the checkpoint's past schedule , and/or that any problem has been resolved."""
-        # TODO:
-        #! TODO: needs adapting for new checkpoints model
+        """
+        Verify that the given schedule matches the checkpoint's past schedule , and/or that any problem has been resolved.
 
+        Addresses changes made by the user in response to both i) scheduling issues arising for not enough time for the ship to travel between waypoints, and ii) problems encountered during simulation.
+        """
         # 1) check that past waypoints have not been changed, unless is a pre-departure problem
-        if (
-            self.failed_waypoint_i is None
-        ):  # pre-departure problem or empty checkpoint file
+        if self.failed_waypoint_i is None:
             pass
         elif (
             # TODO: double check this still works as intended for the user defined schedule with not enough time between waypoints case
@@ -71,7 +70,7 @@ class Checkpoint(pydantic.BaseModel):
             == self.past_schedule.waypoints[: int(self.failed_waypoint_i)]
         ):
             raise CheckpointError(
-                "Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints."
+                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(self.failed_waypoint_i) + 1} onwards)."
             )
 
         # 2) check that problems have been resolved in the new schedule
@@ -107,7 +106,7 @@ class Checkpoint(pydantic.BaseModel):
 
                         if all(td >= delay_duration for td in time_deltas):
                             print(
-                                "\n\nPrevious problem has been resolved in the schedule.\n"
+                                "\n\n🎉 Previous problem has been resolved in the schedule.\n"
                             )
 
                             # save back to json file changing the resolved status to True

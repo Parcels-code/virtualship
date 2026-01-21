@@ -12,8 +12,8 @@ from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
+    CaptainSafetyDrill,
     CTDCableJammed,
-    FoodDeliveryDelayed,
 )
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.models.expedition import Schedule
@@ -72,7 +72,11 @@ class ProblemSimulator:
         instrument_type: InstrumentType | None = None,
         log_delay: float = 7.0,
     ):
-        """Execute the selected problems, returning messaging and delay times."""
+        """
+        Execute the selected problems, returning messaging and delay times.
+
+        N.B. the problem_waypoint_i is different to the failed_waypoint_i defined in the Checkpoint class; the failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
+        """
         # TODO: integration with which zarr files have been written so far?
         # TODO: logic to determine whether user has made the necessary changes to the schedule to account for the problem's delay_duration when next running the simulation... (does this come in here or _run?)
         # TODO: logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
@@ -90,6 +94,8 @@ class ProblemSimulator:
 
         #! TODO: logic as well for case where problem can reoccur but it can only reoccur at a waypoint different to the one it has already occurred at
 
+        # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
+
         general_problems = problems["general"]
         instrument_problems = problems["instrument"]
 
@@ -105,20 +111,19 @@ class ProblemSimulator:
 
         # TODO: make the log output stand out more visually
         # general problems
-        for i, gproblem in enumerate(general_problems):
-            # determine failed waypoint index (random if during expedition)
-            failed_waypoint_i = (
+        for gproblem in general_problems:
+            # determine problem waypoint index (random if during expedition)
+            problem_waypoint_i = (
                 None
                 if gproblem.pre_departure
                 else np.random.randint(
                     0, len(self.schedule.waypoints) - 1
-                )  # last waypoint excluded
+                )  # last waypoint excluded (would not impact any future scheduling)
             )
-            # TODO: some kind of handling for deleting directory if ... simulation encounters error? or just leave it to user to delete manually if they want to restart from scratch?
-            # TODO: delete checkpoint file once final expedition simulation has been completed successfully?
+
             # mark problem by unique hash and log to json, use to assess whether problem has already occurred
             gproblem_hash = self._make_hash(
-                gproblem.message + str(failed_waypoint_i), 8
+                gproblem.message + str(problem_waypoint_i), 8
             )
             hash_path = Path(
                 self.expedition_dir
@@ -128,7 +133,7 @@ class ProblemSimulator:
                 continue  # problem * waypoint combination has already occurred; don't repeat
             else:
                 self._hash_to_json(
-                    gproblem, gproblem_hash, failed_waypoint_i, hash_path
+                    gproblem, gproblem_hash, problem_waypoint_i, hash_path
                 )
 
             if gproblem.pre_departure:
@@ -136,11 +141,11 @@ class ProblemSimulator:
 
             else:
                 alert_msg = LOG_MESSAGING["during_expedition"].format(
-                    waypoint_i=int(failed_waypoint_i) + 1
+                    waypoint_i=int(problem_waypoint_i) + 1
                 )
 
             # log problem occurrence, save to checkpoint, and pause simulation
-            self._log_problem(gproblem, failed_waypoint_i, alert_msg, log_delay)
+            self._log_problem(gproblem, problem_waypoint_i, alert_msg, log_delay)
 
         # instrument problems
         for i, problem in enumerate(problems["instrument"]):
@@ -171,7 +176,7 @@ class ProblemSimulator:
     def _general_problem_select(self, probability) -> list[GeneralProblem]:
         """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
         return [
-            FoodDeliveryDelayed,
+            CaptainSafetyDrill,
         ]  # TODO: temporary placeholder!!
 
     def _instrument_problem_select(self, probability) -> list[InstrumentProblem]:
@@ -186,7 +191,7 @@ class ProblemSimulator:
     def _log_problem(
         self,
         problem: GeneralProblem | InstrumentProblem,
-        failed_waypoint_i: int | None,
+        problem_waypoint_i: int | None,
         alert_msg: str,
         log_delay: float,
     ):
@@ -198,7 +203,7 @@ class ProblemSimulator:
 
         print("\nPROBLEM ENCOUNTERED: " + problem.message + "\n")
 
-        if failed_waypoint_i is None:  # pre-departure problem
+        if problem_waypoint_i is None:  # pre-departure problem
             print(
                 "\nRESULT: "
                 + LOG_MESSAGING["pre_departure_delay"].format(
@@ -209,26 +214,26 @@ class ProblemSimulator:
 
         else:  # problem occurring during expedition
             result_msg = "\nRESULT: " + LOG_MESSAGING["simulation_paused"].format(
-                waypoint_i=int(failed_waypoint_i) + 1,
+                waypoint_i=int(problem_waypoint_i) + 1,
                 expedition_yaml=EXPEDITION,
                 checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT),
             )
 
             # handle first waypoint separately (no previous waypoint to provide contingency time, or rather the previous waypoint ends up being the -1th waypoint which is non-sensical)
-            if failed_waypoint_i == 0:
+            if problem_waypoint_i == 0:
                 print(result_msg)
 
             # all other waypoints
             else:
-                # check if enough contingency time has been scheduled to avoid delay
+                # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
                 with yaspin(text="Assessing impact on expedition schedule..."):
                     time.sleep(5.0)
-                failed_waypoint_time = self.schedule.waypoints[failed_waypoint_i].time
-                previous_waypoint_time = self.schedule.waypoints[
-                    failed_waypoint_i - 1
+                problem_waypoint_time = self.schedule.waypoints[problem_waypoint_i].time
+                next_waypoint_time = self.schedule.waypoints[
+                    problem_waypoint_i + 1
                 ].time
                 time_diff = (
-                    failed_waypoint_time - previous_waypoint_time
+                    next_waypoint_time - problem_waypoint_time
                 ).total_seconds() / 3600.0  # [hours]
                 if time_diff >= problem.delay_duration.total_seconds() / 3600.0:
                     print(LOG_MESSAGING["problem_avoided"])
@@ -239,12 +244,14 @@ class ProblemSimulator:
 
                 else:
                     print(
-                        f"\nNot enough contingency time scheduled to avoid delay of {problem.delay_duration.total_seconds() / 3600.0} hours at waypoint {failed_waypoint_i + 1} (future waypoints would be reached too late).\n"
+                        f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
                     )
                     print(result_msg)
 
         # save checkpoint
-        checkpoint = self._make_checkpoint(failed_waypoint_i)
+        checkpoint = self._make_checkpoint(
+            failed_waypoint_i=problem_waypoint_i + 1
+        )  # failed waypoint index then becomes the one after the one where the problem occurred; this is when scheduling issues would be run into
         _save_checkpoint(checkpoint, self.expedition_dir)
 
         # cache original schedule for reference and/or restoring later if needed (checkpoint can be overwritten if multiple problems occur so is not a persistent record of original schedule)

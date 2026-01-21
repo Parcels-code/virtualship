@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 import pyproj
 
@@ -20,9 +20,6 @@ from virtualship.models import (
     Spacetime,
     Waypoint,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
