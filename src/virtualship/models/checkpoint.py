@@ -103,7 +103,6 @@ class Checkpoint(pydantic.BaseModel):
                             - self.past_schedule.waypoints[i].time
                             for i in waypoint_range
                         ]  # difference in time between the two schedules from the failed waypoint onwards
-
                         if all(td >= delay_duration for td in time_deltas):
                             print(
                                 "\n\n🎉 Previous problem has been resolved in the schedule.\n"
@@ -122,7 +121,8 @@ class Checkpoint(pydantic.BaseModel):
                             )
                             raise CheckpointError(
                                 f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
-                                f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours affecting {affected_waypoints}.",
+                                f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours at waypoint {self.failed_waypoint_i} (affecting scheduling for {affected_waypoints}).\n"
+                                "Hint: you should ensure that the delay time has been added to ALL waypoints after the waypoint where the problem occurred."
                             )
 
                         # only handle the first unresolved problem found; others will be handled in subsequent runs but are not yet known to the user

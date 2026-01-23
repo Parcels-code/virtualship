@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 
 import copernicusmarine
-import pyproj
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
@@ -19,16 +18,14 @@ from virtualship.make_realistic.problems.simulator import ProblemSimulator
 from virtualship.models import Checkpoint, Schedule
 from virtualship.utils import (
     CHECKPOINT,
+    EXPEDITION,
     PROBLEMS_ENCOUNTERED_DIR,
+    PROJECTION,
     _get_expedition,
     _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
-
-# projection used to sail between waypoints
-projection = pyproj.Geod(ellps="WGS84")
-
 
 # parcels logger (suppress INFO messages to prevent log being flooded)
 external_logger = logging.getLogger("parcels.tools.loggers")
@@ -99,14 +96,14 @@ def _run(
 
     # simulate the schedule
     schedule_results = simulate_schedule(
-        projection=projection,
+        projection=PROJECTION,
         expedition=expedition,
     )
 
     # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
     if isinstance(schedule_results, ScheduleProblem):
         print(
-            f"SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
+            f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
         )
         _save_checkpoint(
             Checkpoint(
@@ -136,18 +133,19 @@ def _run(
 
     # problems
     # TODO: prob_level needs to be parsed from CLI args
-    problem_simulator = ProblemSimulator(
-        expedition.schedule, prob_level, expedition_dir
-    )
-    problems = problem_simulator.select_problems(instruments_in_expedition)
+    problem_simulator = ProblemSimulator(expedition, prob_level, expedition_dir)
+    problems = problem_simulator.select_problems(prob_level, instruments_in_expedition)
 
     for itype in instruments_in_expedition:
+        if prob_level > 0:  # only helpful if problems are being simulated
+            print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
+
         #! TODO: need logic for skipping simulation of instruments which have already been simulated successfully in a previous run of the expedition
         #! TODO: and new logic for not overwriting existing zarr files if they already exist from a previous successful simulation of that instrument
         if problems:
             problem_simulator.execute(
                 problems,
-                instrumet_type=itype,
+                instrument_type_validation=itype,
             )
 
         # get instrument class

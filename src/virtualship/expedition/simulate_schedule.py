@@ -122,10 +122,9 @@ class _ScheduleSimulator:
             # check if waypoint was reached in time
             if waypoint.time is not None and self._time > waypoint.time:
                 print(
-                    f"Waypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
+                    f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                     "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                    "**Hint #1**, the `virtualship plan` tool will not account for measurement times when verifying the schedule, only the time it takes to sail between waypoints.\n"
-                    "**Hint #2**: if you previously encountered any unforeseen delays (e.g. equipment failure, pre-departure delays) during your expedition, you will need to adjust the timings of **all** waypoints after the affected waypoint, not just the next one."
+                    "\nHint: the `virtualship plan` tool will not account for measurement times when verifying the schedule, only the time it takes to sail between waypoints.\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:
@@ -141,6 +140,7 @@ class _ScheduleSimulator:
         return ScheduleOk(self._time, self._measurements_to_simulate)
 
     def _progress_time_traveling_towards(self, location: Location) -> None:
+        # TODO: this can be refactored to use _calc_sail_time function from utils.py
         geodinv: tuple[float, float, float] = self._projection.inv(
             lons1=self._location.lon,
             lats1=self._location.lat,

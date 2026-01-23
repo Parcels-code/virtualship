@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -13,24 +15,22 @@ from yaspin import yaspin
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
     CTDCableJammed,
+    GeneralProblem,
+    InstrumentProblem,
 )
 from virtualship.models.checkpoint import Checkpoint
-from virtualship.models.expedition import Schedule
 from virtualship.utils import (
     CHECKPOINT,
     EXPEDITION,
     PROBLEMS_ENCOUNTERED_DIR,
+    PROJECTION,
     SCHEDULE_ORIGINAL,
+    _calc_sail_time,
     _save_checkpoint,
 )
 
 if TYPE_CHECKING:
-    from virtualship.make_realistic.problems.scenarios import (
-        GeneralProblem,
-        InstrumentProblem,
-    )
-import json
-import random
+    from virtualship.models.expedition import Expedition, Schedule
 
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
@@ -44,9 +44,11 @@ LOG_MESSAGING = {
 class ProblemSimulator:
     """Handle problem simulation during expedition."""
 
-    def __init__(self, schedule: Schedule, prob_level: int, expedition_dir: str | Path):
+    def __init__(
+        self, expedition: Expedition, prob_level: int, expedition_dir: str | Path
+    ):
         """Initialise ProblemSimulator with a schedule and probability level."""
-        self.schedule = schedule
+        self.expedition = expedition
         self.prob_level = prob_level
         self.expedition_dir = Path(expedition_dir)
 
@@ -82,15 +84,18 @@ class ProblemSimulator:
         # TODO: for this reason, `problems_encountered` dir should be housed in `results` dir along with a cache of the expedition.yaml used for that run...
         # TODO: and the results dir given a unique name which can be used to check against when re-running the expedition?
 
-        # allow only one pre-departure problem to occur
+        # allow only one pre-departure problem to occur (only GeneralProblems can be pre-departure problems)
         pre_departure_problems = [p for p in problems if isinstance(p, GeneralProblem)]
         if len(pre_departure_problems) > 1:
             to_keep = random.choice(pre_departure_problems)
-            problems = [p for p in problems if not p.pre_departure or p is to_keep]
-
+            problems = [
+                p
+                for p in problems
+                if not getattr(p, "pre_departure", False) or p is to_keep
+            ]
         problems.sort(
-            key=lambda x: x.pre_departure, reverse=True
-        )  # ensure any pre-departure problem is first
+            key=lambda p: getattr(p, "pre_departure", False), reverse=True
+        )  # ensure any problem with pre_departure=True is first; default to pre_departure=False if attribute not present (as is the case for InstrumentProblem's)
 
         # TODO: make the log output stand out more visually
         for p in problems:
@@ -103,9 +108,9 @@ class ProblemSimulator:
 
             problem_waypoint_i = (
                 None
-                if p.pre_departure
+                if getattr(p, "pre_departure", False)
                 else np.random.randint(
-                    0, len(self.schedule.waypoints) - 1
+                    0, len(self.expedition.schedule.waypoints) - 1
                 )  # last waypoint excluded (would not impact any future scheduling)
             )
 
@@ -168,34 +173,42 @@ class ProblemSimulator:
                 checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT),
             )
 
-            # handle first waypoint separately (no previous waypoint to provide contingency time, or rather the previous waypoint ends up being the -1th waypoint which is non-sensical)
-            if problem_waypoint_i == 0:
-                print(result_msg)
+            # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
+            with yaspin(text="Assessing impact on expedition schedule..."):
+                time.sleep(5.0)
+            problem_waypoint_time = self.expedition.schedule.waypoints[
+                problem_waypoint_i
+            ].time
+            next_waypoint_time = self.expedition.schedule.waypoints[
+                problem_waypoint_i + 1
+            ].time
+            time_diff = (
+                next_waypoint_time - problem_waypoint_time
+            ).total_seconds() / 3600.0  # [hours]
+            sail_time = (
+                _calc_sail_time(
+                    self.expedition.schedule.waypoints[problem_waypoint_i],
+                    self.expedition.schedule.waypoints[problem_waypoint_i + 1],
+                    ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
+                    projection=PROJECTION,
+                ).total_seconds()
+                / 3600.0
+            )  # [hours]
+            if (
+                time_diff
+                >= (problem.delay_duration.total_seconds() / 3600.0) + sail_time
+            ):
+                print(LOG_MESSAGING["problem_avoided"])
+                # give users time to read message before simulation continues
+                with yaspin():
+                    time.sleep(7.0)
+                return
 
-            # all other waypoints
             else:
-                # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
-                with yaspin(text="Assessing impact on expedition schedule..."):
-                    time.sleep(5.0)
-                problem_waypoint_time = self.schedule.waypoints[problem_waypoint_i].time
-                next_waypoint_time = self.schedule.waypoints[
-                    problem_waypoint_i + 1
-                ].time
-                time_diff = (
-                    next_waypoint_time - problem_waypoint_time
-                ).total_seconds() / 3600.0  # [hours]
-                if time_diff >= problem.delay_duration.total_seconds() / 3600.0:
-                    print(LOG_MESSAGING["problem_avoided"])
-                    # give users time to read message before simulation continues
-                    with yaspin():
-                        time.sleep(7.0)
-                    return
-
-                else:
-                    print(
-                        f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
-                    )
-                    print(result_msg)
+                print(
+                    f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
+                )
+                print(result_msg)
 
         # save checkpoint
         checkpoint = self._make_checkpoint(
@@ -208,7 +221,9 @@ class ProblemSimulator:
             self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / SCHEDULE_ORIGINAL
         )
         if os.path.exists(schedule_original_path) is False:
-            self._cache_original_schedule(self.schedule, schedule_original_path)
+            self._cache_original_schedule(
+                self.expedition.schedule, schedule_original_path
+            )
 
         # pause simulation
         sys.exit(0)
@@ -216,7 +231,7 @@ class ProblemSimulator:
     def _make_checkpoint(self, failed_waypoint_i: int | None = None) -> Checkpoint:
         """Make checkpoint, also handling pre-departure."""
         fpi = None if failed_waypoint_i is None else failed_waypoint_i
-        return Checkpoint(past_schedule=self.schedule, failed_waypoint_i=fpi)
+        return Checkpoint(past_schedule=self.expedition.schedule, failed_waypoint_i=fpi)
 
     def _make_hash(self, s: str, length: int) -> str:
         """Make unique hash for problem occurrence."""

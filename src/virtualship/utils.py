@@ -12,16 +12,17 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import pyproj
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
-    from virtualship.models import Expedition
+    from virtualship.models import Expedition, Waypoint
     from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
@@ -33,6 +34,9 @@ EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
 SCHEDULE_ORIGINAL = "schedule_original.yaml"
 PROBLEMS_ENCOUNTERED_DIR = "problems_encountered"
+
+# projection used to sail between waypoints
+PROJECTION = pyproj.Geod(ellps="WGS84")
 
 
 def load_static_file(name: str) -> str:
@@ -582,3 +586,21 @@ def _get_waypoint_latlons(waypoints):
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
     file_path = expedition_dir.joinpath(CHECKPOINT)
     checkpoint.to_yaml(file_path)
+
+
+def _calc_sail_time(
+    waypoint1: Waypoint,
+    waypoint2: Waypoint,
+    ship_speed_knots: float,
+    projection: pyproj.Geod,
+):
+    """Calculate sail time between two waypoints (their locations) given ship speed in knots."""
+    geodinv: tuple[float, float, float] = projection.inv(
+        lons1=waypoint1.location.longitude,
+        lats1=waypoint1.location.latitude,
+        lons2=waypoint2.location.longitude,
+        lats2=waypoint2.location.latitude,
+    )
+    ship_speed_meter_per_second = ship_speed_knots * 1852 / 3600
+    distance_to_next_waypoint = geodinv[2]
+    return timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second)

@@ -165,6 +165,7 @@ class Schedule(pydantic.BaseModel):
             if wp.instrument is InstrumentType.CTD:
                 time += timedelta(minutes=20)
 
+            # TODO: this can be refactored to use _calc_sail_time function from utils.py
             geodinv: tuple[float, float, float] = projection.inv(
                 wp.location.lon,
                 wp.location.lat,

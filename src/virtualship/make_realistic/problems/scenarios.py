@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 # =====================================================
 
 
+# TODO: maybe make some of the problems longer duration; to make it more rare that enough contingency time has been planned...?
+
+
 # TODO: pydantic model to ensure correct types?
 @dataclass
 class GeneralProblem(abc.ABC):
