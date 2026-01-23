@@ -64,7 +64,7 @@ class InstrumentProblem(abc.ABC):
 
 @dataclass
 # @register_general_problem
-class FoodDeliveryDelayed:
+class FoodDeliveryDelayed(GeneralProblem):
     """Problem: Scheduled food delivery is delayed, causing a postponement of departure."""
 
     message = (
