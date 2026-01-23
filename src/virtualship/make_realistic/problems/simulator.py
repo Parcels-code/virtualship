@@ -12,7 +12,6 @@ from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
-    CaptainSafetyDrill,
     CTDCableJammed,
 )
 from virtualship.models.checkpoint import Checkpoint
@@ -37,8 +36,8 @@ LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
     "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint_i}...!",
     "simulation_paused": "Please update your schedule (`virtualship plan` or directly in {expedition_yaml}) to account for the delay at waypoint {waypoint_i} and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
-    "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
     "pre_departure_delay": "This problem will cause a delay of {delay_duration} hours to the whole expedition schedule. Please account for this for all waypoints in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
+    "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
 }
 
 
@@ -53,90 +52,75 @@ class ProblemSimulator:
 
     def select_problems(
         self,
+        prob_level,
+        instruments_in_expedition: set[InstrumentType],
     ) -> dict[str, list[GeneralProblem | InstrumentProblem]] | None:
         """Propagate both general and instrument problems."""
         # TODO: whether a problem can reoccur or not needs to be handled here too!
-        probability = self._calc_prob()
-        probability = 1.0  # TODO: temporary override for testing!!
-        if probability > 0.0:
-            problems = {}
-            problems["general"] = self._general_problem_select(probability)
-            problems["instrument"] = self._instrument_problem_select(probability)
-            return problems
-        else:
-            return None
+        if prob_level > 0:
+            return self._problem_select(prob_level, instruments_in_expedition)
 
     def execute(
         self,
         problems: dict[str, list[GeneralProblem | InstrumentProblem]],
-        instrument_type: InstrumentType | None = None,
+        instrument_type_validation: InstrumentType | None = None,
         log_delay: float = 7.0,
     ):
         """
         Execute the selected problems, returning messaging and delay times.
 
-        N.B. the problem_waypoint_i is different to the failed_waypoint_i defined in the Checkpoint class; the failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
+        N.B. a problem_waypoint_i is different to a failed_waypoint_i defined in the Checkpoint class; failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
         """
-        # TODO: integration with which zarr files have been written so far?
-        # TODO: logic to determine whether user has made the necessary changes to the schedule to account for the problem's delay_duration when next running the simulation... (does this come in here or _run?)
-        # TODO: logic for whether the user has already scheduled in enough contingency time to account for the problem's delay_duration, and they get a well done message if so
-        # TODO: need logic for if the problem can reoccur or not / and or that it has already occurred and has been addressed
-
         # TODO: re: prob levels:
         # 0 = no problems
         # 1 = only one problem in expedition (either pre-departure or during expedition, general or instrument) [and set this to DEFAULT prob level]
         # 2 = multiple problems can occur (general and instrument), but only one pre-departure problem allowed
 
-        # TODO: what to do about fact that students can avoid all problems by just scheduling in enough contingency time??
-        # this should probably be a learning point though, so maybe it's fine...
-        #! though could then ensure that if they pass because of contingency time, they definitely get a pre-depature problem...?
-        # this would all probably have to be a bit asynchronous, which might make things more complicated...
-
-        #! TODO: logic as well for case where problem can reoccur but it can only reoccur at a waypoint different to the one it has already occurred at
-
         # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
 
-        general_problems = problems["general"]
-        instrument_problems = problems["instrument"]
+        #! TODO: what happens if students decide to re-run the expedition multiple times with slightly changed set-ups to try to e.g. get more measurements? Maybe it should be that problems are ignored if the exact expedition.yaml has been run before, and if there's any changes to the expedition.yaml
+        # TODO: for this reason, `problems_encountered` dir should be housed in `results` dir along with a cache of the expedition.yaml used for that run...
+        # TODO: and the results dir given a unique name which can be used to check against when re-running the expedition?
 
         # allow only one pre-departure problem to occur
-        pre_departure_problems = [p for p in general_problems if p.pre_departure]
+        pre_departure_problems = [p for p in problems if isinstance(p, GeneralProblem)]
         if len(pre_departure_problems) > 1:
             to_keep = random.choice(pre_departure_problems)
-            general_problems = [
-                p for p in general_problems if not p.pre_departure or p is to_keep
-            ]
-        # ensure any pre-departure problem is first in list
-        general_problems.sort(key=lambda x: x.pre_departure, reverse=True)
+            problems = [p for p in problems if not p.pre_departure or p is to_keep]
+
+        problems.sort(
+            key=lambda x: x.pre_departure, reverse=True
+        )  # ensure any pre-departure problem is first
 
         # TODO: make the log output stand out more visually
-        # general problems
-        for gproblem in general_problems:
-            # determine problem waypoint index (random if during expedition)
+        for p in problems:
+            # skip if instrument problem but `p.instrument_type` does not match `instrument_type_validation`
+            if (
+                isinstance(p, InstrumentProblem)
+                and p.instrument_type is not instrument_type_validation
+            ):
+                continue
+
             problem_waypoint_i = (
                 None
-                if gproblem.pre_departure
+                if p.pre_departure
                 else np.random.randint(
                     0, len(self.schedule.waypoints) - 1
                 )  # last waypoint excluded (would not impact any future scheduling)
             )
 
-            # mark problem by unique hash and log to json, use to assess whether problem has already occurred
-            gproblem_hash = self._make_hash(
-                gproblem.message + str(problem_waypoint_i), 8
-            )
+            # TODO: double check the hashing still works as expected when problem_waypoint_i is None (i.e. pre-departure problem)
+            problem_hash = self._make_hash(p.message + str(problem_waypoint_i), 8)
             hash_path = Path(
                 self.expedition_dir
-                / f"{PROBLEMS_ENCOUNTERED_DIR}/problem_{gproblem_hash}.json"
+                / f"{PROBLEMS_ENCOUNTERED_DIR}/problem_{problem_hash}.json"
             )
             if hash_path.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
             else:
-                self._hash_to_json(
-                    gproblem, gproblem_hash, problem_waypoint_i, hash_path
-                )
+                self._hash_to_json(p, problem_hash, problem_waypoint_i, hash_path)
 
-            if gproblem.pre_departure:
+            if isinstance(p, GeneralProblem) and p.pre_departure:
                 alert_msg = LOG_MESSAGING["pre_departure"]
 
             else:
@@ -145,48 +129,13 @@ class ProblemSimulator:
                 )
 
             # log problem occurrence, save to checkpoint, and pause simulation
-            self._log_problem(gproblem, problem_waypoint_i, alert_msg, log_delay)
+            self._log_problem(p, problem_waypoint_i, alert_msg, log_delay)
 
-        # instrument problems
-        for i, problem in enumerate(problems["instrument"]):
-            pass  # TODO: implement!!
-            # TODO: similar logic to above for instrument-specific problems... or combine?
-
-    def _propagate_general_problems(self):
-        """Propagate general problems based on probability."""
-        probability = self._calc_general_prob(self.schedule, prob_level=self.prob_level)
-        return self._general_problem_select(probability)
-
-    def _propagate_instrument_problems(self):
-        """Propagate instrument problems based on probability."""
-        probability = self._calc_instrument_prob(
-            self.schedule, prob_level=self.prob_level
-        )
-        return self._instrument_problem_select(probability)
-
-    def _calc_prob(self) -> float:
-        """
-        Calcuates probability of a general problem as function of expedition duration and prob-level.
-
-        TODO: for now, general and instrument-specific problems have the same probability of occurence. Separating this out and allowing their probabilities to be set independently may be useful in future.
-        """
-        if self.prob_level == 0:
-            return 0.0
-
-    def _general_problem_select(self, probability) -> list[GeneralProblem]:
-        """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
-        return [
-            CaptainSafetyDrill,
-        ]  # TODO: temporary placeholder!!
-
-    def _instrument_problem_select(self, probability) -> list[InstrumentProblem]:
-        """Select which problems. Higher probability (tied to expedition duration) means more problems are likely to occur."""
-        # set: waypoint instruments vs. list of instrument-specific problems (automated registry)
-        # will deterimne which instrument-specific problems are possible at this waypoint
-
-        # wp_instruments = self.schedule.waypoints.instruments
-
-        return [CTDCableJammed]
+    def _problem_select(
+        self, prob_level, instruments_in_schedule
+    ) -> list[GeneralProblem | InstrumentProblem]:
+        """Select which problems (selected from general or instrument problems). Higher probability (tied to expedition duration) means more problems are likely to occur."""
+        return [CTDCableJammed]  # TODO: temporary placeholder!!
 
     def _log_problem(
         self,

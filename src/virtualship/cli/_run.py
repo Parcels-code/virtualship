@@ -56,8 +56,8 @@ def _run(
     print("╚═════════════════════════════════════════════════╝")
 
     if from_data is None:
-        # TODO: caution, if collaborative environments, will this mean everyone uses the same credentials file?
-        # TODO: need to think about how to deal with this for when using collaborative environments AND streaming data via copernicusmarine
+        # TODO: caution, if collaborative environments (or the same machine), this will mean that multiple users share the same copernicusmarine credentials file
+        # TODO: deal with this for if/when using collaborative environments (same machine) and streaming data from Copernicus Marine Service?
         COPERNICUS_CREDS_FILE = os.path.expandvars(
             "$HOME/.copernicusmarine/.copernicusmarine-credentials"
         )
@@ -129,28 +129,25 @@ def _run(
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
 
-    # identify problems
+    # simulate measurements
+    print("\nSimulating measurements. This may take a while...\n")
+
+    instruments_in_expedition = expedition.get_instruments()
+
+    # problems
     # TODO: prob_level needs to be parsed from CLI args
     problem_simulator = ProblemSimulator(
         expedition.schedule, prob_level, expedition_dir
     )
-    problems = problem_simulator.select_problems()
-
-    # simulate measurements
-    print("\nSimulating measurements. This may take a while...\n")
-
-    # TODO: logic for getting simulations to carry on from last checkpoint! Building on .zarr files already created...
-
-    instruments_in_expedition = expedition.get_instruments()
+    problems = problem_simulator.select_problems(instruments_in_expedition)
 
     for itype in instruments_in_expedition:
-        #! TODO: move this to before the loop; determine problem selection based on instruments_in_expedition to ensure only relevant problems are selected; and then instrument problems are propagated to within the loop
-        # TODO: instrument-specific problems at different waypoints are where see if can get time savings by not re-simulating everything from scratch... but if it's too complex than just leave for now
-        # propagate problems
+        #! TODO: need logic for skipping simulation of instruments which have already been simulated successfully in a previous run of the expedition
+        #! TODO: and new logic for not overwriting existing zarr files if they already exist from a previous successful simulation of that instrument
         if problems:
             problem_simulator.execute(
-                problems=problems,
-                instrument_type=itype,
+                problems,
+                instrumet_type=itype,
             )
 
         # get instrument class
