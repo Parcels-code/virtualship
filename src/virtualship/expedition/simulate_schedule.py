@@ -20,6 +20,7 @@ from virtualship.models import (
     Spacetime,
     Waypoint,
 )
+from virtualship.utils import _calc_sail_time
 
 
 @dataclass
@@ -140,20 +141,11 @@ class _ScheduleSimulator:
         return ScheduleOk(self._time, self._measurements_to_simulate)
 
     def _progress_time_traveling_towards(self, location: Location) -> None:
-        # TODO: this can be refactored to use _calc_sail_time function from utils.py
-        geodinv: tuple[float, float, float] = self._projection.inv(
-            lons1=self._location.lon,
-            lats1=self._location.lat,
-            lons2=location.lon,
-            lats2=location.lat,
-        )
-        ship_speed_meter_per_second = (
-            self._expedition.ship_config.ship_speed_knots * 1852 / 3600
-        )
-        azimuth1 = geodinv[0]
-        distance_to_next_waypoint = geodinv[2]
-        time_to_reach = timedelta(
-            seconds=distance_to_next_waypoint / ship_speed_meter_per_second
+        time_to_reach, azimuth1, ship_speed_meter_per_second = _calc_sail_time(
+            self._location,
+            location,
+            self._expedition.ship_config.ship_speed_knots,
+            self._projection,
         )
         end_time = self._time + time_to_reach
 

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
-    from virtualship.models import Expedition, Waypoint
+    from virtualship.models import Expedition, Location
     from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
@@ -589,18 +589,22 @@ def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
 
 
 def _calc_sail_time(
-    waypoint1: Waypoint,
-    waypoint2: Waypoint,
+    location1: Location,
+    location2: Location,
     ship_speed_knots: float,
     projection: pyproj.Geod,
-):
+) -> tuple[timedelta, tuple[float, float, float], float]:
     """Calculate sail time between two waypoints (their locations) given ship speed in knots."""
     geodinv: tuple[float, float, float] = projection.inv(
-        lons1=waypoint1.location.longitude,
-        lats1=waypoint1.location.latitude,
-        lons2=waypoint2.location.longitude,
-        lats2=waypoint2.location.latitude,
+        lons1=location1.longitude,
+        lats1=location1.latitude,
+        lons2=location2.longitude,
+        lats2=location2.latitude,
     )
     ship_speed_meter_per_second = ship_speed_knots * 1852 / 3600
     distance_to_next_waypoint = geodinv[2]
-    return timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second)
+    return (
+        timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second),
+        geodinv,
+        ship_speed_meter_per_second,
+    )

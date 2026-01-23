@@ -12,6 +12,7 @@ import yaml
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    _calc_sail_time,
     _get_bathy_data,
     _get_waypoint_latlons,
     _validate_numeric_to_timedelta,
@@ -165,16 +166,13 @@ class Schedule(pydantic.BaseModel):
             if wp.instrument is InstrumentType.CTD:
                 time += timedelta(minutes=20)
 
-            # TODO: this can be refactored to use _calc_sail_time function from utils.py
-            geodinv: tuple[float, float, float] = projection.inv(
-                wp.location.lon,
-                wp.location.lat,
-                wp_next.location.lon,
-                wp_next.location.lat,
-            )
-            distance = geodinv[2]
+            time_to_reach = _calc_sail_time(
+                wp.location,
+                wp_next.location,
+                ship_speed,
+                projection,
+            )[0]
 
-            time_to_reach = timedelta(seconds=distance / ship_speed * 3600 / 1852)
             arrival_time = time + time_to_reach
 
             if wp_next.time is None:

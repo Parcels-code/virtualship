@@ -176,24 +176,25 @@ class ProblemSimulator:
             # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
             with yaspin(text="Assessing impact on expedition schedule..."):
                 time.sleep(5.0)
-            problem_waypoint_time = self.expedition.schedule.waypoints[
-                problem_waypoint_i
-            ].time
-            next_waypoint_time = self.expedition.schedule.waypoints[
-                problem_waypoint_i + 1
-            ].time
+
+            problem_wp = self.expedition.schedule.waypoints[problem_waypoint_i]
+            next_wp = self.expedition.schedule.waypoints[problem_waypoint_i + 1]
+
+            problem_waypoint_time = problem_wp.time
+            next_waypoint_time = next_wp.time
             time_diff = (
                 next_waypoint_time - problem_waypoint_time
             ).total_seconds() / 3600.0  # [hours]
             sail_time = (
                 _calc_sail_time(
-                    self.expedition.schedule.waypoints[problem_waypoint_i],
-                    self.expedition.schedule.waypoints[problem_waypoint_i + 1],
+                    problem_wp.location,
+                    next_wp.location,
                     ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
                     projection=PROJECTION,
-                ).total_seconds()
+                )[0].total_seconds()
                 / 3600.0
             )  # [hours]
+
             if (
                 time_diff
                 >= (problem.delay_duration.total_seconds() / 3600.0) + sail_time
@@ -213,7 +214,7 @@ class ProblemSimulator:
         # save checkpoint
         checkpoint = self._make_checkpoint(
             failed_waypoint_i=problem_waypoint_i + 1
-        )  # failed waypoint index then becomes the one after the one where the problem occurred; this is when scheduling issues would be run into
+        )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into
         _save_checkpoint(checkpoint, self.expedition_dir)
 
         # cache original schedule for reference and/or restoring later if needed (checkpoint can be overwritten if multiple problems occur so is not a persistent record of original schedule)
