@@ -85,6 +85,7 @@ class ProblemSimulator:
         # 2 = multiple problems can occur (general and instrument; total determined by the length of the expedition), but only one pre-departure problem allowed
 
         # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
+        #! TODO: may want to ensure duplicate problem types are removed; even if they could theoretically occur at different waypoints, so as not to inundate users...
 
         #! TODO: what happens if students decide to re-run the expedition multiple times with slightly changed set-ups to try to e.g. get more measurements? Maybe it should be that problems are ignored if the exact expedition.yaml has been run before, and if there's any changes to the expedition.yaml
         # TODO: for this reason, `problems_encountered` dir should be housed in `results` dir along with a cache of the expedition.yaml used for that run...
@@ -143,9 +144,9 @@ class ProblemSimulator:
             if hash_path.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
             else:
-                self._hash_to_json(p, problem_hash, problem_waypoint_i, hash_path)
+                self._hash_to_json(problem, problem_hash, problem_waypoint_i, hash_path)
 
-            if issubclass(p, GeneralProblem) and p.pre_departure:
+            if issubclass(problem, GeneralProblem) and problem.pre_departure:
                 alert_msg = LOG_MESSAGING["pre_departure"]
 
             else:
@@ -154,13 +155,16 @@ class ProblemSimulator:
                 )
 
             # log problem occurrence, save to checkpoint, and pause simulation
-            self._log_problem(p, problem_waypoint_i, alert_msg, log_delay)
+            self._log_problem(
+                problem, problem_waypoint_i, alert_msg, hash_path, log_delay
+            )
 
     def _log_problem(
         self,
         problem: GeneralProblem | InstrumentProblem,
         problem_waypoint_i: int | None,
         alert_msg: str,
+        hash_path: Path,
         log_delay: float,
     ):
         """Log problem occurrence with spinner and delay, save to checkpoint, write hash."""
@@ -214,8 +218,15 @@ class ProblemSimulator:
                 >= (problem.delay_duration.total_seconds() / 3600.0) + sail_time
             ):
                 print(LOG_MESSAGING["problem_avoided"])
-                # give users time to read message before simulation continues
-                with yaspin():
+
+                # update problem json to resolved = True
+                with open(hash_path, encoding="utf-8") as f:
+                    problem_json = json.load(f)
+                problem_json["resolved"] = True
+                with open(hash_path, "w", encoding="utf-8") as f_out:
+                    json.dump(problem_json, f_out, indent=4)
+
+                with yaspin():  # time to read message before simulation continues
                     time.sleep(7.0)
                 return
 
@@ -228,6 +239,8 @@ class ProblemSimulator:
         # save checkpoint
         checkpoint = self._make_checkpoint(
             failed_waypoint_i=problem_waypoint_i + 1
+            if problem_waypoint_i is not None
+            else None
         )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into
         _save_checkpoint(checkpoint, self.expedition_dir)
 
@@ -271,7 +284,7 @@ class ProblemSimulator:
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
         }
-        with open(hash_path, "w") as f:
+        with open(hash_path, "w", encoding="utf-8") as f:
             json.dump(hash_data, f, indent=4)
 
     def _cache_original_schedule(self, schedule: Schedule, path: Path | str):

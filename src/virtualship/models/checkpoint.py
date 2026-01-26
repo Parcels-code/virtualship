@@ -82,7 +82,7 @@ class Checkpoint(pydantic.BaseModel):
         ]
         if len(hash_fpaths) > 0:
             for file in hash_fpaths:
-                with open(file) as f:
+                with open(file, encoding="utf-8") as f:
                     problem = json.load(f)
                     if problem["resolved"]:
                         continue
@@ -110,7 +110,7 @@ class Checkpoint(pydantic.BaseModel):
 
                             # save back to json file changing the resolved status to True
                             problem["resolved"] = True
-                            with open(file, "w") as f_out:
+                            with open(file, "w", encoding="utf-8") as f_out:
                                 json.dump(problem, f_out, indent=4)
 
                         else:
