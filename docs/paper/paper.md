@@ -1,5 +1,5 @@
 ---
-title: "VirtualShip for simulating oceanographic fieldwork in the global ocean"
+title: "VirtualShip: A Python package for simulating oceanographic fieldwork in the global ocean"
 tags:
   - Python
   - oceanography
