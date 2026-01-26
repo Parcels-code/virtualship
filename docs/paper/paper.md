@@ -1,5 +1,5 @@
 ---
-title: "VirtualShip for simulating oceanographic fieldwork in the global ocean"
+title: "VirtualShip: A Python package for simulating oceanographic fieldwork in the global ocean"
 tags:
   - Python
   - oceanography
@@ -45,9 +45,11 @@ bibliography: paper.bib
 
 Marine science relies on fieldwork for data collection, yet sea-going opportunities are limited due to financial costs, logistical constraints, and environmental burdens. We present an alternative means, namely `VirtualShip`, for training scientists to conduct oceanographic fieldwork in an authentic manner, to plan future expeditions and deployments, and to directly compare observational and instrumentational strategies with model data.
 
-`VirtualShip` goes beyond simply extracting grid-cell values from model output. Instead, it uses programmable behaviours and sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in exact locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing tools, such as `OceanSpy` [@Almansi2019] and `VirtualFleet` [@Maze2023], but extends capabilities to mesh many different instrument deployments into a unified expedition simulation framework. Moreover, `VirtualShip` exploits readily available, streamable data via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers. `VirtualShip` can also integrate coordinate files exported from the [Marine Facilities Planning](https://www.marinefacilitiesplanning.com/cruiselocationplanning#) (MFP) tool, giving users the option to define expedition waypoints via an intuitive web-based mapping interface.
-
 `VirtualShip` simulates the deployment of virtual instruments commonly used in oceanographic fieldwork, with emphasis on realism in how users plan and execute expeditions. For example, users must consider ship speed and instrument deployment/recovery times to ensure their expedition is feasible within given time constraints. Possible instrument selections include surface `Drifter` [@Lumpkin2017], `CTD` (Conductivity-Temperature-Depth; @Johnson2007), `Argo float` [@Jayne2017], `XBT` (Expendable Bathythermograph; @Goni2019), underway `ADCP` (Acoustic Doppler Current Profiler; @Kostaschuk2005), and underway `temperature/salinity` [@Gordon2014] probes. More detail on each instrument is available in the [documentation](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options).
+
+# State of the field
+
+`VirtualShip` goes beyond simply extracting grid-cell values from model output. Instead, it uses programmable behaviours and sophisticated interpolation techniques (with `Parcels` underpinnings) to access data in exact locations and timings, as if they were being collected by real-world instruments. `VirtualShip` shares some functionality with existing tools, such as `OceanSpy` [@Almansi2019] and `VirtualFleet` [@Maze2023], but extends capabilities to mesh many different instrument deployments into a unified expedition simulation framework. By way of further innovation, `VirtualShip` exploits readily available, streamable data via the Copernicus Marine Data Store, removing the need for users to download and manage large datasets locally and/or arrange for access to remote servers. `VirtualShip` can also integrate coordinate files exported from the [Marine Facilities Planning](https://www.marinefacilitiesplanning.com/cruiselocationplanning#) (MFP) tool, giving users the option to define expedition waypoints via an intuitive web-based mapping interface.
 
 # Software design
 
