@@ -32,7 +32,7 @@ from virtualship.utils import (
 )
 
 if TYPE_CHECKING:
-    from virtualship.models.expedition import Expedition, Schedule
+    from virtualship.models.expedition import Expedition, Schedule, Waypoint
 
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
@@ -175,13 +175,12 @@ class ProblemSimulator:
 
         print("\nPROBLEM ENCOUNTERED: " + problem.message + "\n")
 
+        breakpoint()
+
         if problem_waypoint_i is None:  # pre-departure problem
-            print(
-                "\nRESULT: "
-                + LOG_MESSAGING["pre_departure_delay"].format(
-                    delay_duration=problem.delay_duration.total_seconds() / 3600.0,
-                    expedition_yaml=EXPEDITION,
-                )
+            result_msg = "\nRESULT: " + LOG_MESSAGING["pre_departure_delay"].format(
+                delay_duration=problem.delay_duration.total_seconds() / 3600.0,
+                expedition_yaml=EXPEDITION,
             )
 
         else:  # problem occurring during expedition
@@ -198,25 +197,17 @@ class ProblemSimulator:
             problem_wp = self.expedition.schedule.waypoints[problem_waypoint_i]
             next_wp = self.expedition.schedule.waypoints[problem_waypoint_i + 1]
 
-            problem_waypoint_time = problem_wp.time
-            next_waypoint_time = next_wp.time
-            time_diff = (
-                next_waypoint_time - problem_waypoint_time
-            ).total_seconds() / 3600.0  # [hours]
-            sail_time = (
-                _calc_sail_time(
-                    problem_wp.location,
-                    next_wp.location,
-                    ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
-                    projection=PROJECTION,
-                )[0].total_seconds()
-                / 3600.0
-            )  # [hours]
+            missed_waypoints = self._waypoints_missed(
+                problem_waypoint_i, problem, projection=PROJECTION
+            )
 
-            if (
-                time_diff
-                >= (problem.delay_duration.total_seconds() / 3600.0) + sail_time
-            ):
+            if len(missed_waypoints) > 0:
+                print(
+                    f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
+                )
+                print(result_msg)
+
+            else:
                 print(LOG_MESSAGING["problem_avoided"])
 
                 # update problem json to resolved = True
@@ -229,12 +220,6 @@ class ProblemSimulator:
                 with yaspin():  # time to read message before simulation continues
                     time.sleep(7.0)
                 return
-
-            else:
-                print(
-                    f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
-                )
-                print(result_msg)
 
         # save checkpoint
         checkpoint = self._make_checkpoint(
@@ -255,6 +240,41 @@ class ProblemSimulator:
 
         # pause simulation
         sys.exit(0)
+
+    def _waypoints_missed(
+        self,
+        problem_waypoint_i: Waypoint,
+        problem: InstrumentProblem | GeneralProblem,
+        projection=PROJECTION,
+    ) -> list[Waypoint]:
+        """Return a list of waypoints (after wp1) that can no longer be reached in time given the delay associated with the problem."""
+        waypoints = self.expedition.schedule.waypoints
+        missed_waypoints = []
+        cumulative_delay = problem.delay_duration.total_seconds() / 3600.0  # hours
+
+        for i in range(problem_waypoint_i, len(waypoints) - 1):
+            curr_wp = waypoints[i]
+            next_wp = waypoints[i + 1]
+            scheduled_time_diff = (
+                next_wp.time - curr_wp.time
+            ).total_seconds() / 3600.0  # hours
+            sail_time = (
+                _calc_sail_time(
+                    curr_wp.location,
+                    next_wp.location,
+                    ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
+                    projection=projection,
+                )[0].total_seconds()
+                / 3600.0
+            )
+
+            if scheduled_time_diff < sail_time + cumulative_delay:
+                missed_waypoints.append(next_wp)
+            cumulative_delay = max(
+                0, (sail_time + cumulative_delay) - scheduled_time_diff
+            )  # delay propagates forward
+
+        return missed_waypoints
 
     def _make_checkpoint(self, failed_waypoint_i: int | None = None) -> Checkpoint:
         """Make checkpoint, also handling pre-departure."""
