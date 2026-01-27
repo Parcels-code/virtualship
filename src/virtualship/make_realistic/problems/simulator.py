@@ -22,7 +22,6 @@ from virtualship.make_realistic.problems.scenarios import (
 )
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
-    CHECKPOINT,
     EXPEDITION,
     PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
@@ -37,8 +36,7 @@ if TYPE_CHECKING:
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
     "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint_i}...!",
-    "simulation_paused": "Please update your schedule (`virtualship plan` or directly in {expedition_yaml}) to account for the delay at waypoint {waypoint_i} and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {checkpoint_path}.\n",
-    "pre_departure_delay": "This problem will cause a delay of {delay_duration} hours to the whole expedition schedule. Please account for this for all waypoints in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
+    "schedule_problems": "This problem will cause a delay of {delay_duration} hours. The following waypoints will \033[4mnot\033[0m be reached in time given the delay: {waypoints_missed}. The following will still be reached in time due to sufficient contingency time being planned already: {waypoints_reachable}. Please account for the delays in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
     "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
 }
 
@@ -143,8 +141,6 @@ class ProblemSimulator:
             )
             if hash_path.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
-            else:
-                self._hash_to_json(problem, problem_hash, problem_waypoint_i, hash_path)
 
             if issubclass(problem, GeneralProblem) and problem.pre_departure:
                 alert_msg = LOG_MESSAGING["pre_departure"]
@@ -156,7 +152,12 @@ class ProblemSimulator:
 
             # log problem occurrence, save to checkpoint, and pause simulation
             self._log_problem(
-                problem, problem_waypoint_i, alert_msg, hash_path, log_delay
+                problem,
+                problem_waypoint_i,
+                alert_msg,
+                problem_hash,
+                hash_path,
+                log_delay,
             )
 
     def _log_problem(
@@ -164,6 +165,7 @@ class ProblemSimulator:
         problem: GeneralProblem | InstrumentProblem,
         problem_waypoint_i: int | None,
         alert_msg: str,
+        problem_hash: str,
         hash_path: Path,
         log_delay: float,
     ):
@@ -175,51 +177,56 @@ class ProblemSimulator:
 
         print("\nPROBLEM ENCOUNTERED: " + problem.message + "\n")
 
-        breakpoint()
+        # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
+        with yaspin(text="Assessing impact on expedition schedule..."):
+            time.sleep(5.0)
 
-        if problem_waypoint_i is None:  # pre-departure problem
-            result_msg = "\nRESULT: " + LOG_MESSAGING["pre_departure_delay"].format(
-                delay_duration=problem.delay_duration.total_seconds() / 3600.0,
-                expedition_yaml=EXPEDITION,
+        missed_waypoint_idxs, reachable_waypoint_idxs = (
+            self._waypoints_missed_and_reached(problem_waypoint_i, problem)
+        )
+
+        result_msg = "\nRESULT: " + LOG_MESSAGING["schedule_problems"].format(
+            delay_duration=problem.delay_duration.total_seconds() / 3600.0,
+            waypoints_missed=[wp + 1 for wp in missed_waypoint_idxs],
+            waypoints_reachable=[wp + 1 for wp in reachable_waypoint_idxs]
+            if len(reachable_waypoint_idxs) > 0
+            else ["None"],
+            expedition_yaml=EXPEDITION,
+        )
+
+        self._hash_to_json(
+            problem,
+            problem_hash,
+            problem_waypoint_i,
+            missed_waypoint_idxs,
+            reachable_waypoint_idxs,
+            hash_path,
+        )
+
+        if len(missed_waypoint_idxs) > 0:
+            affected = (
+                "in-port"
+                if problem_waypoint_i is None
+                else f"at waypoint {problem_waypoint_i + 1}"
             )
-
-        else:  # problem occurring during expedition
-            result_msg = "\nRESULT: " + LOG_MESSAGING["simulation_paused"].format(
-                waypoint_i=int(problem_waypoint_i) + 1,
-                expedition_yaml=EXPEDITION,
-                checkpoint_path=self.expedition_dir.joinpath(CHECKPOINT),
+            print(
+                f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring {affected} (future waypoint(s) would be reached too late).\n"
             )
+            print(result_msg)
 
-            # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
-            with yaspin(text="Assessing impact on expedition schedule..."):
-                time.sleep(5.0)
+        else:
+            print(LOG_MESSAGING["problem_avoided"])
 
-            problem_wp = self.expedition.schedule.waypoints[problem_waypoint_i]
-            next_wp = self.expedition.schedule.waypoints[problem_waypoint_i + 1]
+            # update problem json to resolved = True
+            with open(hash_path, encoding="utf-8") as f:
+                problem_json = json.load(f)
+            problem_json["resolved"] = True
+            with open(hash_path, "w", encoding="utf-8") as f_out:
+                json.dump(problem_json, f_out, indent=4)
 
-            missed_waypoints = self._waypoints_missed(
-                problem_waypoint_i, problem, projection=PROJECTION
-            )
-
-            if len(missed_waypoints) > 0:
-                print(
-                    f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring at waypoint {problem_waypoint_i + 1} (future waypoints would be reached too late).\n"
-                )
-                print(result_msg)
-
-            else:
-                print(LOG_MESSAGING["problem_avoided"])
-
-                # update problem json to resolved = True
-                with open(hash_path, encoding="utf-8") as f:
-                    problem_json = json.load(f)
-                problem_json["resolved"] = True
-                with open(hash_path, "w", encoding="utf-8") as f_out:
-                    json.dump(problem_json, f_out, indent=4)
-
-                with yaspin():  # time to read message before simulation continues
-                    time.sleep(7.0)
-                return
+            with yaspin():  # time to read message before simulation continues
+                time.sleep(7.0)
+            return
 
         # save checkpoint
         checkpoint = self._make_checkpoint(
@@ -241,20 +248,31 @@ class ProblemSimulator:
         # pause simulation
         sys.exit(0)
 
-    def _waypoints_missed(
+    def _waypoints_missed_and_reached(
         self,
-        problem_waypoint_i: Waypoint,
+        problem_waypoint_i: int | None,
         problem: InstrumentProblem | GeneralProblem,
         projection=PROJECTION,
     ) -> list[Waypoint]:
         """Return a list of waypoints (after wp1) that can no longer be reached in time given the delay associated with the problem."""
         waypoints = self.expedition.schedule.waypoints
-        missed_waypoints = []
         cumulative_delay = problem.delay_duration.total_seconds() / 3600.0  # hours
+        missed_waypoint_idxs = []
 
-        for i in range(problem_waypoint_i, len(waypoints) - 1):
-            curr_wp = waypoints[i]
-            next_wp = waypoints[i + 1]
+        if problem_waypoint_i is None:
+            missed_waypoint_idxs.append(
+                0
+            )  # first waypoint will always be missed if pre-departure problem
+
+        waypoint_range = (
+            range(problem_waypoint_i, len(waypoints) - 1)
+            if problem_waypoint_i is not None
+            else range(0, len(waypoints) - 1)
+        )  # only need to assess timings for waypoints after the problem waypoint (all waypoints if pre-departure)
+
+        for wp_i in waypoint_range:
+            curr_wp = waypoints[wp_i]
+            next_wp = waypoints[wp_i + 1]
             scheduled_time_diff = (
                 next_wp.time - curr_wp.time
             ).total_seconds() / 3600.0  # hours
@@ -269,12 +287,16 @@ class ProblemSimulator:
             )
 
             if scheduled_time_diff < sail_time + cumulative_delay:
-                missed_waypoints.append(next_wp)
+                missed_waypoint_idxs.append(wp_i + 1)
             cumulative_delay = max(
                 0, (sail_time + cumulative_delay) - scheduled_time_diff
             )  # delay propagates forward
 
-        return missed_waypoints
+        reachable_waypoint_idxs = [
+            i for i in range(len(waypoints)) if i not in missed_waypoint_idxs
+        ]
+
+        return missed_waypoint_idxs, reachable_waypoint_idxs
 
     def _make_checkpoint(self, failed_waypoint_i: int | None = None) -> Checkpoint:
         """Make checkpoint, also handling pre-departure."""
@@ -292,6 +314,8 @@ class ProblemSimulator:
         problem: InstrumentProblem | GeneralProblem,
         problem_hash: str,
         failed_waypoint_i: int | None,
+        missed_waypoint_idxs: list,
+        reachable_waypoint_idxs: list,
         hash_path: Path,
     ) -> dict:
         """Convert problem details + hash to json."""
@@ -301,6 +325,8 @@ class ProblemSimulator:
             "message": problem.message,
             "failed_waypoint_i": failed_waypoint_i,
             "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
+            "missed_waypoint_idxs": missed_waypoint_idxs,
+            "reachable_waypoint_idxs": reachable_waypoint_idxs,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
         }

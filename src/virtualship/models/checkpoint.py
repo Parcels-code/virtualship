@@ -84,46 +84,61 @@ class Checkpoint(pydantic.BaseModel):
             for file in hash_fpaths:
                 with open(file, encoding="utf-8") as f:
                     problem = json.load(f)
-                    if problem["resolved"]:
-                        continue
-                    elif not problem["resolved"]:
-                        # check if delay has been accounted for in the schedule
-                        delay_duration = timedelta(
-                            hours=float(problem["delay_duration_hours"])
-                        )  # delay associated with the problem
-                        waypoint_range = (
-                            range(len(self.past_schedule.waypoints))
-                            if self.failed_waypoint_i is None
-                            else range(
-                                int(self.failed_waypoint_i), len(schedule.waypoints)
-                            )
+                if problem["resolved"]:
+                    continue
+                elif not problem["resolved"]:
+                    # check if delay has been accounted for in the schedule
+
+                    delay_duration = timedelta(
+                        hours=float(problem["delay_duration_hours"])
+                    )  # delay associated with the problem
+
+                    time_deltas = [
+                        schedule.waypoints[i].time
+                        - self.past_schedule.waypoints[i].time
+                        for i in problem["missed_waypoint_idxs"]
+                    ]  # difference in time between the two schedules at the waypoints which were previously unreachable
+
+                    wp_resolution_status = [td >= delay_duration for td in time_deltas]
+
+                    if all(wp_resolution_status):
+                        print(
+                            "\n\n🎉 Previous problem has been resolved in the schedule.\n"
                         )
-                        time_deltas = [
-                            schedule.waypoints[i].time
-                            - self.past_schedule.waypoints[i].time
-                            for i in waypoint_range
-                        ]  # difference in time between the two schedules from the failed waypoint onwards
-                        if all(td >= delay_duration for td in time_deltas):
-                            print(
-                                "\n\n🎉 Previous problem has been resolved in the schedule.\n"
-                            )
 
-                            # save back to json file changing the resolved status to True
-                            problem["resolved"] = True
-                            with open(file, "w", encoding="utf-8") as f_out:
-                                json.dump(problem, f_out, indent=4)
+                        # save back to json file changing the resolved status to True
+                        problem["resolved"] = True
+                        with open(file, "w", encoding="utf-8") as f_out:
+                            json.dump(problem, f_out, indent=4)
 
-                        else:
-                            affected_waypoints = (
-                                "all waypoints"
-                                if self.failed_waypoint_i is None
-                                else f"waypoint {int(self.failed_waypoint_i) + 1} onwards"
-                            )
-                            raise CheckpointError(
-                                f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
-                                f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours at waypoint {self.failed_waypoint_i} (affecting scheduling for {affected_waypoints}).\n"
-                                "Hint: you should ensure that the delay time has been added to ALL waypoints after the waypoint where the problem occurred."
-                            )
+                        break  # only handle the first problem found; others will be handled in subsequent runs but are not yet known to the user
 
-                        # only handle the first unresolved problem found; others will be handled in subsequent runs but are not yet known to the user
-                        break
+                    else:
+                        problem_wp = (
+                            "in-port"
+                            if self.failed_waypoint_i is None
+                            else f"at waypoint {self.failed_waypoint_i + 1}"
+                        )
+                        still_unresolved = [
+                            wp + 1
+                            for wp, resolved in zip(  # noqa: B905
+                                problem["missed_waypoint_idxs"], wp_resolution_status
+                            )
+                            if not resolved
+                        ]
+                        shortcoming_times = [
+                            (
+                                delay_duration.total_seconds()
+                                - time_deltas[i].total_seconds()
+                            )
+                            / 3600.0
+                            for i, resolved in enumerate(wp_resolution_status)
+                            if not resolved
+                        ]
+
+                        raise CheckpointError(
+                            f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp}.\n"
+                            f"Hint... the following waypoints can still not be reached in time: {still_unresolved} and would be missed by {shortcoming_times} hour(s)"
+                            + (", respectively." if len(shortcoming_times) > 1 else ".")
+                        )
