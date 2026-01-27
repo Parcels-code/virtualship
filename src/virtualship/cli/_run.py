@@ -85,7 +85,7 @@ def _run(
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition.schedule, expedition_dir)
+    checkpoint.verify(expedition, expedition_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 

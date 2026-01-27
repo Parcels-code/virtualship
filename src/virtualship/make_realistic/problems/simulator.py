@@ -31,12 +31,12 @@ from virtualship.utils import (
 )
 
 if TYPE_CHECKING:
-    from virtualship.models.expedition import Expedition, Schedule, Waypoint
+    from virtualship.models.expedition import Expedition, Schedule
 
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
-    "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint_i}...!",
-    "schedule_problems": "This problem will cause a delay of {delay_duration} hours. The following waypoints will \033[4mnot\033[0m be reached in time given the delay: {waypoints_missed}. The following will still be reached in time due to sufficient contingency time being planned already: {waypoints_reachable}. Please account for the delays in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
+    "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint}...!",
+    "schedule_problems": "This problem will cause a delay of {delay_duration} hours {affected}. The next waypoint (i.e. waypoint {waypoint_next}) therefore cannot be reached in time. Please account for this in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
     "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
 }
 
@@ -147,7 +147,7 @@ class ProblemSimulator:
 
             else:
                 alert_msg = LOG_MESSAGING["during_expedition"].format(
-                    waypoint_i=int(problem_waypoint_i) + 1
+                    waypoint=int(problem_waypoint_i) + 1
                 )
 
             # log problem occurrence, save to checkpoint, and pause simulation
@@ -177,20 +177,16 @@ class ProblemSimulator:
 
         print("\nPROBLEM ENCOUNTERED: " + problem.message + "\n")
 
-        # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
-        with yaspin(text="Assessing impact on expedition schedule..."):
-            time.sleep(5.0)
-
-        missed_waypoint_idxs, reachable_waypoint_idxs = (
-            self._waypoints_missed_and_reached(problem_waypoint_i, problem)
-        )
-
         result_msg = "\nRESULT: " + LOG_MESSAGING["schedule_problems"].format(
             delay_duration=problem.delay_duration.total_seconds() / 3600.0,
-            waypoints_missed=[wp + 1 for wp in missed_waypoint_idxs],
-            waypoints_reachable=[wp + 1 for wp in reachable_waypoint_idxs]
-            if len(reachable_waypoint_idxs) > 0
-            else ["None"],
+            affected=(
+                "in-port"
+                if problem_waypoint_i is None
+                else f"at waypoint {problem_waypoint_i + 1}"
+            ),
+            waypoint_next=int(problem_waypoint_i) + 2
+            if problem_waypoint_i is not None
+            else 1,
             expedition_yaml=EXPEDITION,
         )
 
@@ -198,23 +194,16 @@ class ProblemSimulator:
             problem,
             problem_hash,
             problem_waypoint_i,
-            missed_waypoint_idxs,
-            reachable_waypoint_idxs,
             hash_path,
         )
 
-        if len(missed_waypoint_idxs) > 0:
-            affected = (
-                "in-port"
-                if problem_waypoint_i is None
-                else f"at waypoint {problem_waypoint_i + 1}"
-            )
-            print(
-                f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring {affected} (future waypoint(s) would be reached too late).\n"
-            )
-            print(result_msg)
+        # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
+        with yaspin(text="Assessing impact on expedition schedule..."):
+            time.sleep(5.0)
 
-        else:
+        has_contingency = self._has_contingency(problem, problem_waypoint_i)
+
+        if has_contingency:
             print(LOG_MESSAGING["problem_avoided"])
 
             # update problem json to resolved = True
@@ -228,12 +217,24 @@ class ProblemSimulator:
                 time.sleep(7.0)
             return
 
+        else:
+            affected = (
+                "in-port"
+                if problem_waypoint_i is None
+                else f"at waypoint {problem_waypoint_i + 1}"
+            )
+            print(
+                f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring {affected} (future waypoint(s) would be reached too late).\n"
+            )
+            print(result_msg)
+
         # save checkpoint
-        checkpoint = self._make_checkpoint(
+        checkpoint = Checkpoint(
+            past_schedule=self.expedition.schedule,
             failed_waypoint_i=problem_waypoint_i + 1
             if problem_waypoint_i is not None
-            else None
-        )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into
+            else 0,
+        )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into; for pre-departure problems this is the first waypoint
         _save_checkpoint(checkpoint, self.expedition_dir)
 
         # cache original schedule for reference and/or restoring later if needed (checkpoint can be overwritten if multiple problems occur so is not a persistent record of original schedule)
@@ -248,60 +249,42 @@ class ProblemSimulator:
         # pause simulation
         sys.exit(0)
 
-    def _waypoints_missed_and_reached(
+    def _has_contingency(
         self,
-        problem_waypoint_i: int | None,
         problem: InstrumentProblem | GeneralProblem,
-        projection=PROJECTION,
-    ) -> list[Waypoint]:
-        """Return a list of waypoints (after wp1) that can no longer be reached in time given the delay associated with the problem."""
-        waypoints = self.expedition.schedule.waypoints
-        cumulative_delay = problem.delay_duration.total_seconds() / 3600.0  # hours
-        missed_waypoint_idxs = []
-
+        problem_waypoint_i: int | None,
+    ) -> bool:
+        """Determine if enough contingency time has been scheduled to avoid delay affecting the waypoint immediately after the problem."""
         if problem_waypoint_i is None:
-            missed_waypoint_idxs.append(
-                0
-            )  # first waypoint will always be missed if pre-departure problem
+            return False  # pre-departure problems always cause delay to first waypoint
 
-        waypoint_range = (
-            range(problem_waypoint_i, len(waypoints) - 1)
-            if problem_waypoint_i is not None
-            else range(0, len(waypoints) - 1)
-        )  # only need to assess timings for waypoints after the problem waypoint (all waypoints if pre-departure)
+        else:
+            #! TODO: this still needs to incoporate the instrument deployment times as well!!
 
-        for wp_i in waypoint_range:
-            curr_wp = waypoints[wp_i]
-            next_wp = waypoints[wp_i + 1]
+            delay_duration = problem.delay_duration.total_seconds() / 3600.0  # hours
+            curr_wp = self.expedition.schedule.waypoints[problem_waypoint_i]
+            next_wp = self.expedition.schedule.waypoints[problem_waypoint_i + 1]
+
             scheduled_time_diff = (
                 next_wp.time - curr_wp.time
             ).total_seconds() / 3600.0  # hours
+
             sail_time = (
                 _calc_sail_time(
                     curr_wp.location,
                     next_wp.location,
                     ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
-                    projection=projection,
+                    projection=PROJECTION,
                 )[0].total_seconds()
                 / 3600.0
             )
-
-            if scheduled_time_diff < sail_time + cumulative_delay:
-                missed_waypoint_idxs.append(wp_i + 1)
-            cumulative_delay = max(
-                0, (sail_time + cumulative_delay) - scheduled_time_diff
-            )  # delay propagates forward
-
-        reachable_waypoint_idxs = [
-            i for i in range(len(waypoints)) if i not in missed_waypoint_idxs
-        ]
-
-        return missed_waypoint_idxs, reachable_waypoint_idxs
+            return scheduled_time_diff > sail_time + delay_duration
 
     def _make_checkpoint(self, failed_waypoint_i: int | None = None) -> Checkpoint:
         """Make checkpoint, also handling pre-departure."""
-        fpi = None if failed_waypoint_i is None else failed_waypoint_i
-        return Checkpoint(past_schedule=self.expedition.schedule, failed_waypoint_i=fpi)
+        return Checkpoint(
+            past_schedule=self.expedition.schedule, failed_waypoint_i=failed_waypoint_i
+        )
 
     def _make_hash(self, s: str, length: int) -> str:
         """Make unique hash for problem occurrence."""
@@ -313,9 +296,7 @@ class ProblemSimulator:
         self,
         problem: InstrumentProblem | GeneralProblem,
         problem_hash: str,
-        failed_waypoint_i: int | None,
-        missed_waypoint_idxs: list,
-        reachable_waypoint_idxs: list,
+        problem_waypoint_i: int | None,
         hash_path: Path,
     ) -> dict:
         """Convert problem details + hash to json."""
@@ -323,10 +304,8 @@ class ProblemSimulator:
         hash_data = {
             "problem_hash": problem_hash,
             "message": problem.message,
-            "failed_waypoint_i": failed_waypoint_i,
+            "problem_waypoint_i": problem_waypoint_i,
             "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
-            "missed_waypoint_idxs": missed_waypoint_idxs,
-            "reachable_waypoint_idxs": reachable_waypoint_idxs,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
         }
