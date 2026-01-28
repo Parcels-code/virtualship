@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 
 import copernicusmarine
 import xarray as xr
-from parcels import FieldSet
 from yaspin import yaspin
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -67,7 +67,10 @@ class Instrument(abc.ABC):
         )
         self.wp_times = wp_times
 
-        self.min_time, self.max_time = wp_times[0], wp_times[-1]
+        self.min_time, self.max_time = (
+            wp_times[0],
+            wp_times[-1] + timedelta(days=1),
+        )  # avoid edge issues
         self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
 

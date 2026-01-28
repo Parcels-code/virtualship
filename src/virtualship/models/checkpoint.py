@@ -104,20 +104,19 @@ class Checkpoint(pydantic.BaseModel):
                     )
 
                     # pre-departure problem: check that whole delay duration has been added to first waypoint time (by testing against past schedule)
-                    if self.failed_waypoint_i == 0:
+                    if problem["problem_waypoint_i"] is None:
                         time_diff = (
                             new_schedule.waypoints[0].time
                             - self.past_schedule.waypoints[0].time
                         )
                         resolved = time_diff >= delay_duration
-
                     # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
+
                     else:
                         time_delta = (
                             new_schedule.waypoints[self.failed_waypoint_i].time
                             - new_schedule.waypoints[self.failed_waypoint_i - 1].time
                         )
-                        breakpoint()
                         min_time_required = (
                             _calc_sail_time(
                                 new_schedule.waypoints[
@@ -147,10 +146,15 @@ class Checkpoint(pydantic.BaseModel):
                     else:
                         problem_wp = (
                             "in-port"
-                            if problem["problem_waypoint_i"] == 0
+                            if problem["problem_waypoint_i"] is None
                             else f"at waypoint {problem['problem_waypoint_i'] + 1}"
+                        )
+                        affected_wp = (
+                            "1"
+                            if problem["problem_waypoint_i"] is None
+                            else f"{problem['problem_waypoint_i'] + 2}"
                         )
                         raise CheckpointError(
                             f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
-                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp} (meaning {problem['problem_waypoint_i'] + 2} could not be reached in time).\n"
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp} (meaning waypoint {affected_wp} could not be reached in time).\n"
                         )

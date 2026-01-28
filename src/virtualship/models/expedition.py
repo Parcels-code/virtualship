@@ -179,8 +179,9 @@ class Schedule(pydantic.BaseModel):
                 time = arrival_time
             elif arrival_time > wp_next.time:
                 raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at waypoint number {wp_i + 2}. "
-                    f"location: {wp_next.location} time: {wp_next.time} instrument: {wp_next.instrument}"
+                    f"Waypoint planning is not valid: would arrive too late at waypoint {wp_i + 2}. "
+                    f"Location: {wp_next.location} Time: {wp_next.time}. "
+                    f"Currently projected to arrive at: {arrival_time}."
                 )
             else:
                 time = wp_next.time

@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
     "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint}...!",
-    "schedule_problems": "This problem will cause a delay of {delay_duration} hours {affected}. The next waypoint (i.e. waypoint {waypoint_next}) therefore cannot be reached in time. Please account for this in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
+    "schedule_problems": "This problem will cause a delay of {delay_duration} hours {problem_wp}. The next waypoint therefore cannot be reached in time. Please account for this in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
     "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
 }
 
@@ -179,14 +179,11 @@ class ProblemSimulator:
 
         result_msg = "\nRESULT: " + LOG_MESSAGING["schedule_problems"].format(
             delay_duration=problem.delay_duration.total_seconds() / 3600.0,
-            affected=(
+            problem_wp=(
                 "in-port"
                 if problem_waypoint_i is None
                 else f"at waypoint {problem_waypoint_i + 1}"
             ),
-            waypoint_next=int(problem_waypoint_i) + 2
-            if problem_waypoint_i is not None
-            else 1,
             expedition_yaml=EXPEDITION,
         )
 
