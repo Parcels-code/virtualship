@@ -27,6 +27,7 @@ from virtualship.utils import (
     PROJECTION,
     SCHEDULE_ORIGINAL,
     _calc_sail_time,
+    _calc_wp_stationkeeping_time,
     _save_checkpoint,
 )
 
@@ -79,8 +80,8 @@ class ProblemSimulator:
         """
         # TODO: re: prob levels:
         # 0 = no problems
-        # 1 = only one problem in expedition (either pre-departure or during expedition, general or instrument) [and set this to DEFAULT prob level]
-        # 2 = multiple problems can occur (general and instrument; total determined by the length of the expedition), but only one pre-departure problem allowed
+        # 1 = 1-2 (defo at least 1) problems in expedition (either pre-departure or during expedition, general or instrument) [and set this to DEFAULT prob level]
+        # 2 = 3-4+ problems can occur (general and instrument; total determined by the length of the expedition), but only one pre-departure problem allowed
 
         # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
         #! TODO: may want to ensure duplicate problem types are removed; even if they could theoretically occur at different waypoints, so as not to inundate users...
@@ -256,26 +257,26 @@ class ProblemSimulator:
             return False  # pre-departure problems always cause delay to first waypoint
 
         else:
-            #! TODO: this still needs to incoporate the instrument deployment times as well!!
-
-            delay_duration = problem.delay_duration.total_seconds() / 3600.0  # hours
             curr_wp = self.expedition.schedule.waypoints[problem_waypoint_i]
             next_wp = self.expedition.schedule.waypoints[problem_waypoint_i + 1]
 
-            scheduled_time_diff = (
-                next_wp.time - curr_wp.time
-            ).total_seconds() / 3600.0  # hours
-
-            sail_time = (
-                _calc_sail_time(
-                    curr_wp.location,
-                    next_wp.location,
-                    ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
-                    projection=PROJECTION,
-                )[0].total_seconds()
-                / 3600.0
+            wp_stationkeeping_time = _calc_wp_stationkeeping_time(
+                curr_wp.instrument, self.expedition
             )
-            return scheduled_time_diff > sail_time + delay_duration
+
+            scheduled_time_diff = next_wp.time - curr_wp.time
+
+            sail_time = _calc_sail_time(
+                curr_wp.location,
+                next_wp.location,
+                ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
+                projection=PROJECTION,
+            )[0]
+
+            return (
+                scheduled_time_diff
+                > sail_time + wp_stationkeeping_time + problem.delay_duration
+            )
 
     def _make_checkpoint(self, failed_waypoint_i: int | None = None) -> Checkpoint:
         """Make checkpoint, also handling pre-departure."""

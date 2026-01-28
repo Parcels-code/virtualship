@@ -17,6 +17,7 @@ from virtualship.utils import (
     PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
     _calc_sail_time,
+    _calc_wp_stationkeeping_time,
 )
 
 
@@ -95,10 +96,6 @@ class Checkpoint(pydantic.BaseModel):
                     continue
                 elif not problem["resolved"]:
                     # check if delay has been accounted for in the new schedule (at waypoint immediately after problem waypoint)
-
-                    # TODO: should be that the new schedule time to reach the waypoint after the problem_waypoint should be sail_time + delay_duration < new_schedule_time_between_affected_waypoints
-                    # TODO: but if it's a pre-departure problem then need to check that the whole departure time has been added on to the 1st waypoint
-
                     delay_duration = timedelta(
                         hours=float(problem["delay_duration_hours"])
                     )
@@ -110,25 +107,33 @@ class Checkpoint(pydantic.BaseModel):
                             - self.past_schedule.waypoints[0].time
                         )
                         resolved = time_diff >= delay_duration
-                    # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
 
+                    # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
                     else:
-                        time_delta = (
-                            new_schedule.waypoints[self.failed_waypoint_i].time
-                            - new_schedule.waypoints[self.failed_waypoint_i - 1].time
-                        )
+                        problem_waypoint = new_schedule.waypoints[
+                            problem["problem_waypoint_i"]
+                        ]
+                        failed_waypoint = new_schedule.waypoints[self.failed_waypoint_i]
+
+                        scheduled_time = failed_waypoint.time - problem_waypoint.time
+
+                        stationkeeping_time = _calc_wp_stationkeeping_time(
+                            problem_waypoint.instrument,
+                            expedition,
+                        )  # total time required to deploy instruments at problem waypoint
+
+                        sail_time = _calc_sail_time(
+                            problem_waypoint.location,
+                            failed_waypoint.location,
+                            ship_speed_knots=expedition.ship_config.ship_speed_knots,
+                            projection=PROJECTION,
+                        )[0]
+
                         min_time_required = (
-                            _calc_sail_time(
-                                new_schedule.waypoints[
-                                    self.failed_waypoint_i - 1
-                                ].location,
-                                new_schedule.waypoints[self.failed_waypoint_i].location,
-                                ship_speed_knots=expedition.ship_config.ship_speed_knots,
-                                projection=PROJECTION,
-                            )[0]
-                            + delay_duration
+                            sail_time + delay_duration + stationkeeping_time
                         )
-                        resolved = time_delta >= min_time_required
+
+                        resolved = scheduled_time >= min_time_required
 
                     if resolved:
                         print(
@@ -154,7 +159,18 @@ class Checkpoint(pydantic.BaseModel):
                             if problem["problem_waypoint_i"] is None
                             else f"{problem['problem_waypoint_i'] + 2}"
                         )
+                        current_time = (
+                            problem_waypoint.time
+                            + sail_time
+                            + delay_duration
+                            + stationkeeping_time
+                        )
+
                         raise CheckpointError(
-                            f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n"
-                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp} (meaning waypoint {affected_wp} could not be reached in time).\n"
+                            f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n\n"
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp} (meaning waypoint {affected_wp} could not be reached in time). "
+                            f"Currently, the ship would reach waypoint {affected_wp} at {current_time}, but the scheduled time is {failed_waypoint.time}.\n\n"
+                            + f"Hint: don't forget to factor in the time required to deploy the instruments {problem_wp} when rescheduling waypoint {affected_wp}."
+                            if problem["problem_waypoint_i"] is not None
+                            else None
                         )

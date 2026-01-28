@@ -17,6 +17,7 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
+from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
@@ -608,3 +609,30 @@ def _calc_sail_time(
         geodinv,
         ship_speed_meter_per_second,
     )
+
+
+def _calc_wp_stationkeeping_time(
+    wp_instrument_types: list, expedition: Expedition
+) -> timedelta:
+    """For a given waypoint, calculate how much time is required to carry out all instrument deployments."""
+    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    both_ctd_and_bgc = (
+        InstrumentType.CTD in wp_instrument_types
+        and InstrumentType.CTD_BGC in wp_instrument_types
+    )
+
+    # extract configs for instruments present in waypoint
+    wp_instrument_configs = [
+        iconfig
+        for _, iconfig in expedition.instruments_config.__dict__.items()
+        if iconfig is not None and iconfig.instrument_type in wp_instrument_types
+    ]
+
+    cumulative_stationkeeping_time = timedelta()
+    for iconfig in wp_instrument_configs:
+        if both_ctd_and_bgc and iconfig.instrument_type == InstrumentType.CTD_BGC:
+            continue  # # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+        if hasattr(iconfig, "stationkeeping_time"):
+            cumulative_stationkeeping_time += iconfig.stationkeeping_time
+
+    return cumulative_stationkeeping_time
