@@ -59,7 +59,6 @@ class ProblemSimulator:
         instruments_in_expedition: set[InstrumentType],
     ) -> list[GeneralProblem | InstrumentProblem] | None:
         """Propagate both general and instrument problems."""
-        # TODO: whether a problem can reoccur or not needs to be handled here too!
         if prob_level > 0:
             return [
                 CTDCableJammed,
@@ -86,12 +85,7 @@ class ProblemSimulator:
         # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
         #! TODO: may want to ensure duplicate problem types are removed; even if they could theoretically occur at different waypoints, so as not to inundate users...
 
-        #! TODO: what happens if students decide to re-run the expedition multiple times with slightly changed set-ups to try to e.g. get more measurements? Maybe it should be that problems are ignored if the exact expedition.yaml has been run before, and if there's any changes to the expedition.yaml
-        # TODO: for this reason, `problems_encountered` dir should be housed in `results` dir along with a cache of the expedition.yaml used for that run...
-        # TODO: and the results dir given a unique name which can be used to check against when re-running the expedition?
-
         # allow only one pre-departure problem to occur (only GeneralProblems can be pre-departure problems)
-
         pre_departure_problems = [
             p for p in problems if issubclass(p, GeneralProblem) and p.pre_departure
         ]
@@ -123,7 +117,6 @@ class ProblemSimulator:
             "waypoint_i": [w for _, w in paired],
         }
 
-        # TODO: make the log output stand out more visually
         for problem, problem_waypoint_i in zip(
             problems_sorted["problem_class"], problems_sorted["waypoint_i"], strict=True
         ):
@@ -134,7 +127,6 @@ class ProblemSimulator:
             ):
                 continue
 
-            # TODO: double check the hashing still works as expected when problem_waypoint_i is None (i.e. pre-departure problem)
             problem_hash = self._make_hash(problem.message + str(problem_waypoint_i), 8)
             hash_path = Path(
                 self.expedition_dir

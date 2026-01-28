@@ -73,7 +73,6 @@ class Checkpoint(pydantic.BaseModel):
         if self.failed_waypoint_i is None:
             pass
         elif (
-            # TODO: double check this still works as intended for the user defined schedule with not enough time between waypoints case
             not new_schedule.waypoints[: int(self.failed_waypoint_i)]
             == self.past_schedule.waypoints[: int(self.failed_waypoint_i)]
         ):

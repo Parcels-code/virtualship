@@ -140,8 +140,6 @@ def _run(
         if prob_level > 0:  # only helpful if problems are being simulated
             print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
 
-        #! TODO: need logic for skipping simulation of instruments which have already been simulated successfully in a previous run of the expedition
-        #! TODO: and new logic for not overwriting existing zarr files if they already exist from a previous successful simulation of that instrument
         if problems:
             problem_simulator.execute(
                 problems,
@@ -177,13 +175,14 @@ def _run(
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
 
-    # TODO: delete checkpoint file at the end of successful expedition? [it inteferes with ability to re-run expedition]
-
     if problems:
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(
             f"\nA record of problems encountered during the expedition is saved in: {expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)}"
         )
+
+    # delete checkpoint file (inteferes with ability to re-run expedition)
+    os.remove(expedition_dir.joinpath(CHECKPOINT))
 
     print("\n------------- END -------------\n")
 
