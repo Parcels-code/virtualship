@@ -12,6 +12,7 @@ import yaml
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    _calc_sail_time,
     _get_bathy_data,
     _get_waypoint_latlons,
     _validate_numeric_to_timedelta,
@@ -165,23 +166,22 @@ class Schedule(pydantic.BaseModel):
             if wp.instrument is InstrumentType.CTD:
                 time += timedelta(minutes=20)
 
-            geodinv: tuple[float, float, float] = projection.inv(
-                wp.location.lon,
-                wp.location.lat,
-                wp_next.location.lon,
-                wp_next.location.lat,
-            )
-            distance = geodinv[2]
+            time_to_reach = _calc_sail_time(
+                wp.location,
+                wp_next.location,
+                ship_speed,
+                projection,
+            )[0]
 
-            time_to_reach = timedelta(seconds=distance / ship_speed * 3600 / 1852)
             arrival_time = time + time_to_reach
 
             if wp_next.time is None:
                 time = arrival_time
             elif arrival_time > wp_next.time:
                 raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at waypoint number {wp_i + 2}. "
-                    f"location: {wp_next.location} time: {wp_next.time} instrument: {wp_next.instrument}"
+                    f"Waypoint planning is not valid: would arrive too late at waypoint {wp_i + 2}. "
+                    f"Location: {wp_next.location} Time: {wp_next.time}. "
+                    f"Currently projected to arrive at: {arrival_time}."
                 )
             else:
                 time = wp_next.time
@@ -206,6 +206,8 @@ class Waypoint(pydantic.BaseModel):
 
 class ArgoFloatConfig(pydantic.BaseModel):
     """Configuration for argos floats."""
+
+    instrument_type: InstrumentType = InstrumentType.ARGO_FLOAT
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
@@ -247,6 +249,8 @@ class ArgoFloatConfig(pydantic.BaseModel):
 class ADCPConfig(pydantic.BaseModel):
     """Configuration for ADCP instrument."""
 
+    instrument_type: InstrumentType = InstrumentType.ADCP
+
     max_depth_meter: float = pydantic.Field(le=0.0)
     num_bins: int = pydantic.Field(gt=0.0)
     period: timedelta = pydantic.Field(
@@ -268,6 +272,8 @@ class ADCPConfig(pydantic.BaseModel):
 
 class CTDConfig(pydantic.BaseModel):
     """Configuration for CTD instrument."""
+
+    instrument_type: InstrumentType = InstrumentType.CTD
 
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
@@ -291,6 +297,8 @@ class CTDConfig(pydantic.BaseModel):
 class CTD_BGCConfig(pydantic.BaseModel):
     """Configuration for CTD_BGC instrument."""
 
+    instrument_type: InstrumentType = InstrumentType.CTD_BGC
+
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
         validation_alias="stationkeeping_time_minutes",
@@ -313,6 +321,8 @@ class CTD_BGCConfig(pydantic.BaseModel):
 class ShipUnderwaterSTConfig(pydantic.BaseModel):
     """Configuration for underwater ST."""
 
+    instrument_type: InstrumentType = InstrumentType.UNDERWATER_ST
+
     period: timedelta = pydantic.Field(
         serialization_alias="period_minutes",
         validation_alias="period_minutes",
@@ -332,6 +342,8 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
 
 class DrifterConfig(pydantic.BaseModel):
     """Configuration for drifters."""
+
+    instrument_type: InstrumentType = InstrumentType.DRIFTER
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
@@ -366,6 +378,8 @@ class DrifterConfig(pydantic.BaseModel):
 
 class XBTConfig(pydantic.BaseModel):
     """Configuration for xbt instrument."""
+
+    instrument_type: InstrumentType = InstrumentType.XBT
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)

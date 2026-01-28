@@ -1,5 +1,6 @@
 """do_expedition function."""
 
+import glob
 import logging
 import os
 import shutil
@@ -7,25 +8,24 @@ import time
 from pathlib import Path
 
 import copernicusmarine
-import pyproj
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
     ScheduleProblem,
     simulate_schedule,
 )
-from virtualship.models import Schedule
-from virtualship.models.checkpoint import Checkpoint
+from virtualship.make_realistic.problems.simulator import ProblemSimulator
+from virtualship.models import Checkpoint, Schedule
 from virtualship.utils import (
     CHECKPOINT,
+    EXPEDITION,
+    PROBLEMS_ENCOUNTERED_DIR,
+    PROJECTION,
     _get_expedition,
+    _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
-
-# projection used to sail between waypoints
-projection = pyproj.Geod(ellps="WGS84")
-
 
 # parcels logger (suppress INFO messages to prevent log being flooded)
 external_logger = logging.getLogger("parcels.tools.loggers")
@@ -35,7 +35,10 @@ external_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
-def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
+# TODO: prob-level needs to be parsed from CLI args; currently set to 1 override for testing purposes
+def _run(
+    expedition_dir: str | Path, from_data: Path | None = None, prob_level: int = 1
+) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
 
@@ -50,8 +53,8 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
     print("╚═════════════════════════════════════════════════╝")
 
     if from_data is None:
-        # TODO: caution, if collaborative environments, will this mean everyone uses the same credentials file?
-        # TODO: need to think about how to deal with this for when using collaborative environments AND streaming data via copernicusmarine
+        # TODO: caution, if collaborative environments (or the same machine), this will mean that multiple users share the same copernicusmarine credentials file
+        # TODO: deal with this for if/when using collaborative environments (same machine) and streaming data from Copernicus Marine Service?
         COPERNICUS_CREDS_FILE = os.path.expandvars(
             "$HOME/.copernicusmarine/.copernicusmarine-credentials"
         )
@@ -73,7 +76,7 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     expedition = _get_expedition(expedition_dir)
 
-    # Verify instruments_config file is consistent with schedule
+    # verify instruments_config file is consistent with schedule
     expedition.instruments_config.verify(expedition)
 
     # load last checkpoint
@@ -81,8 +84,8 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
     if checkpoint is None:
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
-    # verify that schedule and checkpoint match
-    checkpoint.verify(expedition.schedule)
+    # verify that schedule and checkpoint match, and that problems have been resolved
+    checkpoint.verify(expedition, expedition_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -93,20 +96,19 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     # simulate the schedule
     schedule_results = simulate_schedule(
-        projection=projection,
+        projection=PROJECTION,
         expedition=expedition,
     )
+
+    # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
     if isinstance(schedule_results, ScheduleProblem):
         print(
-            f"SIMULATION PAUSED: update your schedule (`virtualship plan`) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
+            f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
         )
         _save_checkpoint(
             Checkpoint(
-                past_schedule=Schedule(
-                    waypoints=expedition.schedule.waypoints[
-                        : schedule_results.failed_waypoint_i
-                    ]
-                )
+                past_schedule=expedition.schedule,
+                failed_waypoint_i=schedule_results.failed_waypoint_i,
             ),
             expedition_dir,
         )
@@ -129,7 +131,22 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
 
     instruments_in_expedition = expedition.get_instruments()
 
+    # problems
+    # TODO: prob_level needs to be parsed from CLI args
+    #! TODO: the argument should ensure that only "0", "1", or "2" can be used as arguments
+    problem_simulator = ProblemSimulator(expedition, prob_level, expedition_dir)
+    problems = problem_simulator.select_problems(instruments_in_expedition)
+
     for itype in instruments_in_expedition:
+        if prob_level > 0:  # only helpful if problems are being simulated
+            print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
+
+        if problems:
+            problem_simulator.execute(
+                problems,
+                instrument_type_validation=itype,
+            )
+
         # get instrument class
         instrument_class = get_instrument_class(itype)
         if instrument_class is None:
@@ -158,6 +175,16 @@ def _run(expedition_dir: str | Path, from_data: Path | None = None) -> None:
     print(
         f"Your measurements can be found in the '{expedition_dir}/results' directory."
     )
+
+    if problems:
+        print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
+        print(
+            f"\nA record of problems encountered during the expedition is saved in: {expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)}"
+        )
+
+    # delete checkpoint file (inteferes with ability to re-run expedition)
+    os.remove(expedition_dir.joinpath(CHECKPOINT))
+
     print("\n------------- END -------------\n")
 
     # end timing
@@ -174,9 +201,13 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
         return None
 
 
-def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
-    file_path = expedition_dir.joinpath(CHECKPOINT)
-    checkpoint.to_yaml(file_path)
+def _load_hashes(expedition_dir: Path) -> set[str]:
+    hashes_path = expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)
+    if not hashes_path.exists():
+        return set()
+    hash_files = glob.glob(str(hashes_path / "problem_*.txt"))
+    hashes = {Path(f).stem.split("_")[1] for f in hash_files}
+    return hashes
 
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):

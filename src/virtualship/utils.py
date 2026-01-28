@@ -12,15 +12,19 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import pyproj
 import xarray as xr
 from parcels import FieldSet
 
 from virtualship.errors import CopernicusCatalogueError
+from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
-    from virtualship.expedition.simulate_schedule import ScheduleOk
-    from virtualship.models import Expedition
-
+    from virtualship.expedition.simulate_schedule import (
+        ScheduleOk,
+    )
+    from virtualship.models import Expedition, Location
+    from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
 import yaml
@@ -29,6 +33,11 @@ from yaspin import Spinner
 
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
+SCHEDULE_ORIGINAL = "schedule_original.yaml"
+PROBLEMS_ENCOUNTERED_DIR = "problems_encountered"
+
+# projection used to sail between waypoints
+PROJECTION = pyproj.Geod(ellps="WGS84")
 
 
 def load_static_file(name: str) -> str:
@@ -270,6 +279,21 @@ def add_dummy_UV(fieldset: FieldSet):
                 raise ValueError(
                     "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
                 ) from None
+
+
+# problems inventory registry and registration utilities
+INSTRUMENT_PROBLEM_REG = []
+GENERAL_PROBLEM_REG = []
+
+
+def register_instrument_problem(cls):
+    INSTRUMENT_PROBLEM_REG.append(cls)
+    return cls
+
+
+def register_general_problem(cls):
+    GENERAL_PROBLEM_REG.append(cls)
+    return cls
 
 
 # Copernicus Marine product IDs
@@ -552,3 +576,57 @@ def _get_waypoint_latlons(waypoints):
         strict=True,
     )
     return wp_lats, wp_lons
+
+
+def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
+    file_path = expedition_dir.joinpath(CHECKPOINT)
+    checkpoint.to_yaml(file_path)
+
+
+def _calc_sail_time(
+    location1: Location,
+    location2: Location,
+    ship_speed_knots: float,
+    projection: pyproj.Geod,
+) -> tuple[timedelta, tuple[float, float, float], float]:
+    """Calculate sail time between two waypoints (their locations) given ship speed in knots."""
+    geodinv: tuple[float, float, float] = projection.inv(
+        lons1=location1.longitude,
+        lats1=location1.latitude,
+        lons2=location2.longitude,
+        lats2=location2.latitude,
+    )
+    ship_speed_meter_per_second = ship_speed_knots * 1852 / 3600
+    distance_to_next_waypoint = geodinv[2]
+    return (
+        timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second),
+        geodinv,
+        ship_speed_meter_per_second,
+    )
+
+
+def _calc_wp_stationkeeping_time(
+    wp_instrument_types: list, expedition: Expedition
+) -> timedelta:
+    """For a given waypoint, calculate how much time is required to carry out all instrument deployments."""
+    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    both_ctd_and_bgc = (
+        InstrumentType.CTD in wp_instrument_types
+        and InstrumentType.CTD_BGC in wp_instrument_types
+    )
+
+    # extract configs for instruments present in waypoint
+    wp_instrument_configs = [
+        iconfig
+        for _, iconfig in expedition.instruments_config.__dict__.items()
+        if iconfig is not None and iconfig.instrument_type in wp_instrument_types
+    ]
+
+    cumulative_stationkeeping_time = timedelta()
+    for iconfig in wp_instrument_configs:
+        if both_ctd_and_bgc and iconfig.instrument_type == InstrumentType.CTD_BGC:
+            continue  # # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+        if hasattr(iconfig, "stationkeeping_time"):
+            cumulative_stationkeeping_time += iconfig.stationkeeping_time
+
+    return cumulative_stationkeeping_time
