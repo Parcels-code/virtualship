@@ -23,6 +23,8 @@ from virtualship.make_realistic.problems.scenarios import (
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
     EXPEDITION,
+    GENERAL_PROBLEM_REG,
+    INSTRUMENT_PROBLEM_REG,
     PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
     SCHEDULE_ORIGINAL,
@@ -55,16 +57,32 @@ class ProblemSimulator:
 
     def select_problems(
         self,
-        prob_level,
         instruments_in_expedition: set[InstrumentType],
     ) -> list[GeneralProblem | InstrumentProblem] | None:
         """Propagate both general and instrument problems."""
-        if prob_level > 0:
+        breakpoint()
+
+        valid_instrument_problems = [
+            problem
+            for problem in INSTRUMENT_PROBLEM_REG
+            if problem.instrument_type in instruments_in_expedition
+        ]
+
+        # TODO: func here for calculating how many problems to select
+        # TODO: use different constraint levels (as in the drifter_offset func) for the different prob_levels
+        # TODO: then weighted by expedition len (time), number of waypoints, number of different instruments
+
+        GENERAL_PROBLEM_REG
+
+        if self.prob_level > 0:
             return [
                 CTDCableJammed,
                 FoodDeliveryDelayed,
                 CaptainSafetyDrill,
             ]  # TODO: temporary placeholder!!
+
+        else:
+            return None
 
     def execute(
         self,

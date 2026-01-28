@@ -282,24 +282,18 @@ def add_dummy_UV(fieldset: FieldSet):
 
 
 # problems inventory registry and registration utilities
-INSTRUMENT_PROBLEM_MAP = []
+INSTRUMENT_PROBLEM_REG = []
 GENERAL_PROBLEM_REG = []
 
 
-def register_instrument_problem(instrument_type):
-    def decorator(cls):
-        INSTRUMENT_PROBLEM_MAP[instrument_type] = cls
-        return cls
-
-    return decorator
+def register_instrument_problem(cls):
+    INSTRUMENT_PROBLEM_REG.append(cls)
+    return cls
 
 
-def register_general_problem():
-    def decorator(cls):
-        GENERAL_PROBLEM_REG.append(cls)
-        return cls
-
-    return decorator
+def register_general_problem(cls):
+    GENERAL_PROBLEM_REG.append(cls)
+    return cls
 
 
 # Copernicus Marine product IDs

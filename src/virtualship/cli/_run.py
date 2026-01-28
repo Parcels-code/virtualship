@@ -133,8 +133,9 @@ def _run(
 
     # problems
     # TODO: prob_level needs to be parsed from CLI args
+    #! TODO: the argument should ensure that only "0", "1", or "2" can be used as arguments
     problem_simulator = ProblemSimulator(expedition, prob_level, expedition_dir)
-    problems = problem_simulator.select_problems(prob_level, instruments_in_expedition)
+    problems = problem_simulator.select_problems(instruments_in_expedition)
 
     for itype in instruments_in_expedition:
         if prob_level > 0:  # only helpful if problems are being simulated
