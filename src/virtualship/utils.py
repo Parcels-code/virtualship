@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import os
 import re
 import warnings
@@ -630,3 +631,10 @@ def _calc_wp_stationkeeping_time(
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
     return cumulative_stationkeeping_time
+
+
+def _make_hash(s: str, length: int) -> str:
+    """Make unique hash for problem occurrence."""
+    assert length % 2 == 0, "Length must be even."
+    half_length = length // 2
+    return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)

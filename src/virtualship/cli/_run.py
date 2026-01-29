@@ -126,20 +126,41 @@ def _run(
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
 
+    # identify instruments in expedition
+    instruments_in_expedition = expedition.get_instruments()
+
+    # unique hash for this expedition (based on waypoint locations and instrument types); used for identifying previously encountered problems; therefore new set of problems if waypoint locations or instrument types change
+    expedition_hash = expedition.get_expedition_hash()
+
+    # problems
+    selected_problems_fname = (
+        "selected_problems_" + expedition_hash + ".json"
+    )  # for caching selected problems for this expedition
+
+    problem_simulator = ProblemSimulator(expedition, expedition_dir)
+
+    # TODO: prob_level needs to be parsed from CLI args
+    #! TODO: the argument should ensure that only "0", "1", or "2" can be used as arguments
+
+    # re-load previously encountered, valid (same expedition as previously) problems if they exist, else select new problems and cache them
+    if os.path.exists(
+        expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname
+    ):
+        problems = problem_simulator.load_selected_problems(selected_problems_fname)
+    else:
+        problems = problem_simulator.select_problems(
+            instruments_in_expedition, prob_level
+        )
+        problem_simulator.cache_selected_problems(problems, selected_problems_fname)
+
     # simulate measurements
     print("\nSimulating measurements. This may take a while...\n")
 
-    instruments_in_expedition = expedition.get_instruments()
-
-    # problems
-    # TODO: prob_level needs to be parsed from CLI args
-    #! TODO: the argument should ensure that only "0", "1", or "2" can be used as arguments
-    problem_simulator = ProblemSimulator(expedition, prob_level, expedition_dir)
-    problems = problem_simulator.select_problems(instruments_in_expedition)
-
     for itype in instruments_in_expedition:
         if prob_level > 0:  # only helpful if problems are being simulated
-            print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
+            print(
+                f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
+            )  # TODO: will want to clear once simulation line is running...
 
         if problems:
             problem_simulator.execute(

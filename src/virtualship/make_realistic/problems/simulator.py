@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import random
@@ -9,14 +8,10 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
-    CaptainSafetyDrill,
-    CTDCableJammed,
-    FoodDeliveryDelayed,
     GeneralProblem,
     InstrumentProblem,
 )
@@ -30,6 +25,7 @@ from virtualship.utils import (
     SCHEDULE_ORIGINAL,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
+    _make_hash,
     _save_checkpoint,
 )
 
@@ -44,50 +40,135 @@ LOG_MESSAGING = {
 }
 
 
+# default problem weights for problems simulator (i.e. add +1 problem for every n days/waypoints/instruments in expedition)
+PROBLEM_WEIGHTS = {
+    "every_ndays": 7,
+    "every_nwaypoints": 6,
+    "every_ninstruments": 3,
+}
+
+
 class ProblemSimulator:
     """Handle problem simulation during expedition."""
 
-    def __init__(
-        self, expedition: Expedition, prob_level: int, expedition_dir: str | Path
-    ):
+    def __init__(self, expedition: Expedition, expedition_dir: str | Path):
         """Initialise ProblemSimulator with a schedule and probability level."""
         self.expedition = expedition
-        self.prob_level = prob_level
         self.expedition_dir = Path(expedition_dir)
 
     def select_problems(
         self,
         instruments_in_expedition: set[InstrumentType],
-    ) -> list[GeneralProblem | InstrumentProblem] | None:
-        """Propagate both general and instrument problems."""
-        breakpoint()
+        prob_level: int,
+    ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
+        """
+        Select problems (general and instrument-specific). Number of problems is determined by probability level, expedition length, instrument count etc.
 
+        Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific via hash) for reference.
+        """
         valid_instrument_problems = [
             problem
             for problem in INSTRUMENT_PROBLEM_REG
             if problem.instrument_type in instruments_in_expedition
         ]
 
-        # TODO: func here for calculating how many problems to select
-        # TODO: use different constraint levels (as in the drifter_offset func) for the different prob_levels
-        # TODO: then weighted by expedition len (time), number of waypoints, number of different instruments
+        num_waypoints = len(self.expedition.schedule.waypoints)
+        num_instruments = len(instruments_in_expedition)
+        expedition_duration_days = (
+            self.expedition.schedule.waypoints[-1].time
+            - self.expedition.schedule.waypoints[0].time
+        ).days
 
-        GENERAL_PROBLEM_REG
+        if prob_level == 0:
+            num_problems = 0
+        elif prob_level == 1:
+            num_problems = random.randint(1, 2)
+        elif prob_level == 2:
+            base = 1
+            extra = (  # i.e. +1 problem for every n days/waypoints/instruments (tunable above)
+                (expedition_duration_days // PROBLEM_WEIGHTS["every_ndays"])
+                + (num_waypoints // PROBLEM_WEIGHTS["every_nwaypoints"])
+                + (num_instruments // PROBLEM_WEIGHTS["every_ninstruments"])
+            )
+            num_problems = base + extra
+            num_problems = min(
+                num_problems, len(GENERAL_PROBLEM_REG) + len(valid_instrument_problems)
+            )
 
-        if self.prob_level > 0:
-            return [
-                CTDCableJammed,
-                FoodDeliveryDelayed,
-                CaptainSafetyDrill,
-            ]  # TODO: temporary placeholder!!
+        selected_problems = []
+        if num_problems > 0:
+            random.shuffle(GENERAL_PROBLEM_REG)
+            random.shuffle(valid_instrument_problems)
 
-        else:
-            return None
+            # bias towards more instrument problems when there are more instruments
+            instrument_bias = min(0.7, num_instruments / (num_instruments + 2))
+            n_instrument = round(num_problems * instrument_bias)
+            n_general = min(len(GENERAL_PROBLEM_REG), num_problems - n_instrument)
+            n_instrument = (
+                num_problems - n_general
+            )  # recalc in case n_general was capped to len(GENERAL_PROBLEM_REG)
+
+            selected_problems.extend(GENERAL_PROBLEM_REG[:n_general])
+            selected_problems.extend(valid_instrument_problems[:n_instrument])
+
+            # allow only one pre-departure problem to occur; replace any extras with non-pre-departure problems
+            pre_departure_problems = [
+                p
+                for p in selected_problems
+                if issubclass(p, GeneralProblem) and p.pre_departure
+            ]
+            if len(pre_departure_problems) > 1:
+                to_keep = random.choice(pre_departure_problems)
+                num_to_replace = len(pre_departure_problems) - 1
+                # remove all but one pre_departure problem
+                selected_problems = [
+                    problem
+                    for problem in selected_problems
+                    if not (
+                        issubclass(problem, GeneralProblem)
+                        and problem.pre_departure
+                        and problem is not to_keep
+                    )
+                ]
+                # available non-pre_departure problems not already selected
+                available_general = [
+                    p
+                    for p in GENERAL_PROBLEM_REG
+                    if not p.pre_departure and p not in selected_problems
+                ]
+                available_instrument = [
+                    p for p in valid_instrument_problems if p not in selected_problems
+                ]
+                available_replacements = available_general + available_instrument
+                random.shuffle(available_replacements)
+                selected_problems.extend(available_replacements[:num_to_replace])
+
+            # map each problem to a [random] waypoint (or None if pre-departure)
+            waypoint_idxs = []
+            for problem in selected_problems:
+                if getattr(problem, "pre_departure", False):
+                    waypoint_idxs.append(None)
+                else:
+                    waypoint_idxs.append(
+                        random.randint(0, len(self.expedition.schedule.waypoints) - 1)
+                    )  # last waypoint excluded (would not impact any future scheduling)
+
+            # pair problems with their waypoint indices and sort by waypoint index (pre-departure first)
+            paired = sorted(
+                zip(selected_problems, waypoint_idxs, strict=True),
+                key=lambda x: (x[1] is not None, x[1] if x[1] is not None else -1),
+            )
+            problems_sorted = {
+                "problem_class": [p for p, _ in paired],
+                "waypoint_i": [w for _, w in paired],
+            }
+
+        return problems_sorted if selected_problems else None
 
     def execute(
         self,
-        problems: dict[str, list[GeneralProblem | InstrumentProblem]],
-        instrument_type_validation: InstrumentType | None = None,
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        instrument_type_validation: InstrumentType | None,
         log_delay: float = 7.0,
     ):
         """
@@ -95,48 +176,11 @@ class ProblemSimulator:
 
         N.B. a problem_waypoint_i is different to a failed_waypoint_i defined in the Checkpoint class; failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
         """
-        # TODO: re: prob levels:
-        # 0 = no problems
-        # 1 = 1-2 (defo at least 1) problems in expedition (either pre-departure or during expedition, general or instrument) [and set this to DEFAULT prob level]
-        # 2 = 3-4+ problems can occur (general and instrument; total determined by the length of the expedition), but only one pre-departure problem allowed
-
         # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
         #! TODO: may want to ensure duplicate problem types are removed; even if they could theoretically occur at different waypoints, so as not to inundate users...
 
-        # allow only one pre-departure problem to occur (only GeneralProblems can be pre-departure problems)
-        pre_departure_problems = [
-            p for p in problems if issubclass(p, GeneralProblem) and p.pre_departure
-        ]
-        if len(pre_departure_problems) > 1:  # keep only one pre-departure problem
-            to_keep = random.choice(pre_departure_problems)  # pick one at random
-            problems = [
-                p
-                for p in problems
-                if not getattr(p, "pre_departure", False) or p is to_keep
-            ]
-
-        # map each problem to a [random] waypoint (or None if pre-departure)
-        waypoint_idxs = []
-        for p in problems:
-            if getattr(p, "pre_departure", False):
-                waypoint_idxs.append(None)
-            else:
-                waypoint_idxs.append(
-                    np.random.randint(0, len(self.expedition.schedule.waypoints) - 1)
-                )  # last waypoint excluded (would not impact any future scheduling)
-
-        # air problems with their waypoint indices and sort by waypoint index (pre-departure first)
-        paired = sorted(
-            zip(problems, waypoint_idxs, strict=True),
-            key=lambda x: (x[1] is not None, x[1] if x[1] is not None else -1),
-        )
-        problems_sorted = {
-            "problem_class": [p for p, _ in paired],
-            "waypoint_i": [w for _, w in paired],
-        }
-
         for problem, problem_waypoint_i in zip(
-            problems_sorted["problem_class"], problems_sorted["waypoint_i"], strict=True
+            problems["problem_class"], problems["waypoint_i"], strict=True
         ):
             # skip if instrument problem but `p.instrument_type` does not match `instrument_type_validation` (i.e. the current instrument being simulated in the expedition, e.g. from _run.py)
             if (
@@ -145,10 +189,9 @@ class ProblemSimulator:
             ):
                 continue
 
-            problem_hash = self._make_hash(problem.message + str(problem_waypoint_i), 8)
-            hash_path = Path(
-                self.expedition_dir
-                / f"{PROBLEMS_ENCOUNTERED_DIR}/problem_{problem_hash}.json"
+            problem_hash = _make_hash(problem.message + str(problem_waypoint_i), 8)
+            hash_path = self.expedition_dir.joinpath(
+                PROBLEMS_ENCOUNTERED_DIR, f"problem_{problem_hash}.json"
             )
             if hash_path.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
@@ -170,6 +213,66 @@ class ProblemSimulator:
                 hash_path,
                 log_delay,
             )
+
+    def cache_selected_problems(
+        self,
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        selected_problems_fname: str,
+    ) -> None:
+        """Cache suite of problems to json, for reference."""
+        # make dir to contain problem jsons (unique to expedition)
+        os.makedirs(self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR, exist_ok=True)
+
+        # cache dict of selected_problems to json
+        with open(
+            self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "problem_class": [p.__name__ for p in problems["problem_class"]],
+                    "waypoint_i": problems["waypoint_i"],
+                },
+                f,
+                indent=4,
+            )
+
+    def load_selected_problems(
+        self, selected_problems_fname: str
+    ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
+        """Load previously selected problem classes from json."""
+        with open(
+            self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname,
+            encoding="utf-8",
+        ) as f:
+            problems_json = json.load(f)
+
+        # extract selected problem classes from their names (using the lookups preserves order they were saved in)
+        selected_problems = {"problem_class": [], "waypoint_i": []}
+        general_problems_lookup = {cls.__name__: cls for cls in GENERAL_PROBLEM_REG}
+        instrument_problems_lookup = {
+            cls.__name__: cls for cls in INSTRUMENT_PROBLEM_REG
+        }
+
+        for cls_name, wp_idx in zip(
+            problems_json["problem_class"], problems_json["waypoint_i"], strict=True
+        ):
+            if cls_name in general_problems_lookup:
+                selected_problems["problem_class"].append(
+                    general_problems_lookup[cls_name]
+                )
+            elif cls_name in instrument_problems_lookup:
+                selected_problems["problem_class"].append(
+                    instrument_problems_lookup[cls_name]
+                )
+            else:
+                raise ValueError(
+                    f"Problem class '{cls_name}' not found in known problem registries."
+                )
+            selected_problems["waypoint_i"].append(wp_idx)
+
+        return selected_problems
 
     def _log_problem(
         self,
@@ -294,12 +397,6 @@ class ProblemSimulator:
             past_schedule=self.expedition.schedule, failed_waypoint_i=failed_waypoint_i
         )
 
-    def _make_hash(self, s: str, length: int) -> str:
-        """Make unique hash for problem occurrence."""
-        assert length % 2 == 0, "Length must be even."
-        half_length = length // 2
-        return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
-
     def _hash_to_json(
         self,
         problem: InstrumentProblem | GeneralProblem,
@@ -308,7 +405,6 @@ class ProblemSimulator:
         hash_path: Path,
     ) -> dict:
         """Convert problem details + hash to json."""
-        os.makedirs(self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR, exist_ok=True)
         hash_data = {
             "problem_hash": problem_hash,
             "message": problem.message,

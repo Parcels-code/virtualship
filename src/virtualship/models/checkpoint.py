@@ -87,6 +87,7 @@ class Checkpoint(pydantic.BaseModel):
                 "problem_*.json"
             )
         ]
+
         if len(hash_fpaths) > 0:
             for file in hash_fpaths:
                 with open(file, encoding="utf-8") as f:

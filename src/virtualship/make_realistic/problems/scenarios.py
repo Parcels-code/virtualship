@@ -116,7 +116,7 @@ class CaptainSafetyDrill(GeneralProblem):
 
 @dataclass
 @register_general_problem
-class FuelDeliveryIssue:
+class FuelDeliveryIssue(GeneralProblem):
     message = (
         "The fuel tanker expected to deliver fuel has not arrived. Port authorities are unable to provide "
         "a clear estimate for when the delivery might occur. You may choose to [w]ait for the tanker or [g]et a "
