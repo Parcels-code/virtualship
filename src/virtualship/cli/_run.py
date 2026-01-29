@@ -152,21 +152,21 @@ def _run(
     print("\nSimulating measurements. This may take a while...\n")
 
     for itype in instruments_in_expedition:
-        if problems:  # only helpful if problems are being simulated
-            print(
-                f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
-            )  # TODO: will want to clear once simulation line is running...
-
-        if problems:
-            problem_simulator.execute(
-                problems,
-                instrument_type_validation=itype,
-            )
-
         # get instrument class
         instrument_class = get_instrument_class(itype)
         if instrument_class is None:
             raise RuntimeError(f"No instrument class found for type {itype}.")
+
+        # execute problem simulations for this instrument type
+        if problems:
+            print(
+                f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
+            )  # TODO: this line is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
+
+            problem_simulator.execute(
+                problems,
+                instrument_type_validation=itype,
+            )
 
         # get measurements to simulate
         attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
@@ -199,7 +199,8 @@ def _run(
         )
 
     # delete checkpoint file (inteferes with ability to re-run expedition)
-    os.remove(expedition_dir.joinpath(CHECKPOINT))
+    if os.path.exists(expedition_dir.joinpath(CHECKPOINT)):
+        os.remove(expedition_dir.joinpath(CHECKPOINT))
 
     print("\n------------- END -------------\n")
 

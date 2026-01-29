@@ -176,9 +176,6 @@ class ProblemSimulator:
 
         N.B. a problem_waypoint_i is different to a failed_waypoint_i defined in the Checkpoint class; failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
         """
-        # TODO: N.B. there is not logic currently controlling how many problems can occur in total during an expedition; at the moment it can happen every time the expedition is run if it's a different waypoint / problem combination
-        #! TODO: may want to ensure duplicate problem types are removed; even if they could theoretically occur at different waypoints, so as not to inundate users...
-
         for problem, problem_waypoint_i in zip(
             problems["problem_class"], problems["waypoint_i"], strict=True
         ):
