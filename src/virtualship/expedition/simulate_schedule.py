@@ -125,7 +125,7 @@ class _ScheduleSimulator:
                 print(
                     f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                     "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                    "\nHint: previous schedule verification (e.g. in the `virtualship plan` tool) will not account for measurement times, only the time it takes to sail between waypoints.\n"
+                    "\nHint: previous schedule verification checks (e.g. in the `virtualship plan` tool or after dealing with unexpected problems during the expedition) will not account for measurement times, only the time it takes to sail between waypoints.\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:

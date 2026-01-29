@@ -35,9 +35,8 @@ external_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
-# TODO: prob-level needs to be parsed from CLI args; currently set to 1 override for testing purposes
 def _run(
-    expedition_dir: str | Path, from_data: Path | None = None, prob_level: int = 1
+    expedition_dir: str | Path, prob_level: int, from_data: Path | None = None
 ) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
@@ -133,14 +132,9 @@ def _run(
     expedition_hash = expedition.get_expedition_hash()
 
     # problems
-    selected_problems_fname = (
-        "selected_problems_" + expedition_hash + ".json"
-    )  # for caching selected problems for this expedition
+    selected_problems_fname = "selected_problems_" + expedition_hash + ".json"
 
     problem_simulator = ProblemSimulator(expedition, expedition_dir)
-
-    # TODO: prob_level needs to be parsed from CLI args
-    #! TODO: the argument should ensure that only "0", "1", or "2" can be used as arguments
 
     # re-load previously encountered, valid (same expedition as previously) problems if they exist, else select new problems and cache them
     if os.path.exists(
@@ -151,13 +145,14 @@ def _run(
         problems = problem_simulator.select_problems(
             instruments_in_expedition, prob_level
         )
-        problem_simulator.cache_selected_problems(problems, selected_problems_fname)
+        if problems:
+            problem_simulator.cache_selected_problems(problems, selected_problems_fname)
 
     # simulate measurements
     print("\nSimulating measurements. This may take a while...\n")
 
     for itype in instruments_in_expedition:
-        if prob_level > 0:  # only helpful if problems are being simulated
+        if problems:  # only helpful if problems are being simulated
             print(
                 f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
             )  # TODO: will want to clear once simulation line is running...
