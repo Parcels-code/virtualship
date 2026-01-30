@@ -111,6 +111,7 @@ class Checkpoint(pydantic.BaseModel):
 
                     # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
                     else:
+                        breakpoint()
                         failed_waypoint = new_schedule.waypoints[self.failed_waypoint_i]
 
                         scheduled_time = failed_waypoint.time - problem_waypoint.time

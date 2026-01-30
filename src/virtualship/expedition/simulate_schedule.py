@@ -150,7 +150,6 @@ class _ScheduleSimulator:
             self._projection,
         )
         end_time = self._time + time_to_reach
-
         # note all ADCP measurements
         if self._expedition.instruments_config.adcp_config is not None:
             location = self._location

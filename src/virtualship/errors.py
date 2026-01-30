@@ -52,7 +52,7 @@ class CopernicusCatalogueError(Exception):
     pass
 
 
-class ProblemEncountered(Exception):
-    """Error raised when a problem is encountered during simulation."""
+class ProblemsError(Exception):
+    """Error raised when simulation of problem(s) in expedition fails."""
 
     pass

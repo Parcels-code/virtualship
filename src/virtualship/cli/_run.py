@@ -8,6 +8,7 @@ from pathlib import Path
 
 import copernicusmarine
 
+from virtualship.errors import ProblemsError
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
     ScheduleProblem,
@@ -168,12 +169,20 @@ def _run(
                 and problems["problem_class"][0].pre_departure
                 else f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
             )
+            try:
+                problem_simulator.execute(
+                    problems,
+                    instrument_type_validation=itype,
+                    problems_dir=problems_dir,
+                )
 
-            problem_simulator.execute(
-                problems,
-                instrument_type_validation=itype,
-                problems_dir=problems_dir,
-            )
+            except Exception as e:
+                os.removedirs(problems_dir)  # clean up if fails
+                os.remove(expedition_dir.joinpath(CHECKPOINT))
+                raise ProblemsError(
+                    f"An error occurred while simulating problems: {e}. Please report this issue, with a description and the traceback, "
+                    "to the VirtualShip issue tracker at: https://github.com/OceanParcels/virtualship/issues"
+                ) from e
 
         # get measurements to simulate
         attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)

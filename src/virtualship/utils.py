@@ -616,7 +616,7 @@ def _calc_sail_time(
     distance_to_next_waypoint = geodinv[2]
     return (
         timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second),
-        geodinv,
+        geodinv[0],
         ship_speed_meter_per_second,
     )
 
@@ -650,7 +650,12 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        if both_ctd_and_bgc and iconfig.instrument_type == InstrumentType.CTD_BGC:
+        breakpoint()
+        if (
+            both_ctd_and_bgc
+            and iconfig.__class__.__name__
+            == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
+        ):
             continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
