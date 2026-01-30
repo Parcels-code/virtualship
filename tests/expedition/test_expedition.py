@@ -6,8 +6,8 @@ import numpy as np
 import pyproj
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
     Expedition,
@@ -199,7 +199,7 @@ def test_verify_on_land():
                 ]
             ),
             ScheduleError,
-            "Waypoint planning is not valid: would arrive too late at waypoint number 2...",
+            "Waypoint planning is not valid: would arrive too late at waypoint 2\\.",
             id="NotEnoughTime",
         ),
     ],
