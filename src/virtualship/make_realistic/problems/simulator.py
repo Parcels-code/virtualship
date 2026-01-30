@@ -20,7 +20,6 @@ from virtualship.utils import (
     EXPEDITION,
     GENERAL_PROBLEM_REG,
     INSTRUMENT_PROBLEM_REG,
-    PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
     SCHEDULE_ORIGINAL,
     _calc_sail_time,
@@ -166,10 +165,36 @@ class ProblemSimulator:
 
         return problems_sorted if selected_problems else None
 
+    def cache_selected_problems(
+        self,
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        selected_problems_fpath: str,
+    ) -> None:
+        """Cache suite of problems to json, for reference."""
+        # make dir to contain problem jsons (unique to expedition)
+        os.makedirs(Path(selected_problems_fpath).parent, exist_ok=True)
+
+        # cache dict of selected_problems to json
+        with open(
+            selected_problems_fpath,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "problem_class": [p.__name__ for p in problems["problem_class"]],
+                    "waypoint_i": problems["waypoint_i"],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                },
+                f,
+                indent=4,
+            )
+
     def execute(
         self,
         problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
         instrument_type_validation: InstrumentType | None,
+        problems_dir: Path,
         log_delay: float = 7.0,
     ):
         """
@@ -188,10 +213,8 @@ class ProblemSimulator:
                 continue
 
             problem_hash = _make_hash(problem.message + str(problem_waypoint_i), 8)
-            hash_path = self.expedition_dir.joinpath(
-                PROBLEMS_ENCOUNTERED_DIR, f"problem_{problem_hash}.json"
-            )
-            if hash_path.exists():
+            hash_fpath = problems_dir.joinpath(f"problem_{problem_hash}.json")
+            if hash_fpath.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
 
             if issubclass(problem, GeneralProblem) and problem.pre_departure:
@@ -208,40 +231,23 @@ class ProblemSimulator:
                 problem_waypoint_i,
                 alert_msg,
                 problem_hash,
-                hash_path,
+                hash_fpath,
                 log_delay,
             )
 
-    def cache_selected_problems(
-        self,
-        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
-        selected_problems_fname: str,
-    ) -> None:
-        """Cache suite of problems to json, for reference."""
-        # make dir to contain problem jsons (unique to expedition)
-        os.makedirs(self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR, exist_ok=True)
-
-        # cache dict of selected_problems to json
-        with open(
-            self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname,
-            "w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(
-                {
-                    "problem_class": [p.__name__ for p in problems["problem_class"]],
-                    "waypoint_i": problems["waypoint_i"],
-                },
-                f,
-                indent=4,
-            )
+            # cache original schedule for reference and/or restoring later if needed (checkpoint.yaml [written in _log_problem] can be overwritten if multiple problems occur so is not a persistent record of original schedule)
+            schedule_original_fpath = problems_dir / SCHEDULE_ORIGINAL
+            if not os.path.exists(schedule_original_fpath):
+                self._cache_original_schedule(
+                    self.expedition.schedule, schedule_original_fpath
+                )
 
     def load_selected_problems(
-        self, selected_problems_fname: str
+        self, selected_problems_fpath: str
     ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
         """Load previously selected problem classes from json."""
         with open(
-            self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname,
+            selected_problems_fpath,
             encoding="utf-8",
         ) as f:
             problems_json = json.load(f)
@@ -278,7 +284,7 @@ class ProblemSimulator:
         problem_waypoint_i: int | None,
         alert_msg: str,
         problem_hash: str,
-        hash_path: Path,
+        hash_fpath: Path,
         log_delay: float,
     ):
         """Log problem occurrence with spinner and delay, save to checkpoint, write hash."""
@@ -303,7 +309,7 @@ class ProblemSimulator:
             problem,
             problem_hash,
             problem_waypoint_i,
-            hash_path,
+            hash_fpath,
         )
 
         # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
@@ -316,10 +322,10 @@ class ProblemSimulator:
             print(LOG_MESSAGING["problem_avoided"])
 
             # update problem json to resolved = True
-            with open(hash_path, encoding="utf-8") as f:
+            with open(hash_fpath, encoding="utf-8") as f:
                 problem_json = json.load(f)
             problem_json["resolved"] = True
-            with open(hash_path, "w", encoding="utf-8") as f_out:
+            with open(hash_fpath, "w", encoding="utf-8") as f_out:
                 json.dump(problem_json, f_out, indent=4)
 
             with yaspin():  # time to read message before simulation continues
@@ -345,15 +351,6 @@ class ProblemSimulator:
             else 0,
         )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into; for pre-departure problems this is the first waypoint
         _save_checkpoint(checkpoint, self.expedition_dir)
-
-        # cache original schedule for reference and/or restoring later if needed (checkpoint can be overwritten if multiple problems occur so is not a persistent record of original schedule)
-        schedule_original_path = (
-            self.expedition_dir / PROBLEMS_ENCOUNTERED_DIR / SCHEDULE_ORIGINAL
-        )
-        if os.path.exists(schedule_original_path) is False:
-            self._cache_original_schedule(
-                self.expedition.schedule, schedule_original_path
-            )
 
         # pause simulation
         sys.exit(0)

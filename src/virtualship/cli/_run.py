@@ -1,6 +1,5 @@
 """do_expedition function."""
 
-import glob
 import logging
 import os
 import shutil
@@ -21,6 +20,7 @@ from virtualship.utils import (
     EXPEDITION,
     PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
+    SELECTED_PROBLEMS,
     _get_expedition,
     _save_checkpoint,
     expedition_cost,
@@ -74,6 +74,12 @@ def _run(
         expedition_dir = Path(expedition_dir)
 
     expedition = _get_expedition(expedition_dir)
+    expedition_identifier = expedition.get_unique_identifier()
+
+    # dedicated problems directory for this expedition
+    problems_dir = expedition_dir / PROBLEMS_ENCOUNTERED_DIR.format(
+        expedition_identifier=expedition_identifier
+    )
 
     # verify instruments_config file is consistent with schedule
     expedition.instruments_config.verify(expedition)
@@ -84,7 +90,7 @@ def _run(
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, expedition_dir)
+    checkpoint.verify(expedition, problems_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -128,28 +134,23 @@ def _run(
     # identify instruments in expedition
     instruments_in_expedition = expedition.get_instruments()
 
-    # unique hash for this expedition (based on waypoint locations and instrument types); used for identifying previously encountered problems; therefore new set of problems if waypoint locations or instrument types change
-    expedition_hash = expedition.get_expedition_hash()
-    # TODO: give this a datetime as well, i.e. 8 digit hash + dateime stamp
-
-    # problems
-    selected_problems_fname = "selected_problems_" + expedition_hash + ".json"
-
+    # initialise problem simulator
     problem_simulator = ProblemSimulator(expedition, expedition_dir)
 
-    # re-load previously encountered, valid (same expedition as previously) problems if they exist, else select new problems and cache them
-    if os.path.exists(
-        expedition_dir / PROBLEMS_ENCOUNTERED_DIR / selected_problems_fname
-    ):
-        problems = problem_simulator.load_selected_problems(selected_problems_fname)
+    # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
+    if os.path.exists(problems_dir / SELECTED_PROBLEMS):
+        problems = problem_simulator.load_selected_problems(
+            problems_dir / SELECTED_PROBLEMS
+        )
     else:
         problems = problem_simulator.select_problems(
             instruments_in_expedition, prob_level
         )
-        if problems:
-            problem_simulator.cache_selected_problems(problems, selected_problems_fname)
+        problem_simulator.cache_selected_problems(
+            problems, problems_dir / SELECTED_PROBLEMS
+        ) if problems else None
 
-    # simulate measurements
+    # simulate instrument measurements
     print("\nSimulating measurements. This may take a while...\n")
 
     for itype in instruments_in_expedition:
@@ -160,13 +161,18 @@ def _run(
 
         # execute problem simulations for this instrument type
         if problems:
+            # TODO: this print statement is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
             print(
-                f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
-            )  # TODO: this line is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
+                ""
+                if hasattr(problems["problem_class"][0], "pre_departure")
+                and problems["problem_class"][0].pre_departure
+                else f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
+            )
 
             problem_simulator.execute(
                 problems,
                 instrument_type_validation=itype,
+                problems_dir=problems_dir,
             )
 
         # get measurements to simulate
@@ -196,7 +202,7 @@ def _run(
     if problems:
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(
-            f"\nA record of problems encountered during the expedition is saved in: {expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)}"
+            f"\nA record of problems encountered during the expedition is saved in: {problems_dir}"
         )
 
     # delete checkpoint file (inteferes with ability to re-run expedition)
@@ -217,15 +223,6 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
         return Checkpoint.from_yaml(file_path)
     except FileNotFoundError:
         return None
-
-
-def _load_hashes(expedition_dir: Path) -> set[str]:
-    hashes_path = expedition_dir.joinpath(PROBLEMS_ENCOUNTERED_DIR)
-    if not hashes_path.exists():
-        return set()
-    hash_files = glob.glob(str(hashes_path / "problem_*.txt"))
-    hashes = {Path(f).stem.split("_")[1] for f in hash_files}
-    return hashes
 
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):

@@ -39,7 +39,9 @@ from yaspin import Spinner
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
 SCHEDULE_ORIGINAL = "schedule_original.yaml"
-PROBLEMS_ENCOUNTERED_DIR = "problems_encountered"
+
+PROBLEMS_ENCOUNTERED_DIR = "problems_encountered_" + "{expedition_identifier}"
+SELECTED_PROBLEMS = "selected_problems.json"
 
 # projection used to sail between waypoints
 PROJECTION = pyproj.Geod(ellps="WGS84")
@@ -91,7 +93,7 @@ BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
 
 # =====================================================
-# SECTION: dynamic registries and mapping
+# SECTION: decorators / dynamic registries and mapping
 # =====================================================
 
 # helpful for dynamic access in different parts of the codebase

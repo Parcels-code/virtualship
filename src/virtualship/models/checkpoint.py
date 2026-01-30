@@ -14,7 +14,6 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition, Schedule
 from virtualship.utils import (
     EXPEDITION,
-    PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
@@ -61,7 +60,7 @@ class Checkpoint(pydantic.BaseModel):
             data = yaml.safe_load(file)
         return Checkpoint(**data)
 
-    def verify(self, expedition: Expedition, expedition_dir: Path) -> None:
+    def verify(self, expedition: Expedition, problems_dir: Path) -> None:
         """
         Verify that the given schedule matches the checkpoint's past schedule , and/or that any problem has been resolved.
 
@@ -82,10 +81,7 @@ class Checkpoint(pydantic.BaseModel):
 
         # 2) check that problems have been resolved in the new schedule
         hash_fpaths = [
-            str(path.resolve())
-            for path in Path(expedition_dir, PROBLEMS_ENCOUNTERED_DIR).glob(
-                "problem_*.json"
-            )
+            str(path.resolve()) for path in problems_dir.glob("problem_*.json")
         ]
 
         if len(hash_fpaths) > 0:
@@ -95,24 +91,26 @@ class Checkpoint(pydantic.BaseModel):
                 if problem["resolved"]:
                     continue
                 elif not problem["resolved"]:
-                    # check if delay has been accounted for in the new schedule (at waypoint immediately after problem waypoint)
+                    # check if delay has been accounted for in the new schedule (at waypoint immediately after problem waypoint; or first waypoint if pre-departure problem)
                     delay_duration = timedelta(
                         hours=float(problem["delay_duration_hours"])
+                    )
+
+                    problem_waypoint = (
+                        new_schedule.waypoints[0]
+                        if problem["problem_waypoint_i"] is None
+                        else new_schedule.waypoints[problem["problem_waypoint_i"]]
                     )
 
                     # pre-departure problem: check that whole delay duration has been added to first waypoint time (by testing against past schedule)
                     if problem["problem_waypoint_i"] is None:
                         time_diff = (
-                            new_schedule.waypoints[0].time
-                            - self.past_schedule.waypoints[0].time
+                            problem_waypoint.time - self.past_schedule.waypoints[0].time
                         )
                         resolved = time_diff >= delay_duration
 
                     # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
                     else:
-                        problem_waypoint = new_schedule.waypoints[
-                            problem["problem_waypoint_i"]
-                        ]
                         failed_waypoint = new_schedule.waypoints[self.failed_waypoint_i]
 
                         scheduled_time = failed_waypoint.time - problem_waypoint.time
@@ -149,28 +147,35 @@ class Checkpoint(pydantic.BaseModel):
                         break
 
                     else:
-                        problem_wp = (
+                        problem_wp_str = (
                             "in-port"
                             if problem["problem_waypoint_i"] is None
                             else f"at waypoint {problem['problem_waypoint_i'] + 1}"
                         )
-                        affected_wp = (
+                        affected_wp_str = (
                             "1"
                             if problem["problem_waypoint_i"] is None
                             else f"{problem['problem_waypoint_i'] + 2}"
                         )
-                        current_time = (
-                            problem_waypoint.time
-                            + sail_time
-                            + delay_duration
-                            + stationkeeping_time
+                        time_elapsed = (
+                            (sail_time + delay_duration + stationkeeping_time)
+                            if problem["problem_waypoint_i"] is not None
+                            else delay_duration
                         )
+                        failed_waypoint_time = (
+                            failed_waypoint.time
+                            if problem["problem_waypoint_i"] is not None
+                            else new_schedule.waypoints[0].time
+                        )
+                        current_time = problem_waypoint.time + time_elapsed
 
                         raise CheckpointError(
                             f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n\n"
-                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp} (meaning waypoint {affected_wp} could not be reached in time). "
-                            f"Currently, the ship would reach waypoint {affected_wp} at {current_time}, but the scheduled time is {failed_waypoint.time}.\n\n"
-                            + f"Hint: don't forget to factor in the time required to deploy the instruments {problem_wp} when rescheduling waypoint {affected_wp}."
-                            if problem["problem_waypoint_i"] is not None
-                            else None
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp_str} (meaning waypoint {affected_wp_str} could not be reached in time). "
+                            f"Currently, the ship would reach waypoint {affected_wp_str} at {current_time}, but the scheduled time is {failed_waypoint_time}."
+                            + (
+                                f"\n\nHint: don't forget to factor in the time required to deploy the instruments {problem_wp_str} when rescheduling waypoint {affected_wp_str}."
+                                if problem["problem_waypoint_i"] is not None
+                                else ""
+                            )
                         )
