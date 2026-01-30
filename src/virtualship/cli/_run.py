@@ -163,12 +163,14 @@ def _run(
             # execute problem simulations for this instrument type
             if problems:
                 # TODO: this print statement is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
-                print(
-                    ""
-                    if hasattr(problems["problem_class"][0], "pre_departure")
+                if (
+                    hasattr(problems["problem_class"][0], "pre_departure")
                     and problems["problem_class"][0].pre_departure
-                    else f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
-                )
+                ):
+                    pass
+                else:
+                    print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
+
                 problem_simulator.execute(
                     problems,
                     instrument_type_validation=itype,
@@ -218,7 +220,7 @@ def _run(
             f"\nA record of problems encountered during the expedition is saved in: {problems_dir}"
         )
 
-    # delete checkpoint file (inteferes with ability to re-run expedition)
+    # delete checkpoint file (in case it interferes with any future re-runs)
     if os.path.exists(expedition_dir.joinpath(CHECKPOINT)):
         os.remove(expedition_dir.joinpath(CHECKPOINT))
 

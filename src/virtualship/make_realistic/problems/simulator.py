@@ -59,9 +59,11 @@ class ProblemSimulator:
         self,
         instruments_in_expedition: set[InstrumentType],
         prob_level: int,
-    ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
+    ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None] | None:
         """
         Select problems (general and instrument-specific). When prob_level = 2, number of problems is determined by expedition length, instrument count etc.
+
+        If only one waypoint, return just a pre-departure problem.
 
         Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific via hash) for reference.
         """
@@ -71,12 +73,25 @@ class ProblemSimulator:
             if problem.instrument_type in instruments_in_expedition
         ]
 
+        pre_departure_problems = [
+            p
+            for p in GENERAL_PROBLEM_REG
+            if issubclass(p, GeneralProblem) and p.pre_departure
+        ]
+
         num_waypoints = len(self.expedition.schedule.waypoints)
         num_instruments = len(instruments_in_expedition)
         expedition_duration_days = (
             self.expedition.schedule.waypoints[-1].time
             - self.expedition.schedule.waypoints[0].time
         ).days
+
+        # if only one waypoint, return just a pre-departure problem
+        if num_waypoints < 2:
+            return {
+                "problem_class": [random.choice(pre_departure_problems)],
+                "waypoint_i": [None],
+            }
 
         if prob_level == 0:
             num_problems = 0
@@ -95,6 +110,7 @@ class ProblemSimulator:
             )
 
         selected_problems = []
+        problems_sorted = None
         if num_problems > 0:
             random.shuffle(GENERAL_PROBLEM_REG)
             random.shuffle(valid_instrument_problems)
@@ -111,14 +127,14 @@ class ProblemSimulator:
             selected_problems.extend(valid_instrument_problems[:n_instrument])
 
             # allow only one pre-departure problem to occur; replace any extras with non-pre-departure problems
-            pre_departure_problems = [
+            selected_pre_departure = [
                 p
                 for p in selected_problems
                 if issubclass(p, GeneralProblem) and p.pre_departure
             ]
-            if len(pre_departure_problems) > 1:
-                to_keep = random.choice(pre_departure_problems)
-                num_to_replace = len(pre_departure_problems) - 1
+            if len(selected_pre_departure) > 1:
+                to_keep = random.choice(selected_pre_departure)
+                num_to_replace = len(selected_pre_departure) - 1
                 # remove all but one pre_departure problem
                 selected_problems = [
                     problem
