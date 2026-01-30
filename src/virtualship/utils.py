@@ -650,7 +650,6 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        breakpoint()
         if (
             both_ctd_and_bgc
             and iconfig.__class__.__name__

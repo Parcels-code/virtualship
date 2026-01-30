@@ -8,7 +8,6 @@ from pathlib import Path
 
 import copernicusmarine
 
-from virtualship.errors import ProblemsError
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
     ScheduleProblem,
@@ -155,50 +154,55 @@ def _run(
     print("\nSimulating measurements. This may take a while...\n")
 
     for itype in instruments_in_expedition:
-        # get instrument class
-        instrument_class = get_instrument_class(itype)
-        if instrument_class is None:
-            raise RuntimeError(f"No instrument class found for type {itype}.")
+        try:
+            # get instrument class
+            instrument_class = get_instrument_class(itype)
+            if instrument_class is None:
+                raise RuntimeError(f"No instrument class found for type {itype}.")
 
-        # execute problem simulations for this instrument type
-        if problems:
-            # TODO: this print statement is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
-            print(
-                ""
-                if hasattr(problems["problem_class"][0], "pre_departure")
-                and problems["problem_class"][0].pre_departure
-                else f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
-            )
-            try:
+            # execute problem simulations for this instrument type
+            if problems:
+                # TODO: this print statement is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
+                print(
+                    ""
+                    if hasattr(problems["problem_class"][0], "pre_departure")
+                    and problems["problem_class"][0].pre_departure
+                    else f"\033[4mUp next\033[0m: {itype.name} measurements...\n"
+                )
                 problem_simulator.execute(
                     problems,
                     instrument_type_validation=itype,
                     problems_dir=problems_dir,
                 )
 
-            except Exception as e:
-                os.removedirs(problems_dir)  # clean up if fails
+            # get measurements to simulate
+            attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
+            measurements = getattr(schedule_results.measurements_to_simulate, attr)
+
+            # initialise instrument
+            instrument = instrument_class(
+                expedition=expedition,
+                from_data=Path(from_data) if from_data is not None else None,
+            )
+
+            # execute simulation
+            instrument.execute(
+                measurements=measurements,
+                out_path=expedition_dir.joinpath(
+                    "results", f"{itype.name.lower()}.zarr"
+                ),
+            )
+        except Exception as e:
+            # clean up if unexpected error occurs
+            if os.path.exists(problems_dir):
+                shutil.rmtree(problems_dir)
+            if expedition_dir.joinpath(CHECKPOINT).exists():
                 os.remove(expedition_dir.joinpath(CHECKPOINT))
-                raise ProblemsError(
-                    f"An error occurred while simulating problems: {e}. Please report this issue, with a description and the traceback, "
-                    "to the VirtualShip issue tracker at: https://github.com/OceanParcels/virtualship/issues"
-                ) from e
 
-        # get measurements to simulate
-        attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
-        measurements = getattr(schedule_results.measurements_to_simulate, attr)
-
-        # initialise instrument
-        instrument = instrument_class(
-            expedition=expedition,
-            from_data=Path(from_data) if from_data is not None else None,
-        )
-
-        # execute simulation
-        instrument.execute(
-            measurements=measurements,
-            out_path=expedition_dir.joinpath("results", f"{itype.name.lower()}.zarr"),
-        )
+            raise RuntimeError(
+                f"An unexpected error occurred while simulating measurements: {e}. Please report this issue, with a description and the traceback, "
+                "to the VirtualShip issue tracker at: https://github.com/OceanParcels/virtualship/issues"
+            ) from e
 
     print("\nAll measurement simulations are complete.")
 
