@@ -80,17 +80,6 @@ class FuelDeliveryIssue(GeneralProblem):
     delay_duration: timedelta = timedelta(hours=5.0)
     pre_departure: bool = True
 
-    # message: str = (
-    #     "The fuel tanker expected to deliver fuel has not arrived. Port authorities are unable to provide "
-    #     "a clear estimate for when the delivery might occur. You may choose to wait for the tanker or get a "
-    #     "harbor pilot to guide the vessel to an available bunker dock instead. Regardless of the chosen option, "
-    #     "the resulting delays postpone departure by approximately 5 hours."
-    # )
-    delay_duration: timedelta = timedelta(
-        hours=5.0
-    )  # dynamic delays based on repeated choices
-    pre_departure: bool = True
-
 
 @dataclass
 @register_general_problem
