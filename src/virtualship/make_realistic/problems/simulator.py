@@ -149,9 +149,10 @@ class ProblemSimulator:
                 if getattr(problem, "pre_departure", False):
                     waypoint_idxs.append(None)
                 else:
+                    # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
                     waypoint_idxs.append(
-                        random.randint(0, len(self.expedition.schedule.waypoints) - 1)
-                    )  # last waypoint excluded (would not impact any future scheduling)
+                        random.randint(0, len(self.expedition.schedule.waypoints) - 2)
+                    )  # -1 to get index and -1 exclude last waypoint (would not impact any future scheduling as arrival in port is not part of schedule)
 
             # pair problems with their waypoint indices and sort by waypoint index (pre-departure first)
             paired = sorted(

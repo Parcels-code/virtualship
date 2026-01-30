@@ -130,6 +130,7 @@ def _run(
 
     # unique hash for this expedition (based on waypoint locations and instrument types); used for identifying previously encountered problems; therefore new set of problems if waypoint locations or instrument types change
     expedition_hash = expedition.get_expedition_hash()
+    # TODO: give this a datetime as well, i.e. 8 digit hash + dateime stamp
 
     # problems
     selected_problems_fname = "selected_problems_" + expedition_hash + ".json"

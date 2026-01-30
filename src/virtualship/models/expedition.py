@@ -17,6 +17,7 @@ from virtualship.utils import (
     _get_waypoint_latlons,
     _make_hash,
     _validate_numeric_to_timedelta,
+    register_instrument_config,
 )
 
 from .location import Location
@@ -213,10 +214,9 @@ class Waypoint(pydantic.BaseModel):
         return instrument.value if instrument else None
 
 
+@register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(pydantic.BaseModel):
     """Configuration for argos floats."""
-
-    instrument_type: InstrumentType = InstrumentType.ARGO_FLOAT
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
@@ -255,10 +255,9 @@ class ArgoFloatConfig(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
+@register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(pydantic.BaseModel):
     """Configuration for ADCP instrument."""
-
-    instrument_type: InstrumentType = InstrumentType.ADCP
 
     max_depth_meter: float = pydantic.Field(le=0.0)
     num_bins: int = pydantic.Field(gt=0.0)
@@ -279,11 +278,10 @@ class ADCPConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.CTD)
 class CTDConfig(pydantic.BaseModel):
     """Configuration for CTD instrument."""
 
-    instrument_type: InstrumentType = InstrumentType.CTD
-
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
         validation_alias="stationkeeping_time_minutes",
@@ -303,11 +301,10 @@ class CTDConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.CTD_BGC)
 class CTD_BGCConfig(pydantic.BaseModel):
     """Configuration for CTD_BGC instrument."""
 
-    instrument_type: InstrumentType = InstrumentType.CTD_BGC
-
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
         validation_alias="stationkeeping_time_minutes",
@@ -327,10 +324,9 @@ class CTD_BGCConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(pydantic.BaseModel):
     """Configuration for underwater ST."""
-
-    instrument_type: InstrumentType = InstrumentType.UNDERWATER_ST
 
     period: timedelta = pydantic.Field(
         serialization_alias="period_minutes",
@@ -349,10 +345,9 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.DRIFTER)
 class DrifterConfig(pydantic.BaseModel):
     """Configuration for drifters."""
-
-    instrument_type: InstrumentType = InstrumentType.DRIFTER
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
@@ -385,10 +380,9 @@ class DrifterConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.XBT)
 class XBTConfig(pydantic.BaseModel):
     """Configuration for xbt instrument."""
-
-    instrument_type: InstrumentType = InstrumentType.XBT
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)

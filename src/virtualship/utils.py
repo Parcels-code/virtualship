@@ -32,6 +32,10 @@ import yaml
 from pydantic import BaseModel
 from yaspin import Spinner
 
+# =====================================================
+# SECTION: simulation constants
+# =====================================================
+
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
 SCHEDULE_ORIGINAL = "schedule_original.yaml"
@@ -39,6 +43,105 @@ PROBLEMS_ENCOUNTERED_DIR = "problems_encountered"
 
 # projection used to sail between waypoints
 PROJECTION = pyproj.Geod(ellps="WGS84")
+
+
+# =====================================================
+# SECTION: Copernicus Marine Service constants
+# =====================================================
+
+# Copernicus Marine product IDs
+
+PRODUCT_IDS = {
+    "phys": {
+        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
+        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+    },
+    "bgc": {
+        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
+        "analysis": None,  # will be set per variable
+    },
+}
+
+BGC_ANALYSIS_IDS = {
+    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+}
+
+MONTHLY_BGC_REANALYSIS_IDS = {
+    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+}
+MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
+    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+}
+
+# variables used in VirtualShip which are physical or biogeochemical variables, respectively
+COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
+COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
+
+BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
+
+
+# =====================================================
+# SECTION: dynamic registries and mapping
+# =====================================================
+
+# helpful for dynamic access in different parts of the codebase
+
+# main instrument (simulation) class registry and registration utilities
+INSTRUMENT_CLASS_MAP = {}
+
+
+def register_instrument(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        return cls
+
+    return decorator
+
+
+def get_instrument_class(instrument_type):
+    return INSTRUMENT_CLASS_MAP.get(instrument_type)
+
+
+# problems inventory registry and registration utilities
+INSTRUMENT_PROBLEM_REG = []
+GENERAL_PROBLEM_REG = []
+
+
+def register_instrument_problem(cls):
+    INSTRUMENT_PROBLEM_REG.append(cls)
+    return cls
+
+
+def register_general_problem(cls):
+    GENERAL_PROBLEM_REG.append(cls)
+    return cls
+
+
+# map for instrument type to instrument config (pydantic basemodel) names
+INSTRUMENT_CONFIG_MAP = {}
+
+
+def register_instrument_config(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_CONFIG_MAP[instrument_type] = cls.__name__
+        return cls
+
+    return decorator
+
+
+# =====================================================
+# SECTION: helper functions
+# =====================================================
 
 
 def load_static_file(name: str) -> str:
@@ -225,40 +328,6 @@ def _get_expedition(expedition_dir: Path) -> Expedition:
         ) from e
 
 
-# custom ship spinner
-ship_spinner = Spinner(
-    interval=240,
-    frames=[
-        " 🚢    ",
-        "  🚢   ",
-        "   🚢  ",
-        "    🚢 ",
-        "     🚢",
-        "    🚢 ",
-        "   🚢  ",
-        "  🚢   ",
-        " 🚢    ",
-        "🚢     ",
-    ],
-)
-
-
-# InstrumentType -> Instrument registry and registration utilities.
-INSTRUMENT_CLASS_MAP = {}
-
-
-def register_instrument(instrument_type):
-    def decorator(cls):
-        INSTRUMENT_CLASS_MAP[instrument_type] = cls
-        return cls
-
-    return decorator
-
-
-def get_instrument_class(instrument_type):
-    return INSTRUMENT_CLASS_MAP.get(instrument_type)
-
-
 def add_dummy_UV(fieldset: FieldSet):
     """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
     if "U" not in fieldset.__dict__.keys():
@@ -280,62 +349,6 @@ def add_dummy_UV(fieldset: FieldSet):
                 raise ValueError(
                     "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
                 ) from None
-
-
-# problems inventory registry and registration utilities
-INSTRUMENT_PROBLEM_REG = []
-GENERAL_PROBLEM_REG = []
-
-
-def register_instrument_problem(cls):
-    INSTRUMENT_PROBLEM_REG.append(cls)
-    return cls
-
-
-def register_general_problem(cls):
-    GENERAL_PROBLEM_REG.append(cls)
-    return cls
-
-
-# Copernicus Marine product IDs
-
-PRODUCT_IDS = {
-    "phys": {
-        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
-        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-    },
-    "bgc": {
-        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
-        "analysis": None,  # will be set per variable
-    },
-}
-
-BGC_ANALYSIS_IDS = {
-    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-}
-
-MONTHLY_BGC_REANALYSIS_IDS = {
-    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-}
-MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
-    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-}
-
-# variables used in VirtualShip which are physical or biogeochemical variables, respectively
-COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
-COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
-
-BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
 
 def _select_product_id(
@@ -607,7 +620,9 @@ def _calc_sail_time(
 
 
 def _calc_wp_stationkeeping_time(
-    wp_instrument_types: list, expedition: Expedition
+    wp_instrument_types: list,
+    expedition: Expedition,
+    instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
     """For a given waypoint, calculate how much time is required to carry out all instrument deployments."""
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
@@ -616,17 +631,25 @@ def _calc_wp_stationkeeping_time(
         and InstrumentType.CTD_BGC in wp_instrument_types
     )
 
-    # extract configs for instruments present in waypoint
-    wp_instrument_configs = [
+    # extract configs for all instruments present in expedition
+    valid_instrument_configs = [
         iconfig
         for _, iconfig in expedition.instruments_config.__dict__.items()
-        if iconfig is not None and iconfig.instrument_type in wp_instrument_types
+        if iconfig
     ]
 
+    # extract configs for instruments present in given waypoint
+    wp_instrument_configs = []
+    for iconfig in valid_instrument_configs:
+        for itype in wp_instrument_types:
+            if instrument_config_map[itype] == iconfig.__class__.__name__:
+                wp_instrument_configs.append(iconfig)
+
+    # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
         if both_ctd_and_bgc and iconfig.instrument_type == InstrumentType.CTD_BGC:
-            continue  # # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+            continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
@@ -638,3 +661,26 @@ def _make_hash(s: str, length: int) -> str:
     assert length % 2 == 0, "Length must be even."
     half_length = length // 2
     return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+
+# =====================================================
+# SECTION: misc.
+# =====================================================
+
+
+# custom ship spinner
+ship_spinner = Spinner(
+    interval=240,
+    frames=[
+        " 🚢    ",
+        "  🚢   ",
+        "   🚢  ",
+        "    🚢 ",
+        "     🚢",
+        "    🚢 ",
+        "   🚢  ",
+        "  🚢   ",
+        " 🚢    ",
+        "🚢     ",
+    ],
+)

@@ -116,6 +116,8 @@ class _ScheduleSimulator:
         self._next_ship_underwater_st_time = self._time
 
     def simulate(self) -> ScheduleOk | ScheduleProblem:
+        # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here...
+
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
