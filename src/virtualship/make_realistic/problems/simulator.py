@@ -61,7 +61,7 @@ class ProblemSimulator:
         prob_level: int,
     ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
         """
-        Select problems (general and instrument-specific). Number of problems is determined by probability level, expedition length, instrument count etc.
+        Select problems (general and instrument-specific). When prob_level = 2, number of problems is determined by expedition length, instrument count etc.
 
         Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific via hash) for reference.
         """
