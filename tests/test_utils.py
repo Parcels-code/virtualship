@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     _find_nc_file_with_variable,
@@ -236,3 +236,8 @@ def test_data_dir_and_filename_compliance():
     assert 'elif all("P1M" in s for s in all_files):' in utils_code, (
         "Expected check for 'P1M' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
     )
+
+
+# TODO: test for calc_sail_time
+
+# TODO: test for calc_stationkeeping_time
