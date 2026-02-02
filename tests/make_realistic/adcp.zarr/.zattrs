@@ -1,0 +1,8 @@
+{
+    "Conventions": "CF-1.6/CF-1.7",
+    "feature_type": "trajectory",
+    "ncei_template_version": "NCEI_NetCDF_Trajectory_Template_v2.0",
+    "parcels_kernels": "NewParticle_sample_velocity",
+    "parcels_mesh": "spherical",
+    "parcels_version": "0.0.1-16-g947e7d0"
+}

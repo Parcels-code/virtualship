@@ -1,0 +1,11 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "trajectory",
+        "obs"
+    ],
+    "axis": "T",
+    "calendar": "standard",
+    "long_name": "",
+    "standard_name": "time",
+    "units": "seconds since 1950-01-01T00:00:00.000000"
+}
