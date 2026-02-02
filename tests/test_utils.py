@@ -9,7 +9,10 @@ import virtualship.utils
 from parcels import FieldSet
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition
+from virtualship.models.location import Location
 from virtualship.utils import (
+    PROJECTION,
+    _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _find_nc_file_with_variable,
     _get_bathy_data,
@@ -242,7 +245,25 @@ def test_data_dir_and_filename_compliance():
 
 # TODO: test for calc_sail_time
 
-# TODO: test for calc_stationkeeping_time
+
+def test_calc_sail_time(projection=PROJECTION):
+    LATITUDE = 0.0  # constant at equator
+
+    location1 = Location(latitude=LATITUDE, longitude=0.0)
+    location2 = Location(latitude=LATITUDE, longitude=1.0)
+    ship_speed_knots = 10.0
+
+    sail_time, _, ship_speed_ms = _calc_sail_time(
+        location1, location2, ship_speed_knots, projection
+    )
+
+    # should be approximately 21638 seconds (6 hours, 0 minutes, 38 seconds)
+    assert abs(sail_time.total_seconds() - 21638) < 10  # small tolerance
+
+    calculated_distance_m = ship_speed_ms * sail_time.total_seconds()
+    assert (
+        abs(calculated_distance_m - 111319) < 100
+    )  # # 1 degree longitude at equator ≈ 111319 meters; allow small tolerance
 
 
 def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
@@ -295,8 +316,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         InstrumentType.ARGO_FLOAT,
         InstrumentType.XBT,
     ]
-
-    breakpoint()
 
     # all dummy instruments
     stationkeeping_time_all = _calc_wp_stationkeeping_time(
