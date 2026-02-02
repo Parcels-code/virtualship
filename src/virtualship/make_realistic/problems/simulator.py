@@ -191,7 +191,7 @@ class ProblemSimulator:
         problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
         instrument_type_validation: InstrumentType | None,
         problems_dir: Path,
-        log_delay: float = 7.0,
+        log_delay: float = 4.0,
     ):
         """
         Execute the selected problems, returning messaging and delay times.
@@ -366,8 +366,10 @@ class ProblemSimulator:
             has_contingency=has_contingency,
         )
 
-        # pause simulation
-        sys.exit(0)
+        if has_contingency:
+            return  # continue expedition as normal
+        else:
+            sys.exit(0)  # pause simulation
 
     def _has_contingency(
         self,
@@ -466,12 +468,12 @@ class ProblemSimulator:
             # stage 1: show problem
             table = make_table(problem_str, empty_spinner, empty_spinner, col_kwargs)
             live.update(table)
-            time.sleep(7.0)
+            time.sleep(3.0)
 
             # stage 2: spinner in "Impact on schedule" column
             table = make_table(problem_str, impact_spinner, empty_spinner, col_kwargs)
             live.update(table)
-            time.sleep(3.0)
+            time.sleep(7.0)
 
             # stage 3: table with problem and impact-investigation complete
             table = make_table(problem_str, impact_str, empty_spinner, col_kwargs)
