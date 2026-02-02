@@ -8,6 +8,11 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rich import box
+from rich.console import Console
+from rich.live import Live
+from rich.spinner import Spinner
+from rich.table import Table
 from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
@@ -35,7 +40,7 @@ LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
     "during_expedition": "Oh no, a problem has occurred during the expedition, at waypoint {waypoint}...!",
     "schedule_problems": "This problem will cause a delay of {delay_duration} hours {problem_wp}. The next waypoint therefore cannot be reached in time. Please account for this in your schedule (`virtualship plan` or directly in {expedition_yaml}), then continue the expedition by executing the `virtualship run` command again.\n",
-    "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem. The expedition can carry on shortly...\n",
+    "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem.\n",
 }
 
 
@@ -181,31 +186,6 @@ class ProblemSimulator:
 
         return problems_sorted if selected_problems else None
 
-    def cache_selected_problems(
-        self,
-        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
-        selected_problems_fpath: str,
-    ) -> None:
-        """Cache suite of problems to json, for reference."""
-        # make dir to contain problem jsons (unique to expedition)
-        os.makedirs(Path(selected_problems_fpath).parent, exist_ok=True)
-
-        # cache dict of selected_problems to json
-        with open(
-            selected_problems_fpath,
-            "w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(
-                {
-                    "problem_class": [p.__name__ for p in problems["problem_class"]],
-                    "waypoint_i": problems["waypoint_i"],
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                },
-                f,
-                indent=4,
-            )
-
     def execute(
         self,
         problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
@@ -258,8 +238,34 @@ class ProblemSimulator:
                     self.expedition.schedule, schedule_original_fpath
                 )
 
+    @staticmethod
+    def cache_selected_problems(
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        selected_problems_fpath: str,
+    ) -> None:
+        """Cache suite of problems to json, for reference."""
+        # make dir to contain problem jsons (unique to expedition)
+        os.makedirs(Path(selected_problems_fpath).parent, exist_ok=True)
+
+        # cache dict of selected_problems to json
+        with open(
+            selected_problems_fpath,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "problem_class": [p.__name__ for p in problems["problem_class"]],
+                    "waypoint_i": problems["waypoint_i"],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                },
+                f,
+                indent=4,
+            )
+
+    @staticmethod
     def load_selected_problems(
-        self, selected_problems_fpath: str
+        selected_problems_fpath: str,
     ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
         """Load previously selected problem classes from json."""
         with open(
@@ -309,18 +315,6 @@ class ProblemSimulator:
             time.sleep(log_delay)
             spinner.ok("💥 ")
 
-        print("\nPROBLEM ENCOUNTERED: " + problem.message + "\n")
-
-        result_msg = "\nRESULT: " + LOG_MESSAGING["schedule_problems"].format(
-            delay_duration=problem.delay_duration.total_seconds() / 3600.0,
-            problem_wp=(
-                "in-port"
-                if problem_waypoint_i is None
-                else f"at waypoint {problem_waypoint_i + 1}"
-            ),
-            expedition_yaml=EXPEDITION,
-        )
-
         self._hash_to_json(
             problem,
             problem_hash,
@@ -328,14 +322,11 @@ class ProblemSimulator:
             hash_fpath,
         )
 
-        # check if enough contingency time has been scheduled to avoid delay affecting future waypoints
-        with yaspin(text="Assessing impact on expedition schedule..."):
-            time.sleep(5.0)
-
         has_contingency = self._has_contingency(problem, problem_waypoint_i)
 
         if has_contingency:
-            print(LOG_MESSAGING["problem_avoided"])
+            impact_str = LOG_MESSAGING["problem_avoided"]
+            result_str = "The expedition will carry on shortly as planned."
 
             # update problem json to resolved = True
             with open(hash_fpath, encoding="utf-8") as f:
@@ -344,20 +335,19 @@ class ProblemSimulator:
             with open(hash_fpath, "w", encoding="utf-8") as f_out:
                 json.dump(problem_json, f_out, indent=4)
 
-            with yaspin():  # time to read message before simulation continues
-                time.sleep(7.0)
-            return
-
         else:
             affected = (
                 "in-port"
                 if problem_waypoint_i is None
                 else f"at waypoint {problem_waypoint_i + 1}"
             )
-            print(
-                f"\nNot enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring {affected} (future waypoint(s) would be reached too late).\n"
+
+            impact_str = f"Not enough contingency time scheduled to mitigate delay of {problem.delay_duration.total_seconds() / 3600.0} hours occuring {affected} (future waypoint(s) would be reached too late).\n"
+            result_str = LOG_MESSAGING["schedule_problems"].format(
+                delay_duration=problem.delay_duration.total_seconds() / 3600.0,
+                problem_wp=affected,
+                expedition_yaml=EXPEDITION,
             )
-            print(result_msg)
 
         # save checkpoint
         checkpoint = Checkpoint(
@@ -367,6 +357,14 @@ class ProblemSimulator:
             else 0,
         )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into; for pre-departure problems this is the first waypoint
         _save_checkpoint(checkpoint, self.expedition_dir)
+
+        # display tabular output in
+        self._tabular_outputter(
+            problem_str=problem.message,
+            impact_str=impact_str,
+            result_str=result_str,
+            has_contingency=has_contingency,
+        )
 
         # pause simulation
         sys.exit(0)
@@ -408,8 +406,8 @@ class ProblemSimulator:
             past_schedule=self.expedition.schedule, failed_waypoint_i=failed_waypoint_i
         )
 
+    @staticmethod
     def _hash_to_json(
-        self,
         problem: InstrumentProblem | GeneralProblem,
         problem_hash: str,
         problem_waypoint_i: int | None,
@@ -427,8 +425,62 @@ class ProblemSimulator:
         with open(hash_path, "w", encoding="utf-8") as f:
             json.dump(hash_data, f, indent=4)
 
-    def _cache_original_schedule(self, schedule: Schedule, path: Path | str):
+    @staticmethod
+    def _cache_original_schedule(schedule: Schedule, path: Path | str):
         """Cache original schedule to file for reference, as a checkpoint object."""
         schedule_original = Checkpoint(past_schedule=schedule)
         schedule_original.to_yaml(path)
         print(f"\nOriginal schedule cached to {path}.\n")
+
+    @staticmethod
+    def _tabular_outputter(problem_str, impact_str, result_str, has_contingency: bool):
+        """Display the problem, impact, and result in a live-updating table. Sleep times are included to increase readability and engagement for user."""
+        console = Console()
+        console.print()  # line break before table
+
+        col_kwargs = dict(ratio=1, no_wrap=False, max_width=None, justify="left")
+
+        def make_table(problem, impact, result, col_kwargs, colour_results=False):
+            table = Table(box=box.SIMPLE, expand=True)
+            table.add_column("Problem Encountered", **col_kwargs)
+            table.add_column("Impact on schedule", **col_kwargs)
+
+            if colour_results:
+                style = "green1" if has_contingency else "red1"
+                table.add_column("Result", style=style, **col_kwargs)
+            else:
+                table.add_column("Result", **col_kwargs)
+
+            table.add_row(problem, impact, result)
+            return table
+
+        empty_spinner = Spinner("dots", text="")
+        impact_spinner = Spinner("dots", text="Assessing impact on schedule...")
+
+        with Live(console=console, refresh_per_second=10) as live:
+            # stage 0: empty table
+            table = make_table(empty_spinner, empty_spinner, empty_spinner, col_kwargs)
+            live.update(table)
+            time.sleep(3.0)
+
+            # stage 1: show problem
+            table = make_table(problem_str, empty_spinner, empty_spinner, col_kwargs)
+            live.update(table)
+            time.sleep(7.0)
+
+            # stage 2: spinner in "Impact on schedule" column
+            table = make_table(problem_str, impact_spinner, empty_spinner, col_kwargs)
+            live.update(table)
+            time.sleep(3.0)
+
+            # stage 3: table with problem and impact-investigation complete
+            table = make_table(problem_str, impact_str, empty_spinner, col_kwargs)
+            live.update(table)
+            time.sleep(4.0)
+
+            # stage 4: complete table with problem, impact, and result (give final outcome colour based on fail/success)
+            table = make_table(
+                problem_str, impact_str, result_str, col_kwargs, colour_results=True
+            )
+            live.update(table)
+            time.sleep(3.0)
