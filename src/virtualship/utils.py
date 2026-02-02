@@ -18,7 +18,6 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
-from virtualship.instruments.types import InstrumentType
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
@@ -626,7 +625,9 @@ def _calc_wp_stationkeeping_time(
     expedition: Expedition,
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
-    """For a given waypoint, calculate how much time is required to carry out all instrument deployments."""
+    """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
+    from virtualship.instruments.types import InstrumentType  # avoid circular imports
+
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
     both_ctd_and_bgc = (
         InstrumentType.CTD in wp_instrument_types

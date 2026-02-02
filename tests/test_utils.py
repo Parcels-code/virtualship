@@ -7,8 +7,10 @@ import xarray as xr
 
 import virtualship.utils
 from parcels import FieldSet
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
+    _calc_wp_stationkeeping_time,
     _find_nc_file_with_variable,
     _get_bathy_data,
     _select_product_id,
@@ -241,3 +243,79 @@ def test_data_dir_and_filename_compliance():
 # TODO: test for calc_sail_time
 
 # TODO: test for calc_stationkeeping_time
+
+
+def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
+    """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
+
+    class DummyInstrumentsConfig:
+        def __init__(self, ctd, ctd_bgc, argo, xbt):
+            self.ctd = ctd
+            self.ctd_bgc = ctd_bgc
+            self.argo = argo
+            self.xbt = xbt
+
+    class CTDConfig:
+        stationkeeping_time = datetime.timedelta(minutes=50)
+
+    class CTD_BGCConfig:
+        stationkeeping_time = datetime.timedelta(minutes=50)
+
+    class ArgoFloatConfig:
+        stationkeeping_time = datetime.timedelta(minutes=20)
+
+    class XBTConfig:  # has no stationkeeping time
+        deceleration_coefficient = 0.1
+
+    monkeypatch.setattr(
+        "virtualship.utils.INSTRUMENT_CONFIG_MAP",
+        {
+            InstrumentType.CTD: "CTDConfig",
+            InstrumentType.CTD_BGC: "CTD_BGCConfig",
+            InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
+            InstrumentType.XBT: "XBTConfig",
+        },
+    )
+
+    # Create a dummy expedition with instruments_config containing the dummy configs
+    instruments_config = DummyInstrumentsConfig(
+        ctd=CTDConfig(),
+        ctd_bgc=CTD_BGCConfig(),
+        argo=ArgoFloatConfig(),
+        xbt=XBTConfig(),
+    )
+    expedition.instruments_config = (
+        instruments_config  # overwrite instruments_config with test dummy
+    )
+
+    # instruments at a given waypoint
+    wp_instrument_types_all = [
+        InstrumentType.CTD,
+        InstrumentType.CTD_BGC,
+        InstrumentType.ARGO_FLOAT,
+        InstrumentType.XBT,
+    ]
+
+    breakpoint()
+
+    # all dummy instruments
+    stationkeeping_time_all = _calc_wp_stationkeeping_time(
+        wp_instrument_types_all, expedition
+    )
+    assert (
+        stationkeeping_time_all
+        == CTDConfig.stationkeeping_time
+        + (
+            CTD_BGCConfig.stationkeeping_time * 0.0
+        )  # CTD(_BGC) counted once when both present
+        + ArgoFloatConfig.stationkeeping_time
+    )
+
+    # xbt only (no stationkeeping time)
+    wp_instrument_types_xbt = [InstrumentType.XBT]
+    stationkeeping_time_xbt = _calc_wp_stationkeeping_time(
+        wp_instrument_types_xbt, expedition
+    )
+    assert stationkeeping_time_xbt == datetime.timedelta(0), (
+        "XBT should have zero stationkeeping time"
+    )
