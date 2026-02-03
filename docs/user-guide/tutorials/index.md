@@ -23,3 +23,11 @@ caption: SURF Research Cloud set up
 surf_research_cloud_setup.ipynb
 surf_collaborative_setup.ipynb
 ```
+
+```{nbgallery}
+---
+maxdepth: 1
+caption: Miscellaneous
+---
+working_with_expedition_yaml.md
+```
