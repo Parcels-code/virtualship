@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
+from parcels import FieldSet
 
 import virtualship.utils
-from parcels import FieldSet
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition
 from virtualship.models.location import Location
