@@ -82,6 +82,7 @@ nbsphinx_thumbnails = {
     "user-guide/teacher-content/UU-ocean-of-future/Tutorial2": "user-guide/_images/freepik_assignment.png",
     "user-guide/tutorials/surf_collaborative_setup.ipynb": "user-guide/_images/surf_logo.png",
     "user-guide/tutorials/surf_research_cloud_setup.ipynb": "user-guide/_images/surf_logo.png",
+    "user-guide/tutorials/working_with_expedition_yaml.ipynb": "user-guide/_images/AnnaWeber.jpeg",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
