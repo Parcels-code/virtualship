@@ -181,31 +181,6 @@ class ProblemSimulator:
 
         return problems_sorted if selected_problems else None
 
-    def cache_selected_problems(
-        self,
-        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
-        selected_problems_fpath: str,
-    ) -> None:
-        """Cache suite of problems to json, for reference."""
-        # make dir to contain problem jsons (unique to expedition)
-        os.makedirs(Path(selected_problems_fpath).parent, exist_ok=True)
-
-        # cache dict of selected_problems to json
-        with open(
-            selected_problems_fpath,
-            "w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(
-                {
-                    "problem_class": [p.__name__ for p in problems["problem_class"]],
-                    "waypoint_i": problems["waypoint_i"],
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                },
-                f,
-                indent=4,
-            )
-
     def execute(
         self,
         problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
@@ -258,8 +233,34 @@ class ProblemSimulator:
                     self.expedition.schedule, schedule_original_fpath
                 )
 
+    @staticmethod
+    def cache_selected_problems(
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        selected_problems_fpath: str,
+    ) -> None:
+        """Cache suite of problems to json, for reference."""
+        # make dir to contain problem jsons (unique to expedition)
+        os.makedirs(Path(selected_problems_fpath).parent, exist_ok=True)
+
+        # cache dict of selected_problems to json
+        with open(
+            selected_problems_fpath,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(
+                {
+                    "problem_class": [p.__name__ for p in problems["problem_class"]],
+                    "waypoint_i": problems["waypoint_i"],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                },
+                f,
+                indent=4,
+            )
+
+    @staticmethod
     def load_selected_problems(
-        self, selected_problems_fpath: str
+        selected_problems_fpath: str,
     ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None]:
         """Load previously selected problem classes from json."""
         with open(
@@ -408,8 +409,8 @@ class ProblemSimulator:
             past_schedule=self.expedition.schedule, failed_waypoint_i=failed_waypoint_i
         )
 
+    @staticmethod
     def _hash_to_json(
-        self,
         problem: InstrumentProblem | GeneralProblem,
         problem_hash: str,
         problem_waypoint_i: int | None,
@@ -427,7 +428,8 @@ class ProblemSimulator:
         with open(hash_path, "w", encoding="utf-8") as f:
             json.dump(hash_data, f, indent=4)
 
-    def _cache_original_schedule(self, schedule: Schedule, path: Path | str):
+    @staticmethod
+    def _cache_original_schedule(schedule: Schedule, path: Path | str):
         """Cache original schedule to file for reference, as a checkpoint object."""
         schedule_original = Checkpoint(past_schedule=schedule)
         schedule_original.to_yaml(path)
