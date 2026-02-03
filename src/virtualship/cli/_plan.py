@@ -700,12 +700,36 @@ class WaypointWidget(Static):
                         classes="hour-select",
                     )
                     yield Label("Min:")
-                    yield Select(
-                        [(f"{m:02d}", m) for m in range(0, 60, 5)],
-                        id=f"wp{self.index}_minute",
-                        value=int(self.waypoint.time.minute)
+                    minute_options = [(f"{m:02d}", m) for m in range(0, 60, 5)]
+                    minute_value = (
+                        int(self.waypoint.time.minute)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.BLANK
+                    )
+
+                    # if the current minute is not a multiple of 5, add it to the options
+                    if (
+                        self.waypoint.time
+                        and self.waypoint.time.minute % 5 != 0
+                        and (
+                            f"{self.waypoint.time.minute:02d}",
+                            self.waypoint.time.minute,
+                        )
+                        not in minute_options
+                    ):
+                        minute_options = [
+                            (
+                                f"{self.waypoint.time.minute:02d}",
+                                self.waypoint.time.minute,
+                            )
+                        ] + minute_options
+
+                    minute_options = sorted(minute_options, key=lambda x: x[1])
+
+                    yield Select(
+                        minute_options,
+                        id=f"wp{self.index}_minute",
+                        value=minute_value,
                         prompt="mm",
                         classes="minute-select",
                     )
