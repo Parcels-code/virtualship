@@ -1,3 +1,4 @@
+import copy
 import datetime
 import os
 import traceback
@@ -190,10 +191,12 @@ class ExpeditionEditor(Static):
         self.path = path
         self.expedition = None
         self._pending_remove_idx = None
+        self._original_schedule = None  # Store original schedule
 
     def compose(self) -> ComposeResult:
         try:
             self.expedition = Expedition.from_yaml(self.path.joinpath(EXPEDITION))
+            self._original_schedule = copy.deepcopy(self.expedition.schedule)
         except Exception as e:
             raise UserError(
                 f"There is an issue in {self.path.joinpath(EXPEDITION)}:\n\n{e}"
@@ -364,6 +367,11 @@ class ExpeditionEditor(Static):
                         "Remove Last Waypoint",
                         id="remove_waypoint",
                         variant="error",
+                    ),
+                    Button(
+                        "Reset changes (all waypoints)",
+                        id="reset_changes",
+                        variant="warning",
                     ),
                 )
 
@@ -557,13 +565,22 @@ class ExpeditionEditor(Static):
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
+    @on(Button.Pressed, "#reset_changes")
+    def reset_changes(self) -> None:
+        """Reset all changes to the schedule, reverting to the original loaded schedule."""
+        try:
+            self.expedition.schedule = copy.deepcopy(self._original_schedule)
+            self.refresh_waypoint_widgets()
+
+        except Exception as e:
+            raise UnexpectedError(unexpected_msg_compose(e)) from None
+
     @on(Button.Pressed)
     def remove_specific_waypoint(self, event: Button.Pressed) -> None:
         """Ask for confirmation before removing a specific waypoint."""
         btn_id = event.button.id
         if btn_id and btn_id.startswith("wp") and btn_id.endswith("_remove"):
             try:
-                # Extract index from id, e.g. "wp2_remove" -> 2
                 idx_str = btn_id[2:-7]
                 idx = int(idx_str)
                 if 0 <= idx < len(self.expedition.schedule.waypoints):
