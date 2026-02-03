@@ -80,6 +80,8 @@ nbsphinx_thumbnails = {
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
     "user-guide/teacher-content/UU-ocean-of-future/Tutorial1": "user-guide/_images/freepik_assignment.png",
     "user-guide/teacher-content/UU-ocean-of-future/Tutorial2": "user-guide/_images/freepik_assignment.png",
+    "user-guide/tutorials/surf_collaborative_setup.ipynb": "user-guide/_images/surf_logo.png",
+    "user-guide/tutorials/surf_research_cloud_setup.ipynb": "user-guide/_images/surf_logo.png",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
