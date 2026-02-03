@@ -734,6 +734,18 @@ class WaypointWidget(Static):
                         classes="minute-select",
                     )
 
+                # fmt: off
+                yield Horizontal(
+                    Button("+1 day", id="plus_one_day", variant="primary"),
+                    Button("+1 hour", id="plus_one_hour", variant="primary"),
+                    Button("+30 minutes", id="plus_thirty_minutes", variant="primary"),
+                    Button("-1 day", id="minus_one_day", variant="default"),
+                    Button("-1 hour", id="minus_one_hour", variant="default"),
+                    Button("-30 minutes", id="minus_thirty_minutes", variant="default"),
+                    classes="time-adjust-buttons",
+                )
+                # fmt: on
+
                 yield Label("Instruments:")
                 for instrument in [i for i in InstrumentType if not i.is_underway]:
                     is_selected = instrument in (self.waypoint.instrument or [])
@@ -815,6 +827,59 @@ class WaypointWidget(Static):
             else:
                 if not drifter_count_input.value:
                     drifter_count_input.value = "1"
+
+    # fmt: off
+    def update_time(self) -> None:
+        """Update the time selects to match the current waypoint time."""
+        self.query_one(f"#wp{self.index}_year", Select).value = self.waypoint.time.year
+        self.query_one(f"#wp{self.index}_month", Select).value = self.waypoint.time.month
+        self.query_one(f"#wp{self.index}_day", Select).value = self.waypoint.time.day
+        self.query_one(f"#wp{self.index}_hour", Select).value = self.waypoint.time.hour
+        self.query_one(f"#wp{self.index}_minute", Select).value = self.waypoint.time.minute
+    # fmt: on
+
+    def round_minutes(self) -> None:
+        """Round the waypoint time minutes to the nearest 5 minutes, for compatability with UI selection fields."""
+        if self.waypoint.time:
+            minute = self.waypoint.time.minute
+            if minute % 5 == 0:
+                return
+            else:
+                rounded_minute = 5 * round(minute / 5)
+                if rounded_minute == 60:  # increment hour
+                    self.waypoint.time += datetime.timedelta(hours=1)
+                    rounded_minute = 0
+                self.waypoint.time = self.waypoint.time.replace(minute=rounded_minute)
+
+    @on(Button.Pressed)
+    def time_adjust_buttons(self, event: Button.Pressed) -> None:
+        if self.waypoint.time:
+            if event.button.id == "plus_one_day":
+                self.waypoint.time += datetime.timedelta(days=1)
+                self.update_time()
+            if event.button.id == "plus_one_hour":
+                self.waypoint.time += datetime.timedelta(hours=1)
+                self.update_time()
+            elif event.button.id == "plus_thirty_minutes":
+                self.waypoint.time += datetime.timedelta(minutes=30)
+                self.round_minutes()
+                self.update_time()
+            elif event.button.id == "minus_one_day":
+                self.waypoint.time -= datetime.timedelta(days=1)
+                self.update_time()
+            elif event.button.id == "minus_one_hour":
+                self.waypoint.time -= datetime.timedelta(hours=1)
+                self.update_time()
+            elif event.button.id == "minus_thirty_minutes":
+                self.waypoint.time -= datetime.timedelta(minutes=30)
+                self.round_minutes()
+                self.update_time()
+        else:
+            self.notify(
+                "Cannot adjust time: Time is not set for this waypoint.",
+                severity="error",
+                timeout=20,
+            )
 
 
 class PlanScreen(Screen):
@@ -1098,6 +1163,12 @@ class PlanApp(App):
 
     Label.validation-failure {
         color: $error;
+    }
+
+    .time-adjust-buttons {
+        margin-left: 5;
+
+
     }
     """
 
