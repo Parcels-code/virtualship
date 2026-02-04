@@ -1,3 +1,4 @@
+import copy
 import datetime
 import os
 import traceback
@@ -6,7 +7,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.dom import NoMatches
-from textual.screen import Screen
+from textual.screen import ModalScreen, Screen
 from textual.validation import Function, Integer
 from textual.widgets import (
     Button,
@@ -153,15 +154,49 @@ INSTRUMENT_FIELDS = {
 }
 
 
+class WaypointRemoveConfirmScreen(ModalScreen):
+    """Modal confirmation dialog for waypoint removal."""
+
+    def __init__(self, waypoint_index: int):
+        super().__init__()
+        self.waypoint_index = waypoint_index
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Label(
+                f"Are you sure you want to remove waypoint {self.waypoint_index + 1}?",
+                id="confirm-label",
+            ),
+            Horizontal(
+                Button("Yes", id="confirm-yes", variant="error"),
+                Button("No", id="confirm-no", variant="primary"),
+                id="confirm-buttons",
+            ),
+            id="confirm-container",
+            classes="confirm-modal",
+        )
+
+    @on(Button.Pressed, "#confirm-yes")
+    def confirm_yes(self) -> None:
+        self.dismiss(True)
+
+    @on(Button.Pressed, "#confirm-no")
+    def confirm_no(self) -> None:
+        self.dismiss(False)
+
+
 class ExpeditionEditor(Static):
     def __init__(self, path: str):
         super().__init__()
         self.path = path
         self.expedition = None
+        self._pending_remove_idx = None
+        self._original_schedule = None  # Store original schedule
 
     def compose(self) -> ComposeResult:
         try:
             self.expedition = Expedition.from_yaml(self.path.joinpath(EXPEDITION))
+            self._original_schedule = copy.deepcopy(self.expedition.schedule)
         except Exception as e:
             raise UserError(
                 f"There is an issue in {self.path.joinpath(EXPEDITION)}:\n\n{e}"
@@ -332,6 +367,11 @@ class ExpeditionEditor(Static):
                         "Remove Last Waypoint",
                         id="remove_waypoint",
                         variant="error",
+                    ),
+                    Button(
+                        "Reset changes (all waypoints)",
+                        id="reset_changes",
+                        variant="warning",
                     ),
                 )
 
@@ -525,14 +565,45 @@ class ExpeditionEditor(Static):
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    @on(Button.Pressed, "#info_button")
-    def info_pressed(self) -> None:
-        self.notify(
-            "[b]SeaSeven[/b]:\nShallow ADCP profiler capable of providing information to a depth of 150 m every 4 meters (300kHz)"
-            "\n\n[b]OceanObserver[/b]:\nLong-range ADCP profiler capable of providing ~ 1000m of range every 24 meters (38kHz)",
-            severity="warning",
-            timeout=20,
-        )
+    @on(Button.Pressed, "#reset_changes")
+    def reset_changes(self) -> None:
+        """Reset all changes to the schedule, reverting to the original loaded schedule."""
+        try:
+            self.expedition.schedule = copy.deepcopy(self._original_schedule)
+            self.refresh_waypoint_widgets()
+
+        except Exception as e:
+            raise UnexpectedError(unexpected_msg_compose(e)) from None
+
+    @on(Button.Pressed)
+    def remove_specific_waypoint(self, event: Button.Pressed) -> None:
+        """Ask for confirmation before removing a specific waypoint."""
+        btn_id = event.button.id
+        if btn_id and btn_id.startswith("wp") and btn_id.endswith("_remove"):
+            try:
+                idx_str = btn_id[2:-7]
+                idx = int(idx_str)
+                if 0 <= idx < len(self.expedition.schedule.waypoints):
+                    self._pending_remove_idx = idx
+                    self.app.push_screen(
+                        WaypointRemoveConfirmScreen(idx), self._on_remove_confirmed
+                    )
+                else:
+                    self.notify("Invalid waypoint index.", severity="error", timeout=20)
+            except Exception as e:
+                raise UnexpectedError(unexpected_msg_compose(e)) from None
+
+    def _on_remove_confirmed(self, confirmed: bool) -> None:
+        """Callback after confirmation dialog."""
+        if confirmed and self._pending_remove_idx is not None:
+            try:
+                idx = self._pending_remove_idx
+                if 0 <= idx < len(self.expedition.schedule.waypoints):
+                    self.expedition.schedule.waypoints.pop(idx)
+                    self.refresh_waypoint_widgets()
+            except Exception as e:
+                raise UnexpectedError(unexpected_msg_compose(e)) from None
+        self._pending_remove_idx = None
 
     def show_hide_adcp_type(self, show: bool) -> None:
         container = self.query_one("#adcp_type_container")
@@ -700,15 +771,51 @@ class WaypointWidget(Static):
                         classes="hour-select",
                     )
                     yield Label("Min:")
-                    yield Select(
-                        [(f"{m:02d}", m) for m in range(0, 60, 5)],
-                        id=f"wp{self.index}_minute",
-                        value=int(self.waypoint.time.minute)
+                    minute_options = [(f"{m:02d}", m) for m in range(0, 60, 5)]
+                    minute_value = (
+                        int(self.waypoint.time.minute)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.BLANK
+                    )
+
+                    # if the current minute is not a multiple of 5, add it to the options
+                    if (
+                        self.waypoint.time
+                        and self.waypoint.time.minute % 5 != 0
+                        and (
+                            f"{self.waypoint.time.minute:02d}",
+                            self.waypoint.time.minute,
+                        )
+                        not in minute_options
+                    ):
+                        minute_options = [
+                            (
+                                f"{self.waypoint.time.minute:02d}",
+                                self.waypoint.time.minute,
+                            )
+                        ] + minute_options
+
+                    minute_options = sorted(minute_options, key=lambda x: x[1])
+
+                    yield Select(
+                        minute_options,
+                        id=f"wp{self.index}_minute",
+                        value=minute_value,
                         prompt="mm",
                         classes="minute-select",
                     )
+
+                # fmt: off
+                yield Horizontal(
+                    Button("+1 day", id="plus_one_day", variant="primary"),
+                    Button("+1 hour", id="plus_one_hour", variant="primary"),
+                    Button("+30 minutes", id="plus_thirty_minutes", variant="primary"),
+                    Button("-1 day", id="minus_one_day", variant="default"),
+                    Button("-1 hour", id="minus_one_hour", variant="default"),
+                    Button("-30 minutes", id="minus_thirty_minutes", variant="default"),
+                    classes="time-adjust-buttons",
+                )
+                # fmt: on
 
                 yield Label("Instruments:")
                 for instrument in [i for i in InstrumentType if not i.is_underway]:
@@ -739,6 +846,12 @@ class WaypointWidget(Static):
                                 id=f"validation-failure-label-wp{self.index}_drifter_count",
                                 classes="-hidden validation-failure",
                             )
+
+                yield Horizontal(
+                    Button(
+                        "Remove Waypoint", id=f"wp{self.index}_remove", variant="error"
+                    )
+                )
 
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
@@ -791,6 +904,59 @@ class WaypointWidget(Static):
             else:
                 if not drifter_count_input.value:
                     drifter_count_input.value = "1"
+
+    # fmt: off
+    def update_time(self) -> None:
+        """Update the time selects to match the current waypoint time."""
+        self.query_one(f"#wp{self.index}_year", Select).value = self.waypoint.time.year
+        self.query_one(f"#wp{self.index}_month", Select).value = self.waypoint.time.month
+        self.query_one(f"#wp{self.index}_day", Select).value = self.waypoint.time.day
+        self.query_one(f"#wp{self.index}_hour", Select).value = self.waypoint.time.hour
+        self.query_one(f"#wp{self.index}_minute", Select).value = self.waypoint.time.minute
+    # fmt: on
+
+    def round_minutes(self) -> None:
+        """Round the waypoint time minutes to the nearest 5 minutes, for compatability with UI selection fields."""
+        if self.waypoint.time:
+            minute = self.waypoint.time.minute
+            if minute % 5 == 0:
+                return
+            else:
+                rounded_minute = 5 * round(minute / 5)
+                if rounded_minute == 60:  # increment hour
+                    self.waypoint.time += datetime.timedelta(hours=1)
+                    rounded_minute = 0
+                self.waypoint.time = self.waypoint.time.replace(minute=rounded_minute)
+
+    @on(Button.Pressed)
+    def time_adjust_buttons(self, event: Button.Pressed) -> None:
+        if self.waypoint.time:
+            if event.button.id == "plus_one_day":
+                self.waypoint.time += datetime.timedelta(days=1)
+                self.update_time()
+            if event.button.id == "plus_one_hour":
+                self.waypoint.time += datetime.timedelta(hours=1)
+                self.update_time()
+            elif event.button.id == "plus_thirty_minutes":
+                self.waypoint.time += datetime.timedelta(minutes=30)
+                self.round_minutes()
+                self.update_time()
+            elif event.button.id == "minus_one_day":
+                self.waypoint.time -= datetime.timedelta(days=1)
+                self.update_time()
+            elif event.button.id == "minus_one_hour":
+                self.waypoint.time -= datetime.timedelta(hours=1)
+                self.update_time()
+            elif event.button.id == "minus_thirty_minutes":
+                self.waypoint.time -= datetime.timedelta(minutes=30)
+                self.round_minutes()
+                self.update_time()
+        else:
+            self.notify(
+                "Cannot adjust time: Time is not set for this waypoint.",
+                severity="error",
+                timeout=20,
+            )
 
 
 class PlanScreen(Screen):
@@ -1074,6 +1240,39 @@ class PlanApp(App):
 
     Label.validation-failure {
         color: $error;
+    }
+
+    .time-adjust-buttons {
+        margin-left: 5;
+
+
+    }
+
+    .confirm-modal {
+        align: center middle;
+        width: 50;
+        min-height: 9;
+        border: round $primary;
+        background: $panel;
+        padding: 2 4;
+        content-align: center middle;
+        margin: 2 4;
+        layout: vertical;
+    }
+
+    #confirm-label {
+        content-align: center middle;
+        text-align: center;
+        width: 100%;
+        margin-bottom: 2;
+    }
+
+    #confirm-buttons {
+        align: center middle;
+        width: 100%;
+        margin-top: 1;
+        content-align: center middle;
+        layout: horizontal;
     }
     """
 
