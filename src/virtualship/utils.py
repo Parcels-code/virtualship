@@ -15,8 +15,8 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -37,10 +37,12 @@ from yaspin import Spinner
 
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
-SCHEDULE_ORIGINAL = "schedule_original.yaml"
 
 PROBLEMS_ENCOUNTERED_DIR = "problems_encountered_" + "{expedition_identifier}"
+LOG_DIR = "log"
+SCHEDULE_ORIGINAL = "schedule_original.yaml"
 SELECTED_PROBLEMS = "selected_problems.json"
+REPORT = "post_expedition_report.txt"
 
 # projection used to sail between waypoints
 PROJECTION = pyproj.Geod(ellps="WGS84")
