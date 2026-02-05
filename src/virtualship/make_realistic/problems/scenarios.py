@@ -46,7 +46,7 @@ class FoodDeliveryDelayed(GeneralProblem):
     message: str = (
         "The scheduled food delivery prior to departure has not arrived. Until the supply truck reaches the pier, "
         "we cannot leave. Once it arrives, unloading and stowing the provisions in the ship's cold storage "
-        "will also take additional time. These combined delays postpone departure by approximately 5 hours."
+        "will also take additional time. These combined delays postpone departure by 5 hours."
     )
 
     delay_duration: timedelta = timedelta(hours=5.0)
@@ -61,7 +61,7 @@ class CaptainSafetyDrill(GeneralProblem):
     message: str = (
         "A miscommunication with the ship's captain results in the sudden initiation of a mandatory safety drill. "
         "The emergency vessel must be lowered and tested while the ship remains stationary, pausing all scientific "
-        "operations for the duration of the exercise. The drill introduces a delay of approximately 2 hours."
+        "operations for the duration of the exercise. The drill introduces a delay of 2 hours."
     )
     delay_duration: timedelta = timedelta(hours=2.0)
     pre_departure: bool = False
@@ -75,7 +75,7 @@ class FuelDeliveryIssue(GeneralProblem):
     message: str = (
         "The fuel tanker expected to deliver fuel has not arrived. Until the tanker reaches the pier, "
         "we cannot leave. Once it arrives, securing the fuel lines in the ship's tanks and fueling operations "
-        "will also take additional time. These combined delays postpone departure by approximately 5 hours."
+        "will also take additional time. These combined delays postpone departure by 5 hours."
     )
     delay_duration: timedelta = timedelta(hours=5.0)
     pre_departure: bool = True
@@ -88,7 +88,7 @@ class MarineMammalInDeploymentArea(GeneralProblem):
 
     message: str = (
         "A pod of dolphins is observed swimming directly beneath the planned deployment area. "
-        "To avoid risk to wildlife and comply with environmental protocols, all in-water operations "
+        "To avoid risk to wildlife and comply with environmental protocols, all operations "
         "must pause until the animals move away from the vicinity. This results in a delay of about 2 hours."
     )
     delay_duration: timedelta = timedelta(hours=2)
@@ -104,7 +104,7 @@ class BallastPumpFailure(GeneralProblem):
         "One of the ship's ballast pumps suddenly stops responding during routine ballasting operations. "
         "Without the pump, the vessel cannot safely adjust trim or compensate for equipment movements on deck. "
         "Engineering isolates the faulty pump and performs a rapid inspection. Temporary repairs allow limited "
-        "functionality, but the interruption causes a delay of approximately 4 hours."
+        "functionality, but the interruption causes a delay of 4 hours."
     )
     delay_duration: timedelta = timedelta(hours=4.0)
     pre_departure: bool = False
@@ -146,7 +146,7 @@ class CoolingWaterIntakeBlocked(GeneralProblem):
     message: str = (
         "The main engine's cooling water intake alarms indicate reduced flow, likely caused by marine debris "
         "or biological fouling. The vessel must temporarily slow down while engineering clears the obstruction "
-        "and flushes the intake. This results in a delay of approximately 4 hours."
+        "and flushes the intake. This results in a delay of 4 hours."
     )
     delay_duration: timedelta = timedelta(hours=4.0)
     pre_departure: bool = False
@@ -201,7 +201,7 @@ class CTDCableJammed(InstrumentProblem):
         "During preparation for the next CTD cast, the CTD cable becomes jammed in the winch drum. "
         "Attempts to free it are unsuccessful, and the crew determines that the entire cable must be "
         "replaced before deployment can continue. This repair is time-consuming and results in a delay "
-        "of approximately 5 hours."
+        "of 5 hours."
     )
     delay_duration: timedelta = timedelta(hours=5.0)
     instrument_type: InstrumentType = InstrumentType.CTD
@@ -275,7 +275,7 @@ class RosetteTriggerFailure(InstrumentProblem):
         "During a CTD cast, the rosette's bottle-triggering mechanism fails to actuate. "
         "No discrete water samples can be collected during this cast. The rosette must be brought back "
         "on deck for inspection and manual testing of the trigger system. This results in an operational "
-        "delay of approximately 3.5 hours."
+        "delay of 3.5 hours."
     )
     delay_duration: timedelta = timedelta(hours=3.5)
     instrument_type: InstrumentType = InstrumentType.CTD
@@ -289,8 +289,8 @@ class DrifterSatelliteConnectionDelay(InstrumentProblem):
     message: str = (
         "The drifter scheduled for deployment fails to establish a satellite connection during "
         "pre-launch checks. To improve signal acquisition, the float must be moved to a higher location on deck "
-        "with fewer obstructions. The team waits for the satellite fix to come through, resulting in a delay "
-        "of approximately 2 hours."
+        "with fewer obstructions. The team waits for the satellite connection to be established, resulting in a delay "
+        "of 2 hours."
     )
     delay_duration: timedelta = timedelta(hours=2.0)
     instrument_type: InstrumentType = InstrumentType.DRIFTER
@@ -304,8 +304,8 @@ class ArgoSatelliteConnectionDelay(InstrumentProblem):
     message: str = (
         "The Argo float scheduled for deployment fails to establish a satellite connection during "
         "pre-launch checks. To improve signal acquisition, the float must be moved to a higher location on deck "
-        "with fewer obstructions. The team waits for the satellite fix to come through, resulting in a delay "
-        "of approximately 2 hours."
+        "with fewer obstructions. The team waits for the satellite connection to be established, resulting in a delay "
+        "of 2 hours."
     )
     delay_duration: timedelta = timedelta(hours=2.0)
     instrument_type: InstrumentType = InstrumentType.ARGO_FLOAT
