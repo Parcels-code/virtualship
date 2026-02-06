@@ -4,7 +4,7 @@ This tutorial will guide you through the structure of the `expedition.yaml` file
 
 The `expedition.yaml` file is ingested by `virtualship run` and is used to configure expeditions. It contains metadata and settings that define the parameters of an expedition, including information about ship speed, instrument configurations, waypoint timings and instrument selections.
 
-This tutorial describes an alternative means to using the `virtualship plan` command, which provides a user-friendly interface for interacting with `expedition.yaml` but can become cumbersome for long, complex expeditions with many waypoints and instruments. Interacting with the `expedition.yaml` file directly tends to be faster for larger expeditions.
+This tutorial describes an alternative means to using the `virtualship plan` command, which provides a user-friendly interface for interacting with `expedition.yaml` but can become cumbersome for long, complex expeditions with many waypoints and instruments. Interacting with the `expedition.yaml` file directly tends to be faster for larger expeditions and experienced users.
 
 ### Editing the file
 
@@ -72,7 +72,7 @@ In the example above, some instrument configuration parameters are replaced by e
 
 This section contains a list of `waypoints` that define the expedition's route. Each waypoint includes:
 
-- **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_.
+- **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_. The instrument selection can also be left empty (i.e., no instruments deployed at that waypoint) by setting the parameter to: `instrument: null`.
 
 ```{tip}
 Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `CTD_BGC`, `DRIFTER`, `ARGO_FLOAT`, `XBT`.
