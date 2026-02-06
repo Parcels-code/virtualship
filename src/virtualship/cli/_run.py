@@ -18,8 +18,10 @@ from virtualship.models import Checkpoint, Schedule
 from virtualship.utils import (
     CHECKPOINT,
     EXPEDITION,
+    LOG_DIR,
     PROBLEMS_ENCOUNTERED_DIR,
     PROJECTION,
+    REPORT,
     SELECTED_PROBLEMS,
     _get_expedition,
     _save_checkpoint,
@@ -90,7 +92,7 @@ def _run(
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, problems_dir)
+    checkpoint.verify(expedition, problems_dir.joinpath(LOG_DIR))
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -138,16 +140,16 @@ def _run(
     problem_simulator = ProblemSimulator(expedition, expedition_dir)
 
     # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
-    if os.path.exists(problems_dir / SELECTED_PROBLEMS):
+    if os.path.exists(problems_dir / LOG_DIR / SELECTED_PROBLEMS):
         problems = problem_simulator.load_selected_problems(
-            problems_dir / SELECTED_PROBLEMS
+            problems_dir / LOG_DIR / SELECTED_PROBLEMS
         )
     else:
         problems = problem_simulator.select_problems(
             instruments_in_expedition, prob_level
         )
         problem_simulator.cache_selected_problems(
-            problems, problems_dir / SELECTED_PROBLEMS
+            problems, problems_dir / LOG_DIR / SELECTED_PROBLEMS
         ) if problems else None
 
     # simulate instrument measurements
@@ -174,7 +176,7 @@ def _run(
                 problem_simulator.execute(
                     problems,
                     instrument_type_validation=itype,
-                    problems_dir=problems_dir,
+                    log_dir=problems_dir.joinpath(LOG_DIR),
                 )
 
             # get measurements to simulate
@@ -215,9 +217,10 @@ def _run(
     )
 
     if problems:
+        ProblemSimulator.post_expedition_report(problems, problems_dir.joinpath(REPORT))
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(
-            f"\nA record of problems encountered during the expedition is saved in: {problems_dir}"
+            f"\nA post-expedition report of problems encountered during the expedition is saved in: {problems_dir.joinpath(REPORT)}"
         )
 
     # delete checkpoint file (in case it interferes with any future re-runs)

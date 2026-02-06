@@ -190,7 +190,7 @@ class ProblemSimulator:
         self,
         problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
         instrument_type_validation: InstrumentType | None,
-        problems_dir: Path,
+        log_dir: Path,
         log_delay: float = 4.0,
     ):
         """
@@ -209,7 +209,7 @@ class ProblemSimulator:
                 continue
 
             problem_hash = _make_hash(problem.message + str(problem_waypoint_i), 8)
-            hash_fpath = problems_dir.joinpath(f"problem_{problem_hash}.json")
+            hash_fpath = log_dir.joinpath(f"problem_{problem_hash}.json")
             if hash_fpath.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
 
@@ -232,7 +232,7 @@ class ProblemSimulator:
             )
 
             # cache original schedule for reference and/or restoring later if needed (checkpoint.yaml [written in _log_problem] can be overwritten if multiple problems occur so is not a persistent record of original schedule)
-            schedule_original_fpath = problems_dir / SCHEDULE_ORIGINAL
+            schedule_original_fpath = log_dir / SCHEDULE_ORIGINAL
             if not os.path.exists(schedule_original_fpath):
                 self._cache_original_schedule(
                     self.expedition.schedule, schedule_original_fpath
@@ -262,6 +262,25 @@ class ProblemSimulator:
                 f,
                 indent=4,
             )
+
+    @staticmethod
+    def post_expedition_report(
+        problems: dict[str, list[GeneralProblem | InstrumentProblem] | None],
+        report_fpath: str | Path,
+    ) -> None:
+        """Produce human-readable post-expedition report (.txt), including problems that occured (their full messages), the waypoint and what delay they caused."""
+        for problem, problem_waypoint_i in zip(
+            problems["problem_class"], problems["waypoint_i"], strict=True
+        ):
+            affected_wp = (
+                "in-port" if problem_waypoint_i is None else f"{problem_waypoint_i + 1}"
+            )
+            delay_hours = problem.delay_duration.total_seconds() / 3600.0
+            with open(report_fpath, "a", encoding="utf-8") as f:
+                f.write("---\n")
+                f.write(f"Waypoint: {affected_wp}\n")
+                f.write(f"Problem: {problem.message}\n")
+                f.write(f"Delay caused: {delay_hours} hours\n\n")
 
     @staticmethod
     def load_selected_problems(
