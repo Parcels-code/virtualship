@@ -68,10 +68,6 @@ The next step is to finalise the expedition schedule plan, including setting tim
 virtualship plan EXPEDITION_NAME
 ```
 
-```{tip}
-Using the `virtualship plan` tool is optional. Advanced users can also edit the `expedition.yaml` file directly if preferred.
-```
-
 The planning tool should look something like this and offers an intuitive way to make your selections:
 
 ![example_plan_app](example_plan_app.gif)
