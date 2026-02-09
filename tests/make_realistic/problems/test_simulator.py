@@ -191,6 +191,23 @@ def test_prob_level_two_more_problems(tmp_path):
     ), "Longer expedition should have more problems than shorter one at prob_level=2"
 
 
+def test_unique_waypoint_assignment(tmp_path):
+    expedition = _make_simple_expedition(num_waypoints=12)
+    instruments_in_expedition = expedition.get_instruments()
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+
+    problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
+    waypoint_indices = problems["waypoint_i"]
+
+    breakpoint()
+
+    # filter None (pre-departure) and check uniqueness of waypoint indices
+    non_none_indices = [i for i in waypoint_indices if i is not None]
+    assert len(non_none_indices) == len(set(non_none_indices)), (
+        "Each problem should be assigned a unique waypoint index (excluding pre-departure problems)"
+    )
+
+
 def test_has_contingency_during_expedition(tmp_path):
     # expedition with long distance between waypoints
     long_wp_expedition = _make_simple_expedition(num_waypoints=2, distance_scale=3.0)

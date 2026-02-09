@@ -164,15 +164,32 @@ class ProblemSimulator:
                 selected_problems.extend(available_replacements[:num_to_replace])
 
             # map each problem to a [random] waypoint (or None if pre-departure)
+            # limited to one per waypoint, else complicates scheduling and contingency checking
             waypoint_idxs = []
+            unassigned_problems = []
+            available_idxs = list(
+                range(len(self.expedition.schedule.waypoints) - 1)
+            )  # exclude last waypoint (problem there would have no impact on scheduling)
+
+            # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
             for problem in selected_problems:
                 if getattr(problem, "pre_departure", False):
                     waypoint_idxs.append(None)
                 else:
-                    # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
-                    waypoint_idxs.append(
-                        random.randint(0, len(self.expedition.schedule.waypoints) - 2)
-                    )  # -1 to get index and -1 exclude last waypoint (would not impact any future scheduling as arrival in port is not part of schedule)
+                    if available_idxs:
+                        wp_select = random.choice(available_idxs)
+                        waypoint_idxs.append(wp_select)
+                        available_idxs.remove(wp_select)  # each waypoint only used once
+                    else:
+                        unassigned_problems.append(
+                            problem
+                        )  # if run out of available waypoints, remove problem from selection
+
+            # remove any problems that couldn't be assigned a waypoint (i.e. if more problems than available waypoints)
+            if unassigned_problems:
+                selected_problems = [
+                    p for p in selected_problems if p not in unassigned_problems
+                ]
 
             # pair problems with their waypoint indices and sort by waypoint index (pre-departure first)
             paired = sorted(
