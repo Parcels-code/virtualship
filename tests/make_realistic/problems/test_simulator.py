@@ -199,8 +199,6 @@ def test_unique_waypoint_assignment(tmp_path):
     problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
     waypoint_indices = problems["waypoint_i"]
 
-    breakpoint()
-
     # filter None (pre-departure) and check uniqueness of waypoint indices
     non_none_indices = [i for i in waypoint_indices if i is not None]
     assert len(non_none_indices) == len(set(non_none_indices)), (
