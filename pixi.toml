@@ -16,6 +16,7 @@ setuptools = "*"
 setuptools_scm = "*"
 
 [environments]
+default = { features = ["test", "notebooks", "typing", "pre-commit"] }
 test-latest = { features = ["test"], solve-group = "test" }
 test-py310 = { features = ["test", "py310"] }
 test-py311 = { features = ["test", "py311"] }
