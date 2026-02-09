@@ -15,14 +15,10 @@ def _assert_general_problem_class(cls):
     assert is_dataclass(instance)
 
     # required attributes and types
-    assert hasattr(instance, "message")
     assert isinstance(instance.message, str)
     assert instance.message.strip(), "message should not be empty"
 
-    assert hasattr(instance, "delay_duration")
     assert isinstance(instance.delay_duration, timedelta)
-
-    assert hasattr(instance, "pre_departure")
     assert isinstance(instance.pre_departure, bool)
 
 
@@ -32,14 +28,10 @@ def _assert_instrument_problem_class(cls):
     assert is_dataclass(instance)
 
     # required attributes and types
-    assert hasattr(instance, "message")
     assert isinstance(instance.message, str)
     assert instance.message.strip(), "message should not be empty"
 
-    assert hasattr(instance, "delay_duration")
     assert isinstance(instance.delay_duration, timedelta)
-
-    assert hasattr(instance, "instrument_type")
     assert isinstance(instance.instrument_type, InstrumentType)
 
 
