@@ -15,8 +15,8 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -113,21 +113,6 @@ def register_instrument(instrument_type):
 
 def get_instrument_class(instrument_type):
     return INSTRUMENT_CLASS_MAP.get(instrument_type)
-
-
-# problems inventory registry and registration utilities
-INSTRUMENT_PROBLEM_REG = []
-GENERAL_PROBLEM_REG = []
-
-
-def register_instrument_problem(cls):
-    INSTRUMENT_PROBLEM_REG.append(cls)
-    return cls
-
-
-def register_general_problem(cls):
-    GENERAL_PROBLEM_REG.append(cls)
-    return cls
 
 
 # map for instrument type to instrument config (pydantic basemodel) names

@@ -17,14 +17,14 @@ from yaspin import yaspin
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
+    GENERAL_PROBLEMS,
+    INSTRUMENT_PROBLEMS,
     GeneralProblem,
     InstrumentProblem,
 )
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
     EXPEDITION,
-    GENERAL_PROBLEM_REG,
-    INSTRUMENT_PROBLEM_REG,
     PROJECTION,
     SCHEDULE_ORIGINAL,
     _calc_sail_time,
@@ -74,14 +74,14 @@ class ProblemSimulator:
         """
         valid_instrument_problems = [
             problem
-            for problem in INSTRUMENT_PROBLEM_REG
+            for problem in INSTRUMENT_PROBLEMS
             if problem.instrument_type in instruments_in_expedition
         ]
 
         pre_departure_problems = [
             p
-            for p in GENERAL_PROBLEM_REG
-            if issubclass(p, GeneralProblem) and p.pre_departure
+            for p in GENERAL_PROBLEMS
+            if isinstance(p, GeneralProblem) and p.pre_departure
         ]
 
         num_waypoints = len(self.expedition.schedule.waypoints)
@@ -112,31 +112,31 @@ class ProblemSimulator:
             )
             num_problems = base + extra
             num_problems = min(
-                num_problems, len(GENERAL_PROBLEM_REG) + len(valid_instrument_problems)
+                num_problems, len(GENERAL_PROBLEMS) + len(valid_instrument_problems)
             )
 
         selected_problems = []
         problems_sorted = None
         if num_problems > 0:
-            random.shuffle(GENERAL_PROBLEM_REG)
+            random.shuffle(GENERAL_PROBLEMS)
             random.shuffle(valid_instrument_problems)
 
             # bias towards more instrument problems when there are more instruments
             instrument_bias = min(0.7, num_instruments / (num_instruments + 2))
             n_instrument = round(num_problems * instrument_bias)
-            n_general = min(len(GENERAL_PROBLEM_REG), num_problems - n_instrument)
+            n_general = min(len(GENERAL_PROBLEMS), num_problems - n_instrument)
             n_instrument = (
                 num_problems - n_general
-            )  # recalc in case n_general was capped to len(GENERAL_PROBLEM_REG)
+            )  # recalc in case n_general was capped to len(GENERAL_PROBLEMS)
 
-            selected_problems.extend(GENERAL_PROBLEM_REG[:n_general])
+            selected_problems.extend(GENERAL_PROBLEMS[:n_general])
             selected_problems.extend(valid_instrument_problems[:n_instrument])
 
             # allow only one pre-departure problem to occur; replace any extras with non-pre-departure problems
             selected_pre_departure = [
                 p
                 for p in selected_problems
-                if issubclass(p, GeneralProblem) and p.pre_departure
+                if isinstance(p, GeneralProblem) and p.pre_departure
             ]
             if len(selected_pre_departure) > 1:
                 to_keep = random.choice(selected_pre_departure)
@@ -146,7 +146,7 @@ class ProblemSimulator:
                     problem
                     for problem in selected_problems
                     if not (
-                        issubclass(problem, GeneralProblem)
+                        isinstance(problem, GeneralProblem)
                         and problem.pre_departure
                         and problem is not to_keep
                     )
@@ -154,7 +154,7 @@ class ProblemSimulator:
                 # available non-pre_departure problems not already selected
                 available_general = [
                     p
-                    for p in GENERAL_PROBLEM_REG
+                    for p in GENERAL_PROBLEMS
                     if not p.pre_departure and p not in selected_problems
                 ]
                 available_instrument = [
@@ -223,7 +223,7 @@ class ProblemSimulator:
         ):
             # skip if instrument problem but `p.instrument_type` does not match `instrument_type_validation` (i.e. the current instrument being simulated in the expedition, e.g. from _run.py)
             if (
-                issubclass(problem, InstrumentProblem)
+                isinstance(problem, InstrumentProblem)
                 and problem.instrument_type is not instrument_type_validation
             ):
                 continue
@@ -233,7 +233,7 @@ class ProblemSimulator:
             if hash_fpath.exists():
                 continue  # problem * waypoint combination has already occurred; don't repeat
 
-            if issubclass(problem, GeneralProblem) and problem.pre_departure:
+            if isinstance(problem, GeneralProblem) and problem.pre_departure:
                 alert_msg = LOG_MESSAGING["pre_departure"]
 
             else:
@@ -275,7 +275,7 @@ class ProblemSimulator:
         ) as f:
             json.dump(
                 {
-                    "problem_class": [p.__name__ for p in problems["problem_class"]],
+                    "problem_class": [p.short_name for p in problems["problem_class"]],
                     "waypoint_i": problems["waypoint_i"],
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                 },
@@ -315,10 +315,8 @@ class ProblemSimulator:
 
         # extract selected problem classes from their names (using the lookups preserves order they were saved in)
         selected_problems = {"problem_class": [], "waypoint_i": []}
-        general_problems_lookup = {cls.__name__: cls for cls in GENERAL_PROBLEM_REG}
-        instrument_problems_lookup = {
-            cls.__name__: cls for cls in INSTRUMENT_PROBLEM_REG
-        }
+        general_problems_lookup = {cls.__name__: cls for cls in GENERAL_PROBLEMS}
+        instrument_problems_lookup = {cls.__name__: cls for cls in INSTRUMENT_PROBLEMS}
 
         for cls_name, wp_idx in zip(
             problems_json["problem_class"], problems_json["waypoint_i"], strict=True

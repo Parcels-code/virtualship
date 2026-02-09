@@ -3,14 +3,15 @@ from datetime import timedelta
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
+    GENERAL_PROBLEMS,
+    INSTRUMENT_PROBLEMS,
     GeneralProblem,
     InstrumentProblem,
 )
-from virtualship.utils import GENERAL_PROBLEM_REG, INSTRUMENT_PROBLEM_REG
 
 
 def _assert_general_problem_class(cls):
-    assert issubclass(cls, GeneralProblem)
+    assert isinstance(cls, GeneralProblem)
     instance = cls()
     assert is_dataclass(instance)
 
@@ -23,7 +24,7 @@ def _assert_general_problem_class(cls):
 
 
 def _assert_instrument_problem_class(cls):
-    assert issubclass(cls, InstrumentProblem)
+    assert isinstance(cls, InstrumentProblem)
     instance = cls()
     assert is_dataclass(instance)
 
@@ -36,14 +37,14 @@ def _assert_instrument_problem_class(cls):
 
 
 def test_general_problems():
-    assert GENERAL_PROBLEM_REG, "GENERAL_PROBLEM_REG should not be empty"
+    assert GENERAL_PROBLEMS, "GENERAL_PROBLEMS should not be empty"
 
-    for cls in GENERAL_PROBLEM_REG:
+    for cls in GENERAL_PROBLEMS:
         _assert_general_problem_class(cls)
 
 
 def test_instrument_problems():
-    assert INSTRUMENT_PROBLEM_REG, "INSTRUMENT_PROBLEM_REG should not be empty"
+    assert INSTRUMENT_PROBLEMS, "INSTRUMENT_PROBLEMS should not be empty"
 
-    for cls in INSTRUMENT_PROBLEM_REG:
+    for cls in INSTRUMENT_PROBLEMS:
         _assert_instrument_problem_class(cls)

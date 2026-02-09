@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
+    GENERAL_PROBLEMS,
     GeneralProblem,
     InstrumentProblem,
 )
@@ -16,7 +17,7 @@ from virtualship.models.expedition import (
     Waypoint,
 )
 from virtualship.models.location import Location
-from virtualship.utils import GENERAL_PROBLEM_REG, REPORT
+from virtualship.utils import REPORT
 
 
 def _make_simple_expedition(
@@ -58,7 +59,7 @@ def test_select_problems_single_waypoint_returns_pre_departure(tmp_path):
     assert problems["waypoint_i"] == [None]
 
     problem_cls = problems["problem_class"][0]
-    assert issubclass(problem_cls, GeneralProblem)
+    assert isinstance(problem_cls, GeneralProblem)
     assert getattr(problem_cls, "pre_departure", False) is True
 
 
@@ -71,7 +72,7 @@ def test_no_instruments_no_instruments_problems(tmp_path):
     problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
 
     has_instrument_problems = any(
-        issubclass(cls, InstrumentProblem) for cls in problems["problem_class"]
+        isinstance(cls, InstrumentProblem) for cls in problems["problem_class"]
     )
     assert not has_instrument_problems, (
         "Should not select instrument problems when no instruments are present"
@@ -92,8 +93,8 @@ def test_cache_and_load_selected_problems_roundtrip(tmp_path):
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
     # pick two general problems (registry should contain entries)
-    problem1 = GENERAL_PROBLEM_REG[0]
-    problem2 = GENERAL_PROBLEM_REG[1] if len(GENERAL_PROBLEM_REG) > 1 else problem1
+    problem1 = GENERAL_PROBLEMS[0]
+    problem2 = GENERAL_PROBLEMS[1] if len(GENERAL_PROBLEMS) > 1 else problem1
 
     problems = {"problem_class": [problem1, problem2], "waypoint_i": [None, 0]}
 
@@ -117,7 +118,7 @@ def test_hash_to_json(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=2)
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
-    any_problem = GENERAL_PROBLEM_REG[0]
+    any_problem = GENERAL_PROBLEMS[0]
 
     hash_path = tmp_path / "problem_hash.json"
     simulator._hash_to_json(
@@ -137,7 +138,7 @@ def test_has_contingency_pre_departure(tmp_path):
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
     pre_departure_problem = next(
-        gp for gp in GENERAL_PROBLEM_REG if getattr(gp, "pre_departure", False)
+        gp for gp in GENERAL_PROBLEMS if getattr(gp, "pre_departure", False)
     )
     assert pre_departure_problem is not None, (
         "Need at least one pre-departure problem class in the general problem registry"
@@ -216,7 +217,7 @@ def test_has_contingency_during_expedition(tmp_path):
 
     # a during-expedition general problem
     problem_cls = next(
-        c for c in GENERAL_PROBLEM_REG if not getattr(c, "pre_departure", False)
+        c for c in GENERAL_PROBLEMS if not getattr(c, "pre_departure", False)
     )
 
     assert problem_cls is not None, (
