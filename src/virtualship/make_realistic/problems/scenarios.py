@@ -95,7 +95,7 @@ GENERAL_PROBLEMS = [
         message=(
             "The bow thruster's power converter reports a fault during station-keeping operations. "
             "Dynamic positioning becomes less stable, forcing a temporary suspension of high-precision sampling. "
-            "Engineers troubleshoot the converter and perform a reset, resulting in a delay of around 4 hours."
+            "Engineers troubleshoot the converter and perform a reset, resulting in a delay of 4 hours."
         ),
         delay_duration=timedelta(hours=4.0),
         pre_departure=False,
@@ -171,7 +171,7 @@ INSTRUMENT_PROBLEMS = [
             "The hull-mounted ADCP begins returning invalid velocity data. Engineering suspects damage to the cable "
             "from recent maintenance activities. The ship must hold position while a technician enters the cable "
             "compartment to perform an inspection and continuity test. This diagnostic procedure results in a delay "
-            "of around 2 hours."
+            "of 2 hours."
         ),
         delay_duration=timedelta(hours=2.0),
         instrument_type=InstrumentType.ADCP,
@@ -182,7 +182,7 @@ INSTRUMENT_PROBLEMS = [
             "The primary temperature sensor on the CTD begins returning inconsistent readings. "
             "Troubleshooting confirms that the sensor has malfunctioned. A spare unit can be installed, "
             "but integrating and verifying the replacement will pause operations. "
-            "This procedure leads to an estimated delay of around 3 hours."
+            "This procedure leads to an estimated delay of 3 hours."
         ),
         delay_duration=timedelta(hours=3.0),
         instrument_type=InstrumentType.CTD,
