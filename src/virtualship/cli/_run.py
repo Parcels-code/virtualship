@@ -82,13 +82,13 @@ def _run(
 
     expedition = _get_expedition(expedition_dir)
 
-    # TODO: expedition unique identifier is used to determine whether an expedition has 'changed' since the last run, and therefore whether to re-use previously encountered problems or select new ones.
+    # TODO: expedition unique id is used to determine whether an expedition has 'changed' since the last run, and therefore whether to re-use previously encountered problems or select new ones.
     # TODO: this is implemented to avoid re-selecting problems when user is making tweaks to schedule to deal with problems encountered in previous run; but it could more sophisticated (currently only targets if there have been *additions* of instruments)
-    expedition_identifier = _unique_identifier(expedition, expedition_dir)
+    expedition_id = _unique_id(expedition, expedition_dir)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
-        CACHE, PROBLEMS_ENCOUNTERED.format(expedition_identifier=expedition_identifier)
+        CACHE, PROBLEMS_ENCOUNTERED.format(expedition_id=expedition_id)
     )
 
     # verify instruments_config file is consistent with schedule
@@ -242,37 +242,37 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_identifier(expedition: Expedition, expedition_dir: Path) -> str:
+def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
     """
-    Return a unique identifier for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
+    Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
     Simultaneously, log to .txt file if first run or if there have been additions of instruments since last run.
     """
     current_instruments = expedition.get_instruments()
-    new_identifier = datetime.now().strftime("%Y%m%d%H%M%S")
-    previous_identifier = None
+    new_id = datetime.now().strftime("%Y%m%d%H%M%S")
+    previous_id = None
 
     cache_dir = expedition_dir.joinpath(CACHE)
     if not cache_dir.exists():
         cache_dir.mkdir()
-    identifier_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
+    id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
     last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
 
-    if identifier_path.exists():
-        previous_identifier = identifier_path.read_text().strip()
+    if id_path.exists():
+        previous_id = id_path.read_text().strip()
         last_expedition = Expedition.from_yaml(last_expedition_path)
         last_instruments = last_expedition.get_instruments()
 
         added_instruments = set(current_instruments) - set(last_instruments)
         if not added_instruments:
-            return previous_identifier  # if no additions, keep previous identifier to allow re-use of previously encountered problems
+            return previous_id  # if no additions, keep previous id to allow re-use of previously encountered problems
         else:
-            identifier_path.write_text(new_identifier)
+            id_path.write_text(new_id)
 
     else:
-        identifier_path.write_text(new_identifier)
+        id_path.write_text(new_id)
 
-    return new_identifier
+    return new_id
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:

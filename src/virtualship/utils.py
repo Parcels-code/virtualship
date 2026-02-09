@@ -44,8 +44,8 @@ PROJECTION = pyproj.Geod(ellps="WGS84")
 
 # caching for problems module
 CACHE = "cache"
-EXPEDITION_IDENTIFIER = "expedition_identifier_latest.txt"
-PROBLEMS_ENCOUNTERED = "problems_encountered_" + "{expedition_identifier}"
+EXPEDITION_IDENTIFIER = "id_latest.txt"
+PROBLEMS_ENCOUNTERED = "problems_encountered_" + "{expedition_id}"
 SELECTED_PROBLEMS = "selected_problems.json"
 REPORT = "post_expedition_report.txt"
 
