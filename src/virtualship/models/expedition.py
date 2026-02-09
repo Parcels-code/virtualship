@@ -68,13 +68,10 @@ class Expedition(pydantic.BaseModel):
                 "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
             ) from e
 
-    def get_unique_identifier(self) -> str:
-        """Generate a unique hash for the expedition based waypoints locations and instrument types. Therefore, any changes to location, number of waypoints or instrument types will change the hash."""
-        waypoint_data = "".join(
-            f"{wp.location.lat},{wp.location.lon};{wp.instrument}"
-            for wp in self.schedule.waypoints
-        )
-        return _make_hash(waypoint_data, length=12)
+    def unique_identifier(self) -> str:
+        """Generate a unique hash for the expedition based on instruments deployed. Therefore, any changes to instrument types deployed at any waypoint will change the hash."""
+        instrument_data = "".join(f"{wp.instrument}" for wp in self.schedule.waypoints)
+        return _make_hash(instrument_data, length=8)
 
 
 class ShipConfig(pydantic.BaseModel):

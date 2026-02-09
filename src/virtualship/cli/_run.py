@@ -76,7 +76,7 @@ def _run(
         expedition_dir = Path(expedition_dir)
 
     expedition = _get_expedition(expedition_dir)
-    expedition_identifier = expedition.get_unique_identifier()
+    expedition_identifier = expedition.unique_identifier()
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir / PROBLEMS_ENCOUNTERED_DIR.format(
