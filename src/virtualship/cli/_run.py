@@ -82,8 +82,7 @@ def _run(
 
     expedition = _get_expedition(expedition_dir)
 
-    # TODO: expedition unique id is used to determine whether an expedition has 'changed' since the last run, and therefore whether to re-use previously encountered problems or select new ones.
-    # TODO: this is implemented to avoid re-selecting problems when user is making tweaks to schedule to deal with problems encountered in previous run; but it could more sophisticated (currently only targets if there have been *additions* of instruments)
+    # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
     expedition_id = _unique_id(expedition, expedition_dir)
 
     # dedicated problems directory for this expedition
