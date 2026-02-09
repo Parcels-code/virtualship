@@ -1,7 +1,6 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -72,27 +71,16 @@ def test_verify_past_waypoints_changed(expedition):
 
 
 @pytest.mark.parametrize(
-    "delay_duration_hours, new_wp2_time, should_resolve",
+    "delay_duration_hours, should_resolve",
     [
-        (1.0, datetime(2024, 2, 1, 15, 0, 0), True),  # problem resolved
-        (5.0, datetime(2024, 2, 1, 12, 0, 0), False),  # problem unresolved
+        (1.0, True),  # problem resolved
+        (5.0, False),  # problem unresolved
     ],
 )
-@patch(
-    "virtualship.models.checkpoint._calc_wp_stationkeeping_time",
-    return_value=timedelta(hours=1),
-)
-@patch(
-    "virtualship.models.checkpoint._calc_sail_time",
-    return_value=(timedelta(hours=2), None),
-)
 def test_verify_problem_resolution(
-    mock_sail,
-    mock_stationkeeping,
     tmp_path,
     expedition,
     delay_duration_hours,
-    new_wp2_time,
     should_resolve,
 ):
     wp1 = Waypoint(
@@ -109,37 +97,32 @@ def test_verify_problem_resolution(
     cp = Checkpoint(past_schedule=past_schedule, failed_waypoint_i=1)
 
     # new schedule
-    new_wp1 = Waypoint(
-        location=Location(latitude=0.0, longitude=0.0),
-        time=datetime(2024, 2, 1, 10, 0, 0),
-        instrument=[],
-    )
+    new_wp1 = wp1
     new_wp2 = Waypoint(
         location=Location(latitude=1.0, longitude=1.0),
-        time=new_wp2_time,
+        time=datetime(2024, 2, 1, 20, 0, 0),
         instrument=[],
     )
     new_schedule = Schedule(waypoints=[new_wp1, new_wp2])
     expedition.schedule = new_schedule
 
     # unresolved problem file
-    problems_dir = tmp_path
     problem = {
         "resolved": False,
         "delay_duration_hours": delay_duration_hours,
         "problem_waypoint_i": 0,
     }
-    problem_file = problems_dir / "problem_1.json"
+    problem_file = tmp_path / "problem_1.json"
     with open(problem_file, "w") as f:
         json.dump(problem, f)
 
     # check if resolution is detected correctly
     if should_resolve:
-        cp.verify(expedition, problems_dir)
+        cp.verify(expedition, tmp_path)
         with open(problem_file) as f:
             updated = json.load(f)
         assert updated["resolved"] is True
     else:
         with pytest.raises(Exception) as excinfo:
-            cp.verify(expedition, problems_dir)
+            cp.verify(expedition, tmp_path)
         assert "has not been resolved in the schedule" in str(excinfo.value)
