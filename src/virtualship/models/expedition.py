@@ -15,7 +15,6 @@ from virtualship.utils import (
     _calc_sail_time,
     _get_bathy_data,
     _get_waypoint_latlons,
-    _make_hash,
     _validate_numeric_to_timedelta,
     register_instrument_config,
 )
@@ -67,11 +66,6 @@ class Expedition(pydantic.BaseModel):
             raise InstrumentsConfigError(
                 "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
             ) from e
-
-    def unique_identifier(self) -> str:
-        """Generate a unique hash for the expedition based on instruments deployed. Therefore, any changes to instrument types deployed at any waypoint will change the hash."""
-        instrument_data = "".join(f"{wp.instrument}" for wp in self.schedule.waypoints)
-        return _make_hash(instrument_data, length=8)
 
 
 class ShipConfig(pydantic.BaseModel):

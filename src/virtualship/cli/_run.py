@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import time
+from datetime import datetime
 from pathlib import Path
 
 import copernicusmarine
@@ -15,13 +16,17 @@ from virtualship.expedition.simulate_schedule import (
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
 from virtualship.models import Checkpoint, Schedule
+from virtualship.models.expedition import Expedition
 from virtualship.utils import (
+    CACHE,
     CHECKPOINT,
     EXPEDITION,
-    LOG_DIR,
-    PROBLEMS_ENCOUNTERED_DIR,
+    EXPEDITION_IDENTIFIER,
+    EXPEDITION_LATEST,
+    PROBLEMS_ENCOUNTERED,
     PROJECTION,
     REPORT,
+    RESULTS,
     SELECTED_PROBLEMS,
     _get_expedition,
     _save_checkpoint,
@@ -76,11 +81,14 @@ def _run(
         expedition_dir = Path(expedition_dir)
 
     expedition = _get_expedition(expedition_dir)
-    expedition_identifier = expedition.unique_identifier()
+
+    # TODO: expedition unique identifier is used to determine whether an expedition has 'changed' since the last run, and therefore whether to re-use previously encountered problems or select new ones.
+    # TODO: this is implemented to avoid re-selecting problems when user is making tweaks to schedule to deal with problems encountered in previous run; but it could more sophisticated (currently only targets if there have been *additions* of instruments)
+    expedition_identifier = _unique_identifier(expedition, expedition_dir)
 
     # dedicated problems directory for this expedition
-    problems_dir = expedition_dir / PROBLEMS_ENCOUNTERED_DIR.format(
-        expedition_identifier=expedition_identifier
+    problems_dir = expedition_dir.joinpath(
+        CACHE, PROBLEMS_ENCOUNTERED.format(expedition_identifier=expedition_identifier)
     )
 
     # verify instruments_config file is consistent with schedule
@@ -92,7 +100,7 @@ def _run(
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, problems_dir.joinpath(LOG_DIR))
+    checkpoint.verify(expedition, problems_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -122,9 +130,9 @@ def _run(
         return
 
     # delete and create results directory
-    if os.path.exists(expedition_dir.joinpath("results")):
-        shutil.rmtree(expedition_dir.joinpath("results"))
-    os.makedirs(expedition_dir.joinpath("results"))
+    if os.path.exists(expedition_dir.joinpath(RESULTS)):
+        shutil.rmtree(expedition_dir.joinpath(RESULTS))
+    os.makedirs(expedition_dir.joinpath(RESULTS))
 
     print("\n----- EXPEDITION SUMMARY ------")
 
@@ -140,16 +148,16 @@ def _run(
     problem_simulator = ProblemSimulator(expedition, expedition_dir)
 
     # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
-    if os.path.exists(problems_dir / LOG_DIR / SELECTED_PROBLEMS):
+    if os.path.exists(problems_dir.joinpath(SELECTED_PROBLEMS)):
         problems = problem_simulator.load_selected_problems(
-            problems_dir / LOG_DIR / SELECTED_PROBLEMS
+            problems_dir.joinpath(SELECTED_PROBLEMS)
         )
     else:
         problems = problem_simulator.select_problems(
             instruments_in_expedition, prob_level
         )
         problem_simulator.cache_selected_problems(
-            problems, problems_dir / LOG_DIR / SELECTED_PROBLEMS
+            problems, problems_dir.joinpath(SELECTED_PROBLEMS)
         ) if problems else None
 
     # simulate instrument measurements
@@ -164,7 +172,6 @@ def _run(
 
             # execute problem simulations for this instrument type
             if problems:
-                # TODO: this print statement is helpful for user to see so it makes sense when a relevant instrument-related problem occurs; but ideally would be overwritten when the actual measurement simulation spinner starts (try and address this in future PR which improves log output)
                 if (
                     hasattr(problems["problem_class"][0], "pre_departure")
                     and problems["problem_class"][0].pre_departure
@@ -176,7 +183,7 @@ def _run(
                 problem_simulator.execute(
                     problems,
                     instrument_type_validation=itype,
-                    log_dir=problems_dir.joinpath(LOG_DIR),
+                    log_dir=problems_dir,
                 )
 
             # get measurements to simulate
@@ -192,9 +199,7 @@ def _run(
             # execute simulation
             instrument.execute(
                 measurements=measurements,
-                out_path=expedition_dir.joinpath(
-                    "results", f"{itype.name.lower()}.zarr"
-                ),
+                out_path=expedition_dir.joinpath(RESULTS, f"{itype.name.lower()}.zarr"),
             )
         except Exception as e:
             # clean up if unexpected error occurs
@@ -217,10 +222,12 @@ def _run(
     )
 
     if problems:
-        ProblemSimulator.post_expedition_report(problems, problems_dir.joinpath(REPORT))
+        ProblemSimulator.post_expedition_report(
+            problems, expedition_dir.joinpath(RESULTS, REPORT)
+        )
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(
-            f"\nA post-expedition report of problems encountered during the expedition is saved in: {problems_dir.joinpath(REPORT)}"
+            f"\nA post-expedition report of problems encountered during the expedition is saved in: {expedition_dir.joinpath(RESULTS, REPORT)}"
         )
 
     # delete checkpoint file (in case it interferes with any future re-runs)
@@ -233,6 +240,39 @@ def _run(
     end_time = time.time()
     elapsed = end_time - start_time
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
+
+
+def _unique_identifier(expedition: Expedition, expedition_dir: Path) -> str:
+    """
+    Return a unique identifier for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
+
+    Simultaneously, log to .txt file if first run or if there have been additions of instruments since last run.
+    """
+    current_instruments = expedition.get_instruments()
+    new_identifier = datetime.now().strftime("%Y%m%d%H%M%S")
+    previous_identifier = None
+
+    cache_dir = expedition_dir.joinpath(CACHE)
+    if not cache_dir.exists():
+        cache_dir.mkdir()
+    identifier_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
+    last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
+
+    if identifier_path.exists():
+        previous_identifier = identifier_path.read_text().strip()
+        last_expedition = Expedition.from_yaml(last_expedition_path)
+        last_instruments = last_expedition.get_instruments()
+
+        added_instruments = set(current_instruments) - set(last_instruments)
+        if not added_instruments:
+            return previous_identifier  # if no additions, keep previous identifier to allow re-use of previously encountered problems
+        else:
+            identifier_path.write_text(new_identifier)
+
+    else:
+        identifier_path.write_text(new_identifier)
+
+    return new_identifier
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
@@ -250,6 +290,6 @@ def _write_expedition_cost(expedition, schedule_results, expedition_dir):
     )
     time_past = schedule_results.time - expedition.schedule.waypoints[0].time
     cost = expedition_cost(schedule_results, time_past)
-    with open(expedition_dir.joinpath("results", "cost.txt"), "w") as file:
+    with open(expedition_dir.joinpath(RESULTS, "cost.txt"), "w") as file:
         file.writelines(f"cost: {cost} US$")
     print(f"\nExpedition duration: {time_past}\nExpedition cost: US$ {cost:,.0f}.")

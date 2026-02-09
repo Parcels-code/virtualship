@@ -24,9 +24,11 @@ from virtualship.make_realistic.problems.scenarios import (
 )
 from virtualship.models.checkpoint import Checkpoint
 from virtualship.utils import (
+    CACHE,
     EXPEDITION,
+    EXPEDITION_LATEST,
+    EXPEDITION_ORIGINAL,
     PROJECTION,
-    SCHEDULE_ORIGINAL,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _make_hash,
@@ -34,7 +36,7 @@ from virtualship.utils import (
 )
 
 if TYPE_CHECKING:
-    from virtualship.models.expedition import Expedition, Schedule
+    from virtualship.models.expedition import Expedition
 
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
@@ -251,12 +253,8 @@ class ProblemSimulator:
                 log_delay,
             )
 
-            # cache original schedule for reference and/or restoring later if needed (checkpoint.yaml [written in _log_problem] can be overwritten if multiple problems occur so is not a persistent record of original schedule)
-            schedule_original_fpath = log_dir / SCHEDULE_ORIGINAL
-            if not os.path.exists(schedule_original_fpath):
-                self._cache_original_schedule(
-                    self.expedition.schedule, schedule_original_fpath
-                )
+            # cache original expedition for reference and/or restoring later if needed (checkpoint.yaml [written in _log_problem] can be overwritten if multiple problems occur so is not a persistent record of original schedule)
+            self._cache_original_expedition(self.expedition)
 
     @staticmethod
     def cache_selected_problems(
@@ -315,8 +313,10 @@ class ProblemSimulator:
 
         # extract selected problem classes from their names (using the lookups preserves order they were saved in)
         selected_problems = {"problem_class": [], "waypoint_i": []}
-        general_problems_lookup = {cls.__name__: cls for cls in GENERAL_PROBLEMS}
-        instrument_problems_lookup = {cls.__name__: cls for cls in INSTRUMENT_PROBLEMS}
+        general_problems_lookup = {cls.short_name: cls for cls in GENERAL_PROBLEMS}
+        instrument_problems_lookup = {
+            cls.short_name: cls for cls in INSTRUMENT_PROBLEMS
+        }
 
         for cls_name, wp_idx in zip(
             problems_json["problem_class"], problems_json["waypoint_i"], strict=True
@@ -395,6 +395,9 @@ class ProblemSimulator:
         )  # failed waypoint index then becomes the one after the one where the problem occurred; as this is when scheduling issues would be run into; for pre-departure problems this is the first waypoint
         _save_checkpoint(checkpoint, self.expedition_dir)
 
+        # save latest version of expedition (overwrites previous)
+        self.expedition.to_yaml(self.expedition_dir.joinpath(CACHE, EXPEDITION_LATEST))
+
         # display tabular output in
         self._tabular_outputter(
             problem_str=problem.message,
@@ -445,6 +448,14 @@ class ProblemSimulator:
             past_schedule=self.expedition.schedule, failed_waypoint_i=failed_waypoint_i
         )
 
+    def _cache_original_expedition(self, expedition: Expedition):
+        """Cache original schedule to file for user's reference."""
+        path = self.expedition_dir.joinpath(CACHE, EXPEDITION_ORIGINAL)
+        if path.exists():
+            return  # don't overwrite if already cached
+        expedition.to_yaml(path)
+        print(f"\nOriginal expedition.yaml cached to {path}.\n")
+
     @staticmethod
     def _hash_to_json(
         problem: InstrumentProblem | GeneralProblem,
@@ -463,13 +474,6 @@ class ProblemSimulator:
         }
         with open(hash_path, "w", encoding="utf-8") as f:
             json.dump(hash_data, f, indent=4)
-
-    @staticmethod
-    def _cache_original_schedule(schedule: Schedule, path: Path | str):
-        """Cache original schedule to file for reference, as a checkpoint object."""
-        schedule_original = Checkpoint(past_schedule=schedule)
-        schedule_original.to_yaml(path)
-        print(f"\nOriginal schedule cached to {path}.\n")
 
     @staticmethod
     def _tabular_outputter(problem_str, impact_str, result_str, has_contingency: bool):

@@ -37,16 +37,20 @@ from yaspin import Spinner
 
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
-
-PROBLEMS_ENCOUNTERED_DIR = "problems_encountered_" + "{expedition_identifier}"
-LOG_DIR = "log"
-SCHEDULE_ORIGINAL = "schedule_original.yaml"
-SELECTED_PROBLEMS = "selected_problems.json"
-REPORT = "post_expedition_report.txt"
+RESULTS = "results"
 
 # projection used to sail between waypoints
 PROJECTION = pyproj.Geod(ellps="WGS84")
 
+# caching for problems module
+CACHE = "cache"
+EXPEDITION_IDENTIFIER = "expedition_identifier_latest.txt"
+PROBLEMS_ENCOUNTERED = "problems_encountered_" + "{expedition_identifier}"
+SELECTED_PROBLEMS = "selected_problems.json"
+REPORT = "post_expedition_report.txt"
+
+EXPEDITION_ORIGINAL = "expedition_original.yaml"
+EXPEDITION_LATEST = "expedition_latest.yaml"
 
 # =====================================================
 # SECTION: Copernicus Marine Service constants

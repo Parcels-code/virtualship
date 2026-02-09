@@ -109,8 +109,8 @@ def test_cache_and_load_selected_problems_roundtrip(tmp_path):
     # now load via simulator, verify class names map back to original selected problem classes
     loaded = simulator.load_selected_problems(str(sel_fpath))
     assert loaded["waypoint_i"] == problems["waypoint_i"]
-    assert [c.__name__ for c in problems["problem_class"]] == [
-        c.__name__ for c in loaded["problem_class"]
+    assert [c.short_name for c in problems["problem_class"]] == [
+        c.short_name for c in loaded["problem_class"]
     ]
 
 
