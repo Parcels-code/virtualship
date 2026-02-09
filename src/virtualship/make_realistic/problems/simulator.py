@@ -102,6 +102,7 @@ class ProblemSimulator:
             num_problems = 0
         elif prob_level == 1:
             num_problems = random.randint(1, 2)
+
         elif prob_level == 2:
             base = 1
             extra = (  # i.e. +1 problem for every n days/waypoints/instruments (tunable above)
@@ -215,6 +216,8 @@ class ProblemSimulator:
 
         N.B. a problem_waypoint_i is different to a failed_waypoint_i defined in the Checkpoint class; failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
         """
+        # TODO: when prob-level =2 and have general problems which occur at later waypoints: could artificially delay their propagation until later in the simulation? Otherwise they are front-loaded at the start of the simulation... Instrument problems are fine because they only propagate when instrument is simulated...
+
         for problem, problem_waypoint_i in zip(
             problems["problem_class"], problems["waypoint_i"], strict=True
         ):
