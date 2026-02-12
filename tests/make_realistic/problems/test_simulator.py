@@ -163,17 +163,17 @@ def test_select_problems_difficulty_levels(tmp_path):
         problems = simulator.select_problems(
             instruments_in_expedition, difficulty_level=level
         )
-        if level == 0:
+        if level == "easy":
             assert problems is None
         else:
             assert isinstance(problems, dict)
             assert len(problems["problem_class"]) > 0
             assert len(problems["waypoint_i"]) == len(problems["problem_class"])
-            if level == 1:
+            if level == "medium":
                 assert len(problems["problem_class"]) <= 2
 
 
-def test_difficulty_level_two_more_problems(tmp_path):
+def test_difficulty_level_hard_more_problems(tmp_path):
     difficulty_level = "hard"
 
     short_expedition = _make_simple_expedition(
