@@ -16,12 +16,12 @@ The VSC design focuses on creating didactically sound, authentic learning experi
 
 We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced confidence and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
 
-```{nbgallery}
----
-maxdepth: 2
-caption: Teaching material
----
+```{toctree}
+:maxdepth: 1
+:caption: Teaching materials
+
 ILOs.ipynb
+letter.md
 ```
 
 ```{nbgallery}
