@@ -43,7 +43,7 @@ logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
 def _run(
-    expedition_dir: str | Path, prob_level: int, from_data: Path | None = None
+    expedition_dir: str | Path, difficulty_level: str, from_data: Path | None = None
 ) -> None:
     """
     Perform an expedition, providing terminal feedback and file output.
@@ -153,7 +153,7 @@ def _run(
         )
     else:
         problems = problem_simulator.select_problems(
-            instruments_in_expedition, prob_level
+            instruments_in_expedition, difficulty_level
         )
         problem_simulator.cache_selected_problems(
             problems, problems_dir.joinpath(SELECTED_PROBLEMS)

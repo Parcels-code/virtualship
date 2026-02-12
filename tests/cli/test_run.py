@@ -54,7 +54,7 @@ def test_run(tmp_path, monkeypatch):
     fake_data_dir.mkdir()
 
     _run(
-        expedition_dir, prob_level=0, from_data=fake_data_dir
+        expedition_dir, difficulty_level="easy", from_data=fake_data_dir
     )  # problems turned off here
 
     results_dir = expedition_dir / "results"

@@ -83,15 +83,15 @@ def plan(path):
     type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
 )
 @click.option(
-    "--prob-level",
-    type=click.IntRange(0, 2),
-    default=1,
-    help="Set the problem level for the expedition simulation [default = 1].\n\n"
-    "Level 0 = No problems encountered during the expedition.\n\n"
-    "Level 1 = 1-2 problems encountered.\n\n"
-    "Level 2 = 1 or more problems encountered, depending on expedition length and complexity, where longer and more complex expeditions will encounter more problems.\n\n"
-    "N.B.: If an expedition has already been run with problems encountered, changing the prob_level on a subsequent re-run will have no effect (previously encountered problems will be re-used). To select new problems (or to skip problems altogether), delete the 'problems_encountered' directory in the expedition directory before re-running with a new prob_level.\n\n"
-    "Changing waypoint locations and/or instrument types will also result in new problems being selected on the next run.",
+    "--difficulty-level",
+    type=click.Choice(["easy", "medium", "hard"]),
+    default="easy",
+    help="Set the problem level for the expedition simulation [default = easy].\n\n"
+    "easy = No problems encountered during the expedition.\n\n"
+    "medium = 1-2 problems encountered.\n\n"
+    "hard = 1 or more problems encountered, depending on expedition length and complexity, where longer and more complex expeditions will encounter more problems.\n\n"
+    "N.B.: If an expedition has already been run with problems encountered, changing the difficulty-level on a subsequent re-run will have no effect (previously encountered problems will be re-used). To select new problems (or to skip problems altogether), delete the 'problems_encountered' directory in the expedition directory before re-running with a new difficulty level.\n\n"
+    "Adding instruments to your expedition will also result in new problems being selected on the next run.",
 )
 @click.option(
     "--from-data",
@@ -103,6 +103,6 @@ def plan(path):
     "Assumes that variable names at least contain the standard Copernicus Marine variable name as a substring. "
     "Will also take the first file found containing the variable name substring. CAUTION if multiple files contain the same variable name substring.",
 )
-def run(path, prob_level, from_data):
+def run(path, difficulty_level, from_data):
     """Execute the expedition simulations."""
-    _run(Path(path), prob_level, from_data)
+    _run(Path(path), difficulty_level, from_data)

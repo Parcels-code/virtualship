@@ -52,7 +52,9 @@ def test_select_problems_single_waypoint_returns_pre_departure(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=1)
     instruments_in_expedition = expedition.get_instruments()
     simulator = ProblemSimulator(expedition, str(tmp_path))
-    problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="hard"
+    )
 
     assert isinstance(problems, dict)
     assert len(problems["problem_class"]) == 1
@@ -69,7 +71,9 @@ def test_no_instruments_no_instruments_problems(tmp_path):
     assert len(instruments_in_expedition) == 0, "Expedition should have no instruments"
 
     simulator = ProblemSimulator(expedition, str(tmp_path))
-    problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="hard"
+    )
 
     has_instrument_problems = any(
         isinstance(cls, InstrumentProblem) for cls in problems["problem_class"]
@@ -79,12 +83,14 @@ def test_no_instruments_no_instruments_problems(tmp_path):
     )
 
 
-def test_select_problems_prob_level_zero():
+def test_select_problems_difficulty_level_zero():
     expedition = _make_simple_expedition(num_waypoints=2)
     instruments_in_expedition = expedition.get_instruments()
     simulator = ProblemSimulator(expedition, ".")
 
-    problems = simulator.select_problems(instruments_in_expedition, prob_level=0)
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="easy"
+    )
     assert problems is None
 
 
@@ -148,14 +154,14 @@ def test_has_contingency_pre_departure(tmp_path):
     assert simulator._has_contingency(pre_departure_problem, None) is False
 
 
-def test_select_problems_prob_levels(tmp_path):
+def test_select_problems_difficulty_levels(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=3)
     instruments_in_expedition = expedition.get_instruments()
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
-    for level in range(3):  # prob levels 0, 1, 2
+    for level in ["easy", "medium", "hard"]:
         problems = simulator.select_problems(
-            instruments_in_expedition, prob_level=level
+            instruments_in_expedition, difficulty_level=level
         )
         if level == 0:
             assert problems is None
@@ -167,8 +173,8 @@ def test_select_problems_prob_levels(tmp_path):
                 assert len(problems["problem_class"]) <= 2
 
 
-def test_prob_level_two_more_problems(tmp_path):
-    prob_level = 2
+def test_difficulty_level_two_more_problems(tmp_path):
+    difficulty_level = "hard"
 
     short_expedition = _make_simple_expedition(
         num_waypoints=2
@@ -181,15 +187,17 @@ def test_prob_level_two_more_problems(tmp_path):
     simulator_long = ProblemSimulator(long_expedition, str(tmp_path))
 
     problems_short = simulator_short.select_problems(
-        instruments_in_short_expedition, prob_level=prob_level
+        instruments_in_short_expedition, difficulty_level=difficulty_level
     )
     problems_long = simulator_long.select_problems(
-        instruments_in_long_expedition, prob_level=prob_level
+        instruments_in_long_expedition, difficulty_level=difficulty_level
     )
 
     assert len(problems_long["problem_class"]) >= len(
         problems_short["problem_class"]
-    ), "Longer expedition should have more problems than shorter one at prob_level=2"
+    ), (
+        'Longer expedition should have more problems than shorter one at difficulty_level="hard"'
+    )
 
 
 def test_unique_waypoint_assignment(tmp_path):
@@ -197,7 +205,9 @@ def test_unique_waypoint_assignment(tmp_path):
     instruments_in_expedition = expedition.get_instruments()
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
-    problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="hard"
+    )
     waypoint_indices = problems["waypoint_i"]
 
     # filter None (pre-departure) and check uniqueness of waypoint indices
@@ -232,11 +242,13 @@ def test_has_contingency_during_expedition(tmp_path):
 def test_post_expedition_report(tmp_path):
     expedition = _make_simple_expedition(
         num_waypoints=12
-    )  # longer expedition to increase likelihood of multiple problems at prob_level=2
+    )  # longer expedition to increase likelihood of multiple problems at difficulty_level="hard"
     instruments_in_expedition = expedition.get_instruments()
 
     simulator = ProblemSimulator(expedition, str(tmp_path))
-    problems = simulator.select_problems(instruments_in_expedition, prob_level=2)
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="hard"
+    )
 
     report_path = tmp_path / REPORT
     simulator.post_expedition_report(problems, report_path)

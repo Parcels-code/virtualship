@@ -65,14 +65,14 @@ class ProblemSimulator:
     def select_problems(
         self,
         instruments_in_expedition: set[InstrumentType],
-        prob_level: int,
+        difficulty_level: str,
     ) -> dict[str, list[GeneralProblem | InstrumentProblem] | None] | None:
         """
-        Select problems (general and instrument-specific). When prob_level = 2, number of problems is determined by expedition length, instrument count etc.
+        Select problems (general and instrument-specific). When difficulty_level = 'hard', number of problems is determined by expedition length, instrument count etc.
 
         If only one waypoint, return just a pre-departure problem.
 
-        Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific via hash) for reference.
+        Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
         """
         valid_instrument_problems = [
             problem
@@ -100,12 +100,12 @@ class ProblemSimulator:
                 "waypoint_i": [None],
             }
 
-        if prob_level == 0:
+        if difficulty_level == "easy":
             num_problems = 0
-        elif prob_level == 1:
+        elif difficulty_level == "medium":
             num_problems = random.randint(1, 2)
 
-        elif prob_level == 2:
+        elif difficulty_level == "hard":
             base = 1
             extra = (  # i.e. +1 problem for every n days/waypoints/instruments (tunable above)
                 (expedition_duration_days // PROBLEM_WEIGHTS["every_ndays"])
@@ -218,7 +218,7 @@ class ProblemSimulator:
 
         N.B. a problem_waypoint_i is different to a failed_waypoint_i defined in the Checkpoint class; failed_waypoint_i is the waypoint index after the problem_waypoint_i where the problem occurred, as this is when scheduling issues would be encountered.
         """
-        # TODO: when prob-level =2 and have general problems which occur at later waypoints: could artificially delay their propagation until later in the simulation? Otherwise they are front-loaded at the start of the simulation... Instrument problems are fine because they only propagate when instrument is simulated...
+        # TODO: when difficulty_level = 'hard' and have general problems which occur at later waypoints: could artificially delay their propagation until later in the simulation? Otherwise they are front-loaded at the start of the simulation... Instrument problems are fine because they only propagate when instrument is simulated...
 
         for problem, problem_waypoint_i in zip(
             problems["problem_class"], problems["waypoint_i"], strict=True
