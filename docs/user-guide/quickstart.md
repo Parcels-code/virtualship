@@ -150,14 +150,14 @@ Small simulations (e.g. small space-time domains and fewer instrument deployment
 
 Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
 
-#### Encountering 'problems' during the expediton (configurable)
+#### Encountering 'real-life challenges' during the expediton (configurable)
 
-By default, VirtualShip will encounter 'problems' during the expedition, which simulate the various challenges and unexpected events that can occur during real-life oceanographic expeditions (e.g. instrument and/or equipment failure, logistical challenges etc.) and may require your intervention to ensure your expedition schedule can continue.
+By default, VirtualShip will have a smooth sailing experience, but to enhance authenticity, VirtualShip can be configured to encounter 'real-life challenges' during the expedition. These are simulated 'problems' that can occur during real-life oceanographic expeditions (e.g. instrument and/or equipment failure, logistical challenges etc.) and may require your intervention to ensure your expedition schedule can continue.
 
-The 'problems' add authenticity to the simulation. However, if you require a 'problem'-free expedition, you can run the simulation with the "problem level" (`prob-level`) set to 0 (i.e. `virtualship run EXPEDITION_NAME --prob-level 0`).
+The real-life challenges can be configured by setting the difficulty level (`--difficulty-level`) parameter in the `virtualship run` command. It can be set to "easy" (no problems, _default_), "medium" or "hard" (e.g. `virtualship run EXPEDITION_NAME --difficulty-level medium`).
 
 ```{tip}
-For maximum authenticity, you can set `--prob-level 2`, which will scale the number of problems encountered by the complexity of your expedition (longer duration, more waypoints, more instruments will lead to more problems). By default, the `prob-level` = 1, which limits the number of problems to a maximum of 2, regardless of the expedition complexity.
+For maximum authenticity, you can set `--difficulty-level hard`, which will scale the number of problems encountered by the complexity of your expedition (longer duration, more waypoints, more instruments will lead to more problems). `--difficulty-level` medium will limit the number of problems to a maximum of 2, regardless of the expedition complexity.
 ```
 
 #### Using pre-downloaded data (optional)
