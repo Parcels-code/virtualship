@@ -13,6 +13,7 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     _calc_sail_time,
+    _calc_wp_stationkeeping_time,
     _get_bathy_data,
     _get_waypoint_latlons,
     _validate_numeric_to_timedelta,
@@ -88,6 +89,7 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
+        instruments_config: InstrumentsConfig,
         ignore_land_test: bool = False,
         *,
         from_data: Path | None = None,
@@ -164,8 +166,9 @@ class Schedule(pydantic.BaseModel):
         for wp_i, (wp, wp_next) in enumerate(
             zip(self.waypoints, self.waypoints[1:], strict=False)
         ):
-            if wp.instrument is InstrumentType.CTD:
-                time += timedelta(minutes=20)
+            stationkeeping_time = _calc_wp_stationkeeping_time(
+                wp.instrument, instruments_config
+            )
 
             time_to_reach = _calc_sail_time(
                 wp.location,
@@ -174,7 +177,7 @@ class Schedule(pydantic.BaseModel):
                 projection,
             )[0]
 
-            arrival_time = time + time_to_reach
+            arrival_time = time + time_to_reach + stationkeeping_time
 
             if wp_next.time is None:
                 time = arrival_time

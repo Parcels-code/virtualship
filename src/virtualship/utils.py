@@ -15,15 +15,15 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
-    from virtualship.models import Expedition, Location
+    from virtualship.models import Expedition, InstrumentsConfig, Location
     from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
@@ -613,7 +613,7 @@ def _calc_sail_time(
 
 def _calc_wp_stationkeeping_time(
     wp_instrument_types: list,
-    expedition: Expedition,
+    instruments_config: InstrumentsConfig,
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
@@ -627,9 +627,7 @@ def _calc_wp_stationkeeping_time(
 
     # extract configs for all instruments present in expedition
     valid_instrument_configs = [
-        iconfig
-        for _, iconfig in expedition.instruments_config.__dict__.items()
-        if iconfig
+        iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
     ]
 
     # extract configs for instruments present in given waypoint

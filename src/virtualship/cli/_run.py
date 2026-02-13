@@ -105,6 +105,7 @@ def _run(
 
     expedition.schedule.verify(
         expedition.ship_config.ship_speed_knots,
+        expedition.instruments_config,
         from_data=Path(from_data) if from_data else None,
     )
 
