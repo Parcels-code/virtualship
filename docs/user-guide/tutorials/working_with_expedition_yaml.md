@@ -94,12 +94,12 @@ instruments_config:
   ship_underwater_st_config: null
 ```
 
-For **all other instruments**, e.g. CTD, ARGO_FLOAT etc., the paramters can often be left as the default values unless advanced customisations are required.
+For **all other instruments**, e.g. CTD, ARGO_FLOAT etc., the parameters can often be left as the default values unless advanced customisations are required.
 
 #### 3. `ship_config`
 
 This section contains setting related to the ship itself, specifically:
 
-- **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots. Note in most cases this should be left as the default value unless there is a specific reason to change it.
+- **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
 <!-- TODO: more details on ship configuration if added in the future -->
