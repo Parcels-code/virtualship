@@ -75,10 +75,10 @@ This section contains a list of `waypoints` that define the expedition's route. 
 - **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_. The instrument selection can also be left empty (i.e., no instruments deployed at that waypoint) by setting the parameter to: `instrument: null`.
 
 ```{tip}
-Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `CTD_BGC`, `DRIFTER`, `ARGO_FLOAT`, `XBT`.
+Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `CTD_BGC`, `DRIFTER`, `ARGO_FLOAT`, `XBT` (or `null`).
 ```
 
-- **Location (`location`)**: The geographical coordinates (latitude and longitude) of the waypoint. These must be in decimal degrees (DD) format.
+- **Location (`location`)**: The geographical coordinates (latitude and longitude) of the waypoint. These must be in decimal degrees (DD) format and within valid ranges: latitude between -90 and 90, longitude between -180 and 180.
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
