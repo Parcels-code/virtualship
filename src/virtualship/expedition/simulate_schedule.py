@@ -123,17 +123,17 @@ class _ScheduleSimulator:
             self._progress_time_traveling_towards(waypoint.location)
 
             # check if waypoint was reached in time
+            # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
             if waypoint.time is not None and self._time > waypoint.time:
                 print(
                     f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                     "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                    "\nHint: previous schedule verification checks (e.g. in the `virtualship plan` tool or after dealing with unexpected problems during the expedition) will not account for measurement times, only the time it takes to sail between waypoints.\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:
                 self._time = (
                     waypoint.time
-                )  # wait at the waypoint until ship is schedules to be there
+                )  # wait at the waypoint until ship is scheduled to be there
 
             # note measurements made at waypoint
             time_passed = self._make_measurements(waypoint)
