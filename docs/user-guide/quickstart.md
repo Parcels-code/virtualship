@@ -58,14 +58,14 @@ For advanced users: it is also possible to run the expedition initialisation ste
 
 ## 3) Expedition scheduling & ship configuration
 
+```{important}
+This section describes the process of finalising the expedition schedule and instrument selection using the `virtualship plan` application. This is the recommended way for most users but when expeditions become larger with many waypoints, it can become cumbersome to use the planning tool (note, using VirtualShip in a remote terminal / cloud-based environment can also introduce lag in the user-interface). **In this case, you may prefer to edit the `expedition.yaml` file directly (see [here](./tutorials/working_with_expedition_yaml.md) for more details on how to do so)**.
+```
+
 The next step is to finalise the expedition schedule plan, including setting times and instrument selection choices for each waypoint, as well as configuring the ship (such as its speed and underway measurement instruments). The easiest way to do so is to use the bespoke VirtualShip planning tool via the following command:
 
 ```
 virtualship plan EXPEDITION_NAME
-```
-
-```{tip}
-Using the `virtualship plan` tool is optional. Advanced users can also edit the `expedition.yaml` file directly if preferred.
 ```
 
 The planning tool should look something like this and offers an intuitive way to make your selections:
