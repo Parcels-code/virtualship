@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition
 from virtualship.models.location import Location
@@ -270,11 +270,12 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
 
     class DummyInstrumentsConfig:
-        def __init__(self, ctd, ctd_bgc, argo, xbt):
+        def __init__(self, ctd, ctd_bgc, argo, xbt, drifter):
             self.ctd = ctd
             self.ctd_bgc = ctd_bgc
             self.argo = argo
             self.xbt = xbt
+            self.drifter = drifter
 
     class CTDConfig:
         stationkeeping_time = datetime.timedelta(minutes=50)
@@ -288,6 +289,9 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     class XBTConfig:  # has no stationkeeping time
         deceleration_coefficient = 0.1
 
+    class DrifterConfig:
+        stationkeeping_time = datetime.timedelta(minutes=20)
+
     monkeypatch.setattr(
         "virtualship.utils.INSTRUMENT_CONFIG_MAP",
         {
@@ -295,6 +299,7 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
             InstrumentType.CTD_BGC: "CTD_BGCConfig",
             InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
             InstrumentType.XBT: "XBTConfig",
+            InstrumentType.DRIFTER: "DrifterConfig",
         },
     )
 
@@ -304,6 +309,7 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         ctd_bgc=CTD_BGCConfig(),
         argo=ArgoFloatConfig(),
         xbt=XBTConfig(),
+        drifter=DrifterConfig(),
     )
     expedition.instruments_config = (
         instruments_config  # overwrite instruments_config with test dummy
@@ -315,11 +321,13 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         InstrumentType.CTD_BGC,
         InstrumentType.ARGO_FLOAT,
         InstrumentType.XBT,
+        InstrumentType.DRIFTER,
+        InstrumentType.DRIFTER,  # two drifter deployments
     ]
 
     # all dummy instruments
     stationkeeping_time_all = _calc_wp_stationkeeping_time(
-        wp_instrument_types_all, expedition
+        wp_instrument_types_all, expedition.instruments_config
     )
     assert (
         stationkeeping_time_all
@@ -328,12 +336,13 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
             CTD_BGCConfig.stationkeeping_time * 0.0
         )  # CTD(_BGC) counted once when both present
         + ArgoFloatConfig.stationkeeping_time
+        + DrifterConfig.stationkeeping_time  # drifter should only be counted once despite being present at wp twice
     )
 
     # xbt only (no stationkeeping time)
     wp_instrument_types_xbt = [InstrumentType.XBT]
     stationkeeping_time_xbt = _calc_wp_stationkeeping_time(
-        wp_instrument_types_xbt, expedition
+        wp_instrument_types_xbt, expedition.instruments_config
     )
     assert stationkeeping_time_xbt == datetime.timedelta(0), (
         "XBT should have zero stationkeeping time"
