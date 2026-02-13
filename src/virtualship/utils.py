@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import os
 import re
 import warnings
@@ -12,23 +13,127 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import pyproj
 import xarray as xr
 from parcels import FieldSet
 
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
-    from virtualship.expedition.simulate_schedule import ScheduleOk
-    from virtualship.models import Expedition
-
+    from virtualship.expedition.simulate_schedule import (
+        ScheduleOk,
+    )
+    from virtualship.models import Expedition, InstrumentsConfig, Location
+    from virtualship.models.checkpoint import Checkpoint
 
 import pandas as pd
 import yaml
 from pydantic import BaseModel
 from yaspin import Spinner
 
+# =====================================================
+# SECTION: simulation constants
+# =====================================================
+
 EXPEDITION = "expedition.yaml"
 CHECKPOINT = "checkpoint.yaml"
+RESULTS = "results"
+
+# projection used to sail between waypoints
+PROJECTION = pyproj.Geod(ellps="WGS84")
+
+# caching for problems module
+CACHE = "cache"
+EXPEDITION_IDENTIFIER = "id_latest.txt"
+PROBLEMS_ENCOUNTERED = "problems_encountered_" + "{expedition_id}"
+SELECTED_PROBLEMS = "selected_problems.json"
+REPORT = "post_expedition_report.txt"
+
+EXPEDITION_ORIGINAL = "expedition_original.yaml"
+EXPEDITION_LATEST = "expedition_latest.yaml"
+
+# =====================================================
+# SECTION: Copernicus Marine Service constants
+# =====================================================
+
+# Copernicus Marine product IDs
+
+PRODUCT_IDS = {
+    "phys": {
+        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
+        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+    },
+    "bgc": {
+        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
+        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
+        "analysis": None,  # will be set per variable
+    },
+}
+
+BGC_ANALYSIS_IDS = {
+    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
+    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
+    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+}
+
+MONTHLY_BGC_REANALYSIS_IDS = {
+    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+}
+MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
+    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+}
+
+# variables used in VirtualShip which are physical or biogeochemical variables, respectively
+COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
+COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
+
+BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
+
+
+# =====================================================
+# SECTION: decorators / dynamic registries and mapping
+# =====================================================
+
+# helpful for dynamic access in different parts of the codebase
+
+# main instrument (simulation) class registry and registration utilities
+INSTRUMENT_CLASS_MAP = {}
+
+
+def register_instrument(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        return cls
+
+    return decorator
+
+
+def get_instrument_class(instrument_type):
+    return INSTRUMENT_CLASS_MAP.get(instrument_type)
+
+
+# map for instrument type to instrument config (pydantic basemodel) names
+INSTRUMENT_CONFIG_MAP = {}
+
+
+def register_instrument_config(instrument_type):
+    def decorator(cls):
+        INSTRUMENT_CONFIG_MAP[instrument_type] = cls.__name__
+        return cls
+
+    return decorator
+
+
+# =====================================================
+# SECTION: helper functions
+# =====================================================
 
 
 def load_static_file(name: str) -> str:
@@ -215,40 +320,6 @@ def _get_expedition(expedition_dir: Path) -> Expedition:
         ) from e
 
 
-# custom ship spinner
-ship_spinner = Spinner(
-    interval=240,
-    frames=[
-        " 🚢    ",
-        "  🚢   ",
-        "   🚢  ",
-        "    🚢 ",
-        "     🚢",
-        "    🚢 ",
-        "   🚢  ",
-        "  🚢   ",
-        " 🚢    ",
-        "🚢     ",
-    ],
-)
-
-
-# InstrumentType -> Instrument registry and registration utilities.
-INSTRUMENT_CLASS_MAP = {}
-
-
-def register_instrument(instrument_type):
-    def decorator(cls):
-        INSTRUMENT_CLASS_MAP[instrument_type] = cls
-        return cls
-
-    return decorator
-
-
-def get_instrument_class(instrument_type):
-    return INSTRUMENT_CLASS_MAP.get(instrument_type)
-
-
 def add_dummy_UV(fieldset: FieldSet):
     """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
     if "U" not in fieldset.__dict__.keys():
@@ -270,47 +341,6 @@ def add_dummy_UV(fieldset: FieldSet):
                 raise ValueError(
                     "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
                 ) from None
-
-
-# Copernicus Marine product IDs
-
-PRODUCT_IDS = {
-    "phys": {
-        "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
-        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
-    },
-    "bgc": {
-        "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
-        "analysis": None,  # will be set per variable
-    },
-}
-
-BGC_ANALYSIS_IDS = {
-    "o2": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-    "chl": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "no3": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "po4": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m",
-    "ph": "cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m",
-    "phyc": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
-    "nppv": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
-}
-
-MONTHLY_BGC_REANALYSIS_IDS = {
-    "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-}
-MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
-    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-}
-
-# variables used in VirtualShip which are physical or biogeochemical variables, respectively
-COPERNICUSMARINE_PHYS_VARIABLES = ["uo", "vo", "so", "thetao"]
-COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv"]
-
-BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
 
 def _select_product_id(
@@ -552,3 +582,111 @@ def _get_waypoint_latlons(waypoints):
         strict=True,
     )
     return wp_lats, wp_lons
+
+
+def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
+    file_path = expedition_dir.joinpath(CHECKPOINT)
+    checkpoint.to_yaml(file_path)
+
+
+def _calc_sail_time(
+    location1: Location,
+    location2: Location,
+    ship_speed_knots: float,
+    projection: pyproj.Geod,
+) -> tuple[timedelta, tuple[float, float, float], float]:
+    """Calculate sail time between two waypoints (their locations) given ship speed in knots."""
+    geodinv: tuple[float, float, float] = projection.inv(
+        lons1=location1.longitude,
+        lats1=location1.latitude,
+        lons2=location2.longitude,
+        lats2=location2.latitude,
+    )
+    ship_speed_meter_per_second = ship_speed_knots * 1852 / 3600
+    distance_to_next_waypoint = geodinv[2]
+    return (
+        timedelta(seconds=distance_to_next_waypoint / ship_speed_meter_per_second),
+        geodinv[0],
+        ship_speed_meter_per_second,
+    )
+
+
+def _calc_wp_stationkeeping_time(
+    wp_instrument_types: list,
+    instruments_config: InstrumentsConfig,
+    instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
+) -> timedelta:
+    """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
+    from virtualship.instruments.types import InstrumentType  # avoid circular imports
+
+    assert isinstance(wp_instrument_types, list), (
+        "waypoint instruments must be provided as a list, even if empty."
+    )
+
+    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    both_ctd_and_bgc = (
+        InstrumentType.CTD in wp_instrument_types
+        and InstrumentType.CTD_BGC in wp_instrument_types
+    )
+
+    # extract configs for all instruments present in expedition
+    valid_instrument_configs = [
+        iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
+    ]
+
+    # extract configs for instruments present in given waypoint
+    wp_instrument_configs = []
+    for iconfig in valid_instrument_configs:
+        for itype in wp_instrument_types:
+            if (
+                instrument_config_map[itype] == iconfig.__class__.__name__
+                and (
+                    iconfig not in wp_instrument_configs
+                )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
+            ):
+                wp_instrument_configs.append(iconfig)
+
+    # get wp total stationkeeping time
+    cumulative_stationkeeping_time = timedelta()
+    for iconfig in wp_instrument_configs:
+        if (
+            both_ctd_and_bgc
+            and iconfig.__class__.__name__
+            == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
+        ):
+            continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+
+        if hasattr(iconfig, "stationkeeping_time"):
+            cumulative_stationkeeping_time += iconfig.stationkeeping_time
+
+    return cumulative_stationkeeping_time
+
+
+def _make_hash(s: str, length: int) -> str:
+    """Make unique hash for problem occurrence."""
+    assert length % 2 == 0, "Length must be even."
+    half_length = length // 2
+    return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+
+# =====================================================
+# SECTION: misc.
+# =====================================================
+
+
+# custom ship spinner
+ship_spinner = Spinner(
+    interval=240,
+    frames=[
+        " 🚢    ",
+        "  🚢   ",
+        "   🚢  ",
+        "    🚢 ",
+        "     🚢",
+        "    🚢 ",
+        "   🚢  ",
+        "  🚢   ",
+        " 🚢    ",
+        "🚢     ",
+    ],
+)

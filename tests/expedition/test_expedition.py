@@ -53,14 +53,22 @@ def test_import_export_expedition(tmpdir) -> None:
 def test_verify_schedule() -> None:
     schedule = Schedule(
         waypoints=[
-            Waypoint(location=Location(0, 0), time=datetime(2022, 1, 1, 1, 0, 0)),
-            Waypoint(location=Location(1, 0), time=datetime(2022, 1, 2, 1, 0, 0)),
+            Waypoint(
+                location=Location(0, 0),
+                time=datetime(2022, 1, 1, 1, 0, 0),
+                instrument=[],
+            ),
+            Waypoint(
+                location=Location(1, 0),
+                time=datetime(2022, 1, 2, 1, 0, 0),
+                instrument=[],
+            ),
         ]
     )
-
     ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
+    instruments_config = _get_expedition(expedition_dir).instruments_config
 
-    schedule.verify(ship_speed_knots, ignore_land_test=True)
+    schedule.verify(ship_speed_knots, instruments_config, ignore_land_test=True)
 
 
 def test_get_instruments() -> None:
@@ -133,6 +141,7 @@ def test_verify_on_land():
 
     schedule = Schedule(waypoints=waypoints)
     ship_speed_knots = _get_expedition(expedition_dir).ship_config.ship_speed_knots
+    instruments_config = _get_expedition(expedition_dir).instruments_config
 
     with patch(
         "virtualship.models.expedition._get_bathy_data",
@@ -144,6 +153,7 @@ def test_verify_on_land():
         ):
             schedule.verify(
                 ship_speed_knots,
+                instruments_config,
                 ignore_land_test=False,
                 from_data=None,
             )
@@ -191,15 +201,19 @@ def test_verify_on_land():
             Schedule(
                 waypoints=[
                     Waypoint(
-                        location=Location(0, 0), time=datetime(2022, 1, 1, 1, 0, 0)
+                        location=Location(0, 0),
+                        time=datetime(2022, 1, 1, 1, 0, 0),
+                        instrument=[],
                     ),
                     Waypoint(
-                        location=Location(1, 0), time=datetime(2022, 1, 1, 1, 1, 0)
+                        location=Location(1, 0),
+                        time=datetime(2022, 1, 1, 1, 1, 0),
+                        instrument=[],
                     ),
                 ]
             ),
             ScheduleError,
-            "Waypoint planning is not valid: would arrive too late at waypoint number 2...",
+            "Waypoint planning is not valid: would arrive too late at waypoint 2\\.",
             id="NotEnoughTime",
         ),
     ],
@@ -210,6 +224,7 @@ def test_verify_schedule_errors(schedule: Schedule, error, match) -> None:
     with pytest.raises(error, match=match):
         schedule.verify(
             expedition.ship_config.ship_speed_knots,
+            expedition.instruments_config,
             ignore_land_test=True,
         )
 

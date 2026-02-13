@@ -20,6 +20,7 @@ from virtualship.models import (
     Spacetime,
     Waypoint,
 )
+from virtualship.utils import _calc_sail_time
 
 
 @dataclass
@@ -115,22 +116,24 @@ class _ScheduleSimulator:
         self._next_ship_underwater_st_time = self._time
 
     def simulate(self) -> ScheduleOk | ScheduleProblem:
+        # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here...
+
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 
             # check if waypoint was reached in time
+            # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
             if waypoint.time is not None and self._time > waypoint.time:
                 print(
-                    f"Waypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
+                    f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                     "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                    "**Note**, the `virtualship plan` tool will not account for measurement times when verifying the schedule, only the time it takes to sail between waypoints.\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
             else:
                 self._time = (
                     waypoint.time
-                )  # wait at the waypoint until ship is schedules to be there
+                )  # wait at the waypoint until ship is scheduled to be there
 
             # note measurements made at waypoint
             time_passed = self._make_measurements(waypoint)
@@ -140,22 +143,13 @@ class _ScheduleSimulator:
         return ScheduleOk(self._time, self._measurements_to_simulate)
 
     def _progress_time_traveling_towards(self, location: Location) -> None:
-        geodinv: tuple[float, float, float] = self._projection.inv(
-            lons1=self._location.lon,
-            lats1=self._location.lat,
-            lons2=location.lon,
-            lats2=location.lat,
-        )
-        ship_speed_meter_per_second = (
-            self._expedition.ship_config.ship_speed_knots * 1852 / 3600
-        )
-        azimuth1 = geodinv[0]
-        distance_to_next_waypoint = geodinv[2]
-        time_to_reach = timedelta(
-            seconds=distance_to_next_waypoint / ship_speed_meter_per_second
+        time_to_reach, azimuth1, ship_speed_meter_per_second = _calc_sail_time(
+            self._location,
+            location,
+            self._expedition.ship_config.ship_speed_knots,
+            self._projection,
         )
         end_time = self._time + time_to_reach
-
         # note all ADCP measurements
         if self._expedition.instruments_config.adcp_config is not None:
             location = self._location

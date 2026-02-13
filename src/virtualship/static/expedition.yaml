@@ -13,23 +13,23 @@ schedule:
       location:
         latitude: 0.01
         longitude: 0.01
-      time: 1998-01-01 01:00:00
+      time: 1998-01-02 01:00:00
     - instrument:
         - ARGO_FLOAT
       location:
         latitude: 0.02
         longitude: 0.02
-      time: 1998-01-01 02:00:00
+      time: 1998-01-03 02:00:00
     - instrument:
         - XBT
       location:
         latitude: 0.03
         longitude: 0.03
-      time: 1998-01-01 03:00:00
+      time: 1998-01-04 03:00:00
     - location:
         latitude: 0.03
         longitude: 0.03
-      time: 1998-01-01 03:00:00
+      time: 1998-01-05 03:00:00
 instruments_config:
   adcp_config:
     num_bins: 40

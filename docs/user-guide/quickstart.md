@@ -4,7 +4,7 @@ Welcome to this Quickstart to using VirtualShip. In this guide we will conduct a
 
 This Quickstart is available as an instructional video below, or you can continue with the step-by-step guide.
 
-```{warning}
+```{caution}
 Please note the video below may show output from an earlier version of VirtualShip, as the codebase is in active development. The instructions in the video are still generally applicable for the current version. However, for the most up-to-date instructions, please follow the text in this Quickstart guide.
 ```
 
@@ -149,6 +149,16 @@ Your command line output should look something like this...
 Small simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 
 Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
+
+#### Encountering 'real-life challenges' during the expediton (configurable)
+
+By default, VirtualShip will have a smooth sailing experience, but to enhance authenticity, VirtualShip can be configured to encounter 'real-life challenges' during the expedition. These are simulated 'problems' that can occur during real-life oceanographic expeditions (e.g. instrument and/or equipment failure, logistical challenges etc.) and may require your intervention to ensure your expedition schedule can continue.
+
+The real-life challenges can be configured by setting the difficulty level (`--difficulty-level`) parameter in the `virtualship run` command. It can be set to "easy" (no problems, _default_), "medium" or "hard" (e.g. `virtualship run EXPEDITION_NAME --difficulty-level medium`).
+
+```{tip}
+For maximum authenticity, you can set `--difficulty-level hard`, which will scale the number of problems encountered by the complexity of your expedition (longer duration, more waypoints, more instruments will lead to more problems). `--difficulty-level` medium will limit the number of problems to a maximum of 2, regardless of the expedition complexity.
+```
 
 #### Using pre-downloaded data (optional)
 

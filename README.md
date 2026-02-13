@@ -43,7 +43,7 @@ VirtualShip is a command line simulator allowing students to plan and conduct a 
 - Surface drifters
 - Argo float deployments
 
-<!-- TODO: future. Along the way students will encounter difficulties such as: -->
+Along the way, students will encounter realistic problems that may occur during an oceanographic expedition, requiring them to make decisions to adapt their plans accordingly. For example, delays due to equipment failures, pre-depature logistical issues or safety drills.
 
 ## Installation
 

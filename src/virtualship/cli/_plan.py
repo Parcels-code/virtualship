@@ -975,7 +975,7 @@ class PlanScreen(Screen):
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def sync_ui_waypoints(self):
-        """Update the waypoints models with current UI values (spacetime only) from the live UI inputs."""
+        """Update the waypoints models with current UI values from the live UI inputs."""
         expedition_editor = self.query_one(ExpeditionEditor)
         errors = []
         for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
@@ -992,6 +992,22 @@ class PlanScreen(Screen):
                     int(expedition_editor.query_one(f"#wp{i}_minute").value),
                     0,
                 )
+                wp.instrument = []
+                for instrument in [
+                    inst for inst in InstrumentType if not inst.is_underway
+                ]:
+                    switch_on = expedition_editor.query_one(
+                        f"#wp{i}_{instrument.value}", Switch
+                    ).value
+                    if instrument.value == "DRIFTER" and switch_on:
+                        count_str = expedition_editor.query_one(
+                            f"#wp{i}_drifter_count", Input
+                        ).value
+                        count = int(count_str)
+                        assert count > 0
+                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
+                    elif switch_on:
+                        wp.instrument.append(instrument)
             except Exception as e:
                 errors.append(f"Waypoint {i + 1}: {e}")
         if errors:
@@ -1023,8 +1039,11 @@ class PlanScreen(Screen):
             wp_lats, wp_lons = _get_waypoint_latlons(
                 expedition_editor.expedition.schedule.waypoints
             )
+            instruments_config = expedition_editor.expedition.instruments_config
+
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
+                instruments_config,
                 ignore_land_test=True,
             )
 
