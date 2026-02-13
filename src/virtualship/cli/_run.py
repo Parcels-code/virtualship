@@ -264,7 +264,7 @@ def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
             last_expedition = Expedition.from_yaml(last_expedition_path)
         except FileNotFoundError as e:
             raise RuntimeError(
-                f"Previous expedition data is present but incomplete in {cache_dir}. This may be because a previous expedition run was interrupted unexpectedly. Deleting the '{cache_dir}' directory and re-running the expedition should resolve this issue."
+                f"Previous expedition data is present but incomplete in {cache_dir}. This may be because a previous expedition run was interrupted/failed unexpectedly. Deleting the '{cache_dir}' directory and re-running the expedition should resolve this issue."
             ) from e
         last_instruments = last_expedition.get_instruments()
 
