@@ -634,7 +634,12 @@ def _calc_wp_stationkeeping_time(
     wp_instrument_configs = []
     for iconfig in valid_instrument_configs:
         for itype in wp_instrument_types:
-            if instrument_config_map[itype] == iconfig.__class__.__name__:
+            if (
+                instrument_config_map[itype] == iconfig.__class__.__name__
+                and (
+                    iconfig not in wp_instrument_configs
+                )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
+            ):
                 wp_instrument_configs.append(iconfig)
 
     # get wp total stationkeeping time
@@ -646,6 +651,7 @@ def _calc_wp_stationkeeping_time(
             == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
         ):
             continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
+
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
