@@ -10,7 +10,7 @@ This guide assumes you have already logged into and set up (initialised conda) t
 
 ## 1) Create a new directory for your VirtualShip expeditions
 
-First, you should navigate to the shared storage directory on the virtual machine (e.g. `cd data/virtualship_storage/`) and create a new directory for your group's VirtualShip expeditions (e.g. `mkdir {group_name}`, replacing `{group_name}` with your actual group name). This is where you will run your expeditions and store the results.
+First, you should navigate to the shared storage directory on the virtual machine (e.g. `cd data/virtualship-storage/`). If you have not done so already, please create a new directory for your group's VirtualShip expeditions (e.g. `mkdir {your-group_name}`, replacing `{your-group_name}` with your actual group name). This is where you will run your expeditions and store the results.
 
 ## 2) Expedition initialisation
 
