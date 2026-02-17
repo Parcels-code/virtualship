@@ -83,7 +83,8 @@ def _run(
     expedition = _get_expedition(expedition_dir)
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
-    expedition_id = _unique_id(expedition, expedition_dir)
+    cache_dir = expedition_dir.joinpath(CACHE)
+    expedition_id = _unique_id(expedition, cache_dir)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
@@ -234,6 +235,10 @@ def _run(
     if os.path.exists(expedition_dir.joinpath(CHECKPOINT)):
         os.remove(expedition_dir.joinpath(CHECKPOINT))
 
+    # delete cache dir if when --difficulty-level is 'easy' (no useful information to cache in this case, and can interfere with re-runs)
+    if difficulty_level == "easy" and os.path.exists(cache_dir):
+        shutil.rmtree(cache_dir)
+
     print("\n------------- END -------------\n")
 
     # end timing
@@ -242,7 +247,7 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
+def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
     """
     Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
@@ -252,7 +257,6 @@ def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
     new_id = datetime.now().strftime("%Y%m%d%H%M%S")
     previous_id = None
 
-    cache_dir = expedition_dir.joinpath(CACHE)
     if not cache_dir.exists():
         cache_dir.mkdir()
     id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
