@@ -15,8 +15,8 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
