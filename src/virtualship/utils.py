@@ -569,7 +569,7 @@ def _find_files_in_timerange(
     return [fname for _, fname in files_with_dates]
 
 
-def _random_noise(scale: float = 0.01, limit: float = 0.03) -> float:
+def _random_noise(scale: float = 0.05, limit: float = 0.1) -> float:
     """Generate a small random noise value for drifter seeding locations."""
     value = np.random.normal(loc=0.0, scale=scale)
     return np.clip(value, -limit, limit)  # ensure noise is within limits
