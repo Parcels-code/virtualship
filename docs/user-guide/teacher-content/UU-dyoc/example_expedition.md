@@ -5,7 +5,7 @@ In this guide we will conduct an example virtual expedition. This expedition is 
 ---
 
 ```{important}
-This guide assumes you have already logged into and set up (initialised conda) the SURF virtual environment.
+This guide assumes you have already logged into and set up (initialised conda) the SURF virtual environment. If not, please follow the instructions in the [SURF virtual environment guide](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/surf_research_cloud_setup.html) to do so.
 ```
 
 ## 1) Create a new directory for your VirtualShip expeditions
