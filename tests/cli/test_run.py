@@ -33,6 +33,8 @@ class DummyInstrument:
 
 def test_run(tmp_path, monkeypatch):
     """Testing as if using pre-downloaded, local data."""
+    difficulty_level = "easy"
+
     expedition_dir = tmp_path / "expedition_dir"
     expedition_dir.mkdir()
     (expedition_dir / EXPEDITION).write_text(get_example_expedition())
@@ -54,7 +56,7 @@ def test_run(tmp_path, monkeypatch):
     fake_data_dir.mkdir()
 
     _run(
-        expedition_dir, difficulty_level="easy", from_data=fake_data_dir
+        expedition_dir, difficulty_level=difficulty_level, from_data=fake_data_dir
     )  # problems turned off here
 
     results_dir = expedition_dir / "results"
@@ -64,3 +66,8 @@ def test_run(tmp_path, monkeypatch):
     assert cost_file.exists()
     content = cost_file.read_text()
     assert "cost:" in content
+
+    # check cache dir is deleted at end of expedition when difficulty-level is easy
+    if difficulty_level == "easy":
+        cache_dir = expedition_dir / "cache"
+        assert not cache_dir.exists()
