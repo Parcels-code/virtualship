@@ -7,7 +7,11 @@ format:
         slide-number: true
         theme: default
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
-
+        title-slide-attributes:
+            data-background-video: "./images/ship_still.mp4"
+            data-background-video-loop: true
+            data-background-video-muted: true
+            data-background-opacity: "0.7"
         controls: true
         include-in-header:
             - text: |
@@ -77,7 +81,7 @@ format:
 
 - **Code of Conduct**: 17:00 20th Feb (end of Tutorial 4)
 - **Trial run of VirtualShip**: 17:00 25th Feb (**before** Tutorial 6)
-- **Expedition plan/proposal**: 17:00 25th Feb (**before** Tutorial 6)
+- **Expedition proposal**: 17:00 25th Feb (**before** Tutorial 6)
 - **Upload presentation slides**: 17:00 12th March (**before** Tutorial 10)
 - **Final presentations**: 13 March (Tutorial 10)
 
@@ -105,8 +109,8 @@ format:
 #### Today's objectives
 - Log in and set up virtual environment (SURF Research Cloud)
 - Code of Conduct (remember, hand in by 17:00 today!)
-- Choose region/topic of interest → start expedition plan (proposal due by 17:00 25th Feb)
-- Start trial run of VirtualShip (complete by 17:00 25th Feb; )
+- Choose region/topic of interest → start expedition proposal (due 17:00 25th Feb)
+- Start trial run of VirtualShip (complete by 17:00 25th Feb)
 
 
 :::{.callout-tip}
@@ -117,7 +121,7 @@ You have a free time slot on the 25th to complete your trial run (and expedition
 _The relevant links to each of these components will be posted on **Brightspace**_.
 
 
-## Tutorial 6 (27 Feb)
+## Tutorial 6 (27 Feb) {.smaller}
 <br>
 
 #### Today's objectives
