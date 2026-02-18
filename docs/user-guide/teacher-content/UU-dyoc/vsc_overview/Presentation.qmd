@@ -67,7 +67,7 @@ format:
 
 | Session | Date | Objective(s) |
 |---------|:-----|:------|
-| Tutorial 4 | 20 Feb | Code of Conduct, write expedition plan, start trial run of VirtualShip |
+| Tutorial 4 | 20 Feb | Code of Conduct, start expedition proposal, start trial run of VirtualShip |
 | Tutorial 6| 27 Feb | Begin your own expedition, 360° videos |
 | Tutorial 7 | 4 March | Continue your expedition |
 | Tutorial 8 | 6 March | Analyse your expedition results |
@@ -81,7 +81,6 @@ format:
 ### Deadlines
 
 - **Code of Conduct**: 17:00 20th Feb (end of Tutorial 4)
-- **Trial run of VirtualShip**: 17:00 25th Feb (**before** Tutorial 6)
 - **Expedition proposal**: 17:00 25th Feb (**before** Tutorial 6)
 - **Upload presentation slides**: 17:00 12th March (**before** Tutorial 10)
 - **Final presentations**: 13 March (Tutorial 10)
@@ -115,7 +114,7 @@ format:
 
 
 :::{.callout-tip}
-You have a free time slot on the 25th to complete your trial run (and expedition proposal)!
+You have a free afternoon on Wednesday 25 February to complete your trial run (and expedition proposal)!
 :::
 
 <br>
