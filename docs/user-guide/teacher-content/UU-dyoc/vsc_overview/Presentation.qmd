@@ -1,0 +1,137 @@
+---
+# TODO: add background to title slide
+title: "Dynamical Oceanography - VirtualShip Classroom"
+subtitle: "February/March 2026 | Utrecht University"
+format:
+    revealjs:
+        slide-number: true
+        theme: default
+        logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+
+        controls: true
+        include-in-header:
+            - text: |
+                <style>
+                    #title-slide .title {
+                    font-size: 1.4em;
+                    font-weight: 600;
+                    }
+                </style>
+                <style>
+                    #title-slide .subtitle {
+                    font-size: 1.0em;
+                    }
+                </style>
+
+---
+
+## ![](https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png)
+
+- **VirtualShip** provides an authentic experience of oceanographic expeditions anywhere in the global ocean. <br>
+- As scientists, you will plan and execute an oceanographic expedition, analyse the resulting data and communicate your findings in a final presentation.
+
+## Your expedition 🚢 {.smaller}
+
+- Congratulations on receiving a student research grant for ship time on a virtual scientific research vessel!
+- As a group you will:
+    - Have access to the ship for a _maximum_ of three weeks and you can conduct your research anywhere in the global ocean.
+    - Have access to a wide range of oceanographic instruments, including CTDs, ADCPs, Drifters, Argo floats, and more.
+    - Be responsible for planning and executing your expedition.
+        - Including submitting a proposal for your expedition, which will be reviewed by a panel of experts (i.e. the teachers).
+    - Be expected to communicate your findings and experiences in a final presentation.
+    - Write and submit a Code of Conduct for your group.
+
+## The presentation {.smaller}
+
+- As a group, you will create a slide-deck to present your expedition to the class and teachers.
+- Your presentation should be 12 minutes long, and will be followed by a few minutes of Q&A.
+- The presentation should include:
+    - An introduction and motivation for your expedition.
+    - A description of your expedition plan, what instruments you deployed and why.
+    - A discussion of the challenges you faced during your expedition.
+    - An analysis of your data, including computing derived quantities.
+    - A discussion of the implications of your findings.
+- The grade (30% of the course) is based on the slides and presentation (rubric will be provided).
+    - The group grade is the average of that by the lecturer, the two VSC teachers, and the average of the peer students.
+    - How the grade is divided between group members is based on Code of Conduct.
+
+
+## {.smaller}
+
+### Timetable
+
+| Session | Date | Objective(s) |
+|---------|:-----|:------|
+| Tutorial 4 | 20 Feb | Code of Conduct, write expedition plan, start trial run of VirtualShip |
+| Tutorial 6| 27 Feb | Begin your own expedition, 360° videos |
+| Tutorial 7 | 4 March | Continue your expedition |
+| Tutorial 8 | 6 March | Analyse your expedition results |
+| Tutorial 9 | 11 March | Presentation preparation |
+| Tutorial 10 | 13 March | **Presentations** |
+
+: {tbl-colwidths="[20,20, 60]"}
+
+<br>
+
+### Deadlines
+
+- **Code of Conduct**: 17:00 20th Feb (end of Tutorial 4)
+- **Trial run of VirtualShip**: 17:00 25th Feb (**before** Tutorial 6)
+- **Expedition plan/proposal**: 17:00 25th Feb (**before** Tutorial 6)
+- **Upload presentation slides**: 17:00 12th March (**before** Tutorial 10)
+- **Final presentations**: 13 March (Tutorial 10)
+
+---
+
+<!-- OUR REQUEST TO YOU SLIDE -->
+
+<div style="display: flex; align-items: center; gap: 2em;">
+  <h2 style="margin: 0;">Our request to you</h2>
+  <img src="images/profile_ed.jpg" alt="Profile Emma" style="height: 80px;">
+  <img src="images/profile_ja.jpg" alt="Profile Jamie" style="height: 80px;">
+</div>
+
+<span class="smaller">
+
+- We are developing the VirtualShip Classroom platform as part of a UU-NIOZ project.
+- Emma and Jamie (VSC teachers) are Postdoctoral Researchers and will use your **feedback** to improve the platform and course for future implementations.
+- We will ask you to please complete a **survey** at the end of the course, as well as invite you to participate in an **interview** at a later date.
+
+</span>
+
+## Tutorial 4 (20 Feb) {.smaller}
+<br>
+
+#### Today's objectives
+- Log in and set up virtual environment (SURF Research Cloud)
+- Code of Conduct (remember, hand in by 17:00 today!)
+- Choose region/topic of interest → start expedition plan (proposal due by 17:00 25th Feb)
+- Start trial run of VirtualShip (complete by 17:00 25th Feb; )
+
+
+:::{.callout-tip}
+You have a free time slot on the 25th to complete your trial run (and expedition proposal)!
+:::
+
+<br>
+_The relevant links to each of these components will be posted on **Brightspace**_.
+
+
+## Tutorial 6 (27 Feb)
+<br>
+
+#### Today's objectives
+- Using your expedition proposal, start your own expedition in VirtualShip!
+    - MFP route planning
+    - Schedule and instrument deployment planning
+    - Execute your expedition simulation
+- Explore the 360° videos of the ship and instruments.
+
+_The relevant links to each of these components will be posted on **Brightspace**_.
+
+
+
+
+<!-- :::{.callout-note}
+**N.B.**
+::: -->
