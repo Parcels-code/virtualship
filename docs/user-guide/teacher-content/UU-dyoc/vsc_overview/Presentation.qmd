@@ -61,9 +61,7 @@ format:
     - How the grade is divided between group members is based on Code of Conduct.
 
 
-## {.smaller}
-
-### Timetable
+## Timetable {.smaller}
 
 | Session | Date | Objective(s) |
 |---------|:-----|:------|
@@ -78,11 +76,11 @@ format:
 
 <br>
 
-### Deadlines
+## Deadlines {.smaller}
 
-- **Code of Conduct**: 17:00 20th Feb (end of Tutorial 4)
-- **Expedition proposal**: 17:00 25th Feb (**before** Tutorial 6)
-- **Upload presentation slides**: 17:00 12th March (**before** Tutorial 10)
+- **Code of Conduct**: 17:00 20th Feb
+- **Expedition proposal**: 17:00 25th Feb
+- **Upload presentation slides**: 17:00 12th March
 - **Final presentations**: 13 March (Tutorial 10)
 
 ---
