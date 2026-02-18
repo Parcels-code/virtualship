@@ -85,7 +85,7 @@ def plan(path):
 @click.option(
     "--difficulty-level",
     type=click.Choice(["easy", "medium", "hard"]),
-    default="easy",
+    default="medium",
     help="Set the problem level for the expedition simulation [default = easy].\n\n"
     "easy = No problems encountered during the expedition.\n\n"
     "medium = 1-2 problems encountered.\n\n"
