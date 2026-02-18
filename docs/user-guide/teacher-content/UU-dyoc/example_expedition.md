@@ -5,12 +5,12 @@ In this guide we will conduct an example virtual expedition. This expedition is 
 ---
 
 ```{important}
-This guide assumes you have already logged into and set up (initialised conda) the SURF virtual environment.
+This guide assumes you have already logged into and set up (initialised conda) the SURF virtual environment. If not, please follow the instructions in the [SURF virtual environment guide](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/surf_research_cloud_setup.html) to do so.
 ```
 
 ## 1) Create a new directory for your VirtualShip expeditions
 
-First, you should navigate to the shared storage directory on the virtual machine (e.g. `cd data/virtualship-storage/`). If you have not done so already, please create a new directory for your group's VirtualShip expeditions (e.g. `mkdir {your-group_name}`, replacing `{your-group_name}` with your actual group name). This is where you will run your expeditions and store the results.
+First, you should navigate to the shared storage directory on the virtual machine (e.g. `cd data/virtualship-storage/`). If you have not done so already, please create a new directory for your group's VirtualShip expeditions (e.g. `mkdir GROUP{your-group_letter}`, replacing `{your-group_letter}` with the letter of your actual group name). This is where you will run your expeditions and store the results.
 
 ## 2) Expedition initialisation
 
@@ -18,7 +18,7 @@ First, you should navigate to the shared storage directory on the virtual machin
 For your real expeditions, there will be a more involved expedition planning stage before this, including route planning and scheduling. Here, we are just going to use the default VirtualShip example expedition route and schedule.
 ```
 
-You should now navigate to your group's directory (i.e. `cd data/virtualship_storage/{group_name}/`). Then run the following command in the terminal:
+You should now navigate to your group's directory (i.e. `cd data/virtualship_storage/GROUP{your-group_letter}/`). Then run the following command in the terminal:
 
 ```
 virtualship init EXPEDITION_NAME
@@ -72,4 +72,4 @@ Why not browse through previous real-life [blogs and expedition reports](https:/
 
 Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written as [Zarr](https://zarr.dev/) files.
 
-From here you will be able to carry on your analysis. We won't go into this here for the example expedition, but when it comes to your own expeditions, you will be expected to analyse, derive quantities and visualise your results, and to ultimately present your findings.
+From here you will be able to carry on your analysis. We won't go into this here for the example expedition, but when it comes to your own expeditions, you will be expected to analyse, compute derived quantities and visualise your results, and to ultimately present your findings.
