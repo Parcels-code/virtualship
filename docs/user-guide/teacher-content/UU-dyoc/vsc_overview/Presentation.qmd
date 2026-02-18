@@ -4,6 +4,7 @@ title: "Dynamical Oceanography - VirtualShip Classroom"
 subtitle: "February/March 2026 | Utrecht University"
 format:
     revealjs:
+        self-contained: true
         slide-number: true
         theme: default
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
