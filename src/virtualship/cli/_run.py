@@ -288,13 +288,13 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
     return new_id
 
 
-def _warn_overwrite(results_dir: Path) -> None:
+def _warn_overwrite_results_dir(results_dir: Path) -> None:
     if os.path.exists(results_dir):
         print(
             f"\nWARNING: The '{results_dir}' directory already exists and will be overwritten. If you want to keep the previous results, please move or rename the '{results_dir}' directory before re-running the expedition.\n"
         )
         decision = input(
-            "Do you want to continue and overwrite the existing results? (y/n): "
+            "Do you want to continue the expedition run and thereby overwrite the existing results? (y/n): "
         )
         if decision.lower() != "y":
             print("Expedition run cancelled by user.")
