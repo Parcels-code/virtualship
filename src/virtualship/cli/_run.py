@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -131,9 +132,12 @@ def _run(
         return
 
     # delete and create results directory
-    if os.path.exists(expedition_dir.joinpath(RESULTS)):
-        shutil.rmtree(expedition_dir.joinpath(RESULTS))
-    os.makedirs(expedition_dir.joinpath(RESULTS))
+    results_dir = expedition_dir.joinpath(RESULTS)
+    _warn_overwrite(results_dir)
+
+    if os.path.exists(results_dir):
+        shutil.rmtree(results_dir)
+    os.makedirs(results_dir)
 
     print("\n----- EXPEDITION SUMMARY ------")
 
@@ -282,6 +286,21 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
         id_path.write_text(new_id)
 
     return new_id
+
+
+def _warn_overwrite(results_dir: Path) -> None:
+    if os.path.exists(results_dir):
+        print(
+            f"\nWARNING: The '{results_dir}' directory already exists and will be overwritten. If you want to keep the previous results, please move or rename the '{results_dir}' directory before re-running the expedition.\n"
+        )
+        decision = input(
+            "Do you want to continue and overwrite the existing results? (y/n): "
+        )
+        if decision.lower() != "y":
+            print("Expedition run cancelled by user.")
+            sys.exit(0)
+        if decision.lower() == "y":
+            print("Continuing with expedition run and overwriting existing results...")
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
