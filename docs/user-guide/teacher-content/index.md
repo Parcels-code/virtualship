@@ -40,4 +40,5 @@ UU-ocean-of-future/plot_slider.py
 caption: UU Dynamical Oceanography
 ---
 UU-dyoc/example_expedition.md
+UU-dyoc/file_permissions.md
 ```
