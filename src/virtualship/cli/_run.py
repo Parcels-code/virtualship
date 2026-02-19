@@ -133,7 +133,7 @@ def _run(
 
     # delete and create results directory
     results_dir = expedition_dir.joinpath(RESULTS)
-    _warn_overwrite(results_dir)
+    _warn_overwrite_results_dir(results_dir)
 
     if os.path.exists(results_dir):
         shutil.rmtree(results_dir)
