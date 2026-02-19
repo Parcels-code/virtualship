@@ -5,6 +5,7 @@ subtitle: "February/March 2026 | Utrecht University"
 format:
     revealjs:
         self-contained: true
+        scrollable: true
         slide-number: true
         theme: default
         logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
@@ -46,19 +47,23 @@ format:
     - Be expected to communicate your findings and experiences in a final presentation.
     - Write and submit a Code of Conduct for your group.
 
-## The presentation {.smaller}
+## The presentation {style="font-size: 0.65em;"}
 
 - As a group, you will create a slide-deck to present your expedition to the class and teachers.
 - Your presentation should be 12 minutes long, and will be followed by a few minutes of Q&A.
+- The grade (30% of the course) is based on the slides and presentation (rubric will be provided).
+    - The group grade is the average of that by the lecturer, the two VSC teachers, and the average of the peer students.
+    - How the grade is divided between group members is based on Code of Conduct.
+
+<hr>
+
 - The presentation should include:
     - An introduction and motivation for your expedition.
     - A description of your expedition plan, what instruments you deployed and why.
     - A discussion of the challenges you faced during your expedition.
     - An analysis of your data, including computing derived quantities.
-    - A discussion of the implications of your findings.
-- The grade (30% of the course) is based on the slides and presentation (rubric will be provided).
-    - The group grade is the average of that by the lecturer, the two VSC teachers, and the average of the peer students.
-    - How the grade is divided between group members is based on Code of Conduct.
+    - An animation of the data (in time and/or space).
+    - A discussion of your findings.
 
 
 ## Timetable {.smaller}
@@ -67,14 +72,19 @@ format:
 |---------|:-----|:------|
 | Tutorial 4 | 20 Feb | Code of Conduct, start expedition proposal, start trial run of VirtualShip |
 | Tutorial 6| 27 Feb | Begin your own expedition, 360° videos |
-| Tutorial 7 | 4 March | Continue your expedition |
-| Tutorial 8 | 6 March | Analyse your expedition results |
+| Tutorial 7 | 4 March | Continue your expedition, analyse expedition results |
+| Tutorial 8 | 6 March | Analyse expedition results |
 | Tutorial 9 | 11 March | Presentation preparation |
 | Tutorial 10 | 13 March | **Presentations** |
 
 : {tbl-colwidths="[20,20, 60]"}
 
 <br>
+
+:::{.callout-note}
+Note, you are expected to work on your projects in your own time/outside of class as well.
+:::
+
 
 ## Deadlines {.smaller}
 
