@@ -19,6 +19,11 @@ schedule:
         latitude: 0.02
         longitude: 0.01
       time: 2023-01-02 03:00:00
+    - instrument: null
+      location:
+        latitude: 0.03
+        longitude: 0.01
+      time: 2023-01-02 05:00:00
 instruments_config:
   adcp_config:
     num_bins: 40
