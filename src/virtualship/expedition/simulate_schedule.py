@@ -280,6 +280,12 @@ class _ScheduleSimulator:
                         drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
+                # TODO: would be good to avoid having to twice make sure that stationkeeping time is factored in; i.e. in schedule validity checks and here (and for CTDs and Drifters)
+                # TODO: makes it easy to forget to update both...
+                # TODO: this is likely to fall under refactoring simulate_schedule.py (i.e. #236)
+                time_costs.append(
+                    self._expedition.instruments_config.argo_float_config.stationkeeping_time
+                )
 
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
@@ -314,6 +320,10 @@ class _ScheduleSimulator:
                         lifetime=self._expedition.instruments_config.drifter_config.lifetime,
                     )
                 )
+                time_costs.append(
+                    self._expedition.instruments_config.drifter_config.stationkeeping_time
+                )
+
             elif instrument is InstrumentType.XBT:
                 self._measurements_to_simulate.xbts.append(
                     XBT(
@@ -327,5 +337,7 @@ class _ScheduleSimulator:
             else:
                 raise NotImplementedError("Instrument type not supported.")
 
-        # measurements are done in parallel, so return time of longest one
+        # measurements are done simultaneously onboard, so return time of longest one
+        # TODO: docs suggest that add individual instrument stationkeeping times are cumulative, which is at odds with measurements being done simultaneously onboard here
+        # TODO: update one or the other?
         return max(time_costs)
