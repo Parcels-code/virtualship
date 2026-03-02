@@ -893,6 +893,17 @@ class WaypointWidget(Static):
                         )
                         if prev_switch and curr_switch:
                             curr_switch.value = prev_switch.value
+
+                    # hard update self.waypoint.time to match new values as shown in UI
+                    year = int(self.query_one(f"#wp{self.index}_year").value)
+                    month = int(self.query_one(f"#wp{self.index}_month").value)
+                    day = int(self.query_one(f"#wp{self.index}_day").value)
+                    hour = int(self.query_one(f"#wp{self.index}_hour").value)
+                    minute = int(self.query_one(f"#wp{self.index}_minute").value)
+                    self.waypoint.time = datetime.datetime(
+                        year, month, day, hour, minute, 0
+                    )
+
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
