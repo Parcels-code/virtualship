@@ -69,7 +69,7 @@ def test_time_in_minutes_in_ship_schedule() -> None:
 
 
 def test_ship_path_inside_domain() -> None:
-    """Test that the ship path (and therefore where underway measurements will be taken) is inside the domain defined by the waypoints (which determines the fieldset bounds)."""
+    """Test that the ship path (here represented by underway ADCP measurement sites) is inside the domain defined by the waypoints (which determines the fieldset bounds)."""
     base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
 
     projection = pyproj.Geod(ellps="WGS84")
@@ -114,6 +114,7 @@ def test_ship_path_inside_domain() -> None:
         min(adcp_lons),
     )
 
+    # check adcp route is within wp bounds
     assert adcp_max_lat <= wp_max_lat
     assert adcp_min_lat >= wp_min_lat
     assert adcp_max_lon <= wp_max_lon
