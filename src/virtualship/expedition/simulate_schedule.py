@@ -179,7 +179,7 @@ class _ScheduleSimulator:
 
             for time, lon, lat in zip(st_times, st_lons, st_lats, strict=False):
                 location = Location(latitude=lat, longitude=lon)
-                self._measurements_to_simulate.adcps.append(
+                self._measurements_to_simulate.ship_underwater_sts.append(
                     Spacetime(location=location, time=time)
                 )
 
