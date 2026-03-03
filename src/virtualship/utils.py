@@ -619,9 +619,9 @@ def _calc_wp_stationkeeping_time(
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
     from virtualship.instruments.types import InstrumentType  # avoid circular imports
 
-    assert isinstance(wp_instrument_types, list), (
-        "waypoint instruments must be provided as a list, even if empty."
-    )
+    # to empty list if wp instruments set to 'null'
+    if not wp_instrument_types:
+        wp_instrument_types = []
 
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
     both_ctd_and_bgc = (
