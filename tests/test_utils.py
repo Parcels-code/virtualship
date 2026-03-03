@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition
 from virtualship.models.location import Location
@@ -347,3 +347,16 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     assert stationkeeping_time_xbt == datetime.timedelta(0), (
         "XBT should have zero stationkeeping time"
     )
+
+
+def test_calc_wp_stationkeeping_time_no_instruments(expedition):
+    """Test calc_wp_stationkeeping_time handles no instruments, either marked as 'null' or empty list."""
+    stationkeeping_emptylist = _calc_wp_stationkeeping_time(
+        [], expedition.instruments_config
+    )
+    stationkeeping_null = _calc_wp_stationkeeping_time(
+        None, expedition.instruments_config
+    )  # "null" in YAML translates to None in Python
+
+    assert stationkeeping_null == stationkeeping_emptylist  # are equivalent
+    assert stationkeeping_null == datetime.timedelta(0)  # at least one is 0 time
