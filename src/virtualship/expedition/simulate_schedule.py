@@ -144,6 +144,7 @@ class _ScheduleSimulator:
         return ScheduleOk(self._time, self._measurements_to_simulate)
 
     def _progress_time_traveling_towards(self, location: Location) -> None:
+        """Travel from current location/waypoint to next waypoint, also mark locations and times for underway instrument measurements."""
         time_to_reach, azimuth1, ship_speed_meter_per_second = _calc_sail_time(
             self._location,
             location,
@@ -193,7 +194,7 @@ class _ScheduleSimulator:
         distance_to_move: float,
         time_to_reach: timedelta,
     ):
-        """Get the times and locations of measurements between a waypoint (or the start) and the next waypoint, for underway instruments."""
+        """Get the times and locations of measurements between current location/waypoint and the next waypoint, for underway instruments."""
         period = underway_instrument_config.period
         npts = (time_to_reach.total_seconds() / period.total_seconds()) + 1
         times = [self._time + i * period for i in range(1, int(npts) + 1)]
@@ -210,6 +211,7 @@ class _ScheduleSimulator:
         return times, geodfwd.lons, geodfwd.lats
 
     def _progress_time_stationary(self, time_passed: timedelta) -> None:
+        """Make ship stay at waypoint whilst instruments are deployed, also set the underway instrument measurements that are taken during this time whilst stationary."""
         end_time = self._time + time_passed
 
         # note all ADCP measurements (stationary at wp)
