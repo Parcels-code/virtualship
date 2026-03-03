@@ -189,8 +189,8 @@ class _ScheduleSimulator:
     def _get_underway_measurements(
         self,
         underway_instrument_config,
-        azimuth,
-        distance_to_move,
+        azimuth: float,
+        distance_to_move: float,
         time_to_reach: timedelta,
     ):
         """Get the times and locations of measurements between a waypoint (or the start) and the next waypoint, for underway instruments."""
@@ -236,7 +236,9 @@ class _ScheduleSimulator:
 
         self._time = end_time
 
-    def _get_underway_stationary_times(self, underway_instrument_config, time_passed):
+    def _get_underway_stationary_times(
+        self, underway_instrument_config, time_passed: timedelta
+    ):
         npts = (
             time_passed.total_seconds()
             / underway_instrument_config.period.total_seconds()
