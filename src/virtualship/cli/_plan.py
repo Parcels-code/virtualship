@@ -872,7 +872,15 @@ class WaypointWidget(Static):
                         prev = schedule_editor.query_one(f"#wp{self.index - 1}_{comp}")
                         curr = self.query_one(f"#wp{self.index}_{comp}")
                         if prev and curr:
-                            curr.value = prev.value
+                            if (
+                                comp == "minute"
+                            ):  # special handle minute, round to nearest 5 for compatibility with options
+                                minute_value = prev.value
+                                if minute_value % 5 != 0:
+                                    minute_value = 5 * round(minute_value / 5)
+                                curr.value = minute_value
+                            else:
+                                curr.value = prev.value
 
                     for instrument in [
                         inst for inst in InstrumentType if not inst.is_underway
@@ -885,6 +893,17 @@ class WaypointWidget(Static):
                         )
                         if prev_switch and curr_switch:
                             curr_switch.value = prev_switch.value
+
+                    # hard update self.waypoint.time to match new values as shown in UI
+                    year = int(self.query_one(f"#wp{self.index}_year").value)
+                    month = int(self.query_one(f"#wp{self.index}_month").value)
+                    day = int(self.query_one(f"#wp{self.index}_day").value)
+                    hour = int(self.query_one(f"#wp{self.index}_hour").value)
+                    minute = int(self.query_one(f"#wp{self.index}_minute").value)
+                    self.waypoint.time = datetime.datetime(
+                        year, month, day, hour, minute, 0
+                    )
+
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
