@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import numpy as np
 import pyproj
 
 from virtualship.expedition.simulate_schedule import (
@@ -75,19 +76,18 @@ def test_ship_path_inside_domain() -> None:
     expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
     expedition.ship_config.ship_speed_knots = 10.0
 
+    wp1 = Location(-63.0, -57.7)  # most southern
+    wp2 = Location(-55.4, -66.2)  # most northern
+    wp3 = Location(-61.8, -73.2)  # most western
+    wp4 = Location(-57.3, -51.8)  # most eastern
+
     # waypoints with enough distance where curvature is clear
     expedition.schedule = Schedule(
         waypoints=[
-            Waypoint(location=Location(-63.0, -57.7), time=base_time),
-            Waypoint(
-                location=Location(-55.4, -66.2), time=base_time + timedelta(days=5)
-            ),
-            Waypoint(
-                location=Location(-61.8, -73.2), time=base_time + timedelta(days=10)
-            ),
-            Waypoint(
-                location=Location(-57.3, -51.8), time=base_time + timedelta(days=15)
-            ),
+            Waypoint(location=wp1, time=base_time),
+            Waypoint(location=wp2, time=base_time + timedelta(days=5)),
+            Waypoint(location=wp3, time=base_time + timedelta(days=10)),
+            Waypoint(location=wp4, time=base_time + timedelta(days=15)),
         ]
     )
 
@@ -118,3 +118,9 @@ def test_ship_path_inside_domain() -> None:
     assert adcp_min_lat >= wp_min_lat
     assert adcp_max_lon <= wp_max_lon
     assert adcp_min_lon >= wp_min_lon
+
+    # the adcp route extremes should also approximately match waypoints defined in this test
+    assert np.isclose(adcp_max_lat, wp2.lat, atol=0.1)
+    assert np.isclose(adcp_min_lat, wp1.lat, atol=0.1)
+    assert np.isclose(adcp_max_lon, wp4.lon, atol=0.1)
+    assert np.isclose(adcp_min_lon, wp3.lon, atol=0.1)
