@@ -65,3 +65,56 @@ def test_time_in_minutes_in_ship_schedule() -> None:
         minutes=20
     )
     assert instruments_config.ship_underwater_st_config.period == timedelta(minutes=5)
+
+
+def test_ship_path_inside_domain() -> None:
+    """Test that the ship path (and therefore where underway measurements will be taken) is inside the domain defined by the waypoints (which determines the fieldset bounds)."""
+    base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+
+    projection = pyproj.Geod(ellps="WGS84")
+    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition.ship_config.ship_speed_knots = 10.0
+
+    # waypoints with enough distance where curvature is clear
+    expedition.schedule = Schedule(
+        waypoints=[
+            Waypoint(location=Location(-63.0, -57.7), time=base_time),
+            Waypoint(
+                location=Location(-55.4, -66.2), time=base_time + timedelta(days=5)
+            ),
+            Waypoint(
+                location=Location(-61.8, -73.2), time=base_time + timedelta(days=10)
+            ),
+            Waypoint(
+                location=Location(-57.3, -51.8), time=base_time + timedelta(days=15)
+            ),
+        ]
+    )
+
+    # get waypoint domain bounds
+    wp_max_lat, wp_min_lat, wp_max_lon, wp_min_lon = (
+        max(wp.location.lat for wp in expedition.schedule.waypoints),
+        min(wp.location.lat for wp in expedition.schedule.waypoints),
+        max(wp.location.lon for wp in expedition.schedule.waypoints),
+        min(wp.location.lon for wp in expedition.schedule.waypoints),
+    )
+
+    result = simulate_schedule(projection, expedition)
+    assert isinstance(result, ScheduleOk)
+
+    # adcp measurements path
+    adcp_measurements = result.measurements_to_simulate.adcps
+    adcp_lats = [m.location.lat for m in adcp_measurements]
+    adcp_lons = [m.location.lon for m in adcp_measurements]
+
+    adcp_max_lat, adcp_min_lat, adcp_max_lon, adcp_min_lon = (
+        max(adcp_lats),
+        min(adcp_lats),
+        max(adcp_lons),
+        min(adcp_lons),
+    )
+
+    assert adcp_max_lat <= wp_max_lat
+    assert adcp_min_lat >= wp_min_lat
+    assert adcp_max_lon <= wp_max_lon
+    assert adcp_min_lon >= wp_min_lon
