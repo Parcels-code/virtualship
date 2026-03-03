@@ -267,3 +267,54 @@ def test_post_expedition_report(tmp_path):
         assert problem.message in content, (
             "Problem messages in report should match those of selected problems."
         )
+
+
+def test_instrument_problems_only_selected_when_instruments_present(tmp_path):
+    expedition = _make_simple_expedition(num_waypoints=3, no_instruments=True)
+    instruments_in_expedition = expedition.get_instruments()
+    assert len(instruments_in_expedition) == 0, "Expedition should have no instruments"
+
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+    problems = simulator.select_problems(
+        instruments_in_expedition, difficulty_level="hard"
+    )
+
+    has_instrument_problems = any(
+        isinstance(cls, InstrumentProblem) for cls in problems["problem_class"]
+    )
+    assert not has_instrument_problems, (
+        "Should not select instrument problems when no instruments are present"
+    )
+
+
+def test_instrument_not_present_doesnt_select_instrument_problem(tmp_path):
+    expedition = _make_simple_expedition(num_waypoints=3, no_instruments=True)
+
+    # prescribe instruments at waypoints, for this test case each should only be present at one waypoint
+    expedition.schedule.waypoints[0].instrument = [InstrumentType.CTD]
+    expedition.schedule.waypoints[1].instrument = [
+        InstrumentType.ARGO_FLOAT,
+        InstrumentType.DRIFTER,
+    ]
+
+    instruments_in_expedition = expedition.get_instruments()
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+
+    # run many iterations of randomly selecting problems and check that if an instrument problem is selected, the associated instrument is actually present at the selected waypoint
+    for _ in range(int(1e4)):
+        problems = simulator.select_problems(
+            instruments_in_expedition, difficulty_level="hard"
+        )
+
+        for problem, wp_i in zip(
+            problems["problem_class"], problems["waypoint_i"], strict=False
+        ):
+            if isinstance(problem, InstrumentProblem):
+                wp_instruments = expedition.schedule.waypoints[wp_i].instrument
+                assert problem.instrument_type in wp_instruments, (
+                    "Instrument problem should only be selected if the instrument is present at the selected waypoint"
+                )
+
+            # any incompatible waypoint x instrument problem combinations should have been replaced by a general problem
+            else:
+                assert isinstance(problem, GeneralProblem)
