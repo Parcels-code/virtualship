@@ -167,7 +167,11 @@ class Checkpoint(pydantic.BaseModel):
                             if problem["problem_waypoint_i"] is not None
                             else new_schedule.waypoints[0].time
                         )
-                        current_time = problem_waypoint.time + time_elapsed
+                        current_time = (
+                            problem_waypoint.time + time_elapsed
+                            if problem["problem_waypoint_i"] is not None
+                            else self.past_schedule.waypoints[0].time + time_elapsed
+                        )
 
                         raise CheckpointError(
                             f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n\n"
