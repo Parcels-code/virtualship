@@ -525,6 +525,15 @@ class ExpeditionEditor(Static):
             label.add_class("-hidden")
             label.remove_class("validation-failure")
 
+    @on(Button.Pressed, "#info_button")
+    def info_pressed(self) -> None:
+        self.notify(
+            "[b]SeaSeven[/b]:\nShallow ADCP profiler capable of providing information to a depth of 150 m every 4 meters (300kHz)"
+            "\n\n[b]OceanObserver[/b]:\nLong-range ADCP profiler capable of providing ~ 1000m of range every 24 meters (38kHz)",
+            severity="warning",
+            timeout=20,
+        )
+
     @on(Button.Pressed, "#add_waypoint")
     def add_waypoint(self) -> None:
         """Add a new waypoint to the schedule. Copies time from last waypoint if possible (Lat/lon and instruments blank)."""
