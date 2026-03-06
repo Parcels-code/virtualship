@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -73,8 +73,8 @@ class DrifterInstrument(Instrument):
         }
         limit_spec = {
             "spatial": False,  # no spatial limits; generate global fieldset
-            "depth_min": 1.0,  # [meters]
-            "depth_max": 1.0,  # [meters]
+            "depth_min": expedition.instruments_config.drifter_config.depth,  # [meters]
+            "depth_max": expedition.instruments_config.drifter_config.depth,  # [meters]
         }
 
         super().__init__(
