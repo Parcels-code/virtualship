@@ -73,8 +73,8 @@ class DrifterInstrument(Instrument):
         }
         limit_spec = {
             "spatial": False,  # no spatial limits; generate global fieldset
-            "depth_min": expedition.instruments_config.drifter_config.depth,  # [meters]
-            "depth_max": expedition.instruments_config.drifter_config.depth,  # [meters]
+            "depth_min": expedition.instruments_config.drifter_config.depth_meter,  # [meters]
+            "depth_max": expedition.instruments_config.drifter_config.depth_meter,  # [meters]
         }
 
         super().__init__(
