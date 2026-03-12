@@ -185,9 +185,6 @@ def test_drifter_depths(tmpdir) -> None:
         "Depth drifter depth should be constant"
     )
 
-    if not drifter_surface.temperature[0] != drifter_depth.temperature[0]:
-        breakpoint()
-
     assert drifter_surface.temperature[0] != drifter_depth.temperature[0], (
         "Surface and deeper drifter should have different temperature measurements"
     )
