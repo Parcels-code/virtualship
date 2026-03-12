@@ -111,15 +111,16 @@ def test_simulate_drifters(tmpdir) -> None:
 
 def test_drifter_depths(tmpdir) -> None:
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
+    DEPTH_FACTOR = 3.0  # factor to multiply surface values by at depth for test
 
     v = np.full((2, 2, 2, 2), 1.0)
     u = np.full((2, 2, 2, 2), 1.0)
     t = np.full((2, 2, 2, 2), CONST_TEMPERATURE)
 
     # different values at depth (random)
-    v[:, -1, :, :] = 1.0 * np.random.randint(0, 10)
-    u[:, -1, :, :] = 1.0 * np.random.randint(0, 10)
-    t[:, -1, :, :] = CONST_TEMPERATURE * np.random.randint(0, 10)
+    v[:, -1, :, :] = 1.0 * DEPTH_FACTOR
+    u[:, -1, :, :] = 1.0 * DEPTH_FACTOR
+    t[:, -1, :, :] = CONST_TEMPERATURE * DEPTH_FACTOR
 
     fieldset = FieldSet.from_data(
         {"V": v, "U": u, "T": t},
