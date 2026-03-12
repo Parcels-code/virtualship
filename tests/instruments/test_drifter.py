@@ -5,8 +5,8 @@ from typing import ClassVar
 
 import numpy as np
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import Waypoint
