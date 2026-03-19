@@ -99,7 +99,7 @@ Argo Float deployment
     - Real-time adaptive strategies where sampling plans on real-life expedtions are updated based on incoming data and/or forecasts.
 
 - For educators:
-    - VirtualShip Classroom (software + open educational resources + VR)
+    - VirtualShip Classroom (software + open educational resources + VR / 360° videos)
 
 
 ## Get in touch! {.smaller}
@@ -109,14 +109,15 @@ Argo Float deployment
 ::: {.columns}
 
 ::: {.column width="50%"}
-- By email:
-    - Jamie: [j.r.c.atkins@uu.nl](mailto:j.r.c.atkins@uu.nl)
-    - Emma: [e.e.daniels1@uu.nl](mailto:e.e.daniels1@uu.nl)
+- By **email**:
+    - Jamie Atkins: [j.r.c.atkins@uu.nl](mailto:j.r.c.atkins@uu.nl)
+    - Emma Daniels: [e.e.daniels1@uu.nl](mailto:e.e.daniels1@uu.nl)
+    - Erik van Sebille: [e.vansebille@uu.nl](mailto:e.vansebille@uu.nl)
 :::
 
 ::: {.column width="25%"}
 
-- Via GitHub
+- Via **GitHub**
 :::
 
 ::: {.column width="25%"}
