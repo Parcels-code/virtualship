@@ -1,0 +1,600 @@
+instruments_config:
+  adcp_config:
+    max_depth_meter: -1000.0
+    num_bins: 40
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 20.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config:
+    period_minutes: 5.0
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument: #1
+        - CTD
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 36.562668
+        longitude: -121.986774
+      time: 2022-06-02 12:00:00
+
+    - instrument: #2 wel 50
+        - XBT
+      location:
+        latitude: 36.5442905
+        longitude: -122.03224900000001
+      time: 2022-06-03 09:25:00
+
+    - instrument: #3
+        - CTD
+      location:
+        latitude: 36.525913
+        longitude: -122.077724
+      time: 2022-06-03 14:45:00
+
+    - instrument: #4 wel 50
+        - XBT
+      location:
+        latitude: 36.5048865
+        longitude: -122.13074950000001
+      time: 2022-06-03 16:03:00
+
+    - instrument: #5
+        - CTD
+      location:
+        latitude: 36.48386
+        longitude: -122.183775
+      time: 2022-06-03 16:24:00
+
+    - instrument: #6 wel 50
+        - XBT
+      location:
+        latitude: 36.4631725
+        longitude: -122.235221
+      time: 2022-06-03 19:33:00
+
+    - instrument: #7
+        - CTD
+      location:
+        latitude: 36.442485
+        longitude: -122.286667
+      time: 2022-06-03 19:53:00
+
+    - instrument: #8 wel 50
+        - XBT
+      location:
+        latitude: 36.4231475
+        longitude: -122.334788
+      time: 2022-06-03 21:02:00
+
+    - instrument: #9
+        - CTD
+      location:
+        latitude: 36.40381
+        longitude: -122.382909
+      time: 2022-06-03 21:23:00
+
+    - instrument: #10 wel 50
+        - XBT
+      location:
+        latitude: 36.384040999999996
+        longitude: -122.43202199999999
+      time: 2022-06-03 22:37:00
+
+    - instrument: #11
+        - CTD
+      location:
+        latitude: 36.364272
+        longitude: -122.481135
+      time: 2022-06-04 03:00:00
+
+    - instrument: #12
+        - XBT
+      location:
+        latitude: 36.3444925
+        longitude: -122.529265
+      time: 2022-06-04 09:45:00
+
+    - instrument: #13
+        - CTD
+      location:
+        latitude: 36.324713
+        longitude: -122.577395
+      time: 2022-06-04 14:11:00
+
+    - instrument: #14 wel 50
+        - CTD
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 37.316344
+        longitude: -122.709653
+      time: 2022-06-05 03:50:00
+
+    - instrument: #15 wel 50
+        - XBT
+      location:
+        latitude: 37.3007425
+        longitude: -122.757671
+      time: 2022-06-05 05:20:00
+
+    - instrument: #16
+        - CTD
+      location:
+        latitude: 37.285141
+        longitude: -122.805689
+      time: 2022-06-05 10:45:00
+
+    - instrument: #17 wel 50
+        - XBT
+      location:
+        latitude: 37.269462000000004
+        longitude: -122.8553095
+      time: 2022-06-05 16:00:00
+
+    - instrument: #18
+        - CTD
+      location:
+        latitude: 37.253783
+        longitude: -122.90493
+      time: 2022-06-05 23:25:00
+
+    - instrument: #19
+        - XBT
+      location:
+        latitude: 37.2375165
+        longitude: -122.9538205
+      time: 2022-06-06 00:41:00
+
+    - instrument: #20
+        - CTD
+      location:
+        latitude: 37.22125
+        longitude: -123.002711
+      time: 2022-06-06 01:07:00
+
+    - instrument: #21
+        - XBT
+      location:
+        latitude: 37.2049765
+        longitude: -123.05233150000001
+      time: 2022-06-06 02:29:00
+
+    - instrument: #22
+        - CTD
+      location:
+        latitude: 37.188703
+        longitude: -123.101952
+      time: 2022-06-06 03:01:00
+
+    - instrument: #23
+        - XBT
+      location:
+        latitude: 37.1735855
+        longitude: -123.1486535
+      time: 2022-06-06 04:22:00
+
+    - instrument: #24
+        - CTD
+      location:
+        latitude: 37.158468
+        longitude: -123.195355
+      time: 2022-06-06 07:10:00
+
+    - instrument: #25
+        - XBT
+      location:
+        latitude: 37.1427625
+        longitude: -123.2420565
+      time: 2022-06-06 08:47:00
+
+    - instrument: #26
+        - CTD
+      location:
+        latitude: 37.127057
+        longitude: -123.288758
+      time: 2022-06-06 09:50:00
+
+    - instrument: #27
+        - CTD
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 38.09157
+        longitude: -123.190567
+      time: 2022-06-06 16:54:00
+
+    - instrument: #28
+        - XBT
+      location:
+        latitude: 38.08238
+        longitude: -123.229242
+      time: 2022-06-06 18:32:00
+
+    - instrument: #29
+        - CTD
+      location:
+        latitude: 38.07319
+        longitude: -123.267917
+      time: 2022-06-06 23:05:00
+
+    - instrument: #30
+        - XBT
+      location:
+        latitude: 38.063423
+        longitude: -123.31097
+      time: 2022-06-07 00:24:00
+
+    - instrument: #31
+        - CTD
+      location:
+        latitude: 38.053656
+        longitude: -123.354023
+      time: 2022-06-07 00:53:00
+
+    - instrument: #32
+        - XBT
+      location:
+        latitude: 38.0425445
+        longitude: -123.3973235
+      time: 2022-06-07 02:12:00
+
+    - instrument: #33
+        - CTD
+      location:
+        latitude: 38.031433
+        longitude: -123.440624
+      time: 2022-06-07 02:58:00
+
+    - instrument: #34
+        - XBT
+      location:
+        latitude: 38.021851
+        longitude: -123.48052
+      time: 2022-06-07 04:25:00
+
+    - instrument: #35
+        - CTD
+      location:
+        latitude: 38.012269
+        longitude: -123.520416
+      time: 2022-06-07 06:53:00
+
+    - instrument: #36
+        - XBT
+      location:
+        latitude: 38.002879
+        longitude: -123.560547
+      time: 2022-06-07 08:23:00
+
+    - instrument: #37
+        - CTD
+      location:
+        latitude: 37.993489
+        longitude: -123.600678
+      time: 2022-06-07 08:51:00
+
+    - instrument: #38
+        - XBT
+      location:
+        latitude: 37.983903999999995
+        longitude: -123.6393465
+      time: 2022-06-07 10:09:00
+
+    - instrument: #39
+        - CTD
+      location:
+        latitude: 37.974319
+        longitude: -123.678015
+      time: 2022-06-07 10:39:00
+
+    - instrument: #40
+        - CTD
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 36.562668
+        longitude: -121.986774
+      time: 2022-06-07 23:33:00
+
+    - instrument: #41
+        - XBT
+      location:
+        latitude: 36.5442905
+        longitude: -122.03224900000001
+      time: 2022-06-08 01:15:00
+
+    - instrument: #42
+        - CTD
+      location:
+        latitude: 36.525913
+        longitude: -122.077724
+      time: 2022-06-08 02:00:00
+
+    - instrument: #43
+        - XBT
+      location:
+        latitude: 36.5048865
+        longitude: -122.13074950000001
+      time: 2022-06-08 08:24:00
+
+    - instrument: #44
+        - CTD
+      location:
+        latitude: 36.48386
+        longitude: -122.183775
+      time: 2022-06-08 08:58:00
+
+    - instrument: #45
+        - XBT
+      location:
+        latitude: 36.4631725
+        longitude: -122.235221
+      time: 2022-06-08 10:35:00
+
+    - instrument: #46
+        - CTD
+      location:
+        latitude: 36.442485
+        longitude: -122.286667
+      time: 2022-06-08 11:08:00
+
+    - instrument: #47
+        - XBT
+      location:
+        latitude: 36.4231475
+        longitude: -122.334788
+      time: 2022-06-08 17:38:00
+
+    - instrument: #48
+        - CTD
+      location:
+        latitude: 36.40381
+        longitude: -122.382909
+      time: 2022-06-08 18:10:00
+
+    - instrument: #49
+        - XBT
+      location:
+        latitude: 36.384040999999996
+        longitude: -122.43202199999999
+      time: 2022-06-08 19:32:00
+
+    - instrument: #50
+        - CTD
+      location:
+        latitude: 36.364272
+        longitude: -122.481135
+      time: 2022-06-08 23:04:00
+
+    - instrument: #51
+        - XBT
+      location:
+        latitude: 36.3444925
+        longitude: -122.529265
+      time: 2022-06-09 00:26:00
+
+    - instrument: #52
+        - CTD
+      location:
+        latitude: 36.324713
+        longitude: -122.577395
+      time: 2022-06-09 04:28:00
+
+    - instrument: #53
+        - CTD
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 37.316344
+        longitude: -122.709653
+      time: 2022-06-09 12:15:00
+
+    - instrument: #54
+        - XBT
+      location:
+        latitude: 37.3007425
+        longitude: -122.757671
+      time: 2022-06-09 16:26:00
+
+    - instrument: #55
+        - CTD
+      location:
+        latitude: 37.285141
+        longitude: -122.805689
+      time: 2022-06-09 16:57:00
+
+    - instrument: #56
+        - XBT
+      location:
+        latitude: 37.269462000000004
+        longitude: -122.8553095
+      time: 2022-06-09 18:19:00
+
+    - instrument: #57
+        - CTD
+      location:
+        latitude: 37.253783
+        longitude: -122.90493
+      time: 2022-06-09 22:51:00
+
+    - instrument: #58
+        - XBT
+      location:
+        latitude: 37.2375165
+        longitude: -122.9538205
+      time: 2022-06-10 02:43:00
+
+    - instrument: #59
+        - CTD
+      location:
+        latitude: 37.22125
+        longitude: -123.002711
+      time: 2022-06-10 03:15:00
+
+    - instrument: #60
+        - XBT
+      location:
+        latitude: 37.2049765
+        longitude: -123.05233150000001
+      time: 2022-06-10 04:37:00
+
+    - instrument: #61
+        - CTD
+      location:
+        latitude: 37.188703
+        longitude: -123.101952
+      time: 2022-06-10 05:09:00
+
+    - instrument: #62
+        - XBT
+      location:
+        latitude: 37.1735855
+        longitude: -123.1486535
+      time: 2022-06-10 06:30:00
+
+    - instrument: #63
+        - CTD
+      location:
+        latitude: 37.158468
+        longitude: -123.195355
+      time: 2022-06-10 07:03:00
+
+    - instrument: #64
+        - XBT
+      location:
+        latitude: 37.1427625
+        longitude: -123.2420565
+      time: 2022-06-10 14:24:00
+
+    - instrument: #65
+        - CTD
+      location:
+        latitude: 37.127057
+        longitude: -123.288758
+      time: 2022-06-10 14:55:00
+
+    - instrument: #66
+        - CTD
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: 38.09157
+        longitude: -123.190567
+      time: 2022-06-10 21:49:00
+
+    - instrument: #67
+        - XBT
+      location:
+        latitude: 38.08238
+        longitude: -123.229242
+      time: 2022-06-10 23:27:00
+
+    - instrument: #68
+        - CTD
+      location:
+        latitude: 38.07319
+        longitude: -123.267917
+      time: 2022-06-11 00:02:00
+
+    - instrument: #69
+        - XBT
+      location:
+        latitude: 38.063423
+        longitude: -123.31097
+      time: 2022-06-11 01:37:00
+
+    - instrument: #70
+        - CTD
+      location:
+        latitude: 38.053656
+        longitude: -123.354023
+      time: 2022-06-11 02:06:00
+
+    - instrument: #71
+        - XBT
+      location:
+        latitude: 38.0425445
+        longitude: -123.3973235
+      time: 2022-06-11 03:25:00
+
+    - instrument: #72
+        - CTD
+      location:
+        latitude: 38.031433
+        longitude: -123.440624
+      time: 2022-06-11 03:57:00
+
+    - instrument: #73
+        - XBT
+      location:
+        latitude: 38.021851
+        longitude: -123.48052
+      time: 2022-06-11 15:15:00
+
+    - instrument: #74
+        - CTD
+      location:
+        latitude: 38.012269
+        longitude: -123.520416
+      time: 2022-06-11 21:45:00
+
+    - instrument: #75
+        - XBT
+      location:
+        latitude: 38.002879
+        longitude: -123.560547
+      time: 2022-06-12 01:03:00
+
+    - instrument: #76
+        - CTD
+      location:
+        latitude: 37.993489
+        longitude: -123.600678
+      time: 2022-06-12 10:31:00
+
+    - instrument: #77
+        - XBT
+      location:
+        latitude: 37.983903999999995
+        longitude: -123.6393465
+      time: 2022-06-12 15:49:00
+
+    - instrument: #78
+        - CTD
+      location:
+        latitude: 37.974319
+        longitude: -123.678015
+      time: 2022-06-12 21:18:00
+
+ship_config:
+  ship_speed_knots: 10.0
