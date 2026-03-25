@@ -15,9 +15,10 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
+from virtualship.instruments.types import SensorType
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
@@ -129,6 +130,52 @@ def register_instrument_config(instrument_type):
         return cls
 
     return decorator
+
+
+# =====================================================
+# SECTION: optional sensors and variable mapping (e.g. for CTD)
+# TODO: and soon also Argo floats...
+# =====================================================
+
+
+SENSOR_DEFS: dict[SensorType, dict] = {
+    SensorType.TEMPERATURE: {
+        "fs_key": "T",
+        "copernicus_var": "thetao",
+    },
+    SensorType.SALINITY: {
+        "fs_key": "S",
+        "copernicus_var": "so",
+    },
+    SensorType.OXYGEN: {
+        "fs_key": "o2",
+        "copernicus_var": "o2",
+    },
+    SensorType.CHLOROPHYLL: {
+        "fs_key": "chl",
+        "copernicus_var": "chl",
+    },
+    SensorType.NITRATE: {
+        "fs_key": "no3",
+        "copernicus_var": "no3",
+    },
+    SensorType.PHOSPHATE: {
+        "fs_key": "po4",
+        "copernicus_var": "po4",
+    },
+    SensorType.PH: {
+        "fs_key": "ph",
+        "copernicus_var": "ph",
+    },
+    SensorType.PHYTOPLANKTON: {
+        "fs_key": "phyc",
+        "copernicus_var": "phyc",
+    },
+    SensorType.PRIMARY_PRODUCTION: {
+        "fs_key": "nppv",
+        "copernicus_var": "nppv",
+    },
+}
 
 
 # =====================================================
@@ -617,17 +664,9 @@ def _calc_wp_stationkeeping_time(
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
-    from virtualship.instruments.types import InstrumentType  # avoid circular imports
-
     # to empty list if wp instruments set to 'null'
     if not wp_instrument_types:
         wp_instrument_types = []
-
-    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
-    both_ctd_and_bgc = (
-        InstrumentType.CTD in wp_instrument_types
-        and InstrumentType.CTD_BGC in wp_instrument_types
-    )
 
     # extract configs for all instruments present in expedition
     valid_instrument_configs = [
@@ -639,7 +678,7 @@ def _calc_wp_stationkeeping_time(
     for iconfig in valid_instrument_configs:
         for itype in wp_instrument_types:
             if (
-                instrument_config_map[itype] == iconfig.__class__.__name__
+                instrument_config_map.get(itype) == iconfig.__class__.__name__
                 and (
                     iconfig not in wp_instrument_configs
                 )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
@@ -649,13 +688,6 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        if (
-            both_ctd_and_bgc
-            and iconfig.__class__.__name__
-            == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
-        ):
-            continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
-
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
