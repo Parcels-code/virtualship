@@ -3,12 +3,16 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import InstrumentType
+from virtualship.instruments.types import InstrumentType, SensorType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import _random_noise, register_instrument
+from virtualship.utils import (
+    _random_noise,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 # =====================================================
 # SECTION: Dataclass
@@ -26,17 +30,14 @@ class Drifter:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: fixed/mechanical Particle Variables (non-sampling)
 # =====================================================
 
-_DrifterParticle = JITParticle.add_variables(
-    [
-        Variable("temperature", dtype=np.float32, initial=np.nan),
-        Variable("has_lifetime", dtype=np.int8),  # bool
-        Variable("age", dtype=np.float32, initial=0.0),
-        Variable("lifetime", dtype=np.float32),
-    ]
-)
+_DRIFTER_FIXED_VARIABLES = [
+    Variable("has_lifetime", dtype=np.int8),  # bool
+    Variable("age", dtype=np.float32, initial=0.0),
+    Variable("lifetime", dtype=np.float32),
+]
 
 # =====================================================
 # SECTION: Kernels
@@ -54,6 +55,11 @@ def _check_lifetime(particle, fieldset, time):
             particle.delete()
 
 
+_DRIFTER_SENSOR_KERNELS: dict[SensorType, callable] = {
+    SensorType.TEMPERATURE: _sample_temperature,
+}
+
+
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -65,7 +71,14 @@ class DrifterInstrument(Instrument):
 
     def __init__(self, expedition, from_data):
         """Initialize DrifterInstrument."""
-        variables = {"U": "uo", "V": "vo", "T": "thetao"}
+        sensor_variables = (
+            expedition.instruments_config.drifter_config.active_variables()
+        )
+        variables = {
+            "U": "uo",
+            "V": "vo",
+            **sensor_variables,
+        }  # advection variables (U and V) are always required for argo float simulation; sensor variables come from config
         spacetime_buffer_size = {
             "latlon": None,
             "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
@@ -106,6 +119,12 @@ class DrifterInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
+        # build dynamic particle class from the active sensors
+        drifter_config = self.expedition.instruments_config.drifter_config
+        _DrifterParticle = build_particle_class_from_sensors(
+            drifter_config.sensors, _DRIFTER_FIXED_VARIABLES
+        )
+
         # define parcel particles
         lat_release = [
             drifter.spacetime.location.lat + _random_noise() for drifter in measurements
@@ -140,9 +159,16 @@ class DrifterInstrument(Instrument):
         # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
         endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
+        # build kernel list from active sensors only
+        sample_kernels = [
+            _DRIFTER_SENSOR_KERNELS[sc.sensor_type]
+            for sc in drifter_config.sensors
+            if sc.enabled and sc.sensor_type in _DRIFTER_SENSOR_KERNELS
+        ]
+
         # execute simulation
         drifter_particleset.execute(
-            [AdvectionRK4, _sample_temperature, _check_lifetime],
+            [AdvectionRK4, *sample_kernels, _check_lifetime],
             endtime=endtime,
             dt=DT,
             output_file=out_file,

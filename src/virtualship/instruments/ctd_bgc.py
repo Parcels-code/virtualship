@@ -3,12 +3,19 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import InstrumentType
+from virtualship.instruments.types import (
+    InstrumentType,
+    SensorType,
+)
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 # =====================================================
 # SECTION: Dataclass
@@ -26,24 +33,15 @@ class CTD_BGC:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: fixed/mechanical Particle Variables (non-sampling)
 # =====================================================
 
-_CTD_BGCParticle = JITParticle.add_variables(
-    [
-        Variable("o2", dtype=np.float32, initial=np.nan),
-        Variable("chl", dtype=np.float32, initial=np.nan),
-        Variable("no3", dtype=np.float32, initial=np.nan),
-        Variable("po4", dtype=np.float32, initial=np.nan),
-        Variable("ph", dtype=np.float32, initial=np.nan),
-        Variable("phyc", dtype=np.float32, initial=np.nan),
-        Variable("nppv", dtype=np.float32, initial=np.nan),
-        Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
-        Variable("max_depth", dtype=np.float32),
-        Variable("min_depth", dtype=np.float32),
-        Variable("winch_speed", dtype=np.float32),
-    ]
-)
+_CTD_BGC_FIXED_VARIABLES = [
+    Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
+    Variable("max_depth", dtype=np.float32),
+    Variable("min_depth", dtype=np.float32),
+    Variable("winch_speed", dtype=np.float32),
+]
 
 # =====================================================
 # SECTION: Kernels
@@ -92,6 +90,17 @@ def _ctd_bgc_cast(particle, fieldset, time):
             particle.delete()
 
 
+_CTD_BGC_SENSOR_KERNELS: dict[SensorType, callable] = {
+    SensorType.OXYGEN: _sample_o2,
+    SensorType.CHLOROPHYLL: _sample_chlorophyll,
+    SensorType.NITRATE: _sample_nitrate,
+    SensorType.PHOSPHATE: _sample_phosphate,
+    SensorType.PH: _sample_ph,
+    SensorType.PHYTOPLANKTON: _sample_phytoplankton,
+    SensorType.PRIMARY_PRODUCTION: _sample_primary_production,
+}
+
+
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -103,15 +112,7 @@ class CTD_BGCInstrument(Instrument):
 
     def __init__(self, expedition, from_data):
         """Initialize CTD_BGCInstrument."""
-        variables = {
-            "o2": "o2",
-            "chl": "chl",
-            "no3": "no3",
-            "po4": "po4",
-            "ph": "ph",
-            "phyc": "phyc",
-            "nppv": "nppv",
-        }
+        variables = expedition.instruments_config.ctd_bgc_config.active_variables()
         limit_spec = {
             "spatial": True
         }  # spatial limits; lat/lon constrained to waypoint locations + buffer
@@ -145,11 +146,14 @@ class CTD_BGCInstrument(Instrument):
         # add dummy U
         add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
-        fieldset_starttime = fieldset.o2.grid.time_origin.fulltime(
-            fieldset.o2.grid.time_full[0]
+        # use first active field for time reference
+        _time_ref_key = next(iter(self.variables))
+        _time_ref_field = getattr(fieldset, _time_ref_key)
+        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[0]
         )
-        fieldset_endtime = fieldset.o2.grid.time_origin.fulltime(
-            fieldset.o2.grid.time_full[-1]
+        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[-1]
         )
 
         # deploy time for all ctds should be later than fieldset start time
@@ -182,6 +186,12 @@ class CTD_BGCInstrument(Instrument):
                 f"BGC CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
             )
 
+        # build dynamic particle class from the active sensors
+        ctd_bgc_config = self.expedition.instruments_config.ctd_bgc_config
+        _CTD_BGCParticle = build_particle_class_from_sensors(
+            ctd_bgc_config.sensors, _CTD_BGC_FIXED_VARIABLES, JITParticle
+        )
+
         # define parcel particles
         ctd_bgc_particleset = ParticleSet(
             fieldset=fieldset,
@@ -198,18 +208,16 @@ class CTD_BGCInstrument(Instrument):
         # define output file for the simulation
         out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
+        # build kernel list from active sensors only
+        sample_kernels = [
+            _CTD_BGC_SENSOR_KERNELS[sc.sensor_type]
+            for sc in ctd_bgc_config.sensors
+            if sc.enabled and sc.sensor_type in _CTD_BGC_SENSOR_KERNELS
+        ]
+
         # execute simulation
         ctd_bgc_particleset.execute(
-            [
-                _sample_o2,
-                _sample_chlorophyll,
-                _sample_nitrate,
-                _sample_phosphate,
-                _sample_ph,
-                _sample_phytoplankton,
-                _sample_primary_production,
-                _ctd_bgc_cast,
-            ],
+            [*sample_kernels, _ctd_bgc_cast],
             endtime=fieldset_endtime,
             dt=DT,
             verbose_progress=self.verbose_progress,
