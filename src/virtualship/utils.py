@@ -67,7 +67,7 @@ class _SensorMeta:
     category: Literal[
         "phys", "bgc"
     ]  # physical vs. biogeochemical variable, used for product ID selection logic
-    particle_var: str  # map to variable name in the Parcels Particle class
+    particle_vars: list[str]  # particle variable name(s) produced by this sensor
 
 
 # the copernicus_var field below is the bridge between this registry the Copernicus product-ID selection logic (PRODUCT_IDS, BGC_ANALYSIS_IDS, MONTHLY_BGC_REANALYSIS_IDS, etc.)
@@ -76,61 +76,61 @@ SENSOR_REGISTRY: dict[SensorType, _SensorMeta] = {
         fs_key="T",
         copernicus_var="thetao",
         category="phys",
-        particle_var="temperature",
+        particle_vars=["temperature"],
     ),
     SensorType.SALINITY: _SensorMeta(
         fs_key="S",
         copernicus_var="so",
         category="phys",
-        particle_var="salinity",
+        particle_vars=["salinity"],
     ),
     SensorType.VELOCITY: _SensorMeta(
         fs_key="UV",
-        copernicus_var="uo",  # primary; active_variables() in ADCPConfig expands to both uo and vo
+        copernicus_var="uo",  # primary var... active_variables() in ADCPConfig expands to both uo and vo
         category="phys",
-        particle_var="U",  # primary; adcp.py adds V explicitly for VELOCITY
+        particle_vars=["U", "V"],  # two particle variables associated with one sensor
     ),
     SensorType.OXYGEN: _SensorMeta(
         fs_key="o2",
         copernicus_var="o2",
         category="bgc",
-        particle_var="o2",
+        particle_vars=["o2"],
     ),
     SensorType.CHLOROPHYLL: _SensorMeta(
         fs_key="chl",
         copernicus_var="chl",
         category="bgc",
-        particle_var="chl",
+        particle_vars=["chl"],
     ),
     SensorType.NITRATE: _SensorMeta(
         fs_key="no3",
         copernicus_var="no3",
         category="bgc",
-        particle_var="no3",
+        particle_vars=["no3"],
     ),
     SensorType.PHOSPHATE: _SensorMeta(
         fs_key="po4",
         copernicus_var="po4",
         category="bgc",
-        particle_var="po4",
+        particle_vars=["po4"],
     ),
     SensorType.PH: _SensorMeta(
         fs_key="ph",
         copernicus_var="ph",
         category="bgc",
-        particle_var="ph",
+        particle_vars=["ph"],
     ),
     SensorType.PHYTOPLANKTON: _SensorMeta(
         fs_key="phyc",
         copernicus_var="phyc",
         category="bgc",
-        particle_var="phyc",
+        particle_vars=["phyc"],
     ),
     SensorType.PRIMARY_PRODUCTION: _SensorMeta(
         fs_key="nppv",
         copernicus_var="nppv",
         category="bgc",
-        particle_var="nppv",
+        particle_vars=["nppv"],
     ),
 }
 
@@ -743,9 +743,10 @@ def build_particle_class_from_sensors(
 ) -> type:
     """Build a JITParticle class from fixed variables and active sensors. ScipyParticle classes are built in instrument sub-classes where used."""
     sensor_variables = [
-        Variable(sc.meta.particle_var, dtype=np.float32, initial=np.nan)
+        Variable(var_name, dtype=np.float32, initial=np.nan)
         for sc in sensors
         if sc.enabled
+        for var_name in sc.meta.particle_vars
     ]
     return JITParticle.add_variables(fixed_variables + sensor_variables)
 
