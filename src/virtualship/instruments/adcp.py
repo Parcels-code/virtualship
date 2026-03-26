@@ -117,7 +117,7 @@ class ADCPInstrument(Instrument):
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
         # build kernel list from active sensors only
-        sample_kernels = [
+        sampling_kernels = [
             _ADCP_SENSOR_KERNELS[sc.sensor_type]
             for sc in adcp_config.sensors
             if sc.enabled and sc.sensor_type in _ADCP_SENSOR_KERNELS
@@ -131,7 +131,7 @@ class ADCPInstrument(Instrument):
             )
 
             particleset.execute(
-                sample_kernels,
+                sampling_kernels,
                 dt=1,
                 runtime=1,
                 verbose_progress=self.verbose_progress,

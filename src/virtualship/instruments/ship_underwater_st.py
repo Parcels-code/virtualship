@@ -115,7 +115,7 @@ class Underwater_STInstrument(Instrument):
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
         # build kernel list from active sensors only
-        sample_kernels = [
+        sampling_kernels = [
             _ST_SENSOR_KERNELS[sc.sensor_type]
             for sc in st_config.sensors
             if sc.enabled and sc.sensor_type in _ST_SENSOR_KERNELS
@@ -129,7 +129,7 @@ class Underwater_STInstrument(Instrument):
             )
 
             particleset.execute(
-                sample_kernels,
+                sampling_kernels,
                 dt=1,
                 runtime=1,
                 verbose_progress=self.verbose_progress,

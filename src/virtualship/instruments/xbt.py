@@ -184,14 +184,14 @@ class XBTInstrument(Instrument):
         out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
-        sample_kernels = [
+        sampling_kernels = [
             _XBT_SENSOR_KERNELS[sc.sensor_type]
             for sc in xbt_config.sensors
             if sc.enabled and sc.sensor_type in _XBT_SENSOR_KERNELS
         ]
 
         xbt_particleset.execute(
-            [*sample_kernels, _xbt_cast],
+            [*sampling_kernels, _xbt_cast],
             endtime=fieldset_endtime,
             dt=DT,
             verbose_progress=self.verbose_progress,

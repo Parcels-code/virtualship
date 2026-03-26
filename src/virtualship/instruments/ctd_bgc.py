@@ -209,7 +209,7 @@ class CTD_BGCInstrument(Instrument):
         out_file = ctd_bgc_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
-        sample_kernels = [
+        sampling_kernels = [
             _CTD_BGC_SENSOR_KERNELS[sc.sensor_type]
             for sc in ctd_bgc_config.sensors
             if sc.enabled and sc.sensor_type in _CTD_BGC_SENSOR_KERNELS
@@ -217,7 +217,7 @@ class CTD_BGCInstrument(Instrument):
 
         # execute simulation
         ctd_bgc_particleset.execute(
-            [*sample_kernels, _ctd_bgc_cast],
+            [*sampling_kernels, _ctd_bgc_cast],
             endtime=fieldset_endtime,
             dt=DT,
             verbose_progress=self.verbose_progress,

@@ -160,7 +160,7 @@ class DrifterInstrument(Instrument):
         endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
         # build kernel list from active sensors only
-        sample_kernels = [
+        sampling_kernels = [
             _DRIFTER_SENSOR_KERNELS[sc.sensor_type]
             for sc in drifter_config.sensors
             if sc.enabled and sc.sensor_type in _DRIFTER_SENSOR_KERNELS
@@ -168,7 +168,7 @@ class DrifterInstrument(Instrument):
 
         # execute simulation
         drifter_particleset.execute(
-            [AdvectionRK4, *sample_kernels, _check_lifetime],
+            [AdvectionRK4, *sampling_kernels, _check_lifetime],
             endtime=endtime,
             dt=DT,
             output_file=out_file,
