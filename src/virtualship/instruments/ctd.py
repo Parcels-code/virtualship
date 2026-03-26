@@ -9,9 +9,12 @@ from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import (
     InstrumentType,
     SensorType,
-    build_particle_class_from_sensors,
 )
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
