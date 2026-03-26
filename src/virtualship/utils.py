@@ -17,7 +17,7 @@ import numpy as np
 import pyproj
 import xarray as xr
 
-from parcels import FieldSet, JITParticle, Variable
+from parcels import FieldSet, Variable
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.instruments.types import SensorType
 
@@ -740,15 +740,16 @@ def _make_hash(s: str, length: int) -> str:
 def build_particle_class_from_sensors(
     sensors: list[SensorConfig],
     fixed_variables: list,
+    particle_class: type,
 ) -> type:
-    """Build a JITParticle class from fixed variables and active sensors. ScipyParticle classes are built in instrument sub-classes where used."""
+    """Build a Particle class (JITParticle or ScipyParticle) from fixed variables and active sensors."""
     sensor_variables = [
         Variable(var_name, dtype=np.float32, initial=np.nan)
         for sc in sensors
         if sc.enabled
         for var_name in sc.meta.particle_vars
     ]
-    return JITParticle.add_variables(fixed_variables + sensor_variables)
+    return particle_class.add_variables(fixed_variables + sensor_variables)
 
 
 # =====================================================
