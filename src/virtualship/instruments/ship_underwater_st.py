@@ -2,11 +2,15 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
 
+from parcels import ParticleSet, ScipyParticle
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import InstrumentType
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.instruments.types import InstrumentType, SensorType
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 # =====================================================
 # SECTION: Dataclass
@@ -21,15 +25,12 @@ class Underwater_ST:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: fixed/mechanical Particle Variables (non-sampling)
 # =====================================================
 
-_ShipSTParticle = ScipyParticle.add_variables(
-    [
-        Variable("S", dtype=np.float32, initial=np.nan),
-        Variable("T", dtype=np.float32, initial=np.nan),
-    ]
-)
+# Underwater ST has no fixed/mechanical variables, only sensor variables.
+_ST_FIXED_VARIABLES: list = []
+
 
 # =====================================================
 # SECTION: Kernels
@@ -46,6 +47,12 @@ def _sample_temperature(particle, fieldset, time):
     particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
+_ST_SENSOR_KERNELS: dict[SensorType, callable] = {
+    SensorType.TEMPERATURE: _sample_temperature,
+    SensorType.SALINITY: _sample_salinity,
+}
+
+
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -57,7 +64,9 @@ class Underwater_STInstrument(Instrument):
 
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
-        variables = {"S": "so", "T": "thetao"}
+        variables = (
+            expedition.instruments_config.ship_underwater_st_config.active_variables()
+        )
         spacetime_buffer_size = {
             "latlon": 0.25,  # [degrees]
             "time": 0.0,  # [days]
@@ -88,6 +97,12 @@ class Underwater_STInstrument(Instrument):
         # add dummy U
         add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
+        # build dynamic particle class from the active sensors
+        st_config = self.expedition.instruments_config.ship_underwater_st_config
+        _ShipSTParticle = build_particle_class_from_sensors(
+            st_config.sensors, _ST_FIXED_VARIABLES, ScipyParticle
+        )
+
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
             pclass=_ShipSTParticle,
@@ -99,6 +114,13 @@ class Underwater_STInstrument(Instrument):
 
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
+        # build kernel list from active sensors only
+        sample_kernels = [
+            _ST_SENSOR_KERNELS[sc.sensor_type]
+            for sc in st_config.sensors
+            if sc.enabled and sc.sensor_type in _ST_SENSOR_KERNELS
+        ]
+
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
@@ -107,7 +129,7 @@ class Underwater_STInstrument(Instrument):
             )
 
             particleset.execute(
-                [_sample_salinity, _sample_temperature],
+                sample_kernels,
                 dt=1,
                 runtime=1,
                 verbose_progress=self.verbose_progress,
