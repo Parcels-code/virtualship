@@ -5,6 +5,7 @@ import hashlib
 import os
 import re
 import warnings
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
@@ -16,7 +17,7 @@ import numpy as np
 import pyproj
 import xarray as xr
 
-from parcels import FieldSet
+from parcels import FieldSet, JITParticle, Variable
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.instruments.types import SensorType
 
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     )
     from virtualship.models import Expedition, InstrumentsConfig, Location
     from virtualship.models.checkpoint import Checkpoint
+    from virtualship.models.expedition import SensorConfig
 
 import pandas as pd
 import yaml
@@ -52,6 +54,86 @@ REPORT = "post_expedition_report.txt"
 
 EXPEDITION_ORIGINAL = "expedition_original.yaml"
 EXPEDITION_LATEST = "expedition_latest.yaml"
+
+# =====================================================
+# SECTION: sensor and variable metadata and registries
+# =====================================================
+
+
+@dataclass(frozen=True)
+class _SensorMeta:
+    fs_key: str  # map to Parcels fieldset variables
+    copernicus_var: str  # map to Copernicus Marine Service variable names
+    category: Literal[
+        "phys", "bgc"
+    ]  # physical vs. biogeochemical variable, used for product ID selection logic
+    particle_var: str  # map to variable name in the Parcels Particle class
+
+
+# the copernicus_var field below is the bridge between this registry the Copernicus product-ID selection logic (PRODUCT_IDS, BGC_ANALYSIS_IDS, MONTHLY_BGC_REANALYSIS_IDS, etc.)
+SENSOR_REGISTRY: dict[SensorType, _SensorMeta] = {
+    SensorType.TEMPERATURE: _SensorMeta(
+        fs_key="T",
+        copernicus_var="thetao",
+        category="phys",
+        particle_var="temperature",
+    ),
+    SensorType.SALINITY: _SensorMeta(
+        fs_key="S",
+        copernicus_var="so",
+        category="phys",
+        particle_var="salinity",
+    ),
+    SensorType.VELOCITY: _SensorMeta(
+        fs_key="UV",
+        copernicus_var="uo",  # primary; active_variables() in ADCPConfig expands to both uo and vo
+        category="phys",
+        particle_var="U",  # primary; adcp.py adds V explicitly for VELOCITY
+    ),
+    SensorType.OXYGEN: _SensorMeta(
+        fs_key="o2",
+        copernicus_var="o2",
+        category="bgc",
+        particle_var="o2",
+    ),
+    SensorType.CHLOROPHYLL: _SensorMeta(
+        fs_key="chl",
+        copernicus_var="chl",
+        category="bgc",
+        particle_var="chl",
+    ),
+    SensorType.NITRATE: _SensorMeta(
+        fs_key="no3",
+        copernicus_var="no3",
+        category="bgc",
+        particle_var="no3",
+    ),
+    SensorType.PHOSPHATE: _SensorMeta(
+        fs_key="po4",
+        copernicus_var="po4",
+        category="bgc",
+        particle_var="po4",
+    ),
+    SensorType.PH: _SensorMeta(
+        fs_key="ph",
+        copernicus_var="ph",
+        category="bgc",
+        particle_var="ph",
+    ),
+    SensorType.PHYTOPLANKTON: _SensorMeta(
+        fs_key="phyc",
+        copernicus_var="phyc",
+        category="bgc",
+        particle_var="phyc",
+    ),
+    SensorType.PRIMARY_PRODUCTION: _SensorMeta(
+        fs_key="nppv",
+        copernicus_var="nppv",
+        category="bgc",
+        particle_var="nppv",
+    ),
+}
+
 
 # =====================================================
 # SECTION: Copernicus Marine Service constants
@@ -130,52 +212,6 @@ def register_instrument_config(instrument_type):
         return cls
 
     return decorator
-
-
-# =====================================================
-# SECTION: optional sensors and variable mapping (e.g. for CTD)
-# TODO: and soon also Argo floats...
-# =====================================================
-
-
-SENSOR_DEFS: dict[SensorType, dict] = {
-    SensorType.TEMPERATURE: {
-        "fs_key": "T",
-        "copernicus_var": "thetao",
-    },
-    SensorType.SALINITY: {
-        "fs_key": "S",
-        "copernicus_var": "so",
-    },
-    SensorType.OXYGEN: {
-        "fs_key": "o2",
-        "copernicus_var": "o2",
-    },
-    SensorType.CHLOROPHYLL: {
-        "fs_key": "chl",
-        "copernicus_var": "chl",
-    },
-    SensorType.NITRATE: {
-        "fs_key": "no3",
-        "copernicus_var": "no3",
-    },
-    SensorType.PHOSPHATE: {
-        "fs_key": "po4",
-        "copernicus_var": "po4",
-    },
-    SensorType.PH: {
-        "fs_key": "ph",
-        "copernicus_var": "ph",
-    },
-    SensorType.PHYTOPLANKTON: {
-        "fs_key": "phyc",
-        "copernicus_var": "phyc",
-    },
-    SensorType.PRIMARY_PRODUCTION: {
-        "fs_key": "nppv",
-        "copernicus_var": "nppv",
-    },
-}
 
 
 # =====================================================
@@ -699,6 +735,19 @@ def _make_hash(s: str, length: int) -> str:
     assert length % 2 == 0, "Length must be even."
     half_length = length // 2
     return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+
+def build_particle_class_from_sensors(
+    sensors: list[SensorConfig],
+    fixed_variables: list,
+) -> type:
+    """Build a JITParticle class from fixed variables and active sensors. ScipyParticle classes are built in instrument sub-classes where used."""
+    sensor_variables = [
+        Variable(sc.meta.particle_var, dtype=np.float32, initial=np.nan)
+        for sc in sensors
+        if sc.enabled
+    ]
+    return JITParticle.add_variables(fixed_variables + sensor_variables)
 
 
 # =====================================================
