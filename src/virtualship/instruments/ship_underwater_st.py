@@ -39,12 +39,12 @@ _ST_FIXED_VARIABLES: list = []
 
 # define function sampling Salinity
 def _sample_salinity(particle, fieldset, time):
-    particle.S = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+    particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
 
 
 # define function sampling Temperature
 def _sample_temperature(particle, fieldset, time):
-    particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
 _ST_SENSOR_KERNELS: dict[SensorType, callable] = {
