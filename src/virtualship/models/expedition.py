@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pydantic
@@ -10,12 +11,24 @@ import pyproj
 import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.instruments.types import InstrumentType
+from virtualship.instruments.types import (
+    ADCP_SUPPORTED_SENSORS,
+    ARGO_FLOAT_SUPPORTED_SENSORS,
+    CTD_BGC_SUPPORTED_SENSORS,
+    CTD_SUPPORTED_SENSORS,
+    DRIFTER_SUPPORTED_SENSORS,
+    UNDERWATER_ST_SUPPORTED_SENSORS,
+    XBT_SUPPORTED_SENSORS,
+    InstrumentType,
+    SensorType,
+)
 from virtualship.utils import (
+    SENSOR_REGISTRY,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
     _get_waypoint_latlons,
+    _SensorMeta,
     _validate_numeric_to_timedelta,
     register_instrument_config,
 )
@@ -208,6 +221,36 @@ class Waypoint(pydantic.BaseModel):
         return instrument.value if instrument else None
 
 
+##
+
+
+def _serialize_sensor_list(sensors: list[SensorConfig]) -> list[str]:
+    """Serialise enabled sensors to a compact list of sensor-type name strings."""
+    return [sc.sensor_type.value for sc in sensors if sc.enabled]
+
+
+def _check_sensor_compatibility(
+    sensors: list[SensorConfig],
+    supported: frozenset[SensorType],
+    instrument_name: str,
+) -> list[SensorConfig]:
+    """Raise ``ValueError`` if any sensor in `sensors` is not in `supported`. Used as a Pydantic field_validator for each instrument config class."""
+    unsupported = {sc.sensor_type for sc in sensors} - supported
+    if unsupported:
+        names = ", ".join(sorted(s.value for s in unsupported))
+        valid = ", ".join(sorted(s.value for s in supported))
+        raise ValueError(
+            f"{instrument_name} does not support sensor(s): {names}. "
+            f"Supported sensors: {valid}."
+        )
+    return sensors
+
+
+def build_variables_from_sensors(sensors: list[SensorConfig]) -> dict[str, str]:
+    """Build variables dict (FieldSet key → Copernicus-variable)."""
+    return {sc.fs_key: sc.copernicus_var for sc in sensors if sc.enabled}
+
+
 @register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(pydantic.BaseModel):
     """Configuration for argos floats."""
@@ -230,6 +273,16 @@ class ArgoFloatConfig(pydantic.BaseModel):
         gt=timedelta(),
     )
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+        description=(
+            "Sensors fitted to the Argo float. Supported: TEMPERATURE, SALINITY. "
+        ),
+    )
+
     @pydantic.field_serializer("lifetime")
     def _serialize_lifetime(self, value: timedelta, _info):
         return value.total_seconds() / 86400.0  # [days]
@@ -246,7 +299,22 @@ class ArgoFloatConfig(pydantic.BaseModel):
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
 
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(
+            value, ARGO_FLOAT_SUPPORTED_SENSORS, "ArgoFloat"
+        )
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
 
 
 @register_instrument_config(InstrumentType.ADCP)
@@ -261,6 +329,14 @@ class ADCPConfig(pydantic.BaseModel):
         gt=timedelta(),
     )
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [SensorConfig(sensor_type=SensorType.VELOCITY)],
+        description=(
+            "Sensors fitted to the ADCP. "
+            "Supported: VELOCITY (samples both U and V components in one go)."
+        ),
+    )
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     @pydantic.field_serializer("period")
@@ -270,6 +346,28 @@ class ADCPConfig(pydantic.BaseModel):
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
+
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(value, ADCP_SUPPORTED_SENSORS, "ADCP")
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """
+        FieldSet-key → Copernicus-variable mapping for enabled sensors.
+
+        VELOCITY is a special case: one sensor provides two FieldSet variables (U and V).
+        """
+        variables = {}
+        for sc in self.sensors:
+            if sc.enabled and sc.sensor_type == SensorType.VELOCITY:
+                variables["U"] = "uo"
+                variables["V"] = "vo"
+        return variables
 
 
 @register_instrument_config(InstrumentType.CTD)
@@ -284,6 +382,14 @@ class CTDConfig(pydantic.BaseModel):
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+        description=("Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY. "),
+    )
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     @pydantic.field_serializer("stationkeeping_time")
@@ -293,6 +399,19 @@ class CTDConfig(pydantic.BaseModel):
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
+
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(value, CTD_SUPPORTED_SENSORS, "CTD")
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
 
 
 @register_instrument_config(InstrumentType.CTD_BGC)
@@ -307,6 +426,22 @@ class CTD_BGCConfig(pydantic.BaseModel):
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [
+            SensorConfig(sensor_type=SensorType.OXYGEN),
+            SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+            SensorConfig(sensor_type=SensorType.NITRATE),
+            SensorConfig(sensor_type=SensorType.PHOSPHATE),
+            SensorConfig(sensor_type=SensorType.PH),
+            SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
+            SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
+        ],
+        description=(
+            "Sensors fitted to the BGC CTD. "
+            "Supported: CHLOROPHYLL, NITRATE, OXYGEN, PH, PHOSPHATE, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
+        ),
+    )
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     @pydantic.field_serializer("stationkeeping_time")
@@ -316,6 +451,19 @@ class CTD_BGCConfig(pydantic.BaseModel):
     @pydantic.field_validator("stationkeeping_time", mode="before")
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
+
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(value, CTD_BGC_SUPPORTED_SENSORS, "CTD_BGC")
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
 
 
 @register_instrument_config(InstrumentType.UNDERWATER_ST)
@@ -328,6 +476,16 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
         gt=timedelta(),
     )
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+        description=(
+            "Sensors fitted to the underway ST. Supported: TEMPERATURE, SALINITY. "
+        ),
+    )
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     @pydantic.field_serializer("period")
@@ -337,6 +495,21 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
     @pydantic.field_validator("period", mode="before")
     def _validate_period(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
+
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(
+            value, UNDERWATER_ST_SUPPORTED_SENSORS, "Underwater ST"
+        )
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
 
 
 @register_instrument_config(InstrumentType.DRIFTER)
@@ -355,6 +528,11 @@ class DrifterConfig(pydantic.BaseModel):
         gt=timedelta(),
     )
 
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+        description=("Sensors fitted to the drifter. Supported: TEMPERATURE. "),
+    )
+
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
     @pydantic.field_serializer("lifetime")
@@ -373,6 +551,19 @@ class DrifterConfig(pydantic.BaseModel):
     def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
 
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(value, DRIFTER_SUPPORTED_SENSORS, "Drifter")
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
+
 
 @register_instrument_config(InstrumentType.XBT)
 class XBTConfig(pydantic.BaseModel):
@@ -382,6 +573,24 @@ class XBTConfig(pydantic.BaseModel):
     max_depth_meter: float = pydantic.Field(le=0.0)
     fall_speed_meter_per_second: float = pydantic.Field(gt=0.0)
     deceleration_coefficient: float = pydantic.Field(gt=0.0)
+
+    sensors: list[SensorConfig] = pydantic.Field(
+        default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+        description=("Sensors fitted to the XBT. Supported: TEMPERATURE. "),
+    )
+
+    @pydantic.field_validator("sensors", mode="after")
+    @classmethod
+    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
+        return _check_sensor_compatibility(value, XBT_SUPPORTED_SENSORS, "XBT")
+
+    @pydantic.field_serializer("sensors")
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return _serialize_sensor_list(value)
+
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return build_variables_from_sensors(self.sensors)
 
 
 class InstrumentsConfig(pydantic.BaseModel):
@@ -473,3 +682,38 @@ class InstrumentsConfig(pydantic.BaseModel):
                 raise InstrumentsConfigError(
                     f"Expedition includes instrument '{inst_type.value}', but instruments_config does not provide configuration for it."
                 )
+
+
+class SensorConfig(pydantic.BaseModel):
+    """Configuration for a single sensor fitted to an instrument."""
+
+    sensor_type: SensorType
+    enabled: bool = True
+
+    @pydantic.field_validator("sensor_type", mode="before")
+    @classmethod
+    def _take_sensor_type(cls, value: str | SensorType) -> SensorType:
+        """Accept a sensor-type string or SensorType class."""
+        if isinstance(value, SensorType):
+            return value
+        return SensorType(value)
+
+    @property
+    def meta(self) -> _SensorMeta:
+        """Metadata for this sensor."""
+        return SENSOR_REGISTRY[self.sensor_type]
+
+    @property
+    def fs_key(self) -> str:
+        """FieldSet key (e.g. T, o2)."""
+        return self.meta.fs_key
+
+    @property
+    def copernicus_var(self) -> str:
+        """Copernicus Marine variable name (e.g. thetao, o2)."""
+        return self.meta.copernicus_var
+
+    @property
+    def category(self) -> Literal["phys", "bgc"]:
+        """Physical (phys) or biogeochemical (bgc)."""
+        return self.meta.category
