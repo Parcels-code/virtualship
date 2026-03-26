@@ -9,7 +9,7 @@ from virtualship.instruments.types import (
     InstrumentType,
     SensorType,
 )
-from virtualship.utils import register_instrument
+from virtualship.utils import build_particle_class_from_sensors, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -97,14 +97,8 @@ class ADCPInstrument(Instrument):
 
         # build dynamic particle class from the active sensors
         adcp_config = self.expedition.instruments_config.adcp_config
-        sensor_variables = [
-            var
-            for sc in adcp_config.sensors
-            if sc.enabled
-            for var in sc.particle_variables()
-        ]
-        _ADCPParticle = ScipyParticle.add_variables(
-            _ADCP_FIXED_VARIABLES + sensor_variables
+        _ADCPParticle = build_particle_class_from_sensors(
+            adcp_config.sensors, _ADCP_FIXED_VARIABLES, ScipyParticle
         )
 
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
