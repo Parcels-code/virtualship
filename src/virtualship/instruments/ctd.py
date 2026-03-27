@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
-from parcels import ParticleSet, Variable
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -165,7 +165,7 @@ class CTDInstrument(Instrument):
         # build dynamic particle class from the active sensors
         ctd_config = self.expedition.instruments_config.ctd_config
         _CTDParticle = build_particle_class_from_sensors(
-            ctd_config.sensors, _CTD_FIXED_VARIABLES
+            ctd_config.sensors, _CTD_FIXED_VARIABLES, JITParticle
         )
 
         # define parcel particles
