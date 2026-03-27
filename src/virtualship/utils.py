@@ -569,7 +569,7 @@ def _find_files_in_timerange(
     return [fname for _, fname in files_with_dates]
 
 
-def _random_noise(scale: float = 0.01, limit: float = 0.03) -> float:
+def _random_noise(scale: float = 0.05, limit: float = 0.1) -> float:
     """Generate a small random noise value for drifter seeding locations."""
     value = np.random.normal(loc=0.0, scale=scale)
     return np.clip(value, -limit, limit)  # ensure noise is within limits
@@ -619,9 +619,9 @@ def _calc_wp_stationkeeping_time(
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
     from virtualship.instruments.types import InstrumentType  # avoid circular imports
 
-    assert isinstance(wp_instrument_types, list), (
-        "waypoint instruments must be provided as a list, even if empty."
-    )
+    # to empty list if wp instruments set to 'null'
+    if not wp_instrument_types:
+        wp_instrument_types = []
 
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
     both_ctd_and_bgc = (

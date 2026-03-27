@@ -181,8 +181,26 @@ class ProblemSimulator:
                 else:
                     if available_idxs:
                         wp_select = random.choice(available_idxs)
+
+                        # fmt: off
+                        # check waypoint actually deploys the instrument associated with the problem...if not, replace it with a general (non-instrument related) problem
+                        # rather than a different waypoint, because it's possible no applicable waypoint is still available
+                        wp_instruments = self.expedition.schedule.waypoints[wp_select].instrument
+                        if isinstance(problem, InstrumentProblem) and problem.instrument_type not in wp_instruments:
+                            available_general = [p for p in GENERAL_PROBLEMS if not p.pre_departure and p not in selected_problems]
+
+                            if not available_general:
+                                unassigned_problems.append(problem)
+                                continue
+
+                            replacement = random.choice(available_general)
+                            problem_idx = selected_problems.index(problem)
+                            selected_problems[problem_idx] = replacement
+                        # fmt: on
+
                         waypoint_idxs.append(wp_select)
                         available_idxs.remove(wp_select)  # each waypoint only used once
+
                     else:
                         unassigned_problems.append(
                             problem

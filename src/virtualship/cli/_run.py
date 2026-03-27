@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -83,7 +84,8 @@ def _run(
     expedition = _get_expedition(expedition_dir)
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
-    expedition_id = _unique_id(expedition, expedition_dir)
+    cache_dir = expedition_dir.joinpath(CACHE)
+    expedition_id = _unique_id(expedition, cache_dir)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
@@ -130,9 +132,12 @@ def _run(
         return
 
     # delete and create results directory
-    if os.path.exists(expedition_dir.joinpath(RESULTS)):
-        shutil.rmtree(expedition_dir.joinpath(RESULTS))
-    os.makedirs(expedition_dir.joinpath(RESULTS))
+    results_dir = expedition_dir.joinpath(RESULTS)
+    _warn_overwrite_results_dir(results_dir)
+
+    if os.path.exists(results_dir):
+        shutil.rmtree(results_dir)
+    os.makedirs(results_dir)
 
     print("\n----- EXPEDITION SUMMARY ------")
 
@@ -234,6 +239,10 @@ def _run(
     if os.path.exists(expedition_dir.joinpath(CHECKPOINT)):
         os.remove(expedition_dir.joinpath(CHECKPOINT))
 
+    # delete cache dir if when --difficulty-level is 'easy' (no useful information to cache in this case, and can interfere with re-runs)
+    if difficulty_level == "easy" and os.path.exists(cache_dir):
+        shutil.rmtree(cache_dir)
+
     print("\n------------- END -------------\n")
 
     # end timing
@@ -242,7 +251,7 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
+def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
     """
     Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
@@ -252,7 +261,6 @@ def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
     new_id = datetime.now().strftime("%Y%m%d%H%M%S")
     previous_id = None
 
-    cache_dir = expedition_dir.joinpath(CACHE)
     if not cache_dir.exists():
         cache_dir.mkdir()
     id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
@@ -278,6 +286,21 @@ def _unique_id(expedition: Expedition, expedition_dir: Path) -> str:
         id_path.write_text(new_id)
 
     return new_id
+
+
+def _warn_overwrite_results_dir(results_dir: Path) -> None:
+    if os.path.exists(results_dir):
+        print(
+            f"\nWARNING: The '{results_dir}' directory already exists and will be overwritten. If you want to keep the previous results, please move or rename the '{results_dir}' directory before re-running the expedition.\n"
+        )
+        decision = input(
+            "Do you want to continue the expedition run and thereby overwrite the existing results? (y/n): "
+        )
+        if decision.lower() != "y":
+            print("Expedition run cancelled by user.")
+            sys.exit(0)
+        if decision.lower() == "y":
+            print("Continuing with expedition run and overwriting existing results...")
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:

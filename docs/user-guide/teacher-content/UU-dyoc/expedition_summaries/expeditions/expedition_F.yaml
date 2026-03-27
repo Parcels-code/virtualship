@@ -1,0 +1,474 @@
+instruments_config:
+  adcp_config:
+    max_depth_meter: -1000.0
+    num_bins: 40
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 20.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config: null
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 29.119898
+        longitude: 136.566231
+      time: 2023-06-01 00:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 29.823228
+        longitude: 136.09614
+      time: 2023-06-01 07:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 30.527067
+        longitude: 135.635015
+      time: 2023-06-01 14:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 31.1903
+        longitude: 135.154151
+      time: 2023-06-01 21:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 31.937371
+        longitude: 134.659737
+      time: 2023-06-02 04:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+
+      location:
+        latitude: 32.704861
+        longitude: 134.234166
+      time: 2023-06-02 11:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.97788
+        longitude: 135.135192
+      time: 2023-06-02 18:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.274243
+        longitude: 135.593352
+      time: 2023-06-03 01:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.522086
+        longitude: 136.048355
+      time: 2023-06-03 08:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.827761
+        longitude: 136.486364
+      time: 2023-06-03 15:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.158268
+        longitude: 136.91866
+      time: 2023-06-03 22:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 29.475422
+        longitude: 137.378066
+      time: 2023-06-04 05:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 29.697621
+        longitude: 138.05859
+      time: 2023-06-04 12:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.453777
+        longitude: 137.654615
+      time: 2023-06-04 19:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.179323
+        longitude: 137.350042
+      time: 2023-06-05 02:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.892171
+        longitude: 136.931854
+      time: 2023-06-05 09:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.628096
+        longitude: 136.491061
+      time: 2023-06-05 16:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.358033
+        longitude: 136.072872
+      time: 2023-06-05 23:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.640781
+        longitude: 136.864039
+      time: 2023-06-06 06:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.884739
+        longitude: 137.304833
+      time: 2023-06-06 13:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.198737
+        longitude: 137.779533
+      time: 2023-06-06 20:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.45933
+        longitude: 138.197721
+      time: 2023-06-07 03:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.723756
+        longitude: 138.604607
+      time: 2023-06-07 10:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.06873
+        longitude: 138.880124
+      time: 2023-06-07 17:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.497802
+        longitude: 139.794824
+      time: 2023-06-08 00:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.10803
+        longitude: 139.393706
+      time: 2023-06-08 07:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.748115
+        longitude: 139.000191
+      time: 2023-06-08 14:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.542393
+        longitude: 138.5707
+      time: 2023-06-08 21:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.244675
+        longitude: 138.118605
+      time: 2023-06-09 04:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.875698
+        longitude: 137.734323
+      time: 2023-06-09 11:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 34.203498
+        longitude: 138.491583
+      time: 2023-06-09 18:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.499522
+        longitude: 138.954981
+      time: 2023-06-10 01:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.780273
+        longitude: 139.520101
+      time: 2023-06-10 08:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.036001
+        longitude: 140.040011
+      time: 2023-06-10 15:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.488249
+        longitude: 140.401687
+      time: 2023-06-10 22:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 30.905517
+        longitude: 140.767723
+      time: 2023-06-11 05:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.368219
+        longitude: 141.761213
+      time: 2023-06-11 12:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.947758
+        longitude: 141.412991
+      time: 2023-06-11 19:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.602669
+        longitude: 141.074411
+      time: 2023-06-12 02:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.221614
+        longitude: 140.614722
+      time: 2023-06-12 09:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.891214
+        longitude: 140.291969
+      time: 2023-06-12 16:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 34.650665
+        longitude: 139.973963
+      time: 2023-06-12 23:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 35.015254
+        longitude: 141.092947
+      time: 2023-06-13 07:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 34.257791
+        longitude: 141.389275
+      time: 2023-06-13 14:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 33.492671
+        longitude: 141.662508
+      time: 2023-06-13 21:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.895449
+        longitude: 142.014687
+      time: 2023-06-14 04:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 32.25761
+        longitude: 142.379596
+      time: 2023-06-14 11:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+
+      location:
+        latitude: 31.733294
+        longitude: 142.730329
+      time: 2023-06-14 18:00:00
+ship_config:
+  ship_speed_knots: 10.0

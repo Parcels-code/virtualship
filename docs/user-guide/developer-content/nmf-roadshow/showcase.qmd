@@ -1,0 +1,151 @@
+---
+title: "VirtualShip"
+subtitle: "NMF Roadshow | 2026"
+format:
+    revealjs:
+        self-contained: true
+        scrollable: true
+        slide-number: true
+        theme: default
+        logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+        title-slide-attributes:
+            data-background-video: "./media/ship_still.mp4"
+            data-background-video-loop: true
+            data-background-video-muted: true
+            data-background-opacity: "0.7"
+        controls: true
+        include-in-header:
+            - text: |
+                <style>
+                    #title-slide .title {
+                    font-size: 1.4em;
+                    font-weight: 600;
+                    }
+                </style>
+                <style>
+                    #title-slide .subtitle {
+                    font-size: 1.0em;
+                    }
+                </style>
+
+---
+
+## ![](https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png){height="145"} {.smaller}
+- Open-source **VirtualShip** software provides scientists with an authentic experience of sea-going research anywhere in the global ocean.
+- Simulates measurements in a _digital_ ocean as if they are coming from real-life oceanographic instruments
+    - Including CTDs, ADCPs, Drifters, Argo floats, and more.
+
+::: {layout-ncol=3 layout-valign="top"}
+
+![CTD (NIOZ)](https://www.nioz.nl/sites/default/files/styles/ratio_16_9_md/public/2025-08/foto%2010%20P1080059_0.JPG?h=173c0f7e&itok=87l7yzVK)
+
+![ADCP (Nortek)](https://www.nortekgroup.com/assets/images/VM-illustration-vessel.png){height="200px"}
+
+![Argo (NOAA)](https://www.aoml.noaa.gov/wp-content/uploads/2020/02/Untitled-2.jpg)
+
+:::
+
+
+## ![](https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png) {.smaller}
+
+- VirtualShip is a powerful tool for:
+    - **Research** (testing new instrument designs, sampling strategies, OSSEs, etc.)
+
+:::{.callout-note}
+Today, I am talking about the VirtualShip *software*. We also run the **VirtualShip Classroom**, which incorporates educational resources and VR to build an authentic learning experience for students (at UU and soon beyond).
+:::
+
+
+## VirtualShip internals {.smaller}
+
+
+- <span style="vertical-align: middle;">
+    ![](https://parcels-code.org/parcels-assets/logo-horo.svg){width=250}
+    </span>
+    - Lagrangian trajectory framework
+    - Instruments have behaviours via customisable, extensible `kernels`
+    - VirtualShip = `kernel`s + configuration + digital ocean
+
+    <!-- <br> -->
+
+- <span style="vertical-align: middle;">
+    ![](https://storageprdv2inwink.blob.core.windows.net/cu-66c07085-b35f-4726-c6ad-08dbeb74311d-public/a40ee7d5-2d4d-434e-a976-08dbf0c0331f/assets/pictures/PoissonCopernicus_horizontalBlue.png){width=250} </span>
+    - The digital ocean
+    - Data ingestion is by default 'streamed' via `copernicusmarine` Python toolbox (on-the-fly)
+    - With an option to pre-download to ingest (any gridded forcing data) from disk
+
+## An example expedition 🚢
+
+::: {layout-ncol=1 style="display: flex; justify-content: center;"}
+
+![](media/figure1.png)
+
+:::
+
+## An example expedition 🚢
+
+Argo Float deployment
+
+<iframe src="media/argo_plot.html" data-external="1" width="100%" height="800px" frameborder="0"></iframe>
+
+## VirtualShip applications 🚢 {.smaller}
+
+- For researchers:
+    - Observing System Simulation Experiments (OSSEs)
+        - VirtualShip can help mesh diverse deployments in a digital ocean before spending thousands/millions of € on real-life deployments.
+
+- For complementing real-life expeditions:
+    - Plan your expedition in a digital ocean before you go to sea.
+    - Real-time adaptive strategies where sampling plans on real-life expedtions are updated based on incoming data and/or forecasts.
+
+- For educators:
+    - VirtualShip Classroom (software + open educational resources + VR / 360° videos)
+
+
+## Get in touch! {.smaller}
+
+- If you're interested in using VirtualShip for research, please don't hesitate to get in touch.
+
+::: {.columns}
+
+::: {.column width="50%"}
+- By **email**:
+    - Jamie Atkins: [j.r.c.atkins@uu.nl](mailto:j.r.c.atkins@uu.nl)
+    - Emma Daniels: [e.e.daniels1@uu.nl](mailto:e.e.daniels1@uu.nl)
+    - Erik van Sebille: [e.vansebille@uu.nl](mailto:e.vansebille@uu.nl)
+:::
+
+::: {.column width="25%"}
+
+- Via **GitHub**
+:::
+
+::: {.column width="25%"}
+![](media/qrcode_github.png){height=170 fig-align="left"}
+:::
+
+:::
+
+::: {.callout-note appearance="simple"}
+
+::: {.columns}
+
+::: {.column width="62%"}
+
+**VirtualShip Classroom**
+
+If you're interested specifically in its application in **education**, please sign up to one of our upcoming VirtualShip Classroom inspiration showcases (via the QR code below):
+
+- 14:00-15:00 2nd April 2026
+- 14:00-15:00 7th May 2026
+:::
+
+::: {.column width="30%"}
+![](media/qrcode_form.png){height=200px fig-align="right"}
+:::
+
+:::
+
+:::
+
+# Now, a live software demo...

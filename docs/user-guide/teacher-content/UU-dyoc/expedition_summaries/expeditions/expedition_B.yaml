@@ -1,0 +1,248 @@
+instruments_config:
+  adcp_config:
+    max_depth_meter: -1000.0
+    num_bins: 40
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 20.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -1500.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config: null
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -34.6
+        longitude: 151.8786
+      time: 2025-05-12 10:28:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -35.401874
+        longitude: 151.985446
+      time: 2025-05-12 16:44:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -35.8
+        longitude: 152.0388
+      time: 2025-05-12 20:33:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: -36.2
+        longitude: 152.1
+      time: 2025-05-13 00:23:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.639071
+        longitude: 152.121189
+      time: 2025-05-13 10:26:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -37.070841
+        longitude: 152.140293
+      time: 2025-05-13 14:27:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -38.0
+        longitude: 152.2
+      time: 2025-05-13 21:27:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.1
+        longitude: 153.799
+      time: 2025-05-14 12:36:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.125377
+        longitude: 153.088885
+      time: 2025-05-14 17:28:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.157839
+        longitude: 152.579725
+      time: 2025-05-14 21:22:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.211911
+        longitude: 151.561406
+      time: 2025-05-15 03:44:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.281153
+        longitude: 150.882628
+      time: 2025-05-15 08:28:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -36.3
+        longitude: 150.2
+      time: 2025-05-15 13:11:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -39.8
+        longitude: 151.5
+      time: 2025-05-16 12:30:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.340023
+        longitude: 151.436861
+      time: 2025-05-16 17:10:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.611506
+        longitude: 151.423113
+      time: 2025-05-16 20:13:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+        - DRIFTER
+      location:
+        latitude: -40.9
+        longitude: 151.4007
+      time: 2025-05-16 23:22:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -41.23209
+        longitude: 151.473811
+      time: 2025-05-17 02:48:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -41.525716
+        longitude: 151.530764
+      time: 2025-05-17 06:00:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -42.25
+        longitude: 151.7
+      time: 2025-05-17 11:50:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.8
+        longitude: 149.7
+      time: 2025-05-18 01:46:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.7904
+        longitude: 150.373
+      time: 2025-05-18 06:15:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.781752
+        longitude: 150.863898
+      time: 2025-05-18 09:54:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.781752
+        longitude: 151.847854
+      time: 2025-05-18 15:47:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.781
+        longitude: 152.3603
+      time: 2025-05-18 19:32:00
+    - instrument:
+        - CTD
+        - CTD_BGC
+      location:
+        latitude: -40.8
+        longitude: 153.1
+      time: 2025-05-19 00:19:00
+ship_config:
+  ship_speed_knots: 10.0

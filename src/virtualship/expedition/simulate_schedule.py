@@ -116,7 +116,7 @@ class _ScheduleSimulator:
         self._next_ship_underwater_st_time = self._time
 
     def simulate(self) -> ScheduleOk | ScheduleProblem:
-        # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here...
+        # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here (i.e. #236)...
 
         for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
             # sail towards waypoint
@@ -140,9 +140,11 @@ class _ScheduleSimulator:
 
             # wait while measurements are being done
             self._progress_time_stationary(time_passed)
+
         return ScheduleOk(self._time, self._measurements_to_simulate)
 
     def _progress_time_traveling_towards(self, location: Location) -> None:
+        """Travel from current location/waypoint to next waypoint, also mark locations and times for underway instrument measurements."""
         time_to_reach, azimuth1, ship_speed_meter_per_second = _calc_sail_time(
             self._location,
             location,
@@ -150,89 +152,103 @@ class _ScheduleSimulator:
             self._projection,
         )
         end_time = self._time + time_to_reach
+        distance_to_move = ship_speed_meter_per_second * time_to_reach.total_seconds()
+
         # note all ADCP measurements
         if self._expedition.instruments_config.adcp_config is not None:
-            location = self._location
-            time = self._time
-            while self._next_adcp_time <= end_time:
-                time_to_sail = self._next_adcp_time - time
-                distance_to_move = (
-                    ship_speed_meter_per_second * time_to_sail.total_seconds()
-                )
-                geodfwd: tuple[float, float, float] = self._projection.fwd(
-                    lons=location.lon,
-                    lats=location.lat,
-                    az=azimuth1,
-                    dist=distance_to_move,
-                )
-                location = Location(latitude=geodfwd[1], longitude=geodfwd[0])
-                time = time + time_to_sail
+            adcp_times, adcp_lons, adcp_lats = self._get_underway_measurements(
+                self._expedition.instruments_config.adcp_config,
+                azimuth1,
+                distance_to_move,
+                time_to_reach,
+            )
 
+            for time, lon, lat in zip(adcp_times, adcp_lons, adcp_lats, strict=False):
+                location = Location(latitude=lat, longitude=lon)
                 self._measurements_to_simulate.adcps.append(
                     Spacetime(location=location, time=time)
                 )
 
-                self._next_adcp_time = (
-                    self._next_adcp_time
-                    + self._expedition.instruments_config.adcp_config.period
-                )
-
         # note all ship underwater ST measurements
         if self._expedition.instruments_config.ship_underwater_st_config is not None:
-            location = self._location
-            time = self._time
-            while self._next_ship_underwater_st_time <= end_time:
-                time_to_sail = self._next_ship_underwater_st_time - time
-                distance_to_move = (
-                    ship_speed_meter_per_second * time_to_sail.total_seconds()
-                )
-                geodfwd: tuple[float, float, float] = self._projection.fwd(
-                    lons=location.lon,
-                    lats=location.lat,
-                    az=azimuth1,
-                    dist=distance_to_move,
-                )
-                location = Location(latitude=geodfwd[1], longitude=geodfwd[0])
-                time = time + time_to_sail
+            st_times, st_lons, st_lats = self._get_underway_measurements(
+                self._expedition.instruments_config.ship_underwater_st_config,
+                azimuth1,
+                distance_to_move,
+                time_to_reach,
+            )
 
+            for time, lon, lat in zip(st_times, st_lons, st_lats, strict=False):
+                location = Location(latitude=lat, longitude=lon)
                 self._measurements_to_simulate.ship_underwater_sts.append(
                     Spacetime(location=location, time=time)
-                )
-
-                self._next_ship_underwater_st_time = (
-                    self._next_ship_underwater_st_time
-                    + self._expedition.instruments_config.ship_underwater_st_config.period
                 )
 
         self._time = end_time
         self._location = location
 
+    def _get_underway_measurements(
+        self,
+        underway_instrument_config,
+        azimuth: float,
+        distance_to_move: float,
+        time_to_reach: timedelta,
+    ):
+        """Get the times and locations of measurements between current location/waypoint and the next waypoint, for underway instruments."""
+        period = underway_instrument_config.period
+        npts = (time_to_reach.total_seconds() / period.total_seconds()) + 1
+        times = [self._time + i * period for i in range(1, int(npts) + 1)]
+
+        geodfwd = self._projection.fwd_intermediate(
+            lon1=self._location.lon,
+            lat1=self._location.lat,
+            azi1=azimuth,
+            npts=npts,
+            del_s=distance_to_move / npts,
+            return_back_azimuth=False,
+        )
+
+        return times, geodfwd.lons, geodfwd.lats
+
     def _progress_time_stationary(self, time_passed: timedelta) -> None:
+        """Make ship stay at waypoint whilst instruments are deployed, also set the underway instrument measurements that are taken during this time whilst stationary."""
         end_time = self._time + time_passed
 
-        # note all ADCP measurements
+        # note all ADCP measurements (stationary at wp)
         if self._expedition.instruments_config.adcp_config is not None:
-            while self._next_adcp_time <= end_time:
+            adcp_times = self._get_underway_stationary_times(
+                self._expedition.instruments_config.adcp_config, time_passed
+            )
+
+            for time in adcp_times:
                 self._measurements_to_simulate.adcps.append(
-                    Spacetime(self._location, self._next_adcp_time)
-                )
-                self._next_adcp_time = (
-                    self._next_adcp_time
-                    + self._expedition.instruments_config.adcp_config.period
+                    Spacetime(location=self._location, time=time)
                 )
 
-        # note all ship underwater ST measurements
+        # note all underwater ST measurements (stationary at wp)
         if self._expedition.instruments_config.ship_underwater_st_config is not None:
-            while self._next_ship_underwater_st_time <= end_time:
+            st_times = self._get_underway_stationary_times(
+                self._expedition.instruments_config.ship_underwater_st_config,
+                time_passed,
+            )
+            for time in st_times:
                 self._measurements_to_simulate.ship_underwater_sts.append(
-                    Spacetime(self._location, self._next_ship_underwater_st_time)
-                )
-                self._next_ship_underwater_st_time = (
-                    self._next_ship_underwater_st_time
-                    + self._expedition.instruments_config.ship_underwater_st_config.period
+                    Spacetime(location=self._location, time=time)
                 )
 
         self._time = end_time
+
+    def _get_underway_stationary_times(
+        self, underway_instrument_config, time_passed: timedelta
+    ):
+        npts = (
+            time_passed.total_seconds()
+            / underway_instrument_config.period.total_seconds()
+        ) + 1
+        return [
+            self._time + i * underway_instrument_config.period
+            for i in range(1, int(npts) + 1)
+        ]
 
     def _make_measurements(self, waypoint: Waypoint) -> timedelta:
         # if there are no instruments, there is no time cost
@@ -268,6 +284,12 @@ class _ScheduleSimulator:
                         drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
+                # TODO: would be good to avoid having to twice make sure that stationkeeping time is factored in; i.e. in schedule validity checks and here (and for CTDs and Drifters)
+                # TODO: makes it easy to forget to update both...
+                # TODO: this is likely to fall under refactoring simulate_schedule.py (i.e. #236)
+                time_costs.append(
+                    self._expedition.instruments_config.argo_float_config.stationkeeping_time
+                )
 
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
@@ -302,6 +324,10 @@ class _ScheduleSimulator:
                         lifetime=self._expedition.instruments_config.drifter_config.lifetime,
                     )
                 )
+                time_costs.append(
+                    self._expedition.instruments_config.drifter_config.stationkeeping_time
+                )
+
             elif instrument is InstrumentType.XBT:
                 self._measurements_to_simulate.xbts.append(
                     XBT(
@@ -315,5 +341,7 @@ class _ScheduleSimulator:
             else:
                 raise NotImplementedError("Instrument type not supported.")
 
-        # measurements are done in parallel, so return time of longest one
+        # measurements are done simultaneously onboard, so return time of longest one
+        # TODO: docs suggest that add individual instrument stationkeeping times are cumulative, which is at odds with measurements being done simultaneously onboard here
+        # TODO: update one or the other?
         return max(time_costs)
