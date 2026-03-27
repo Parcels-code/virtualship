@@ -1,0 +1,420 @@
+instruments_config:
+  adcp_config:
+    max_depth_meter: -1000.0
+    num_bins: 40
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 4.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 1.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 49.0
+  ctd_config:
+    max_depth_meter: -1500.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 49.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config: null
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument: # 1
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 58.602747
+        longitude: -46.490206
+      time: 2012-01-23 17:51:00
+    - instrument: # 2
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 58.535169
+        longitude: -45.793261
+      time: 2012-01-23 21:14:00
+    - instrument: # 3
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 58.55638
+        longitude: -45.057648
+      time: 2012-01-24 00:42:00
+    - instrument: # 4
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 58.695488
+        longitude: -44.218048
+      time: 2012-01-24 04:37:00
+    - instrument: # 5
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 58.860904
+        longitude: -43.517164
+      time: 2012-01-24 08:11:00
+    - instrument: # 6
+        - CTD
+        - ARGO_FLOAT
+      location:
+        latitude: 59.058387
+        longitude: -42.862894
+      time: 2012-01-24 11:42:00
+    - instrument: # 7
+        - CTD
+      location:
+        latitude: 59.384384
+        longitude: -41.93452
+      time: 2012-01-24 16:20:00
+    - instrument: # 8
+        - CTD
+      location:
+        latitude: 59.222109
+        longitude: -41.471989
+      time: 2012-01-24 19:13:00
+    - instrument: # 9
+        - CTD
+      location:
+        latitude: 59.092988
+        longitude: -41.117524
+      time: 2012-01-24 21:43:00
+    - instrument: # 10
+        - CTD
+      location:
+        latitude: 58.982611
+        longitude: -40.669779
+      time: 2012-01-25 00:25:00
+    - instrument: # 11
+        - CTD
+      location:
+        latitude: 59.116891
+        longitude: -39.894569
+      time: 2012-01-25 04:07:00
+    - instrument: # 12
+        - CTD
+      location:
+        latitude: 59.25437
+        longitude: -40.252407
+      time: 2012-01-25 06:40:00
+    - instrument: # 13
+        - CTD
+      location:
+        latitude: 59.391296
+        longitude: -40.648585
+      time: 2012-01-25 09:18:00
+    - instrument: # 14
+        - CTD
+      location:
+        latitude: 59.553586
+        longitude: -41.108662
+      time: 2012-01-25 12:10:00
+    - instrument: # 15
+        - CTD
+      location:
+        latitude: 59.760181
+        longitude: -41.58152
+      time: 2012-01-25 15:14:00
+    - instrument: # 16
+        - CTD
+      location:
+        latitude: 60.035795
+        longitude: -41.210902
+      time: 2012-01-25 18:24:00
+    - instrument: # 17
+        - CTD
+      location:
+        latitude: 59.907887
+        longitude: -40.686925
+      time: 2012-01-25 21:19:00
+    - instrument: # 18
+        - CTD
+      location:
+        latitude: 59.766617
+        longitude: -40.239627
+      time: 2012-01-25 23:55:00
+    - instrument: # 19
+        - CTD
+      location:
+        latitude: 59.624747
+        longitude: -39.80511
+      time: 2012-01-26 02:39:00
+    - instrument: # 20
+        - CTD
+      location:
+        latitude: 59.456306
+        longitude: -39.293913
+      time: 2012-01-26 05:40:00
+    - instrument: # 21
+        - CTD
+      location:
+        latitude: 59.702205
+        longitude: -38.744376
+      time: 2012-01-26 09:04:00
+    - instrument: # 22
+        - CTD
+      location:
+        latitude: 59.914294
+        longitude: -39.332253
+      time: 2012-01-26 12:25:00
+    - instrument: # 23
+        - CTD
+      location:
+        latitude: 60.093192
+        longitude: -39.84345
+      time: 2012-01-26 15:27:00
+    - instrument: # 24
+        - CTD
+      location:
+        latitude: 60.252106
+        longitude: -40.354647
+      time: 2012-01-26 18:25:00
+    - instrument: # 25
+        - CTD
+      location:
+        latitude: 60.403942
+        longitude: -40.840284
+      time: 2012-01-26 21:17:00
+    - instrument: # 26
+        - CTD
+      location:
+        latitude: 60.755487
+        longitude: -40.469666
+      time: 2012-01-27 01:00:00
+    - instrument: # 27
+        - CTD
+      location:
+        latitude: 60.617836
+        longitude: -39.83067
+      time: 2012-01-27 04:13:00
+    - instrument: # 28
+        - CTD
+      location:
+        latitude: 60.485892
+        longitude: -39.242793
+      time: 2012-01-27 07:17:00
+    - instrument: # 29
+        - CTD
+      location:
+        latitude: 60.353409
+        longitude: -38.795496
+      time: 2012-01-27 09:50:00
+    - instrument: # 30
+        - CTD
+      location:
+        latitude: 60.15049
+        longitude: -38.207619
+      time: 2012-01-27 13:08:00
+    - instrument: # 31
+        - CTD
+      location:
+        latitude: 60.460699
+        longitude: -37.591434
+      time: 2012-01-27 17:05:00
+    - instrument: # 32
+        - CTD
+      location:
+        latitude: 60.649172
+        longitude: -38.26877
+      time: 2012-01-27 20:33:00
+    - instrument: # 33
+        - CTD
+      location:
+        latitude: 60.767971
+        longitude: -38.894986
+      time: 2012-01-28 00:00:00
+    - instrument: # 34
+        - CTD
+      location:
+        latitude: 60.942245
+        longitude: -39.597882
+      time: 2012-01-28 03:28:00
+    - instrument: # 35
+        - CTD
+      location:
+        latitude: 61.103221
+        longitude: -40.185759
+      time: 2012-01-28 09:36:00
+    - instrument: # 36
+        - CTD
+      location:
+        latitude: 61.398268
+        longitude: -39.879041
+      time: 2012-01-28 12:45:00
+    - instrument: # 37
+        - CTD
+      location:
+        latitude: 61.303173
+        longitude: -39.315258
+      time: 2012-01-28 15:38:00
+    - instrument: # 38
+        - CTD
+      location:
+        latitude: 61.228111
+        longitude: -38.690718
+      time: 2012-01-28 18:39:00
+    - instrument: # 39
+        - CTD
+      location:
+        latitude: 61.125464
+        longitude: -38.094565
+      time: 2012-01-28 21:39:00
+    - instrument: # 40
+        - CTD
+      location:
+        latitude: 61.015606
+        longitude: -37.498413
+      time: 2012-01-29 00:40:00
+    - instrument: # 41
+        - CTD
+      location:
+        latitude: 60.850103
+        longitude: -36.845484
+      time: 2012-01-29 04:00:00
+    - instrument: # 42
+        - CTD
+      location:
+        latitude: 61.262861
+        longitude: -36.477869
+      time: 2012-01-29 08:52:00
+    - instrument: # 43
+        - CTD
+      location:
+        latitude: 61.414025
+        longitude: -37.038165
+      time: 2012-01-29 11:53:00
+    - instrument: # 44
+        - CTD
+      location:
+        latitude: 61.539439
+        longitude: -37.633479
+      time: 2012-01-29 14:55:00
+    - instrument: # 45
+        - CTD
+      location:
+        latitude: 61.647723
+        longitude: -38.246302
+      time: 2012-01-29 17:57:00
+    - instrument: # 46
+        - CTD
+      location:
+        latitude: 61.788755
+        longitude: -38.946671
+      time: 2012-01-29 21:17:00
+    - instrument: # 47
+        - CTD
+      location:
+        latitude: 61.896168
+        longitude: -39.594513
+      time: 2012-01-30 00:24:00
+    - instrument: # 48
+        - CTD
+      location:
+        latitude: 62.248786
+        longitude: -39.20931
+      time: 2012-01-30 04:07:00
+    - instrument: # 49
+        - CTD
+      location:
+        latitude: 62.175321
+        longitude: -38.543959
+      time: 2012-01-30 07:12:00
+    - instrument: # 50
+        - CTD
+      location:
+        latitude: 62.077089
+        longitude: -37.861099
+      time: 2012-01-30 10:22:00
+    - instrument: # 51
+        - CTD
+      location:
+        latitude: 62.003206
+        longitude: -37.300803
+      time: 2012-01-30 13:10:00
+    - instrument: # 52
+        - CTD
+      location:
+        latitude: 61.904415
+        longitude: -36.652962
+      time: 2012-01-30 16:15:00
+    - instrument: # 53
+        - CTD
+      location:
+        latitude: 61.830113
+        longitude: -36.110175
+      time: 2012-01-30 19:01:00
+    - instrument: # 54
+        - CTD
+      location:
+        latitude: 62.198163
+        longitude: -36.138284
+      time: 2012-01-30 22:24:00
+    - instrument: # 55
+        - CTD
+      location:
+        latitude: 62.33887
+        longitude: -36.743046
+      time: 2012-01-31 01:27:00
+    - instrument: # 56
+        - CTD
+      location:
+        latitude: 62.418978
+        longitude: -37.218216
+      time: 2012-01-31 03:41:00
+    - instrument: # 57
+        - CTD
+      location:
+        latitude: 62.528779
+        longitude: -37.866175
+      time: 2012-01-31 06:46:00
+    - instrument: # 58
+        - CTD
+      location:
+        latitude: 62.618316
+        longitude: -38.686924
+      time: 2012-01-31 10:16:00
+    - instrument: # 59
+        - CTD
+      location:
+        latitude: 62.934491
+        longitude: -38.341345
+      time: 2012-01-31 13:33:00
+    - instrument: # 60
+        - CTD
+      location:
+        latitude: 62.885312
+        longitude: -37.671788
+      time: 2012-01-31 16:35:00
+    - instrument: # 61
+        - CTD
+      location:
+        latitude: 62.796582
+        longitude: -36.915835
+      time: 2012-01-31 19:53:00
+    - instrument: # 62
+        - CTD
+      location:
+        latitude: 62.707583
+        longitude: -36.375869
+      time: 2012-01-31 22:38:00
+    - instrument: # 63
+        - CTD
+      location:
+        latitude: 62.60838
+        longitude: -35.857502
+      time: 2012-02-01 01:21:00
+ship_config:
+  ship_speed_knots: 10.5
