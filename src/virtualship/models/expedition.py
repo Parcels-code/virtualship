@@ -12,9 +12,12 @@ import yaml
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    _calc_sail_time,
+    _calc_wp_stationkeeping_time,
     _get_bathy_data,
     _get_waypoint_latlons,
     _validate_numeric_to_timedelta,
+    register_instrument_config,
 )
 
 from .location import Location
@@ -86,6 +89,7 @@ class Schedule(pydantic.BaseModel):
     def verify(
         self,
         ship_speed: float,
+        instruments_config: InstrumentsConfig,
         ignore_land_test: bool = False,
         *,
         from_data: Path | None = None,
@@ -162,26 +166,26 @@ class Schedule(pydantic.BaseModel):
         for wp_i, (wp, wp_next) in enumerate(
             zip(self.waypoints, self.waypoints[1:], strict=False)
         ):
-            if wp.instrument is InstrumentType.CTD:
-                time += timedelta(minutes=20)
-
-            geodinv: tuple[float, float, float] = projection.inv(
-                wp.location.lon,
-                wp.location.lat,
-                wp_next.location.lon,
-                wp_next.location.lat,
+            stationkeeping_time = _calc_wp_stationkeeping_time(
+                wp.instrument, instruments_config
             )
-            distance = geodinv[2]
 
-            time_to_reach = timedelta(seconds=distance / ship_speed * 3600 / 1852)
-            arrival_time = time + time_to_reach
+            time_to_reach = _calc_sail_time(
+                wp.location,
+                wp_next.location,
+                ship_speed,
+                projection,
+            )[0]
+
+            arrival_time = time + time_to_reach + stationkeeping_time
 
             if wp_next.time is None:
                 time = arrival_time
             elif arrival_time > wp_next.time:
                 raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at waypoint number {wp_i + 2}. "
-                    f"location: {wp_next.location} time: {wp_next.time} instrument: {wp_next.instrument}"
+                    f"Waypoint planning is not valid: would arrive too late at waypoint {wp_i + 2}. "
+                    f"Location: {wp_next.location} Time: {wp_next.time}. "
+                    f"Currently projected to arrive at: {arrival_time}."
                 )
             else:
                 time = wp_next.time
@@ -204,6 +208,7 @@ class Waypoint(pydantic.BaseModel):
         return instrument.value if instrument else None
 
 
+@register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(pydantic.BaseModel):
     """Configuration for argos floats."""
 
@@ -244,6 +249,7 @@ class ArgoFloatConfig(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
+@register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(pydantic.BaseModel):
     """Configuration for ADCP instrument."""
 
@@ -266,6 +272,7 @@ class ADCPConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.CTD)
 class CTDConfig(pydantic.BaseModel):
     """Configuration for CTD instrument."""
 
@@ -288,6 +295,7 @@ class CTDConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.CTD_BGC)
 class CTD_BGCConfig(pydantic.BaseModel):
     """Configuration for CTD_BGC instrument."""
 
@@ -310,6 +318,7 @@ class CTD_BGCConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(pydantic.BaseModel):
     """Configuration for underwater ST."""
 
@@ -330,6 +339,7 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.DRIFTER)
 class DrifterConfig(pydantic.BaseModel):
     """Configuration for drifters."""
 
@@ -364,6 +374,7 @@ class DrifterConfig(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "minutes")
 
 
+@register_instrument_config(InstrumentType.XBT)
 class XBTConfig(pydantic.BaseModel):
     """Configuration for xbt instrument."""
 

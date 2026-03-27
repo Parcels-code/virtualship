@@ -1,0 +1,419 @@
+instruments_config:
+  adcp_config:
+    max_depth_meter: -1000.0
+    num_bins: 40
+    period_minutes: 5.0
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 20.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_config:
+    max_depth_meter: -5000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 110.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config: null
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument: []
+      location:
+        latitude: -33.9101
+        longitude: 18.4359
+      time: 2025-02-01 13:00:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.83415
+        longitude: 22.712314
+      time: 2025-02-02 13:22:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.075553
+        longitude: 23.022462
+      time: 2025-02-02 17:35:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.29699
+        longitude: 23.368397
+      time: 2025-02-02 21:51:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.498625
+        longitude: 23.666616
+      time: 2025-02-03 01:51:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.814422
+        longitude: 24.227269
+      time: 2025-02-03 07:18:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -37.033755
+        longitude: 24.620919
+      time: 2025-02-03 11:44:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -37.157447
+        longitude: 24.978782
+      time: 2025-02-03 15:44:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.383469
+        longitude: 25.455934
+      time: 2025-02-03 23:02:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.162277
+        longitude: 25.384361
+      time: 2025-02-04 02:32:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.911479
+        longitude: 25.229287
+      time: 2025-02-04 06:21:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.543495
+        longitude: 25.038426
+      time: 2025-02-04 10:52:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.271263
+        longitude: 24.859494
+      time: 2025-02-04 14:51:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.105531
+        longitude: 24.775993
+      time: 2025-02-04 18:03:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -34.861195
+        longitude: 24.656705
+      time: 2025-02-04 21:45:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -34.606313
+        longitude: 24.549346
+      time: 2025-02-05 01:30:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -38.540778
+        longitude: 29.440406
+      time: 2025-02-06 13:00:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -39.153951
+        longitude: 29.798336
+      time: 2025-02-06 19:10:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -39.609601
+        longitude: 30.044115
+      time: 2025-02-07 00:15:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -40.20613
+        longitude: 30.514343
+      time: 2025-02-07 06:34:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -40.76637
+        longitude: 30.777551
+      time: 2025-02-07 12:17:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -41.31078
+        longitude: 31.075335
+      time: 2025-02-07 17:57:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -40.993362
+        longitude: 20.013223
+      time: 2025-02-09 22:13:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -40.310226
+        longitude: 20.031431
+      time: 2025-02-10 04:26:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -40.006109
+        longitude: 20.005372
+      time: 2025-02-10 08:23:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -39.263163
+        longitude: 19.996184
+      time: 2025-02-10 14:59:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -38.76652
+        longitude: 20.000778
+      time: 2025-02-10 20:05:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -38.162229
+        longitude: 19.99159
+      time: 2025-02-11 01:50:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -37.506103
+        longitude: 20.026182
+      time: 2025-02-11 07:54:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -37.269695
+        longitude: 20.08569
+      time: 2025-02-11 11:28:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.973138
+        longitude: 20.08569
+      time: 2025-02-11 15:23:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.000621
+        longitude: 17.1287
+      time: 2025-02-12 21:25:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.006265
+        longitude: 16.502869
+      time: 2025-02-13 02:42:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.006265
+        longitude: 15.998299
+      time: 2025-02-13 07:22:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.011908
+        longitude: 15.009081
+      time: 2025-02-13 14:29:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.994978
+        longitude: 14.033323
+      time: 2025-02-13 21:32:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.000624
+        longitude: 12.987081
+      time: 2025-02-14 04:57:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.989336
+        longitude: 12.004593
+      time: 2025-02-14 12:02:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.000624
+        longitude: 11.001917
+      time: 2025-02-14 19:13:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -34.008454
+        longitude: 10.050342
+      time: 2025-02-15 05:02:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.00937
+        longitude: 10.017679
+      time: 2025-02-15 13:10:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -36.006993
+        longitude: 10.010636
+      time: 2025-02-15 21:16:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -35.992538
+        longitude: 8.00108
+      time: 2025-02-16 09:11:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -34.577471
+        longitude: 8.710735
+      time: 2025-02-16 20:29:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -33.002674
+        longitude: 9.509302
+      time: 2025-02-17 08:51:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.013987
+        longitude: 9.979248
+      time: 2025-02-17 17:22:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.013028
+        longitude: 12.03778
+      time: 2025-02-18 05:44:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.005267
+        longitude: 12.532011
+      time: 2025-02-18 10:06:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.005267
+        longitude: 13.319118
+      time: 2025-02-18 15:59:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.020788
+        longitude: 14.179446
+      time: 2025-02-18 22:16:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.005267
+        longitude: 14.994011
+      time: 2025-02-19 04:17:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.020788
+        longitude: 15.67129
+      time: 2025-02-19 09:36:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.013028
+        longitude: 16.064844
+      time: 2025-02-19 17:30:00
+
+    - instrument:
+        - CTD
+      location:
+        latitude: -32.005267
+        longitude: 16.623141
+      time: 2025-02-19 22:15:00
+
+    - instrument: []
+      location:
+        latitude: -33.9101
+        longitude: 18.4359
+      time: 2025-02-20 17:31:00
+
+ship_config:
+  ship_speed_knots: 10.0

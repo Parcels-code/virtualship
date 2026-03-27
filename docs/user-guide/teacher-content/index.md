@@ -34,3 +34,11 @@ UU-ocean-of-future/Tutorial2.ipynb
 UU-ocean-of-future/CTD_transects.ipynb
 UU-ocean-of-future/plot_slider.py
 ```
+
+```{nbgallery}
+---
+caption: UU Dynamical Oceanography
+---
+UU-dyoc/example_expedition.md
+UU-dyoc/file_permissions.md
+```

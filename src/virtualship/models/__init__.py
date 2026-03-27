@@ -1,5 +1,6 @@
 """Pydantic models and data classes used to configure virtualship (i.e., in the configuration files or settings)."""
 
+from .checkpoint import Checkpoint
 from .expedition import (
     ADCPConfig,
     ArgoFloatConfig,
@@ -34,4 +35,5 @@ __all__ = [  # noqa: RUF022
     "Spacetime",
     "Expedition",
     "InstrumentsConfig",
+    "Checkpoint",
 ]

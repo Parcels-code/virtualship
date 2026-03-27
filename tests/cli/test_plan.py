@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from importlib.resources import files
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -10,11 +10,18 @@ import yaml
 from textual.widgets import Button, Collapsible, Input
 
 from virtualship.cli._plan import ExpeditionEditor, PlanApp
-from virtualship.utils import EXPEDITION
+from virtualship.models import (
+    Expedition,
+    InstrumentsConfig,
+    Location,
+    Schedule,
+    Waypoint,
+)
+from virtualship.utils import EXPEDITION, get_example_expedition
 
 NEW_SPEED = "8.0"
-NEW_LAT = "0.05"
-NEW_LON = "0.05"
+NEW_LAT = "0.015"
+NEW_LON = "0.015"
 
 
 async def simulate_input(pilot, box, new_value):
@@ -33,10 +40,34 @@ async def test_UI_changes():
     """Test making changes to UI inputs and saving to YAML (simulated botton presses and typing inputs)."""
     tmpdir = Path(tempfile.mkdtemp())
 
-    shutil.copy(
-        files("virtualship.static").joinpath(EXPEDITION),
-        tmpdir / EXPEDITION,
+    instruments_config = InstrumentsConfig.model_validate(
+        yaml.safe_load(get_example_expedition()).get("instruments_config")
     )
+    ship_config = yaml.safe_load(get_example_expedition()).get("ship_config")
+    waypoints = [
+        Waypoint(
+            location=Location(0, 0),
+            time=datetime(2022, 1, 1, 0, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.01, 0.01),
+            time=datetime(2022, 1, 1, 1, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.02, 0.02),
+            time=datetime(2022, 1, 1, 2, 0, 0),
+            instrument=["CTD"],
+        ),
+    ]
+    expedition = Expedition(
+        schedule=Schedule(waypoints=waypoints),
+        instruments_config=instruments_config,
+        ship_config=ship_config,
+    )
+
+    expedition.to_yaml(tmpdir / EXPEDITION)
 
     app = PlanApp(path=tmpdir)
 
@@ -59,18 +90,18 @@ async def test_UI_changes():
         ship_speed_input = expedition_editor.query_one("#speed", Input)
         await simulate_input(pilot, ship_speed_input, NEW_SPEED)
 
-        # change waypoint lat/lon (e.g. first waypoint)
+        # change waypoint lat/lon (second waypoint)
         waypoints_collapsible = expedition_editor.query_one("#waypoints", Collapsible)
         if waypoints_collapsible.collapsed:
             waypoints_collapsible.collapsed = False
             await pilot.pause()
-        wp_collapsible = waypoints_collapsible.query_one("#wp1", Collapsible)
+        wp_collapsible = waypoints_collapsible.query_one("#wp2", Collapsible)
         if wp_collapsible.collapsed:
             wp_collapsible.collapsed = False
             await pilot.pause()
         lat_input, lon_input = (
-            wp_collapsible.query_one("#wp0_lat", Input),
-            wp_collapsible.query_one("#wp0_lat", Input),
+            wp_collapsible.query_one("#wp1_lat", Input),
+            wp_collapsible.query_one("#wp1_lon", Input),
         )
         await simulate_input(pilot, lat_input, NEW_LAT)
         await simulate_input(pilot, lon_input, NEW_LON)

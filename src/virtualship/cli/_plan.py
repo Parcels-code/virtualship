@@ -872,7 +872,15 @@ class WaypointWidget(Static):
                         prev = schedule_editor.query_one(f"#wp{self.index - 1}_{comp}")
                         curr = self.query_one(f"#wp{self.index}_{comp}")
                         if prev and curr:
-                            curr.value = prev.value
+                            if (
+                                comp == "minute"
+                            ):  # special handle minute, round to nearest 5 for compatibility with options
+                                minute_value = prev.value
+                                if minute_value % 5 != 0:
+                                    minute_value = 5 * round(minute_value / 5)
+                                curr.value = minute_value
+                            else:
+                                curr.value = prev.value
 
                     for instrument in [
                         inst for inst in InstrumentType if not inst.is_underway
@@ -885,6 +893,17 @@ class WaypointWidget(Static):
                         )
                         if prev_switch and curr_switch:
                             curr_switch.value = prev_switch.value
+
+                    # hard update self.waypoint.time to match new values as shown in UI
+                    year = int(self.query_one(f"#wp{self.index}_year").value)
+                    month = int(self.query_one(f"#wp{self.index}_month").value)
+                    day = int(self.query_one(f"#wp{self.index}_day").value)
+                    hour = int(self.query_one(f"#wp{self.index}_hour").value)
+                    minute = int(self.query_one(f"#wp{self.index}_minute").value)
+                    self.waypoint.time = datetime.datetime(
+                        year, month, day, hour, minute, 0
+                    )
+
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
@@ -975,7 +994,7 @@ class PlanScreen(Screen):
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def sync_ui_waypoints(self):
-        """Update the waypoints models with current UI values (spacetime only) from the live UI inputs."""
+        """Update the waypoints models with current UI values from the live UI inputs."""
         expedition_editor = self.query_one(ExpeditionEditor)
         errors = []
         for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
@@ -992,6 +1011,22 @@ class PlanScreen(Screen):
                     int(expedition_editor.query_one(f"#wp{i}_minute").value),
                     0,
                 )
+                wp.instrument = []
+                for instrument in [
+                    inst for inst in InstrumentType if not inst.is_underway
+                ]:
+                    switch_on = expedition_editor.query_one(
+                        f"#wp{i}_{instrument.value}", Switch
+                    ).value
+                    if instrument.value == "DRIFTER" and switch_on:
+                        count_str = expedition_editor.query_one(
+                            f"#wp{i}_drifter_count", Input
+                        ).value
+                        count = int(count_str)
+                        assert count > 0
+                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
+                    elif switch_on:
+                        wp.instrument.append(instrument)
             except Exception as e:
                 errors.append(f"Waypoint {i + 1}: {e}")
         if errors:
@@ -1020,11 +1055,16 @@ class PlanScreen(Screen):
             self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
 
             # verify schedule
-            wp_lats, wp_lons = _get_waypoint_latlons(
-                expedition_editor.expedition.schedule.waypoints
+            _wp_lats, _wp_lons = (
+                _get_waypoint_latlons(  # TODO: Remove these since they aren't used?
+                    expedition_editor.expedition.schedule.waypoints
+                )
             )
+            instruments_config = expedition_editor.expedition.instruments_config
+
             expedition_editor.expedition.schedule.verify(
                 ship_speed_value,
+                instruments_config,
                 ignore_land_test=True,
             )
 

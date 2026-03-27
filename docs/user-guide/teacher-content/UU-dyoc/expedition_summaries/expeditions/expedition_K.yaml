@@ -1,0 +1,223 @@
+instruments_config:
+  adcp_config: null
+  argo_float_config:
+    cycle_days: 10.0
+    drift_days: 9.0
+    drift_depth_meter: -1000.0
+    lifetime_days: 63.0
+    max_depth_meter: -2000.0
+    min_depth_meter: 0.0
+    stationkeeping_time_minutes: 20.0
+    vertical_speed_meter_per_second: -0.1
+  ctd_bgc_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  ctd_config:
+    max_depth_meter: -2000.0
+    min_depth_meter: -11.0
+    stationkeeping_time_minutes: 50.0
+  drifter_config:
+    depth_meter: -1.0
+    lifetime_days: 42.0
+    stationkeeping_time_minutes: 20.0
+  ship_underwater_st_config: null
+  xbt_config:
+    deceleration_coefficient: 0.00225
+    fall_speed_meter_per_second: 6.7
+    max_depth_meter: -285.0
+    min_depth_meter: -2.0
+schedule:
+  waypoints:
+    - instrument: []
+      location:
+        latitude: 16.886
+        longitude: -24.987
+      time: 2023-07-14 00:00:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 16.5
+        longitude: -28.5
+      time: 2023-07-19 03:30:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 16.0
+        longitude: -28.5
+      time: 2023-07-19 07:15:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 15.5
+        longitude: -28.5
+      time: 2023-07-19 11:00:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 15.0
+        longitude: -28.5
+      time: 2023-07-19 14:45:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 14.5
+        longitude: -28.5
+      time: 2023-07-19 18:30:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 14.0
+        longitude: -28.5
+      time: 2023-07-19 22:15:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 13.5
+        longitude: -28.5
+      time: 2023-07-20 02:00:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 13.0
+        longitude: -28.5
+      time: 2023-07-20 05:45:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 12.5
+        longitude: -28.5
+      time: 2023-07-20 09:30:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 12.0
+        longitude: -28.5
+      time: 2023-07-20 13:15:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 11.5
+        longitude: -28.5
+      time: 2023-07-20 17:00:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 11.0
+        longitude: -28.5
+      time: 2023-07-20 20:45:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 10.5
+        longitude: -28.5
+      time: 2023-07-21 00:30:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 10.0
+        longitude: -28.5
+      time: 2023-07-21 04:15:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 9.5
+        longitude: -28.5
+      time: 2023-07-21 08:00:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 9.5
+        longitude: -33.5
+      time: 2023-07-22 14:06:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 10.0
+        longitude: -33.5
+      time: 2023-07-22 17:51:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 10.5
+        longitude: -33.5
+      time: 2023-07-22 21:36:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 11.0
+        longitude: -33.5
+      time: 2023-07-23 01:21:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 11.5
+        longitude: -33.5
+      time: 2023-07-23 05:06:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 12.0
+        longitude: -33.5
+      time: 2023-07-23 17:51:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 12.5
+        longitude: -33.5
+      time: 2023-07-23 23:36:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 13.0
+        longitude: -33.5
+      time: 2023-07-24 06:21:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 13.5
+        longitude: -33.5
+      time: 2023-07-24 12:06:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 14.0
+        longitude: -33.5
+      time: 2023-07-24 18:51:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 14.5
+        longitude: -33.5
+      time: 2023-07-25 00:36:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 15.0
+        longitude: -33.5
+      time: 2023-07-25 06:21:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 15.5
+        longitude: -33.5
+      time: 2023-07-25 12:06:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 16.0
+        longitude: -33.5
+      time: 2023-07-25 18:51:00
+    - instrument:
+        - DRIFTER
+      location:
+        latitude: 16.5
+        longitude: -33.5
+      time: 2023-07-26 00:36:00
+    - instrument: []
+      location:
+        latitude: 16.886
+        longitude: -24.987
+      time: 2023-07-30 15:00:00
+ship_config:
+  ship_speed_knots: 10.0
