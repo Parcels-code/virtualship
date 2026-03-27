@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import AdvectionRK4, ParticleSet, Variable
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -123,7 +123,7 @@ class DrifterInstrument(Instrument):
         # build dynamic particle class from the active sensors
         drifter_config = self.expedition.instruments_config.drifter_config
         _DrifterParticle = build_particle_class_from_sensors(
-            drifter_config.sensors, _DRIFTER_FIXED_VARIABLES
+            drifter_config.sensors, _DRIFTER_FIXED_VARIABLES, JITParticle
         )
 
         # define parcel particles

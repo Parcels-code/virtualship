@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from parcels import ParticleSet, Variable
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -166,7 +166,7 @@ class XBTInstrument(Instrument):
         # build dynamic particle class from the active sensors
         xbt_config = self.expedition.instruments_config.xbt_config
         _XBTParticle = build_particle_class_from_sensors(
-            xbt_config.sensors, _XBT_FIXED_VARIABLES
+            xbt_config.sensors, _XBT_FIXED_VARIABLES, JITParticle
         )
 
         # define xbt particles
