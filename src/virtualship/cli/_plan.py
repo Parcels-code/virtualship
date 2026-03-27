@@ -1055,8 +1055,10 @@ class PlanScreen(Screen):
             self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
 
             # verify schedule
-            wp_lats, wp_lons = _get_waypoint_latlons(
-                expedition_editor.expedition.schedule.waypoints
+            _wp_lats, _wp_lons = (
+                _get_waypoint_latlons(  # TODO: Remove these since they aren't used?
+                    expedition_editor.expedition.schedule.waypoints
+                )
             )
             instruments_config = expedition_editor.expedition.instruments_config
 
