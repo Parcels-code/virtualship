@@ -19,7 +19,7 @@ import xarray as xr
 
 from parcels import FieldSet, Variable
 from virtualship.errors import CopernicusCatalogueError
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import SensorType
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (

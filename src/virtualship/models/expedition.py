@@ -11,7 +11,7 @@ import pyproj
 import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.instruments.types import (
+from virtualship.instruments.sensors import (
     ADCP_SUPPORTED_SENSORS,
     ARGO_FLOAT_SUPPORTED_SENSORS,
     CTD_BGC_SUPPORTED_SENSORS,
@@ -19,9 +19,9 @@ from virtualship.instruments.types import (
     DRIFTER_SUPPORTED_SENSORS,
     UNDERWATER_ST_SUPPORTED_SENSORS,
     XBT_SUPPORTED_SENSORS,
-    InstrumentType,
     SensorType,
 )
+from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     SENSOR_REGISTRY,
     _calc_sail_time,

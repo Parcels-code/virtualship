@@ -5,7 +5,8 @@ import numpy as np
 
 from parcels import ParticleSet, ScipyParticle
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import InstrumentType, SensorType
+from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     add_dummy_UV,
     build_particle_class_from_sensors,

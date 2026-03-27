@@ -6,7 +6,8 @@ import numpy as np
 
 from parcels import ParticleSet, Variable
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import InstrumentType, SensorType
+from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import (
     add_dummy_UV,
