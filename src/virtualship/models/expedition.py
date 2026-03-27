@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import pydantic
@@ -253,7 +252,7 @@ def _check_sensor_compatibility(
 
 def build_variables_from_sensors(sensors: list[SensorConfig]) -> dict[str, str]:
     """Build variables dict (FieldSet key → Copernicus-variable)."""
-    return {sc.fs_key: sc.copernicus_var for sc in sensors if sc.enabled}
+    return {sc.meta.fs_key: sc.meta.copernicus_var for sc in sensors if sc.enabled}
 
 
 @register_instrument_config(InstrumentType.ARGO_FLOAT)
@@ -695,6 +694,15 @@ class SensorConfig(pydantic.BaseModel):
     sensor_type: SensorType
     enabled: bool = True
 
+    # validator/serialiser for allowing the compact, single-string notation for sensors in YAML (e.g. "TEMPERATURE" instead of sensor_type: TEMPERATURE in each instance
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _from_string(cls, value):
+        """Allow a bare sensor-type string (e.g. "TEMPERATURE") as shorthand for {"sensor_type": "TEMPERATURE"}."""
+        if isinstance(value, str):
+            return {"sensor_type": value}
+        return value
+
     @pydantic.field_validator("sensor_type", mode="before")
     @classmethod
     def _take_sensor_type(cls, value: str | SensorType) -> SensorType:
@@ -707,18 +715,3 @@ class SensorConfig(pydantic.BaseModel):
     def meta(self) -> _SensorMeta:
         """Metadata for this sensor."""
         return SENSOR_REGISTRY[self.sensor_type]
-
-    @property
-    def fs_key(self) -> str:
-        """FieldSet key (e.g. T, o2)."""
-        return self.meta.fs_key
-
-    @property
-    def copernicus_var(self) -> str:
-        """Copernicus Marine variable name (e.g. thetao, o2)."""
-        return self.meta.copernicus_var
-
-    @property
-    def category(self) -> Literal["phys", "bgc"]:
-        """Physical (phys) or biogeochemical (bgc)."""
-        return self.meta.category
