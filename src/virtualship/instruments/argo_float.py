@@ -7,10 +7,8 @@ import numpy as np
 
 from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 from virtualship.instruments.base import Instrument
-from virtualship.instruments.types import (
-    InstrumentType,
-    SensorType,
-)
+from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import build_particle_class_from_sensors, register_instrument
 
