@@ -74,7 +74,7 @@ graph G {
     A1 [label="VirtualShip Classroom", distortion=0.05];
 
     B1 [label="Open Education Resources", skew=0.02];
-    B2 [label="`VirtualShip Software`", distortion=-0.03];
+    B2 [label="VirtualShip Software", distortion=-0.03];
     B3 [label="Virtual Reality / 360° videos", skew=-0.02];
 
     // connections
@@ -125,7 +125,7 @@ graph G {
     </span>
     - Lagrangian trajectory framework
     - Instruments have behaviours via customisable, extensible `kernels`
-    - VirtualShip = `kernel`s + configuration + digital ocean
+    - VirtualShip = `kernels` + configuration + digital ocean
 
     <!-- <br> -->
 
