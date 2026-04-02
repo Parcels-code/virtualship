@@ -30,6 +30,13 @@ format:
 
 ---
 
+## This showcase
+
+1) Introduce the VirtualShip Classroom and its components
+2) Walk through an example workflow of how the components can be used
+3) The NKO Scale Up: what we will provide and what is expected from your side
+4) Q&A
+
 ## ![](media/banner.png) {.smaller}
 
 :::{.callout-note}
@@ -67,7 +74,7 @@ graph G {
     A1 [label="VirtualShip Classroom", distortion=0.05];
 
     B1 [label="Open Education Resources", skew=0.02];
-    B2 [label="VirtualShip Software", distortion=-0.03];
+    B2 [label="`VirtualShip Software`", distortion=-0.03];
     B3 [label="Virtual Reality / 360° videos", skew=-0.02];
 
     // connections
@@ -94,7 +101,7 @@ graph G {
 
 :::
 
-## VirtualShip Python package {.smaller}
+## `VirtualShip` Python package {.smaller}
 
 - The open-source software that simulates oceanographic measurements anywhere in the global ocean.
 - Simulates measurements in a _digital_ ocean as if they are coming from real-life oceanographic instruments
@@ -110,7 +117,7 @@ graph G {
 
 :::
 
-## The VirtualShip software internals {.smaller}
+## `VirtualShip` software internals {.smaller}
 
 
 - <span style="vertical-align: middle;">
@@ -212,6 +219,23 @@ Argo Float deployment
     - Post-processing code submission
     - Group project
 - ... or none!
+
+## The NKO Scale Up {.smaller}
+
+- We will:
+    - Provide and continue to develop core VirtualShip Classroom (VSC) materials
+    - Run train-the-trainer sessions
+    - Provide high-level project management and coordination
+    - Engage in discussions over to what extent we can tailor VirtualShip to your needs
+
+- From your side:
+    - Intended learning outcomes (what do you want to use the VSC for?)
+    - Commitment for 2 academic years
+    - On-the-ground delivery of the course at your institution
+    - Recruit Student Assistants to support course delivery (via NKO funding)
+    - Ask participants to complete a feedback survey (we provide the survey)
+    - Inform us of technical setup and needs for the software and VR content
+    - Contribute to the materials and software if you wish
 
 
 ## Links & getting in touch
