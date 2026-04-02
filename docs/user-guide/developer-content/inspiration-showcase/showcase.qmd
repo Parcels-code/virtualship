@@ -118,7 +118,7 @@ graph G {
     </span>
     - Lagrangian trajectory framework
     - Instruments have behaviours via customisable, extensible `kernels`
-    - VirtualShip = `kernel`s + configuration + digital ocean
+    - VirtualShip = `kernels` + configuration + digital ocean
 
     <!-- <br> -->
 
