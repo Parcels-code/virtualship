@@ -58,6 +58,16 @@ ipykernel = "*"
 [feature.notebooks.tasks]
 tests-notebooks = "pytest --nbval-lax docs/"
 
+[feature.analysis.dependencies]
+jupyterlab = ">=4,<5"
+ipykernel = ">=7,<8"
+plotly = ">=6,<7"
+nbformat = "*"
+ipywidgets = "*"
+
+[feature.analysis.tasks]
+lab = "jupyter lab"
+
 [feature.docs.dependencies]
 sphinx = ">=7.0"
 myst-parser = ">=0.13"
@@ -92,6 +102,7 @@ test-py310 = { features = ["test", "py310"] }
 test-py311 = { features = ["test", "py311"] }
 test-py312 = { features = ["test", "py312"] }
 test-notebooks = { features = ["test", "notebooks"], solve-group = "test" }
+analysis = { features = ["analysis"], solve-group = "analysis" }
 docs = { features = ["docs"], solve-group = "docs" }
 typing = { features = ["typing"], solve-group = "typing" }
 pre-commit = { features = ["pre-commit"], no-default-feature = true }
