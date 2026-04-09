@@ -3,11 +3,13 @@
 from datetime import datetime, timedelta
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 from parcels import FieldSet
 
 from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import ARGO_FLOAT_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     ArgoFloatConfig,
@@ -84,7 +86,14 @@ def test_simulate_argo_floats(tmpdir) -> None:
 
         instruments_config = InstrumentsConfig(
             argo_float_config=ArgoFloatConfig(
+                min_depth_meter=0.0,
+                max_depth_meter=MAX_DEPTH,
+                drift_depth_meter=DRIFT_DEPTH,
+                vertical_speed_meter_per_second=VERTICAL_SPEED,
+                cycle_days=CYCLE_DAYS,
+                drift_days=DRIFT_DAYS,
                 lifetime=LIFETIME,
+                stationkeeping_time_minutes=10,
                 sensors=[
                     SensorConfig(sensor_type=SensorType.TEMPERATURE),
                     SensorConfig(sensor_type=SensorType.SALINITY),
@@ -163,7 +172,14 @@ def test_argo_float_disabled_sensor(tmpdir) -> None:
 
         instruments_config = InstrumentsConfig(
             argo_float_config=ArgoFloatConfig(
+                min_depth_meter=0.0,
+                max_depth_meter=MAX_DEPTH,
+                drift_depth_meter=DRIFT_DEPTH,
+                vertical_speed_meter_per_second=VERTICAL_SPEED,
+                cycle_days=CYCLE_DAYS,
+                drift_days=DRIFT_DAYS,
                 lifetime=LIFETIME,
+                stationkeeping_time_minutes=10,
                 sensors=[
                     SensorConfig(sensor_type=SensorType.TEMPERATURE)
                 ],  # SALINITY omitted = disabled
@@ -181,3 +197,42 @@ def test_argo_float_disabled_sensor(tmpdir) -> None:
     assert "salinity" not in results, (
         "Disabled sensor variable must be absent from output"
     )
+
+
+def test_argo_float_supported_sensors():
+    """ArgoFloat supports TEMPERATURE and SALINITY."""
+    assert ARGO_FLOAT_SUPPORTED_SENSORS == frozenset(
+        {SensorType.TEMPERATURE, SensorType.SALINITY}
+    )
+
+
+def test_argo_config_default_sensors():
+    """ArgoFloatConfig defaults to TEMPERATURE + SALINITY."""
+    config = ArgoFloatConfig(
+        min_depth_meter=0.0,
+        max_depth_meter=-2000,
+        drift_depth_meter=-1000,
+        vertical_speed_meter_per_second=-0.10,
+        cycle_days=10,
+        drift_days=9,
+        lifetime=timedelta(days=30),
+        stationkeeping_time_minutes=10,
+    )
+    types = {sc.sensor_type for sc in config.sensors}
+    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+
+
+def test_argo_config_unsupported_sensor_rejected():
+    """Unsupported sensor on ArgoFloat is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        ArgoFloatConfig(
+            min_depth_meter=0.0,
+            max_depth_meter=-2000,
+            drift_depth_meter=-1000,
+            vertical_speed_meter_per_second=-0.10,
+            cycle_days=10,
+            drift_days=9,
+            lifetime=timedelta(days=30),
+            stationkeeping_time_minutes=10,
+            sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
+        )

@@ -9,7 +9,7 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import UNDERWATER_ST_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,
@@ -32,15 +32,15 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
     # expected observations at sample points
     expected_obs = [
         {
-            "S": 5,
-            "T": 6,
+            "salinity": 5,
+            "temperature": 6,
             "lat": sample_points[0].location.lat,
             "lon": sample_points[0].location.lon,
             "time": base_time + datetime.timedelta(seconds=0),
         },
         {
-            "S": 7,
-            "T": 8,
+            "salinity": 7,
+            "temperature": 8,
             "lat": sample_points[1].location.lat,
             "lon": sample_points[1].location.lon,
             "time": base_time + datetime.timedelta(seconds=1),
@@ -50,12 +50,12 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
     # create fieldset based on the expected observations
     # indices are time, latitude, longitude
     salinity = np.zeros((2, 2, 2))
-    salinity[0, 0, 0] = expected_obs[0]["S"]
-    salinity[1, 1, 1] = expected_obs[1]["S"]
+    salinity[0, 0, 0] = expected_obs[0]["salinity"]
+    salinity[1, 1, 1] = expected_obs[1]["salinity"]
 
     temperature = np.zeros((2, 2, 2))
-    temperature[0, 0, 0] = expected_obs[0]["T"]
-    temperature[1, 1, 1] = expected_obs[1]["T"]
+    temperature[0, 0, 0] = expected_obs[0]["temperature"]
+    temperature[1, 1, 1] = expected_obs[1]["temperature"]
 
     fieldset = FieldSet.from_data(
         {
@@ -121,7 +121,7 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
         zip(results.sel(trajectory=traj).obs, expected_obs, strict=True)
     ):
         obs = results.sel(trajectory=traj, obs=obs_i)
-        for var in ["S", "T", "lat", "lon"]:
+        for var in ["salinity", "temperature", "lat", "lon"]:
             obs_value = obs[var].values.item()
             exp_value = exp[var]
             assert np.isclose(obs_value, exp_value), (
@@ -168,3 +168,28 @@ def test_ship_underwater_st_sensor_config_yaml() -> None:
     assert len(loaded.sensors) == 1
     assert loaded.sensors[0].sensor_type == SensorType.TEMPERATURE
     assert loaded.sensors[0].enabled is True
+
+
+def test_underwater_st_supported_sensors():
+    """Underwater ST supports TEMPERATURE and SALINITY."""
+    assert UNDERWATER_ST_SUPPORTED_SENSORS == frozenset(
+        {SensorType.TEMPERATURE, SensorType.SALINITY}
+    )
+
+
+def test_underwater_st_config_default_sensors():
+    """ShipUnderwaterSTConfig defaults to TEMPERATURE + SALINITY."""
+    config = ShipUnderwaterSTConfig(
+        period_minutes=5.0,
+    )
+    types = {sc.sensor_type for sc in config.sensors}
+    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+
+
+def test_underwater_st_config_unsupported_sensor_rejected():
+    """Unsupported sensor on Underwater ST is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        ShipUnderwaterSTConfig(
+            period_minutes=5.0,
+            sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
+        )

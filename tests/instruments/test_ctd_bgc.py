@@ -7,11 +7,13 @@ Fields are kept static over time and time component of CTD_BGC measurements is n
 import datetime
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import CTD_BGC_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     CTD_BGCConfig,
@@ -293,3 +295,19 @@ def test_ctd_bgc_sensor_config_yaml() -> None:
     assert len(loaded.sensors) == 1
     assert loaded.sensors[0].sensor_type == SensorType.OXYGEN
     assert loaded.sensors[0].enabled is True
+
+
+def test_ctd_bgc_supported_sensors():
+    """CTD_BGC supports all BGC sensors."""
+    expected = frozenset(
+        {
+            SensorType.OXYGEN,
+            SensorType.CHLOROPHYLL,
+            SensorType.NITRATE,
+            SensorType.PHOSPHATE,
+            SensorType.PH,
+            SensorType.PHYTOPLANKTON,
+            SensorType.PRIMARY_PRODUCTION,
+        }
+    )
+    assert CTD_BGC_SUPPORTED_SENSORS == expected

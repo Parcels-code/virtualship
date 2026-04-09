@@ -9,17 +9,15 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.adcp import ADCPInstrument
-from virtualship.instruments.types import InstrumentType, SensorType
+from virtualship.instruments.sensors import ADCP_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime, Waypoint
 from virtualship.models.expedition import ADCPConfig, InstrumentsConfig, SensorConfig
 
 
 def test_simulate_adcp(tmpdir) -> None:
-    # maximum depth the ADCP can measure
-    MAX_DEPTH = -1000  # -1000
-    # minimum depth the ADCP can measure
-    MIN_DEPTH = -5  # -5
-    # How many samples to take in the complete range between max_depth and min_depth.
+    MAX_DEPTH = -1000
+    MIN_DEPTH = -5
     NUM_BINS = 40
 
     # arbitrary time offset for the dummy fieldset
@@ -172,3 +170,29 @@ def test_adcp_sensor_config_yaml() -> None:
     assert len(loaded.sensors) == 1
     assert loaded.sensors[0].sensor_type == SensorType.VELOCITY
     assert loaded.sensors[0].enabled is True
+
+
+def test_adcp_supported_sensors():
+    """ADCP supports only VELOCITY."""
+    assert ADCP_SUPPORTED_SENSORS == frozenset({SensorType.VELOCITY})
+
+
+def test_adcp_config_default_sensors():
+    """ADCPConfig defaults to VELOCITY."""
+    config = ADCPConfig(
+        max_depth_meter=-500.0,
+        num_bins=30,
+        period_minutes=30.0,
+    )
+    assert config.sensors[0].sensor_type is SensorType.VELOCITY
+
+
+def test_adcp_config_unsupported_sensor_rejected():
+    """Unsupported sensor on ADCP is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        ADCPConfig(
+            max_depth_meter=-500.0,
+            num_bins=30,
+            period_minutes=30.0,
+            sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+        )

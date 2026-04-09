@@ -13,7 +13,7 @@ import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.ctd import CTD, CTDInstrument
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import CTD_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     CTDConfig,
@@ -274,3 +274,33 @@ def test_ctd_disabled_sensor_absent(tmpdir) -> None:
     assert "salinity" not in results, (
         "Disabled sensor variable must be absent from output"
     )
+
+
+def test_ctd_supported_sensors():
+    """CTD supports TEMPERATURE and SALINITY."""
+    assert CTD_SUPPORTED_SENSORS == frozenset(
+        {SensorType.TEMPERATURE, SensorType.SALINITY}
+    )
+
+
+def test_ctd_config_default_sensors():
+    """CTDConfig defaults to TEMPERATURE + SALINITY."""
+    config = CTDConfig(
+        stationkeeping_time_minutes=50,
+        min_depth_meter=-11.0,
+        max_depth_meter=-2000.0,
+    )
+    types = {sc.sensor_type for sc in config.sensors}
+    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+
+
+# TODO: may need to be removed if add ADCP to CTDs in future PR...
+def test_ctd_config_unsupported_sensor_rejected():
+    """Unsupported sensor on CTD is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        CTDConfig(
+            stationkeeping_time_minutes=50,
+            min_depth_meter=-11.0,
+            max_depth_meter=-2000.0,
+            sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+        )

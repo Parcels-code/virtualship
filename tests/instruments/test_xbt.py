@@ -13,7 +13,7 @@ import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.xbt import XBT, XBTInstrument
-from virtualship.instruments.types import SensorType
+from virtualship.instruments.sensors import XBT_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,
@@ -194,3 +194,31 @@ def test_xbt_sensor_config_yaml() -> None:
     assert len(loaded.sensors) == 1
     assert loaded.sensors[0].sensor_type == SensorType.TEMPERATURE
     assert loaded.sensors[0].enabled is True
+
+
+def test_xbt_supported_sensors():
+    """XBT supports only TEMPERATURE."""
+    assert XBT_SUPPORTED_SENSORS == frozenset({SensorType.TEMPERATURE})
+
+
+def test_xbt_config_default_sensors():
+    """XBTConfig defaults to TEMPERATURE."""
+    config = XBTConfig(
+        min_depth_meter=-2.0,
+        max_depth_meter=-285.0,
+        fall_speed_meter_per_second=6.7,
+        deceleration_coefficient=0.00225,
+    )
+    assert config.sensors[0].sensor_type is SensorType.TEMPERATURE
+
+
+def test_xbt_config_unsupported_sensor_rejected():
+    """Unsupported sensor on XBT is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        XBTConfig(
+            min_depth_meter=-2.0,
+            max_depth_meter=-285.0,
+            fall_speed_meter_per_second=6.7,
+            deceleration_coefficient=0.00225,
+            sensors=[SensorConfig(sensor_type=SensorType.SALINITY)],
+        )
