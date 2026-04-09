@@ -3,12 +3,20 @@
 import datetime
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
+from virtualship.instruments.types import SensorType
 from virtualship.models import Location, Spacetime
-from virtualship.models.expedition import Waypoint
+from virtualship.models.expedition import (
+    InstrumentsConfig,
+    SensorConfig,
+    ShipUnderwaterSTConfig,
+    Waypoint,
+)
 
 
 def test_simulate_ship_underwater_st(tmpdir) -> None:
@@ -79,6 +87,16 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
                 ),
             ]
 
+        instruments_config = InstrumentsConfig(
+            ship_underwater_st_config=ShipUnderwaterSTConfig(
+                period_minutes=5.0,
+                sensors=[
+                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
+                    SensorConfig(sensor_type=SensorType.SALINITY),
+                ],
+            )
+        )
+
     expedition = DummyExpedition()
     from_data = None
 
@@ -109,3 +127,44 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
             assert np.isclose(obs_value, exp_value), (
                 f"Observation incorrect {i=} {var=} {obs_value=} {exp_value=}."
             )
+
+
+def test_ship_underwater_st_sensor_config_active_variables() -> None:
+    """active_variables() only returns variables for enabled sensors."""
+    config_both = ShipUnderwaterSTConfig(
+        period_minutes=5.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+    )
+    assert config_both.active_variables() == {"T": "thetao", "S": "so"}
+
+    config_temp_only = ShipUnderwaterSTConfig(
+        period_minutes=5.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE)
+        ],  # SALINITY omitted = disabled
+    )
+    assert config_temp_only.active_variables() == {"T": "thetao"}
+
+    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
+        ShipUnderwaterSTConfig(
+            period_minutes=5.0,
+            sensors=[],  # all disabled → invalid
+        )
+
+
+def test_ship_underwater_st_sensor_config_yaml() -> None:
+    """ShipUnderwaterSTConfig sensors survive YAML serialisation."""
+    config = ShipUnderwaterSTConfig(
+        period_minutes=5.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE)
+        ],  # SALINITY omitted = disabled
+    )
+    dumped = config.model_dump(by_alias=True)
+    loaded = ShipUnderwaterSTConfig.model_validate(dumped)
+    assert len(loaded.sensors) == 1
+    assert loaded.sensors[0].sensor_type == SensorType.TEMPERATURE
+    assert loaded.sensors[0].enabled is True

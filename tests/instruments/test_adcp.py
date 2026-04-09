@@ -3,12 +3,15 @@
 import datetime
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.adcp import ADCPInstrument
-from virtualship.instruments.types import InstrumentType
+from virtualship.instruments.types import InstrumentType, SensorType
 from virtualship.models import Location, Spacetime, Waypoint
+from virtualship.models.expedition import ADCPConfig, InstrumentsConfig, SensorConfig
 
 
 def test_simulate_adcp(tmpdir) -> None:
@@ -90,10 +93,14 @@ def test_simulate_adcp(tmpdir) -> None:
                 ),
             ]
 
-        class instruments_config:
-            class adcp_config:
-                max_depth_meter = MAX_DEPTH
-                num_bins = NUM_BINS
+        instruments_config = InstrumentsConfig(
+            adcp_config=ADCPConfig(
+                max_depth_meter=MAX_DEPTH,
+                num_bins=NUM_BINS,
+                period_minutes=5.0,
+                sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+            )
+        )
 
     expedition = DummyExpedition()
     from_data = None
@@ -131,3 +138,37 @@ def test_simulate_adcp(tmpdir) -> None:
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {vert_loc=} {i=} {var=} {obs_value=} {exp_value=}."
                 )
+
+
+def test_adcp_sensor_config_active_variables() -> None:
+    """active_variables() returns both U and V when VELOCITY is enabled."""
+    config_with = ADCPConfig(
+        max_depth_meter=-1000.0,
+        num_bins=40,
+        period_minutes=5.0,
+        sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+    )
+    assert config_with.active_variables() == {"U": "uo", "V": "vo"}
+
+    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
+        ADCPConfig(
+            max_depth_meter=-1000.0,
+            num_bins=40,
+            period_minutes=5.0,
+            sensors=[],  # all disabled → invalid
+        )
+
+
+def test_adcp_sensor_config_yaml() -> None:
+    """ADCPConfig sensors survive YAML serialisation."""
+    config = ADCPConfig(
+        max_depth_meter=-1000.0,
+        num_bins=40,
+        period_minutes=5.0,
+        sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+    )
+    dumped = config.model_dump(by_alias=True)
+    loaded = ADCPConfig.model_validate(dumped)
+    assert len(loaded.sensors) == 1
+    assert loaded.sensors[0].sensor_type == SensorType.VELOCITY
+    assert loaded.sensors[0].enabled is True
