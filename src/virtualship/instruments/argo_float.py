@@ -133,27 +133,22 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
-# TODO: ensure the behaviour is still the same as previously now that the sampling is extracted from the main vertical movement kernels
 def _argo_sample_temperature(particle, fieldset, time):
-    # Phase 3: ascending — sample temperature; reset to NaN when cycle ends
-    if particle.cycle_phase == 3:
-        if particle.depth > particle.min_depth:
-            particle.temperature = fieldset.T[
-                time, particle.depth, particle.lat, particle.lon
-            ]
-        else:
-            particle.temperature = math.nan  # reset at surface
+    # Phase 3: ascending — sample temperature; NaN otherwise
+    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
+        particle.temperature = fieldset.T[
+            time, particle.depth, particle.lat, particle.lon
+        ]
+    else:
+        particle.temperature = math.nan
 
 
 def _argo_sample_salinity(particle, fieldset, time):
-    # Phase 3: ascending — sample salinity; reset to NaN when cycle ends
-    if particle.cycle_phase == 3:
-        if particle.depth > particle.min_depth:
-            particle.salinity = fieldset.S[
-                time, particle.depth, particle.lat, particle.lon
-            ]
-        else:
-            particle.salinity = math.nan  # reset at surface
+    # Phase 3: ascending — sample salinity; NaN otherwise
+    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
+        particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+    else:
+        particle.salinity = math.nan
 
 
 _ARGO_SENSOR_KERNELS: dict[SensorType, callable] = {
