@@ -233,7 +233,7 @@ def _check_sensor_compatibility(
     supported: frozenset[SensorType],
     instrument_name: str,
 ) -> list[SensorConfig]:
-    """Raise ``ValueError`` if any sensor in `sensors` is not in `supported`, or if no sensors are enabled. Used as a Pydantic field_validator for each instrument config class."""
+    """Raise ValueError if any sensor in `sensors` is not in `supported`, or if no sensors are enabled. Used as a Pydantic field_validator for each instrument config class."""
     unsupported = {sc.sensor_type for sc in sensors} - supported
     if unsupported:
         names = ", ".join(sorted(s.value for s in unsupported))
