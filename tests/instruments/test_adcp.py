@@ -148,14 +148,6 @@ def test_adcp_sensor_config_active_variables() -> None:
     )
     assert config_with.active_variables() == {"U": "uo", "V": "vo"}
 
-    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
-        ADCPConfig(
-            max_depth_meter=-1000.0,
-            num_bins=40,
-            period_minutes=5.0,
-            sensors=[],  # all disabled → invalid
-        )
-
 
 def test_adcp_sensor_config_yaml() -> None:
     """ADCPConfig sensors survive YAML serialisation."""

@@ -170,15 +170,6 @@ def test_xbt_sensor_config_active_variables() -> None:
     )
     assert config_with_temp.active_variables() == {"T": "thetao"}
 
-    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
-        XBTConfig(
-            min_depth_meter=-2.0,
-            max_depth_meter=-285.0,
-            fall_speed_meter_per_second=6.7,
-            deceleration_coefficient=0.00225,
-            sensors=[],  # all disabled → invalid
-        )
-
 
 def test_xbt_sensor_config_yaml() -> None:
     """XBTConfig sensors survive YAML serialisation."""

@@ -365,16 +365,9 @@ def test_calc_wp_stationkeeping_time_no_instruments(expedition):
     assert stationkeeping_null == datetime.timedelta(0)  # at least one is 0 time
 
 
-def test_sensor_registry_every_sensor_type_has_entry():
-    """Every SensorType must be present as a key in SENSOR_REGISTRY."""
-    for sensor in SensorType:
-        assert sensor in SENSOR_REGISTRY, f"{sensor} missing from SENSOR_REGISTRY"
-
-
-def test_sensor_registry_no_extra_keys():
-    """SENSOR_REGISTRY should not contain keys outside SensorType."""
-    for key in SENSOR_REGISTRY:
-        assert isinstance(key, SensorType)
+def test_sensor_registry_keys_match_sensor_type():
+    """SENSOR_REGISTRY keys must be exactly the set of SensorType members."""
+    assert set(SENSOR_REGISTRY.keys()) == set(SensorType)
 
 
 @pytest.mark.parametrize(

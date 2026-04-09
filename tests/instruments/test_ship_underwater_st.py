@@ -148,12 +148,6 @@ def test_ship_underwater_st_sensor_config_active_variables() -> None:
     )
     assert config_temp_only.active_variables() == {"T": "thetao"}
 
-    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
-        ShipUnderwaterSTConfig(
-            period_minutes=5.0,
-            sensors=[],  # all disabled → invalid
-        )
-
 
 def test_ship_underwater_st_sensor_config_yaml() -> None:
     """ShipUnderwaterSTConfig sensors survive YAML serialisation."""

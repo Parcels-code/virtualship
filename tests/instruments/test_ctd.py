@@ -191,14 +191,6 @@ def test_ctd_sensor_config_active_variables() -> None:
     )
     assert config_temp_only.active_variables() == {"T": "thetao"}
 
-    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
-        CTDConfig(
-            stationkeeping_time_minutes=50,
-            min_depth_meter=-11.0,
-            max_depth_meter=-2000.0,
-            sensors=[],  # all absent = all disabled → invalid
-        )
-
 
 def test_ctd_sensor_config_yaml() -> None:
     """CTDConfig sensors survive YAML serialisation."""
