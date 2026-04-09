@@ -58,6 +58,16 @@ ipykernel = "*"
 [feature.notebooks.tasks]
 tests-notebooks = "pytest --nbval-lax docs/"
 
+[feature.analysis.dependencies]
+jupyterlab = ">=4,<5"
+ipykernel = ">=7,<8"
+plotly = ">=6,<7"
+nbformat = "*"
+ipywidgets = "*"
+
+[feature.analysis.tasks]
+lab = "jupyter lab"
+
 [feature.docs.dependencies]
 sphinx = ">=7.0"
 myst-parser = ">=0.13"
@@ -86,7 +96,7 @@ lxml = "*"
 typing = "mypy src/virtualship --install-types"
 
 [environments]
-default = { features = ["test", "notebooks", "typing", "pre-commit"] }
+default = { features = ["test", "notebooks", "typing", "pre-commit", "analysis"] }
 test-latest = { features = ["test"], solve-group = "test" }
 test-py310 = { features = ["test", "py310"] }
 test-py311 = { features = ["test", "py311"] }
