@@ -4,14 +4,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 import virtualship.utils
+from parcels import FieldSet, JITParticle, ScipyParticle, Variable
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition
+from virtualship.models.expedition import Expedition, SensorConfig
 from virtualship.models.location import Location
 from virtualship.utils import (
     PROJECTION,
+    SENSOR_REGISTRY,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _find_nc_file_with_variable,
@@ -19,6 +21,7 @@ from virtualship.utils import (
     _select_product_id,
     _start_end_in_product_timerange,
     add_dummy_UV,
+    build_particle_class_from_sensors,
     get_example_expedition,
 )
 
@@ -360,3 +363,96 @@ def test_calc_wp_stationkeeping_time_no_instruments(expedition):
 
     assert stationkeeping_null == stationkeeping_emptylist  # are equivalent
     assert stationkeeping_null == datetime.timedelta(0)  # at least one is 0 time
+
+
+def test_sensor_registry_every_sensor_type_has_entry():
+    """Every SensorType must be present as a key in SENSOR_REGISTRY."""
+    for sensor in SensorType:
+        assert sensor in SENSOR_REGISTRY, f"{sensor} missing from SENSOR_REGISTRY"
+
+
+def test_sensor_registry_no_extra_keys():
+    """SENSOR_REGISTRY should not contain keys outside SensorType."""
+    for key in SENSOR_REGISTRY:
+        assert isinstance(key, SensorType)
+
+
+@pytest.mark.parametrize(
+    "sensor_type",
+    [
+        SensorType.OXYGEN,
+        SensorType.CHLOROPHYLL,
+        SensorType.NITRATE,
+        SensorType.PHOSPHATE,
+        SensorType.PH,
+        SensorType.PHYTOPLANKTON,
+        SensorType.PRIMARY_PRODUCTION,
+    ],
+)
+def test_sensor_registry_bgc_entries_category(sensor_type):
+    """All BGC sensors must have category 'bgc'."""
+    assert SENSOR_REGISTRY[sensor_type].category == "bgc"
+
+
+def test_sensor_registry_unique_fs_keys():
+    """No two sensors should share an fs_key."""
+    fs_keys = [meta.fs_key for meta in SENSOR_REGISTRY.values()]
+    assert len(fs_keys) == len(set(fs_keys)), (
+        "Duplicate fs_key found in SENSOR_REGISTRY"
+    )
+
+
+# helper
+def _make_sensors(*sensor_types, enabled=True):
+    """Helper to build a list of SensorConfig from SensorType values."""
+    return [SensorConfig(sensor_type=st, enabled=enabled) for st in sensor_types]
+
+
+def test_build_basic_particle_class():
+    """Build basic particle class with T+S sensors and fixed variables."""
+    fixed = [Variable("cycle_phase", dtype=np.int32, initial=0)]
+    sensors = _make_sensors(SensorType.TEMPERATURE, SensorType.SALINITY)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    assert issubclass(ParticleClass, JITParticle)
+
+
+def test_build_particle_class_disabled_sensors_excluded():
+    """Disabled sensors should not contribute variables."""
+    fixed = []
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=True),
+        SensorConfig(sensor_type=SensorType.SALINITY, enabled=False),
+    ]
+
+    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    assert hasattr(ParticleClass, "temperature")
+    assert not hasattr(ParticleClass, "salinity")
+
+
+def test_build_particle_class_empty_sensors():
+    """With no sensors, build_particle_class_from_sensors returns a class with only fixed variables."""
+    fixed = [Variable("raising", dtype=np.int8, initial=0)]
+    sensors = []
+
+    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    assert hasattr(ParticleClass, "raising")
+
+
+def test_build_particle_class_velocity_adds_U_V():
+    """VELOCITY sensor should add both U and V particle variables."""
+    fixed = []
+    sensors = _make_sensors(SensorType.VELOCITY)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    assert hasattr(ParticleClass, "U")
+    assert hasattr(ParticleClass, "V")
+
+
+def test_build_particle_class_scipy_base():
+    """Should also work with ScipyParticle as the base class."""
+    fixed = []
+    sensors = _make_sensors(SensorType.TEMPERATURE)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, fixed, ScipyParticle)
+    assert issubclass(ParticleClass, ScipyParticle)
