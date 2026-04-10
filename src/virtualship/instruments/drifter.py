@@ -79,7 +79,7 @@ class DrifterInstrument(Instrument):
             "U": "uo",
             "V": "vo",
             **sensor_variables,
-        }  # advection variables (U and V) are always required for argo float simulation; sensor variables come from config
+        }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
         spacetime_buffer_size = {
             "latlon": None,
             "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
