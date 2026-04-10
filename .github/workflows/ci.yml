@@ -20,9 +20,13 @@ env:
   # one distinguishes color depth, where "3" -> "256-bit color".
   FORCE_COLOR: 3
 
+permissions: {}
+
 jobs:
   cache-pixi-lock:
     runs-on: ubuntu-slim
+    permissions:
+      contents: read
     outputs:
       cache-key: ${{ steps.pixi-lock.outputs.cache-key }}
       pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
@@ -41,6 +45,8 @@ jobs:
     name: "Unit tests: ${{ matrix.runs-on }} | pixi run -e ${{ matrix.pixi-environment }} tests"
     runs-on: ${{ matrix.runs-on }}
     needs: cache-pixi-lock
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
