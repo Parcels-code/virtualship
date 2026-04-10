@@ -7,8 +7,8 @@ import numpy as np
 import pydantic
 import pytest
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.instruments.sensors import DRIFTER_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
