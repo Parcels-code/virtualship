@@ -70,9 +70,14 @@ class _SensorMeta:
     particle_vars: list[str]  # particle variable name(s) produced by this sensor
 
 
+@lru_cache(maxsize=1)  # cache here so same dict is not rebuilt on every access
+def SENSOR_REGISTRY() -> dict[SensorType, _SensorMeta]:
+    """Cached accessor for the sensor registry (lazily via _build_sensor_registry, avoids circular import errors)."""
+    return _build_sensor_registry()
+
+
 # the copernicus_var field below is the bridge between this registry the Copernicus product-ID selection logic (PRODUCT_IDS, BGC_ANALYSIS_IDS, MONTHLY_BGC_REANALYSIS_IDS, etc.)
 def _build_sensor_registry() -> dict[SensorType, _SensorMeta]:
-    """Build the sensor registry lazily to avoid circular import issues."""
     from virtualship.instruments.sensors import SensorType
 
     return {
@@ -90,7 +95,7 @@ def _build_sensor_registry() -> dict[SensorType, _SensorMeta]:
         ),
         SensorType.VELOCITY: _SensorMeta(
             fs_key="UV",
-            copernicus_var="uo",  # primary var... active_variables() in ADCPConfig expands to both uo and vo
+            copernicus_var="uo",  # uo is primary var here... active_variables() in ADCPConfig expands to both uo and vo
             category="phys",
             particle_vars=[
                 "U",
@@ -140,12 +145,6 @@ def _build_sensor_registry() -> dict[SensorType, _SensorMeta]:
             particle_vars=["nppv"],
         ),
     }
-
-
-@lru_cache(maxsize=1)  # cache here so same dict is not rebuilt on every access
-def SENSOR_REGISTRY() -> dict[SensorType, _SensorMeta]:
-    """Cached accessor for the sensor registry (lazy, avoids circular import errors)."""
-    return _build_sensor_registry()
 
 
 # =====================================================
@@ -717,6 +716,14 @@ def _calc_wp_stationkeeping_time(
     if not wp_instrument_types:
         wp_instrument_types = []
 
+    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    from virtualship.instruments.types import InstrumentType
+
+    both_ctd_and_bgc = (
+        InstrumentType.CTD in wp_instrument_types
+        and InstrumentType.CTD_BGC in wp_instrument_types
+    )
+
     # extract configs for all instruments present in expedition
     valid_instrument_configs = [
         iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
@@ -737,6 +744,10 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
+        if both_ctd_and_bgc and iconfig.__class__.__name__ == instrument_config_map.get(
+            InstrumentType.CTD_BGC
+        ):
+            continue  # only count stationkeeping once when both CTD and CTD_BGC are present; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
