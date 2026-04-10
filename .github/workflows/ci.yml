@@ -77,7 +77,7 @@ jobs:
       - name: Upload coverage report
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }} # zizmor: ignore[secrets-outside-env]
 #   typechecking:
 #     name: "TypeChecking: pixi run typing"
 #     runs-on: ubuntu-latest
