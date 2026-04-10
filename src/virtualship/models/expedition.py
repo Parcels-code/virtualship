@@ -714,4 +714,4 @@ class SensorConfig(pydantic.BaseModel):
     @property
     def meta(self) -> _SensorMeta:
         """Metadata for this sensor."""
-        return SENSOR_REGISTRY[self.sensor_type]
+        return SENSOR_REGISTRY()[self.sensor_type]

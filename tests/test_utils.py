@@ -367,7 +367,7 @@ def test_calc_wp_stationkeeping_time_no_instruments(expedition):
 
 def test_sensor_registry_keys_match_sensor_type():
     """SENSOR_REGISTRY keys must be exactly the set of SensorType members."""
-    assert set(SENSOR_REGISTRY.keys()) == set(SensorType)
+    assert set(SENSOR_REGISTRY().keys()) == set(SensorType)
 
 
 @pytest.mark.parametrize(
@@ -384,12 +384,12 @@ def test_sensor_registry_keys_match_sensor_type():
 )
 def test_sensor_registry_bgc_entries_category(sensor_type):
     """All BGC sensors must have category 'bgc'."""
-    assert SENSOR_REGISTRY[sensor_type].category == "bgc"
+    assert SENSOR_REGISTRY()[sensor_type].category == "bgc"
 
 
 def test_sensor_registry_unique_fs_keys():
     """No two sensors should share an fs_key."""
-    fs_keys = [meta.fs_key for meta in SENSOR_REGISTRY.values()]
+    fs_keys = [meta.fs_key for meta in SENSOR_REGISTRY().values()]
     assert len(fs_keys) == len(set(fs_keys)), (
         "Duplicate fs_key found in SENSOR_REGISTRY"
     )
