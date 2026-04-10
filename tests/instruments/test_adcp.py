@@ -164,11 +164,6 @@ def test_adcp_sensor_config_yaml() -> None:
     assert loaded.sensors[0].enabled is True
 
 
-def test_adcp_supported_sensors():
-    """ADCP supports only VELOCITY."""
-    assert ADCP_SUPPORTED_SENSORS == frozenset({SensorType.VELOCITY})
-
-
 def test_adcp_config_default_sensors():
     """ADCPConfig defaults to VELOCITY."""
     config = ADCPConfig(

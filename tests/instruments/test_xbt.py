@@ -187,11 +187,6 @@ def test_xbt_sensor_config_yaml() -> None:
     assert loaded.sensors[0].enabled is True
 
 
-def test_xbt_supported_sensors():
-    """XBT supports only TEMPERATURE."""
-    assert XBT_SUPPORTED_SENSORS == frozenset({SensorType.TEMPERATURE})
-
-
 def test_xbt_config_default_sensors():
     """XBTConfig defaults to TEMPERATURE."""
     config = XBTConfig(

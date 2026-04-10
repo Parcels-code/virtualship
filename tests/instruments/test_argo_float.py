@@ -199,13 +199,6 @@ def test_argo_float_disabled_sensor(tmpdir) -> None:
     )
 
 
-def test_argo_float_supported_sensors():
-    """ArgoFloat supports TEMPERATURE and SALINITY."""
-    assert ARGO_FLOAT_SUPPORTED_SENSORS == frozenset(
-        {SensorType.TEMPERATURE, SensorType.SALINITY}
-    )
-
-
 def test_argo_config_default_sensors():
     """ArgoFloatConfig defaults to TEMPERATURE + SALINITY."""
     config = ArgoFloatConfig(

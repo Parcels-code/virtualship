@@ -224,7 +224,7 @@ class Waypoint(pydantic.BaseModel):
 
 
 def _serialize_sensor_list(sensors: list[SensorConfig]) -> list[str]:
-    """Serialise enabled sensors to a compact list of sensor-type name strings."""
+    """Serialise enabled sensors to a list of sensor-type strings."""
     return [sc.sensor_type.value for sc in sensors if sc.enabled]
 
 
@@ -233,7 +233,7 @@ def _check_sensor_compatibility(
     supported: frozenset[SensorType],
     instrument_name: str,
 ) -> list[SensorConfig]:
-    """Raise ValueError if any sensor in `sensors` is not in `supported`, or if no sensors are enabled. Used as a Pydantic field_validator for each instrument config class."""
+    """Errors if any sensor in `sensors` is not in `supported`, or if no sensors are enabled."""
     unsupported = {sc.sensor_type for sc in sensors} - supported
     if unsupported:
         names = ", ".join(sorted(s.value for s in unsupported))

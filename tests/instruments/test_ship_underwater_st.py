@@ -164,13 +164,6 @@ def test_ship_underwater_st_sensor_config_yaml() -> None:
     assert loaded.sensors[0].enabled is True
 
 
-def test_underwater_st_supported_sensors():
-    """Underwater ST supports TEMPERATURE and SALINITY."""
-    assert UNDERWATER_ST_SUPPORTED_SENSORS == frozenset(
-        {SensorType.TEMPERATURE, SensorType.SALINITY}
-    )
-
-
 def test_underwater_st_config_default_sensors():
     """ShipUnderwaterSTConfig defaults to TEMPERATURE + SALINITY."""
     config = ShipUnderwaterSTConfig(

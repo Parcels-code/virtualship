@@ -98,27 +98,27 @@ def test_serialize_sensor_list_disabled_excluded():
 
 
 def test_check_sensor_compatibility_unsupported_error():
-    """Unsupported sensor raises ValueError."""
+    """Unsupported sensor fails."""
     sensors = [SensorConfig(sensor_type=SensorType.OXYGEN)]
     with pytest.raises(ValueError, match="does not support sensor"):
         _check_sensor_compatibility(sensors, DRIFTER_SUPPORTED_SENSORS, "Drifter")
 
 
 def test_check_sensor_compatibility_all_disabled_error():
-    """All sensors disabled raises ValueError."""
+    """All sensors disabled fails."""
     sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=False)]
     with pytest.raises(ValueError, match="no enabled sensors"):
         _check_sensor_compatibility(sensors, DRIFTER_SUPPORTED_SENSORS, "Drifter")
 
 
 def test_check_sensor_compatibility_empty_error():
-    """Empty sensor list raises ValueError."""
+    """Empty sensor list fails."""
     with pytest.raises(ValueError, match="no enabled sensors"):
         _check_sensor_compatibility([], DRIFTER_SUPPORTED_SENSORS, "Drifter")
 
 
 def test_check_sensor_compatibility_mixed_error():
-    """Mix of valid and invalid sensors raises ValueError."""
+    """Mix of valid and invalid sensors fails."""
     sensors = [
         SensorConfig(sensor_type=SensorType.TEMPERATURE),
         SensorConfig(sensor_type=SensorType.OXYGEN),

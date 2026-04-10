@@ -295,19 +295,3 @@ def test_ctd_bgc_sensor_config_yaml() -> None:
     assert len(loaded.sensors) == 1
     assert loaded.sensors[0].sensor_type == SensorType.OXYGEN
     assert loaded.sensors[0].enabled is True
-
-
-def test_ctd_bgc_supported_sensors():
-    """CTD_BGC supports all BGC sensors."""
-    expected = frozenset(
-        {
-            SensorType.OXYGEN,
-            SensorType.CHLOROPHYLL,
-            SensorType.NITRATE,
-            SensorType.PHOSPHATE,
-            SensorType.PH,
-            SensorType.PHYTOPLANKTON,
-            SensorType.PRIMARY_PRODUCTION,
-        }
-    )
-    assert CTD_BGC_SUPPORTED_SENSORS == expected

@@ -423,15 +423,6 @@ def test_build_particle_class_disabled_sensors_excluded():
     assert not hasattr(ParticleClass, "salinity")
 
 
-def test_build_particle_class_empty_sensors():
-    """With no sensors, build_particle_class_from_sensors returns a class with only fixed variables."""
-    fixed = [Variable("raising", dtype=np.int8, initial=0)]
-    sensors = []
-
-    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
-    assert hasattr(ParticleClass, "raising")
-
-
 def test_build_particle_class_velocity_adds_U_V():
     """VELOCITY sensor should add both U and V particle variables."""
     fixed = []

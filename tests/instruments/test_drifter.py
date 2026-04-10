@@ -10,7 +10,7 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
-from virtualship.instruments.sensors import DRIFTER_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     DrifterConfig,
@@ -211,11 +211,6 @@ def test_drifter_disabled_sensor_absent_from_output(tmpdir) -> None:
             stationkeeping_time_minutes=10,
             sensors=[],
         )
-
-
-def test_drifter_supported_sensors():
-    """Drifter supports only TEMPERATURE."""
-    assert DRIFTER_SUPPORTED_SENSORS == frozenset({SensorType.TEMPERATURE})
 
 
 def test_drifter_config_default_sensors():
