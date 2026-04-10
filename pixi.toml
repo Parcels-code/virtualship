@@ -3,6 +3,8 @@ name = "VirtualShip"
 preview = ["pixi-build"]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+exclude-newer = "5d" # security pre-caution against compromised packages
+requires-pixi = ">=0.67.0"
 
 [package]
 name = "virtualship"
