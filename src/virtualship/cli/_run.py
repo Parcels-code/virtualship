@@ -5,10 +5,12 @@ import os
 import shutil
 import sys
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 
 import copernicusmarine
+from parcels.particleset import ParticleSetWarning
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
@@ -38,6 +40,12 @@ from virtualship.utils import (
 # parcels logger (suppress INFO messages to prevent log being flooded)
 external_logger = logging.getLogger("parcels.tools.loggers")
 external_logger.setLevel(logging.WARNING)
+
+warnings.filterwarnings(
+    "ignore",
+    category=ParticleSetWarning,
+    message="Some of the particles have a start time difference that is not a multiple of outputdt. This could cause the first output of some of the particles that start later in the simulation to be at a different time than expected.",
+)
 
 # copernicusmarine logger (suppress INFO messages to prevent log being flooded)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
