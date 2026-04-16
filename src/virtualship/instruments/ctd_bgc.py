@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -31,10 +31,10 @@ class CTD_BGC:
 
 
 # =====================================================
-# SECTION: fixed/mechanical Particle Variables (non-sampling)
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_CTD_BGC_FIXED_VARIABLES = [
+_CTD_BGC_NONSENSOR_VARIABLES = [
     Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
     Variable("max_depth", dtype=np.float32),
     Variable("min_depth", dtype=np.float32),
@@ -187,7 +187,7 @@ class CTD_BGCInstrument(Instrument):
         # build dynamic particle class from the active sensors
         ctd_bgc_config = self.expedition.instruments_config.ctd_bgc_config
         _CTD_BGCParticle = build_particle_class_from_sensors(
-            ctd_bgc_config.sensors, _CTD_BGC_FIXED_VARIABLES, JITParticle
+            ctd_bgc_config.sensors, _CTD_BGC_NONSENSOR_VARIABLES, JITParticle
         )
 
         # define parcel particles

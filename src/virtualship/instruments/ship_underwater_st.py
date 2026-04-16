@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
 
+from parcels import ParticleSet, ScipyParticle
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -26,11 +26,11 @@ class Underwater_ST:
 
 
 # =====================================================
-# SECTION: fixed/mechanical Particle Variables (non-sampling)
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-# Underwater ST has no fixed/mechanical variables, only sensor variables.
-_ST_FIXED_VARIABLES: list = []
+# Underwater ST has no non-sensor variables, only sensor variables.
+_ST_NONSENSOR_VARIABLES: list = []
 
 
 # =====================================================
@@ -101,7 +101,7 @@ class Underwater_STInstrument(Instrument):
         # build dynamic particle class from the active sensors
         st_config = self.expedition.instruments_config.ship_underwater_st_config
         _ShipSTParticle = build_particle_class_from_sensors(
-            st_config.sensors, _ST_FIXED_VARIABLES, ScipyParticle
+            st_config.sensors, _ST_NONSENSOR_VARIABLES, ScipyParticle
         )
 
         particleset = ParticleSet.from_list(

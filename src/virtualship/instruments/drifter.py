@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -31,10 +31,10 @@ class Drifter:
 
 
 # =====================================================
-# SECTION: fixed/mechanical Particle Variables (non-sampling)
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_DRIFTER_FIXED_VARIABLES = [
+_DRIFTER_NONSENSOR_VARIABLES = [
     Variable("has_lifetime", dtype=np.int8),  # bool
     Variable("age", dtype=np.float32, initial=0.0),
     Variable("lifetime", dtype=np.float32),
@@ -123,7 +123,7 @@ class DrifterInstrument(Instrument):
         # build dynamic particle class from the active sensors
         drifter_config = self.expedition.instruments_config.drifter_config
         _DrifterParticle = build_particle_class_from_sensors(
-            drifter_config.sensors, _DRIFTER_FIXED_VARIABLES, JITParticle
+            drifter_config.sensors, _DRIFTER_NONSENSOR_VARIABLES, JITParticle
         )
 
         # define parcel particles

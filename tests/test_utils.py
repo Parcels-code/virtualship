@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 
 import virtualship.utils
+from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition, SensorConfig
@@ -402,41 +402,41 @@ def _make_sensors(*sensor_types, enabled=True):
 
 
 def test_build_basic_particle_class():
-    """Build basic particle class with T+S sensors and fixed variables."""
-    fixed = [Variable("cycle_phase", dtype=np.int32, initial=0)]
+    """Build basic particle class with T+S sensors and nonsensor variables."""
+    nonsensor = [Variable("cycle_phase", dtype=np.int32, initial=0)]
     sensors = _make_sensors(SensorType.TEMPERATURE, SensorType.SALINITY)
 
-    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
     assert issubclass(ParticleClass, JITParticle)
 
 
 def test_build_particle_class_disabled_sensors_excluded():
     """Disabled sensors should not contribute variables."""
-    fixed = []
+    nonsensor = []
     sensors = [
         SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=True),
         SensorConfig(sensor_type=SensorType.SALINITY, enabled=False),
     ]
 
-    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
     assert hasattr(ParticleClass, "temperature")
     assert not hasattr(ParticleClass, "salinity")
 
 
 def test_build_particle_class_velocity_adds_U_V():
     """VELOCITY sensor should add both U and V particle variables."""
-    fixed = []
+    nonsensor = []
     sensors = _make_sensors(SensorType.VELOCITY)
 
-    ParticleClass = build_particle_class_from_sensors(sensors, fixed, JITParticle)
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
     assert hasattr(ParticleClass, "U")
     assert hasattr(ParticleClass, "V")
 
 
 def test_build_particle_class_scipy_base():
     """Should also work with ScipyParticle as the base class."""
-    fixed = []
+    nonsensor = []
     sensors = _make_sensors(SensorType.TEMPERATURE)
 
-    ParticleClass = build_particle_class_from_sensors(sensors, fixed, ScipyParticle)
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, ScipyParticle)
     assert issubclass(ParticleClass, ScipyParticle)

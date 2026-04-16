@@ -18,7 +18,7 @@ def ctd_make_realistic(
 
     :param zarr_path: Input simulated data.
     :param out_dir: Output directory for CNV file.
-    :param prefix: Prefix for CNV files. Will be postfixed with '_{ctd_num}'.
+    :param prefix: Prefix for CNV files. Will be postnonsensor with '_{ctd_num}'.
     :returns: Paths to created file.
     """
     original = xr.open_zarr(zarr_path)

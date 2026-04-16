@@ -4,8 +4,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -32,10 +32,10 @@ class ArgoFloat:
 
 
 # =====================================================
-# SECTION: fixed/mechanical Particle Variables (non-sampling)
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_ARGO_FIXED_VARIABLES = [
+_ARGO_NONSENSOR_VARIABLES = [
     Variable("cycle_phase", dtype=np.int32, initial=0.0),
     Variable("cycle_age", dtype=np.float32, initial=0.0),
     Variable("drift_age", dtype=np.float32, initial=0.0),
@@ -230,7 +230,7 @@ class ArgoFloatInstrument(Instrument):
         argo_float_config = self.expedition.instruments_config.argo_float_config
         _ArgoParticle = build_particle_class_from_sensors(
             argo_float_config.sensors,
-            _ARGO_FIXED_VARIABLES,
+            _ARGO_NONSENSOR_VARIABLES,
             JITParticle,
         )
 

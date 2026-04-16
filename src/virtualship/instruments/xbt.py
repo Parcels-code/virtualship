@@ -3,8 +3,8 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -33,10 +33,10 @@ class XBT:
 
 
 # =====================================================
-# SECTION: fixed/mechanical Particle Variables (non-sampling)
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_XBT_FIXED_VARIABLES = [
+_XBT_NONSENSOR_VARIABLES = [
     Variable("max_depth", dtype=np.float32),
     Variable("min_depth", dtype=np.float32),
     Variable("fall_speed", dtype=np.float32),
@@ -166,7 +166,7 @@ class XBTInstrument(Instrument):
         # build dynamic particle class from the active sensors
         xbt_config = self.expedition.instruments_config.xbt_config
         _XBTParticle = build_particle_class_from_sensors(
-            xbt_config.sensors, _XBT_FIXED_VARIABLES, JITParticle
+            xbt_config.sensors, _XBT_NONSENSOR_VARIABLES, JITParticle
         )
 
         # define xbt particles
