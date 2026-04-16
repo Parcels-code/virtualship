@@ -37,7 +37,7 @@ format:
 
 ::: {layout-ncol=3 layout-valign="top"}
 
-![CTD (NIOZ)](https://www.nioz.nl/sites/default/files/styles/ratio_16_9_md/public/2025-08/foto%2010%20P1080059_0.JPG?h=173c0f7e&itok=87l7yzVK)
+![CTD (NIOZ)](media/nioz_ctd_image.JPEG)
 
 ![ADCP (Nortek)](https://www.nortekgroup.com/assets/images/VM-illustration-vessel.png){height="200px"}
 
