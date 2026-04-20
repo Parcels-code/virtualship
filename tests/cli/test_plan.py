@@ -150,3 +150,52 @@ async def test_UI_changes():
 
     # cleanup
     shutil.rmtree(tmpdir)
+
+
+@pytest.mark.asyncio
+async def test_UI_opens_with_null_time_and_instrument():
+    """Test that the UI opens correctly when waypoints have time: null and instrument: null."""
+    tmpdir = Path(tempfile.mkdtemp())
+
+    instruments_config = InstrumentsConfig.model_validate(
+        yaml.safe_load(get_example_expedition()).get("instruments_config")
+    )
+    ship_config = yaml.safe_load(get_example_expedition()).get("ship_config")
+    waypoints = [
+        Waypoint(
+            location=Location(0, 0),
+            time=datetime(2022, 1, 1, 0, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.01, 0.01),
+            time=None,
+            instrument=None,
+        ),
+        Waypoint(
+            location=Location(0.02, 0.02),
+            time=None,
+            instrument=None,
+        ),
+    ]
+    expedition = Expedition(
+        schedule=Schedule(waypoints=waypoints),
+        instruments_config=instruments_config,
+        ship_config=ship_config,
+    )
+
+    expedition.to_yaml(tmpdir / EXPEDITION)
+
+    app = PlanApp(path=tmpdir)
+
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+
+        plan_screen = pilot.app.screen
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        # verify the app opened without errors by checking the editor loaded
+        assert expedition_editor is not None
+
+    # cleanup
+    shutil.rmtree(tmpdir)
