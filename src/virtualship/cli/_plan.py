@@ -736,7 +736,7 @@ class WaypointWidget(Static):
                         id=f"wp{self.index}_year",
                         value=int(self.waypoint.time.year)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.NULL,
                         prompt="YYYY",
                         classes="year-select",
                     )
@@ -746,7 +746,7 @@ class WaypointWidget(Static):
                         id=f"wp{self.index}_month",
                         value=int(self.waypoint.time.month)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.NULL,
                         prompt="MM",
                         classes="month-select",
                     )
@@ -756,7 +756,7 @@ class WaypointWidget(Static):
                         id=f"wp{self.index}_day",
                         value=int(self.waypoint.time.day)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.NULL,
                         prompt="DD",
                         classes="day-select",
                     )
@@ -766,7 +766,7 @@ class WaypointWidget(Static):
                         id=f"wp{self.index}_hour",
                         value=int(self.waypoint.time.hour)
                         if self.waypoint.time
-                        else Select.BLANK,
+                        else Select.NULL,
                         prompt="hh",
                         classes="hour-select",
                     )
@@ -775,7 +775,7 @@ class WaypointWidget(Static):
                     minute_value = (
                         int(self.waypoint.time.minute)
                         if self.waypoint.time
-                        else Select.BLANK
+                        else Select.NULL
                     )
 
                     # if the current minute is not a multiple of 5, add it to the options
