@@ -1,5 +1,7 @@
 # see https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/working_with_expedition_yaml.html for more details on how to edit this file
 #
+# TODO: add a link to docs where lists what sensors are supported for each instrument
+#
 schedule:
   waypoints:
     - instrument:
@@ -37,6 +39,8 @@ instruments_config:
     num_bins: 40
     max_depth_meter: -1000.0
     period_minutes: 5.0
+    sensors:
+      - VELOCITY
   argo_float_config:
     cycle_days: 10.0
     drift_days: 9.0
@@ -46,23 +50,45 @@ instruments_config:
     vertical_speed_meter_per_second: -0.1
     stationkeeping_time_minutes: 20.0
     lifetime_days: 63.0
+    sensors:
+      - TEMPERATURE
+      - SALINITY
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
     stationkeeping_time_minutes: 50.0
+    sensors:
+      - TEMPERATURE
+      - SALINITY
   ctd_bgc_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
     stationkeeping_time_minutes: 50.0
+    sensors:
+      - OXYGEN
+      - CHLOROPHYLL
+      - NITRATE
+      - PHOSPHATE
+      - PH
+      - PHYTOPLANKTON
+      - PRIMARY_PRODUCTION
   drifter_config:
     depth_meter: -1.0
     lifetime_days: 42.0
     stationkeeping_time_minutes: 20.0
+    sensors:
+      - TEMPERATURE
   xbt_config:
     max_depth_meter: -285.0
     min_depth_meter: -2.0
     fall_speed_meter_per_second: 6.7
     deceleration_coefficient: 0.00225
-  ship_underwater_st_config: null
+    sensors:
+      - TEMPERATURE
+  ship_underwater_st_config:
+    period_minutes: 5.0
+    sensors:
+      - TEMPERATURE
+      - SALINITY
 ship_config:
   ship_speed_knots: 10.0

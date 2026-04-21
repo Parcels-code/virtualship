@@ -7,12 +7,20 @@ Fields are kept static over time and time component of CTD_BGC measurements is n
 import datetime
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
+from virtualship.instruments.sensors import CTD_BGC_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
-from virtualship.models.expedition import Waypoint
+from virtualship.models.expedition import (
+    CTD_BGCConfig,
+    InstrumentsConfig,
+    SensorConfig,
+    Waypoint,
+)
 
 
 def test_simulate_ctd_bgcs(tmpdir) -> None:
@@ -174,6 +182,23 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 ),
             ]
 
+        instruments_config = InstrumentsConfig(
+            ctd_bgc_config=CTD_BGCConfig(
+                stationkeeping_time_minutes=50,
+                min_depth_meter=-11.0,
+                max_depth_meter=-2000.0,
+                sensors=[
+                    SensorConfig(sensor_type=SensorType.OXYGEN),
+                    SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+                    SensorConfig(sensor_type=SensorType.NITRATE),
+                    SensorConfig(sensor_type=SensorType.PHOSPHATE),
+                    SensorConfig(sensor_type=SensorType.PH),
+                    SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
+                    SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
+                ],
+            )
+        )
+
     expedition = DummyExpedition()
     from_data = None
 
@@ -216,3 +241,57 @@ def test_simulate_ctd_bgcs(tmpdir) -> None:
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {ctd_i=} {loc=} {var=} {obs_value=} {exp_value=}."
                 )
+
+
+def test_ctd_bgc_sensor_config_active_variables() -> None:
+    """active_variables() only returns variables for enabled sensors."""
+    config_all = CTD_BGCConfig(
+        stationkeeping_time_minutes=50,
+        min_depth_meter=-11.0,
+        max_depth_meter=-2000.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.OXYGEN),
+            SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+            SensorConfig(sensor_type=SensorType.NITRATE),
+            SensorConfig(sensor_type=SensorType.PHOSPHATE),
+            SensorConfig(sensor_type=SensorType.PH),
+            SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
+            SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
+        ],
+    )
+    assert config_all.active_variables() == {
+        "o2": "o2",
+        "chl": "chl",
+        "no3": "no3",
+        "po4": "po4",
+        "ph": "ph",
+        "phyc": "phyc",
+        "nppv": "nppv",
+    }
+
+    config_o2_only = CTD_BGCConfig(
+        stationkeeping_time_minutes=50,
+        min_depth_meter=-11.0,
+        max_depth_meter=-2000.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.OXYGEN)
+        ],  # all others omitted = disabled
+    )
+    assert config_o2_only.active_variables() == {"o2": "o2"}
+
+
+def test_ctd_bgc_sensor_config_yaml() -> None:
+    """CTD_BGCConfig sensors survive YAML serialisation."""
+    config = CTD_BGCConfig(
+        stationkeeping_time_minutes=50,
+        min_depth_meter=-11.0,
+        max_depth_meter=-2000.0,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.OXYGEN)
+        ],  # CHLOROPHYLL and others omitted = disabled
+    )
+    dumped = config.model_dump(by_alias=True)
+    loaded = CTD_BGCConfig.model_validate(dumped)
+    assert len(loaded.sensors) == 1
+    assert loaded.sensors[0].sensor_type == SensorType.OXYGEN
+    assert loaded.sensors[0].enabled is True

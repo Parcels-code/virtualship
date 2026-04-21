@@ -5,6 +5,7 @@ import hashlib
 import os
 import re
 import warnings
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
@@ -15,7 +16,7 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
+from parcels import FieldSet, Variable
 
 from virtualship.errors import CopernicusCatalogueError
 
@@ -23,8 +24,10 @@ if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
+    from virtualship.instruments.sensors import SensorType
     from virtualship.models import Expedition, InstrumentsConfig, Location
     from virtualship.models.checkpoint import Checkpoint
+    from virtualship.models.expedition import SensorConfig
 
 import pandas as pd
 import yaml
@@ -51,6 +54,98 @@ REPORT = "post_expedition_report.txt"
 
 EXPEDITION_ORIGINAL = "expedition_original.yaml"
 EXPEDITION_LATEST = "expedition_latest.yaml"
+
+# =====================================================
+# SECTION: sensor and variable metadata and registries
+# =====================================================
+
+
+@dataclass(frozen=True)
+class _SensorMeta:
+    fs_key: str  # map to Parcels fieldset variables
+    copernicus_var: str  # map to Copernicus Marine Service variable names
+    category: Literal[
+        "phys", "bgc"
+    ]  # physical vs. biogeochemical variable, used for product ID selection logic
+    particle_vars: list[str]  # particle variable name(s) produced by this sensor
+
+
+@lru_cache(maxsize=1)  # cache here so same dict is not rebuilt on every access
+def SENSOR_REGISTRY() -> dict[SensorType, _SensorMeta]:
+    """Cached accessor for the sensor registry (lazily via _build_sensor_registry, avoids circular import errors)."""
+    return _build_sensor_registry()
+
+
+# the copernicus_var field below is the bridge between this registry the Copernicus product-ID selection logic (PRODUCT_IDS, BGC_ANALYSIS_IDS, MONTHLY_BGC_REANALYSIS_IDS, etc.)
+def _build_sensor_registry() -> dict[SensorType, _SensorMeta]:
+    from virtualship.instruments.sensors import SensorType
+
+    return {
+        SensorType.TEMPERATURE: _SensorMeta(
+            fs_key="T",
+            copernicus_var="thetao",
+            category="phys",
+            particle_vars=["temperature"],
+        ),
+        SensorType.SALINITY: _SensorMeta(
+            fs_key="S",
+            copernicus_var="so",
+            category="phys",
+            particle_vars=["salinity"],
+        ),
+        SensorType.VELOCITY: _SensorMeta(
+            fs_key="UV",
+            copernicus_var="uo",  # uo is primary var here... active_variables() in ADCPConfig expands to both uo and vo
+            category="phys",
+            particle_vars=[
+                "U",
+                "V",
+            ],  # two particle variables associated with one sensor
+        ),
+        SensorType.OXYGEN: _SensorMeta(
+            fs_key="o2",
+            copernicus_var="o2",
+            category="bgc",
+            particle_vars=["o2"],
+        ),
+        SensorType.CHLOROPHYLL: _SensorMeta(
+            fs_key="chl",
+            copernicus_var="chl",
+            category="bgc",
+            particle_vars=["chl"],
+        ),
+        SensorType.NITRATE: _SensorMeta(
+            fs_key="no3",
+            copernicus_var="no3",
+            category="bgc",
+            particle_vars=["no3"],
+        ),
+        SensorType.PHOSPHATE: _SensorMeta(
+            fs_key="po4",
+            copernicus_var="po4",
+            category="bgc",
+            particle_vars=["po4"],
+        ),
+        SensorType.PH: _SensorMeta(
+            fs_key="ph",
+            copernicus_var="ph",
+            category="bgc",
+            particle_vars=["ph"],
+        ),
+        SensorType.PHYTOPLANKTON: _SensorMeta(
+            fs_key="phyc",
+            copernicus_var="phyc",
+            category="bgc",
+            particle_vars=["phyc"],
+        ),
+        SensorType.PRIMARY_PRODUCTION: _SensorMeta(
+            fs_key="nppv",
+            copernicus_var="nppv",
+            category="bgc",
+            particle_vars=["nppv"],
+        ),
+    }
+
 
 # =====================================================
 # SECTION: Copernicus Marine Service constants
@@ -617,13 +712,13 @@ def _calc_wp_stationkeeping_time(
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
-    from virtualship.instruments.types import InstrumentType  # avoid circular imports
-
     # to empty list if wp instruments set to 'null'
     if not wp_instrument_types:
         wp_instrument_types = []
 
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    from virtualship.instruments.types import InstrumentType
+
     both_ctd_and_bgc = (
         InstrumentType.CTD in wp_instrument_types
         and InstrumentType.CTD_BGC in wp_instrument_types
@@ -639,7 +734,7 @@ def _calc_wp_stationkeeping_time(
     for iconfig in valid_instrument_configs:
         for itype in wp_instrument_types:
             if (
-                instrument_config_map[itype] == iconfig.__class__.__name__
+                instrument_config_map.get(itype) == iconfig.__class__.__name__
                 and (
                     iconfig not in wp_instrument_configs
                 )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
@@ -649,13 +744,10 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        if (
-            both_ctd_and_bgc
-            and iconfig.__class__.__name__
-            == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
+        if both_ctd_and_bgc and iconfig.__class__.__name__ == instrument_config_map.get(
+            InstrumentType.CTD_BGC
         ):
-            continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
-
+            continue  # only count stationkeeping once when both CTD and CTD_BGC are present; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
@@ -667,6 +759,21 @@ def _make_hash(s: str, length: int) -> str:
     assert length % 2 == 0, "Length must be even."
     half_length = length // 2
     return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+
+def build_particle_class_from_sensors(
+    sensors: list[SensorConfig],
+    fixed_variables: list,
+    particle_class: type,
+) -> type:
+    """Build a Particle class (JITParticle or ScipyParticle) from fixed variables and active sensors."""
+    sensor_variables = [
+        Variable(var_name, dtype=np.float32, initial=np.nan)
+        for sc in sensors
+        if sc.enabled
+        for var_name in sc.meta.particle_vars
+    ]
+    return particle_class.add_variables(fixed_variables + sensor_variables)
 
 
 # =====================================================

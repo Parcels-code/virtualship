@@ -7,12 +7,20 @@ Fields are kept static over time and time component of XBT measurements is not t
 import datetime
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.xbt import XBT, XBTInstrument
+from virtualship.instruments.sensors import XBT_SUPPORTED_SENSORS, SensorType
 from virtualship.models import Location, Spacetime
-from virtualship.models.expedition import Waypoint
+from virtualship.models.expedition import (
+    InstrumentsConfig,
+    SensorConfig,
+    Waypoint,
+    XBTConfig,
+)
 
 
 def test_simulate_xbts(tmpdir) -> None:
@@ -107,6 +115,16 @@ def test_simulate_xbts(tmpdir) -> None:
                 ),
             ]
 
+        instruments_config = InstrumentsConfig(
+            xbt_config=XBTConfig(
+                min_depth_meter=-2.0,
+                max_depth_meter=-285.0,
+                fall_speed_meter_per_second=6.7,
+                deceleration_coefficient=0.00225,
+                sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+            )
+        )
+
     expedition = DummyExpedition()
     from_data = None
 
@@ -139,3 +157,54 @@ def test_simulate_xbts(tmpdir) -> None:
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {xbt_i=} {loc=} {var=} {obs_value=} {exp_value=}."
                 )
+
+
+def test_xbt_sensor_config_active_variables() -> None:
+    """active_variables() only returns variables for enabled sensors."""
+    config_with_temp = XBTConfig(
+        min_depth_meter=-2.0,
+        max_depth_meter=-285.0,
+        fall_speed_meter_per_second=6.7,
+        deceleration_coefficient=0.00225,
+        sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+    )
+    assert config_with_temp.active_variables() == {"T": "thetao"}
+
+
+def test_xbt_sensor_config_yaml() -> None:
+    """XBTConfig sensors survive YAML serialisation."""
+    config = XBTConfig(
+        min_depth_meter=-2.0,
+        max_depth_meter=-285.0,
+        fall_speed_meter_per_second=6.7,
+        deceleration_coefficient=0.00225,
+        sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+    )
+    dumped = config.model_dump(by_alias=True)
+    loaded = XBTConfig.model_validate(dumped)
+    assert len(loaded.sensors) == 1
+    assert loaded.sensors[0].sensor_type == SensorType.TEMPERATURE
+    assert loaded.sensors[0].enabled is True
+
+
+def test_xbt_config_default_sensors():
+    """XBTConfig defaults to TEMPERATURE."""
+    config = XBTConfig(
+        min_depth_meter=-2.0,
+        max_depth_meter=-285.0,
+        fall_speed_meter_per_second=6.7,
+        deceleration_coefficient=0.00225,
+    )
+    assert config.sensors[0].sensor_type is SensorType.TEMPERATURE
+
+
+def test_xbt_config_unsupported_sensor_rejected():
+    """Unsupported sensor on XBT is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        XBTConfig(
+            min_depth_meter=-2.0,
+            max_depth_meter=-285.0,
+            fall_speed_meter_per_second=6.7,
+            deceleration_coefficient=0.00225,
+            sensors=[SensorConfig(sensor_type=SensorType.SALINITY)],
+        )
