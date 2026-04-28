@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 import pydantic
@@ -217,41 +218,54 @@ class Waypoint(pydantic.BaseModel):
 ##
 
 
-def _serialize_sensor_list(sensors: list[SensorConfig]) -> list[str]:
-    """Serialise enabled sensors to a list of sensor-type strings."""
-    return [sc.sensor_type.value for sc in sensors if sc.enabled]
+class _InstrumentConfigMixin(pydantic.BaseModel):
+    """Serialisation, validation and variable mapping inheritance across instrument configs."""
 
+    _instrument_type: ClassVar[InstrumentType]
+    _instrument_name: ClassVar[str]
 
-def _check_sensor_compatibility(
-    sensors: list[SensorConfig],
-    supported: frozenset[SensorType],
-    instrument_name: str,
-) -> list[SensorConfig]:
-    """Errors if any sensor in `sensors` is not in `supported`, or if no sensors are enabled."""
-    unsupported = {sc.sensor_type for sc in sensors} - supported
-    if unsupported:
-        names = ", ".join(sorted(s.value for s in unsupported))
-        valid = ", ".join(sorted(s.value for s in supported))
-        raise ValueError(
-            f"{instrument_name} does not support sensor(s): {names}. "
-            f"Supported sensors: {valid}."
+    @pydantic.field_validator("sensors", mode="after", check_fields=False)
+    @classmethod
+    def _check_sensors(cls, value) -> list[SensorConfig]:
+        return SensorConfig.check_compatibility(
+            value, cls._instrument_type, cls._instrument_name
         )
-    if not any(sc.enabled for sc in sensors):
-        raise ValueError(
-            f"{instrument_name} has no enabled sensors. "
-            f"At least one sensor must be enabled."
-        )
-    return sensors
 
+    @pydantic.field_serializer("sensors", check_fields=False)
+    def _serialize_sensors(self, value: list[SensorConfig], _info):
+        return SensorConfig.serialize_list(value)
 
-def build_variables_from_sensors(sensors: list[SensorConfig]) -> dict[str, str]:
-    """Build variables dict (FieldSet key → Copernicus-variable)."""
-    return {sc.meta.fs_key: sc.meta.copernicus_var for sc in sensors if sc.enabled}
+    def active_variables(self) -> dict[str, str]:
+        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return SensorConfig.build_variables(self.sensors)
+
+    @pydantic.field_serializer("stationkeeping_time", "period", check_fields=False)
+    def _serialize_minutes(self, value: timedelta, _info) -> float:
+        return value.total_seconds() / 60.0
+
+    @pydantic.field_validator(
+        "stationkeeping_time", "period", mode="before", check_fields=False
+    )
+    @classmethod
+    def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
+        return _validate_numeric_to_timedelta(value, "minutes")
+
+    @pydantic.field_serializer("lifetime", check_fields=False)
+    def _serialize_lifetime(self, value: timedelta, _info) -> float:
+        return value.total_seconds() / 86400.0  # [days]
+
+    @pydantic.field_validator("lifetime", mode="before", check_fields=False)
+    @classmethod
+    def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
+        return _validate_numeric_to_timedelta(value, "days")
 
 
 @register_instrument_config(InstrumentType.ARGO_FLOAT)
-class ArgoFloatConfig(pydantic.BaseModel):
+class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for argos floats."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.ARGO_FLOAT
+    _instrument_name: ClassVar[str] = "ArgoFloat"
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
@@ -281,43 +295,15 @@ class ArgoFloatConfig(pydantic.BaseModel):
         ),
     )
 
-    @pydantic.field_serializer("lifetime")
-    def _serialize_lifetime(self, value: timedelta, _info):
-        return value.total_seconds() / 86400.0  # [days]
-
-    @pydantic.field_validator("lifetime", mode="before")
-    def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "days")
-
-    @pydantic.field_serializer("stationkeeping_time")
-    def _serialize_stationkeeping_time(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("stationkeeping_time", mode="before")
-    def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.ARGO_FLOAT), "ArgoFloat"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
     model_config = pydantic.ConfigDict(populate_by_name=True)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
 
 
 @register_instrument_config(InstrumentType.ADCP)
-class ADCPConfig(pydantic.BaseModel):
+class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for ADCP instrument."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.ADCP
+    _instrument_name: ClassVar[str] = "ADCP"
 
     max_depth_meter: float = pydantic.Field(le=0.0)
     num_bins: int = pydantic.Field(gt=0.0)
@@ -337,25 +323,6 @@ class ADCPConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
-    @pydantic.field_serializer("period")
-    def _serialize_period(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("period", mode="before")
-    def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.ADCP), "ADCP"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
     def active_variables(self) -> dict[str, str]:
         """
         FieldSet-key → Copernicus-variable mapping for enabled sensors.
@@ -371,8 +338,11 @@ class ADCPConfig(pydantic.BaseModel):
 
 
 @register_instrument_config(InstrumentType.CTD)
-class CTDConfig(pydantic.BaseModel):
+class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for CTD instrument."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD
+    _instrument_name: ClassVar[str] = "CTD"
 
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
@@ -392,33 +362,13 @@ class CTDConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
-    @pydantic.field_serializer("stationkeeping_time")
-    def _serialize_stationkeeping_time(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("stationkeeping_time", mode="before")
-    def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.CTD), "CTD"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
-
 
 @register_instrument_config(InstrumentType.CTD_BGC)
-class CTD_BGCConfig(pydantic.BaseModel):
+class CTD_BGCConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for CTD_BGC instrument."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD_BGC
+    _instrument_name: ClassVar[str] = "CTD_BGC"
 
     stationkeeping_time: timedelta = pydantic.Field(
         serialization_alias="stationkeeping_time_minutes",
@@ -446,33 +396,13 @@ class CTD_BGCConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
-    @pydantic.field_serializer("stationkeeping_time")
-    def _serialize_stationkeeping_time(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("stationkeeping_time", mode="before")
-    def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.CTD_BGC), "CTD_BGC"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
-
 
 @register_instrument_config(InstrumentType.UNDERWATER_ST)
-class ShipUnderwaterSTConfig(pydantic.BaseModel):
+class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for underwater ST."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.UNDERWATER_ST
+    _instrument_name: ClassVar[str] = "Underwater ST"
 
     period: timedelta = pydantic.Field(
         serialization_alias="period_minutes",
@@ -492,33 +422,13 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
-    @pydantic.field_serializer("period")
-    def _serialize_period(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("period", mode="before")
-    def _validate_period(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.UNDERWATER_ST), "Underwater ST"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
-
 
 @register_instrument_config(InstrumentType.DRIFTER)
-class DrifterConfig(pydantic.BaseModel):
+class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for drifters."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.DRIFTER
+    _instrument_name: ClassVar[str] = "Drifter"
 
     depth_meter: float = pydantic.Field(le=0.0)
     lifetime: timedelta = pydantic.Field(
@@ -539,41 +449,13 @@ class DrifterConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
-    @pydantic.field_serializer("lifetime")
-    def _serialize_lifetime(self, value: timedelta, _info):
-        return value.total_seconds() / 86400.0  # [days]
-
-    @pydantic.field_validator("lifetime", mode="before")
-    def _validate_lifetime(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "days")
-
-    @pydantic.field_serializer("stationkeeping_time")
-    def _serialize_stationkeeping_time(self, value: timedelta, _info):
-        return value.total_seconds() / 60.0
-
-    @pydantic.field_validator("stationkeeping_time", mode="before")
-    def _validate_stationkeeping_time(cls, value: int | float | timedelta) -> timedelta:
-        return _validate_numeric_to_timedelta(value, "minutes")
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
-
 
 @register_instrument_config(InstrumentType.XBT)
-class XBTConfig(pydantic.BaseModel):
+class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for xbt instrument."""
+
+    _instrument_type: ClassVar[InstrumentType] = InstrumentType.XBT
+    _instrument_name: ClassVar[str] = "XBT"
 
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
@@ -584,21 +466,6 @@ class XBTConfig(pydantic.BaseModel):
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the XBT. Supported: TEMPERATURE. "),
     )
-
-    @pydantic.field_validator("sensors", mode="after")
-    @classmethod
-    def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(
-            value, get_supported_sensors(InstrumentType.XBT), "XBT"
-        )
-
-    @pydantic.field_serializer("sensors")
-    def _serialize_sensors(self, value: list[SensorConfig], _info):
-        return _serialize_sensor_list(value)
-
-    def active_variables(self) -> dict[str, str]:
-        """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
-        return build_variables_from_sensors(self.sensors)
 
 
 class InstrumentsConfig(pydantic.BaseModel):
@@ -719,3 +586,36 @@ class SensorConfig(pydantic.BaseModel):
     def meta(self) -> _SensorMeta:
         """Metadata for this sensor."""
         return SENSOR_REGISTRY()[self.sensor_type]
+
+    @staticmethod
+    def serialize_list(sensors: list[SensorConfig]) -> list[str]:
+        """Serialise enabled sensors to a list of sensor-type strings."""
+        return [sc.sensor_type.value for sc in sensors if sc.enabled]
+
+    @staticmethod
+    def check_compatibility(
+        sensors: list[SensorConfig],
+        instrument_type: InstrumentType,
+        instrument_name: str,
+    ) -> list[SensorConfig]:
+        """Error if any sensor is unsupported for the given instrument, or none are enabled."""
+        supported = get_supported_sensors(instrument_type)
+        unsupported = {sc.sensor_type for sc in sensors} - supported
+        if unsupported:
+            names = ", ".join(sorted(s.value for s in unsupported))
+            valid = ", ".join(sorted(s.value for s in supported))
+            raise ValueError(
+                f"{instrument_name} does not support sensor(s): {names}. "
+                f"Supported sensors: {valid}."
+            )
+        if not any(sc.enabled for sc in sensors):
+            raise ValueError(
+                f"{instrument_name} has no enabled sensors. "
+                f"At least one sensor must be enabled."
+            )
+        return sensors
+
+    @staticmethod
+    def build_variables(sensors: list[SensorConfig]) -> dict[str, str]:
+        """Build a FieldSet-key → Copernicus-variable mapping for enabled sensors."""
+        return {sc.meta.fs_key: sc.meta.copernicus_var for sc in sensors if sc.enabled}

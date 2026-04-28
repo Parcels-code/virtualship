@@ -5,11 +5,7 @@ from virtualship.instruments.sensors import (
     SensorType,
 )
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import (
-    SensorConfig,
-    _check_sensor_compatibility,
-    _serialize_sensor_list,
-)
+from virtualship.models.expedition import SensorConfig
 from virtualship.utils import get_supported_sensors
 
 EXPECTED_SENSOR_MEMBERS = {
@@ -82,14 +78,14 @@ def test_serialize_sensor_list_disabled_excluded():
         SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=True),
         SensorConfig(sensor_type=SensorType.SALINITY, enabled=False),
     ]
-    assert _serialize_sensor_list(sensors) == ["TEMPERATURE"]
+    assert SensorConfig.serialize_list(sensors) == ["TEMPERATURE"]
 
 
 def test_check_sensor_compatibility_unsupported_error():
     """Unsupported sensor fails."""
     sensors = [SensorConfig(sensor_type=SensorType.OXYGEN)]
     with pytest.raises(ValueError, match="does not support sensor"):
-        _check_sensor_compatibility(
+        SensorConfig.check_compatibility(
             sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
         )
 
@@ -98,7 +94,7 @@ def test_check_sensor_compatibility_all_disabled_error():
     """All sensors disabled fails."""
     sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=False)]
     with pytest.raises(ValueError, match="no enabled sensors"):
-        _check_sensor_compatibility(
+        SensorConfig.check_compatibility(
             sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
         )
 
@@ -106,7 +102,7 @@ def test_check_sensor_compatibility_all_disabled_error():
 def test_check_sensor_compatibility_empty_error():
     """Empty sensor list fails."""
     with pytest.raises(ValueError, match="no enabled sensors"):
-        _check_sensor_compatibility(
+        SensorConfig.check_compatibility(
             [], get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
         )
 
@@ -118,6 +114,6 @@ def test_check_sensor_compatibility_mixed_error():
         SensorConfig(sensor_type=SensorType.OXYGEN),
     ]
     with pytest.raises(ValueError, match="does not support"):
-        _check_sensor_compatibility(
+        SensorConfig.check_compatibility(
             sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
         )
