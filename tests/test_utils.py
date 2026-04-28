@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
+from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 
 import virtualship.utils
-from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition, SensorConfig
