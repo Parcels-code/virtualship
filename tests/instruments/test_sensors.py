@@ -85,26 +85,20 @@ def test_check_sensor_compatibility_unsupported_error():
     """Unsupported sensor fails."""
     sensors = [SensorConfig(sensor_type=SensorType.OXYGEN)]
     with pytest.raises(ValueError, match="does not support sensor"):
-        SensorConfig.check_compatibility(
-            sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
-        )
+        SensorConfig.check_compatibility(sensors, InstrumentType.DRIFTER, "Drifter")
 
 
 def test_check_sensor_compatibility_all_disabled_error():
     """All sensors disabled fails."""
     sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=False)]
     with pytest.raises(ValueError, match="no enabled sensors"):
-        SensorConfig.check_compatibility(
-            sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
-        )
+        SensorConfig.check_compatibility(sensors, InstrumentType.DRIFTER, "Drifter")
 
 
 def test_check_sensor_compatibility_empty_error():
     """Empty sensor list fails."""
     with pytest.raises(ValueError, match="no enabled sensors"):
-        SensorConfig.check_compatibility(
-            [], get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
-        )
+        SensorConfig.check_compatibility([], InstrumentType.DRIFTER, "Drifter")
 
 
 def test_check_sensor_compatibility_mixed_error():
@@ -114,6 +108,4 @@ def test_check_sensor_compatibility_mixed_error():
         SensorConfig(sensor_type=SensorType.OXYGEN),
     ]
     with pytest.raises(ValueError, match="does not support"):
-        SensorConfig.check_compatibility(
-            sensors, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
-        )
+        SensorConfig.check_compatibility(sensors, InstrumentType.DRIFTER, "Drifter")
