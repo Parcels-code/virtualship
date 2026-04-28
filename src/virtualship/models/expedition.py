@@ -390,7 +390,7 @@ class CTD_BGCConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ],
         description=(
             "Sensors fitted to the BGC CTD. "
-            "Supported: CHLOROPHYLL, NITRATE, OXYGEN, PH, PHOSPHATE, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
+            "Supported: OXYGEN, CHLOROPHYLL, NITRATE, PHOSPHATE, PH, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
         ),
     )
 
