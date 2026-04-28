@@ -88,17 +88,6 @@ def _ctd_bgc_cast(particle, fieldset, time):
             particle.delete()
 
 
-_CTD_BGC_SENSOR_KERNELS: dict[SensorType, callable] = {
-    SensorType.OXYGEN: _sample_o2,
-    SensorType.CHLOROPHYLL: _sample_chlorophyll,
-    SensorType.NITRATE: _sample_nitrate,
-    SensorType.PHOSPHATE: _sample_phosphate,
-    SensorType.PH: _sample_ph,
-    SensorType.PHYTOPLANKTON: _sample_phytoplankton,
-    SensorType.PRIMARY_PRODUCTION: _sample_primary_production,
-}
-
-
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -109,7 +98,15 @@ class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
     # class attrs
-    sensor_kernels = _CTD_BGC_SENSOR_KERNELS
+    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+        SensorType.OXYGEN: _sample_o2,
+        SensorType.CHLOROPHYLL: _sample_chlorophyll,
+        SensorType.NITRATE: _sample_nitrate,
+        SensorType.PHOSPHATE: _sample_phosphate,
+        SensorType.PH: _sample_ph,
+        SensorType.PHYTOPLANKTON: _sample_phytoplankton,
+        SensorType.PRIMARY_PRODUCTION: _sample_primary_production,
+    }
 
     def __init__(self, expedition, from_data):
         """Initialize CTD_BGCInstrument."""
@@ -211,9 +208,9 @@ class CTD_BGCInstrument(Instrument):
 
         # build kernel list from active sensors only
         sampling_kernels = [
-            _CTD_BGC_SENSOR_KERNELS[sc.sensor_type]
+            self.sensor_kernels[sc.sensor_type]
             for sc in ctd_bgc_config.sensors
-            if sc.enabled and sc.sensor_type in _CTD_BGC_SENSOR_KERNELS
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
 
         # execute simulation

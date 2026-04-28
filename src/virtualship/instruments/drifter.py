@@ -56,11 +56,6 @@ def _check_lifetime(particle, fieldset, time):
             particle.delete()
 
 
-_DRIFTER_SENSOR_KERNELS: dict[SensorType, callable] = {
-    SensorType.TEMPERATURE: _sample_temperature,
-}
-
-
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -71,7 +66,9 @@ class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
     # class attrs
-    sensor_kernels = _DRIFTER_SENSOR_KERNELS
+    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+        SensorType.TEMPERATURE: _sample_temperature,
+    }
 
     def __init__(self, expedition, from_data):
         """Initialize DrifterInstrument."""
@@ -165,9 +162,9 @@ class DrifterInstrument(Instrument):
 
         # build kernel list from active sensors only
         sampling_kernels = [
-            _DRIFTER_SENSOR_KERNELS[sc.sensor_type]
+            self.sensor_kernels[sc.sensor_type]
             for sc in drifter_config.sensors
-            if sc.enabled and sc.sensor_type in _DRIFTER_SENSOR_KERNELS
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
 
         # execute simulation

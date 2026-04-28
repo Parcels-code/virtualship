@@ -11,9 +11,7 @@ import pyproj
 import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.instruments.sensors import (
-    SensorType,
-)
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     SENSOR_REGISTRY,

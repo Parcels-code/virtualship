@@ -40,11 +40,6 @@ def _sample_velocity(particle, fieldset, time):
     )
 
 
-_ADCP_SENSOR_KERNELS: dict[SensorType, callable] = {
-    SensorType.VELOCITY: _sample_velocity,
-}
-
-
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -55,7 +50,9 @@ class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
     # class attrs
-    sensor_kernels = _ADCP_SENSOR_KERNELS
+    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+        SensorType.VELOCITY: _sample_velocity,
+    }
 
     def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
@@ -119,9 +116,9 @@ class ADCPInstrument(Instrument):
 
         # build kernel list from active sensors only
         sampling_kernels = [
-            _ADCP_SENSOR_KERNELS[sc.sensor_type]
+            self.sensor_kernels[sc.sensor_type]
             for sc in adcp_config.sensors
-            if sc.enabled and sc.sensor_type in _ADCP_SENSOR_KERNELS
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
 
         for point in measurements:

@@ -48,12 +48,6 @@ def _sample_temperature(particle, fieldset, time):
     particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
-_ST_SENSOR_KERNELS: dict[SensorType, callable] = {
-    SensorType.TEMPERATURE: _sample_temperature,
-    SensorType.SALINITY: _sample_salinity,
-}
-
-
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -64,7 +58,10 @@ class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
     # class attrs
-    sensor_kernels = _ST_SENSOR_KERNELS
+    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+        SensorType.TEMPERATURE: _sample_temperature,
+        SensorType.SALINITY: _sample_salinity,
+    }
 
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
@@ -120,9 +117,9 @@ class Underwater_STInstrument(Instrument):
 
         # build kernel list from active sensors only
         sampling_kernels = [
-            _ST_SENSOR_KERNELS[sc.sensor_type]
+            self.sensor_kernels[sc.sensor_type]
             for sc in st_config.sensors
-            if sc.enabled and sc.sensor_type in _ST_SENSOR_KERNELS
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
 
         for point in measurements:

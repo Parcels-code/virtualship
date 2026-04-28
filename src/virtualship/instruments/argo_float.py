@@ -151,12 +151,6 @@ def _argo_sample_salinity(particle, fieldset, time):
         particle.salinity = math.nan
 
 
-_ARGO_SENSOR_KERNELS: dict[SensorType, callable] = {
-    SensorType.TEMPERATURE: _argo_sample_temperature,
-    SensorType.SALINITY: _argo_sample_salinity,
-}
-
-
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -167,7 +161,10 @@ class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
     # class attrs
-    sensor_kernels = _ARGO_SENSOR_KERNELS
+    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+        SensorType.TEMPERATURE: _argo_sample_temperature,
+        SensorType.SALINITY: _argo_sample_salinity,
+    }
 
     def __init__(self, expedition, from_data):
         """Initialize ArgoFloatInstrument."""
@@ -265,9 +262,9 @@ class ArgoFloatInstrument(Instrument):
 
         # build kernel list from active sensors only
         sampling_kernels = [
-            _ARGO_SENSOR_KERNELS[sc.sensor_type]
+            self.sensor_kernels[sc.sensor_type]
             for sc in argo_float_config.sensors
-            if sc.enabled and sc.sensor_type in _ARGO_SENSOR_KERNELS
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
 
         # execute simulation
