@@ -70,6 +70,9 @@ _DRIFTER_SENSOR_KERNELS: dict[SensorType, callable] = {
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
+    # class attrs
+    sensor_kernels = _DRIFTER_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize DrifterInstrument."""
         sensor_variables = (

@@ -13,7 +13,8 @@ import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.ctd import CTD, CTDInstrument
-from virtualship.instruments.sensors import CTD_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     CTDConfig,
@@ -270,7 +271,9 @@ def test_ctd_disabled_sensor_absent(tmpdir) -> None:
 
 def test_ctd_supported_sensors():
     """CTD supports TEMPERATURE and SALINITY."""
-    assert CTD_SUPPORTED_SENSORS == frozenset(
+    from virtualship.utils import get_supported_sensors
+
+    assert get_supported_sensors(InstrumentType.CTD) == frozenset(
         {SensorType.TEMPERATURE, SensorType.SALINITY}
     )
 

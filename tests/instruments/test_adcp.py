@@ -9,7 +9,7 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.adcp import ADCPInstrument
-from virtualship.instruments.sensors import ADCP_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime, Waypoint
 from virtualship.models.expedition import ADCPConfig, InstrumentsConfig, SensorConfig

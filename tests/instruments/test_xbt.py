@@ -13,7 +13,7 @@ import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.xbt import XBT, XBTInstrument
-from virtualship.instruments.sensors import XBT_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,

@@ -108,6 +108,9 @@ _CTD_BGC_SENSOR_KERNELS: dict[SensorType, callable] = {
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
+    # class attrs
+    sensor_kernels = _CTD_BGC_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize CTD_BGCInstrument."""
         variables = expedition.instruments_config.ctd_bgc_config.active_variables()

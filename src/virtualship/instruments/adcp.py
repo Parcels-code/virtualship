@@ -54,6 +54,9 @@ _ADCP_SENSOR_KERNELS: dict[SensorType, callable] = {
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
+    # class attrs
+    sensor_kernels = _ADCP_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
         variables = expedition.instruments_config.adcp_config.active_variables()

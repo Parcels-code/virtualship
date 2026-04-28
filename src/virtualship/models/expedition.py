@@ -11,13 +11,6 @@ import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import (
-    ADCP_SUPPORTED_SENSORS,
-    ARGO_FLOAT_SUPPORTED_SENSORS,
-    CTD_BGC_SUPPORTED_SENSORS,
-    CTD_SUPPORTED_SENSORS,
-    DRIFTER_SUPPORTED_SENSORS,
-    UNDERWATER_ST_SUPPORTED_SENSORS,
-    XBT_SUPPORTED_SENSORS,
     SensorType,
 )
 from virtualship.instruments.types import InstrumentType
@@ -29,6 +22,7 @@ from virtualship.utils import (
     _get_waypoint_latlons,
     _SensorMeta,
     _validate_numeric_to_timedelta,
+    get_supported_sensors,
     register_instrument_config,
 )
 
@@ -307,7 +301,7 @@ class ArgoFloatConfig(pydantic.BaseModel):
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
         return _check_sensor_compatibility(
-            value, ARGO_FLOAT_SUPPORTED_SENSORS, "ArgoFloat"
+            value, get_supported_sensors(InstrumentType.ARGO_FLOAT), "ArgoFloat"
         )
 
     @pydantic.field_serializer("sensors")
@@ -354,7 +348,9 @@ class ADCPConfig(pydantic.BaseModel):
     @pydantic.field_validator("sensors", mode="after")
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(value, ADCP_SUPPORTED_SENSORS, "ADCP")
+        return _check_sensor_compatibility(
+            value, get_supported_sensors(InstrumentType.ADCP), "ADCP"
+        )
 
     @pydantic.field_serializer("sensors")
     def _serialize_sensors(self, value: list[SensorConfig], _info):
@@ -407,7 +403,9 @@ class CTDConfig(pydantic.BaseModel):
     @pydantic.field_validator("sensors", mode="after")
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(value, CTD_SUPPORTED_SENSORS, "CTD")
+        return _check_sensor_compatibility(
+            value, get_supported_sensors(InstrumentType.CTD), "CTD"
+        )
 
     @pydantic.field_serializer("sensors")
     def _serialize_sensors(self, value: list[SensorConfig], _info):
@@ -459,7 +457,9 @@ class CTD_BGCConfig(pydantic.BaseModel):
     @pydantic.field_validator("sensors", mode="after")
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(value, CTD_BGC_SUPPORTED_SENSORS, "CTD_BGC")
+        return _check_sensor_compatibility(
+            value, get_supported_sensors(InstrumentType.CTD_BGC), "CTD_BGC"
+        )
 
     @pydantic.field_serializer("sensors")
     def _serialize_sensors(self, value: list[SensorConfig], _info):
@@ -504,7 +504,7 @@ class ShipUnderwaterSTConfig(pydantic.BaseModel):
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
         return _check_sensor_compatibility(
-            value, UNDERWATER_ST_SUPPORTED_SENSORS, "Underwater ST"
+            value, get_supported_sensors(InstrumentType.UNDERWATER_ST), "Underwater ST"
         )
 
     @pydantic.field_serializer("sensors")
@@ -558,7 +558,9 @@ class DrifterConfig(pydantic.BaseModel):
     @pydantic.field_validator("sensors", mode="after")
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(value, DRIFTER_SUPPORTED_SENSORS, "Drifter")
+        return _check_sensor_compatibility(
+            value, get_supported_sensors(InstrumentType.DRIFTER), "Drifter"
+        )
 
     @pydantic.field_serializer("sensors")
     def _serialize_sensors(self, value: list[SensorConfig], _info):
@@ -586,7 +588,9 @@ class XBTConfig(pydantic.BaseModel):
     @pydantic.field_validator("sensors", mode="after")
     @classmethod
     def _check_sensor_compatibility(cls, value) -> list[SensorConfig]:
-        return _check_sensor_compatibility(value, XBT_SUPPORTED_SENSORS, "XBT")
+        return _check_sensor_compatibility(
+            value, get_supported_sensors(InstrumentType.XBT), "XBT"
+        )
 
     @pydantic.field_serializer("sensors")
     def _serialize_sensors(self, value: list[SensorConfig], _info):

@@ -201,10 +201,17 @@ BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 # main instrument (simulation) class registry and registration utilities
 INSTRUMENT_CLASS_MAP = {}
 
+# maps InstrumentType to frozenset[SensorType], to set which sensors each instrument suppors, auto-populated by @register_instrument
+SUPPORTED_SENSORS_MAP: dict = {}
+
 
 def register_instrument(instrument_type):
     def decorator(cls):
         INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        if hasattr(cls, "sensor_kernels"):  # derive supported kernels from class attr
+            SUPPORTED_SENSORS_MAP[instrument_type] = frozenset(
+                cls.sensor_kernels.keys()
+            )
         return cls
 
     return decorator
@@ -212,6 +219,17 @@ def register_instrument(instrument_type):
 
 def get_instrument_class(instrument_type):
     return INSTRUMENT_CLASS_MAP.get(instrument_type)
+
+
+def get_supported_sensors(instrument_type):
+    """Return the frozenset of SensorTypes supported by the given InstrumentType."""
+    supported = SUPPORTED_SENSORS_MAP.get(instrument_type)
+    if supported is None:
+        raise KeyError(
+            f"No supported sensors registered for {instrument_type!r}. "
+            f"Does the instrument class define a `sensor_kernels` attribute?"
+        )
+    return supported
 
 
 # map for instrument type to instrument config (pydantic basemodel) names

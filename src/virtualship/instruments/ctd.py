@@ -86,6 +86,9 @@ _CTD_SENSOR_KERNELS: dict[SensorType, callable] = {
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
+    # class attrs
+    sensor_kernels = _CTD_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
         variables = expedition.instruments_config.ctd_config.active_variables()

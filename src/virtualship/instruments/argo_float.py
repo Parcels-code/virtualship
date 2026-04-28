@@ -166,6 +166,9 @@ _ARGO_SENSOR_KERNELS: dict[SensorType, callable] = {
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
+    # class attrs
+    sensor_kernels = _ARGO_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize ArgoFloatInstrument."""
         sensor_variables = (

@@ -9,7 +9,7 @@ import xarray as xr
 from parcels import FieldSet
 
 from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
-from virtualship.instruments.sensors import ARGO_FLOAT_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     ArgoFloatConfig,

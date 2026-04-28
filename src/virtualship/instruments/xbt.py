@@ -85,6 +85,8 @@ def _xbt_cast(particle, fieldset, time):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
+    sensor_kernels = _XBT_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
         variables = expedition.instruments_config.xbt_config.active_variables()

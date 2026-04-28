@@ -9,7 +9,7 @@ import xarray as xr
 
 from parcels import FieldSet
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
-from virtualship.instruments.sensors import UNDERWATER_ST_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,

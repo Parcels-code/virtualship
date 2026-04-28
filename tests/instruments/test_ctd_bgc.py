@@ -13,7 +13,7 @@ import xarray as xr
 
 from parcels import Field, FieldSet
 from virtualship.instruments.ctd_bgc import CTD_BGC, CTD_BGCInstrument
-from virtualship.instruments.sensors import CTD_BGC_SUPPORTED_SENSORS, SensorType
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     CTD_BGCConfig,

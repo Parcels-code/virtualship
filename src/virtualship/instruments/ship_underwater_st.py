@@ -63,6 +63,9 @@ _ST_SENSOR_KERNELS: dict[SensorType, callable] = {
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
+    # class attrs
+    sensor_kernels = _ST_SENSOR_KERNELS
+
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
         variables = (
