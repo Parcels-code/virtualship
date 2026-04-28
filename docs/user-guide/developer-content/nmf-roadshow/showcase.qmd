@@ -37,7 +37,7 @@ format:
 
 ::: {layout-ncol=3 layout-valign="top"}
 
-![CTD (NIOZ)](https://www.nioz.nl/sites/default/files/styles/ratio_16_9_md/public/2025-08/foto%2010%20P1080059_0.JPG?h=173c0f7e&itok=87l7yzVK)
+![CTD (NIOZ)](media/nioz_ctd_image.JPEG)
 
 ![ADCP (Nortek)](https://www.nortekgroup.com/assets/images/VM-illustration-vessel.png){height="200px"}
 
@@ -102,49 +102,22 @@ Argo Float deployment
     - VirtualShip Classroom (software + open educational resources + VR / 360° videos)
 
 
-## Get in touch! {.smaller}
+## Links & getting in touch
 
-- If you're interested in using VirtualShip for research, please don't hesitate to get in touch.
 
-::: {.columns}
+**Project email**: [virtualship@uu.nl](mailto:virtualship@uu.nl)
 
-::: {.column width="50%"}
-- By **email**:
-    - Jamie Atkins: [j.r.c.atkins@uu.nl](mailto:j.r.c.atkins@uu.nl)
-    - Emma Daniels: [e.e.daniels1@uu.nl](mailto:e.e.daniels1@uu.nl)
-    - Erik van Sebille: [e.vansebille@uu.nl](mailto:e.vansebille@uu.nl)
-:::
+**VritualShip website**: [virtualship.parcels-code.org/](https://virtualship.parcels-code.org/)
 
-::: {.column width="25%"}
+**GitHub**: [github.com/Parcels-code/virtualship](https://github.com/Parcels-code/virtualship)
 
-- Via **GitHub**
-:::
 
-::: {.column width="25%"}
-![](media/qrcode_github.png){height=170 fig-align="left"}
-:::
+::: {layout-ncol=2 layout-valign="top"}
 
-:::
+![GitHub](../inspiration-showcase/media/qrcode_github.png){height="200px"}
 
-::: {.callout-note appearance="simple"}
+![Website](../inspiration-showcase/media/qrcode_website.png){height="200px"}
 
-::: {.columns}
-
-::: {.column width="62%"}
-
-**VirtualShip Classroom**
-
-If you're interested specifically in its application in **education**, please sign up to one of our upcoming VirtualShip Classroom inspiration showcases (via the QR code below):
-
-- 14:00-15:00 2nd April 2026
-- 14:00-15:00 7th May 2026
-:::
-
-::: {.column width="30%"}
-![](media/qrcode_form.png){height=200px fig-align="right"}
-:::
-
-:::
 
 :::
 
