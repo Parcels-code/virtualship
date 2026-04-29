@@ -6,7 +6,6 @@ from functools import lru_cache
 from typing import Literal
 
 import numpy as np
-
 from parcels import Variable
 
 
