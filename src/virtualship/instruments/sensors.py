@@ -5,6 +5,10 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
+
+from parcels import Variable
+
 if TYPE_CHECKING:
     pass
 
@@ -32,7 +36,7 @@ class _Sensor:
     category: Literal[
         "phys", "bgc"
     ]  # physical vs. biogeochemical variable, used for product ID selection logic
-    particle_vars: list[str]  # particle variable name(s) produced by this sensor
+    particle_vars: list[Variable]  # particle variable(s) produced by this sensor
 
 
 @lru_cache(maxsize=1)  # cache here so same dict is not rebuilt on every access
@@ -51,14 +55,16 @@ def _build_sensor_registry() -> dict[SensorType, _Sensor]:
                 fs_key="T",
                 copernicus_var="thetao",
                 category="phys",
-                particle_vars=["temperature"],
+                particle_vars=[
+                    Variable("temperature", dtype=np.float32, initial=np.nan)
+                ],
             ),
             _Sensor(
                 type_=SensorType.SALINITY,
                 fs_key="S",
                 copernicus_var="so",
                 category="phys",
-                particle_vars=["salinity"],
+                particle_vars=[Variable("salinity", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.VELOCITY,
@@ -66,8 +72,8 @@ def _build_sensor_registry() -> dict[SensorType, _Sensor]:
                 copernicus_var="uo",  # uo is primary var here... active_variables() in ADCPConfig expands to both uo and vo
                 category="phys",
                 particle_vars=[
-                    "U",
-                    "V",
+                    Variable("U", dtype=np.float32, initial=np.nan),
+                    Variable("V", dtype=np.float32, initial=np.nan),
                 ],  # two particle variables associated with one sensor
             ),
             _Sensor(
@@ -75,49 +81,49 @@ def _build_sensor_registry() -> dict[SensorType, _Sensor]:
                 fs_key="o2",
                 copernicus_var="o2",
                 category="bgc",
-                particle_vars=["o2"],
+                particle_vars=[Variable("o2", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.CHLOROPHYLL,
                 fs_key="chl",
                 copernicus_var="chl",
                 category="bgc",
-                particle_vars=["chl"],
+                particle_vars=[Variable("chl", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.NITRATE,
                 fs_key="no3",
                 copernicus_var="no3",
                 category="bgc",
-                particle_vars=["no3"],
+                particle_vars=[Variable("no3", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.PHOSPHATE,
                 fs_key="po4",
                 copernicus_var="po4",
                 category="bgc",
-                particle_vars=["po4"],
+                particle_vars=[Variable("po4", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.PH,
                 fs_key="ph",
                 copernicus_var="ph",
                 category="bgc",
-                particle_vars=["ph"],
+                particle_vars=[Variable("ph", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.PHYTOPLANKTON,
                 fs_key="phyc",
                 copernicus_var="phyc",
                 category="bgc",
-                particle_vars=["phyc"],
+                particle_vars=[Variable("phyc", dtype=np.float32, initial=np.nan)],
             ),
             _Sensor(
                 type_=SensorType.PRIMARY_PRODUCTION,
                 fs_key="nppv",
                 copernicus_var="nppv",
                 category="bgc",
-                particle_vars=["nppv"],
+                particle_vars=[Variable("nppv", dtype=np.float32, initial=np.nan)],
             ),
         ]
     }

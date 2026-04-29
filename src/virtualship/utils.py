@@ -16,7 +16,7 @@ import numpy as np
 import pyproj
 import xarray as xr
 
-from parcels import FieldSet, Variable
+from parcels import FieldSet
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -693,11 +693,9 @@ def build_particle_class_from_sensors(
 ) -> type:
     """Build a Particle class (JITParticle or ScipyParticle) from nonsensor variables and active sensors."""
     sensor_variables = [
-        Variable(var_name, dtype=np.float32, initial=np.nan)
-        for sc in sensors
-        if sc.enabled
-        for var_name in sc.meta.particle_vars
+        variable for sc in sensors if sc.enabled for variable in sc.meta.particle_vars
     ]
+
     return particle_class.add_variables(nonsensor_variables + sensor_variables)
 
 
