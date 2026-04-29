@@ -11,15 +11,13 @@ import pyproj
 import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
-from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    SENSOR_REGISTRY,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
     _get_waypoint_latlons,
-    _SensorMeta,
     _validate_numeric_to_timedelta,
     get_supported_sensors,
     register_instrument_config,
@@ -581,7 +579,7 @@ class SensorConfig(pydantic.BaseModel):
         return SensorType(value)
 
     @property
-    def meta(self) -> _SensorMeta:
+    def meta(self) -> _Sensor:
         """Metadata for this sensor."""
         return SENSOR_REGISTRY()[self.sensor_type]
 

@@ -5,7 +5,6 @@ import hashlib
 import os
 import re
 import warnings
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
@@ -16,15 +15,14 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet, Variable
 
+from parcels import FieldSet, Variable
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
-    from virtualship.instruments.sensors import SensorType
     from virtualship.models import Expedition, InstrumentsConfig, Location
     from virtualship.models.checkpoint import Checkpoint
     from virtualship.models.expedition import SensorConfig
@@ -54,97 +52,6 @@ REPORT = "post_expedition_report.txt"
 
 EXPEDITION_ORIGINAL = "expedition_original.yaml"
 EXPEDITION_LATEST = "expedition_latest.yaml"
-
-# =====================================================
-# SECTION: sensor and variable metadata and registries
-# =====================================================
-
-
-@dataclass(frozen=True)
-class _SensorMeta:
-    fs_key: str  # map to Parcels fieldset variables
-    copernicus_var: str  # map to Copernicus Marine Service variable names
-    category: Literal[
-        "phys", "bgc"
-    ]  # physical vs. biogeochemical variable, used for product ID selection logic
-    particle_vars: list[str]  # particle variable name(s) produced by this sensor
-
-
-@lru_cache(maxsize=1)  # cache here so same dict is not rebuilt on every access
-def SENSOR_REGISTRY() -> dict[SensorType, _SensorMeta]:
-    """Cached accessor for the sensor registry (lazily via _build_sensor_registry, avoids circular import errors)."""
-    return _build_sensor_registry()
-
-
-# the copernicus_var field below is the bridge between this registry the Copernicus product-ID selection logic (PRODUCT_IDS, BGC_ANALYSIS_IDS, MONTHLY_BGC_REANALYSIS_IDS, etc.)
-def _build_sensor_registry() -> dict[SensorType, _SensorMeta]:
-    from virtualship.instruments.sensors import SensorType
-
-    return {
-        SensorType.TEMPERATURE: _SensorMeta(
-            fs_key="T",
-            copernicus_var="thetao",
-            category="phys",
-            particle_vars=["temperature"],
-        ),
-        SensorType.SALINITY: _SensorMeta(
-            fs_key="S",
-            copernicus_var="so",
-            category="phys",
-            particle_vars=["salinity"],
-        ),
-        SensorType.VELOCITY: _SensorMeta(
-            fs_key="UV",
-            copernicus_var="uo",  # uo is primary var here... active_variables() in ADCPConfig expands to both uo and vo
-            category="phys",
-            particle_vars=[
-                "U",
-                "V",
-            ],  # two particle variables associated with one sensor
-        ),
-        SensorType.OXYGEN: _SensorMeta(
-            fs_key="o2",
-            copernicus_var="o2",
-            category="bgc",
-            particle_vars=["o2"],
-        ),
-        SensorType.CHLOROPHYLL: _SensorMeta(
-            fs_key="chl",
-            copernicus_var="chl",
-            category="bgc",
-            particle_vars=["chl"],
-        ),
-        SensorType.NITRATE: _SensorMeta(
-            fs_key="no3",
-            copernicus_var="no3",
-            category="bgc",
-            particle_vars=["no3"],
-        ),
-        SensorType.PHOSPHATE: _SensorMeta(
-            fs_key="po4",
-            copernicus_var="po4",
-            category="bgc",
-            particle_vars=["po4"],
-        ),
-        SensorType.PH: _SensorMeta(
-            fs_key="ph",
-            copernicus_var="ph",
-            category="bgc",
-            particle_vars=["ph"],
-        ),
-        SensorType.PHYTOPLANKTON: _SensorMeta(
-            fs_key="phyc",
-            copernicus_var="phyc",
-            category="bgc",
-            particle_vars=["phyc"],
-        ),
-        SensorType.PRIMARY_PRODUCTION: _SensorMeta(
-            fs_key="nppv",
-            copernicus_var="nppv",
-            category="bgc",
-            particle_vars=["nppv"],
-        ),
-    }
 
 
 # =====================================================
