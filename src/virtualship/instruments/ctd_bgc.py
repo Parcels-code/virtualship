@@ -1,10 +1,11 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -97,8 +98,7 @@ def _ctd_bgc_cast(particle, fieldset, time):
 class CTD_BGCInstrument(Instrument):
     """CTD_BGC instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.OXYGEN: _sample_o2,
         SensorType.CHLOROPHYLL: _sample_chlorophyll,
         SensorType.NITRATE: _sample_nitrate,

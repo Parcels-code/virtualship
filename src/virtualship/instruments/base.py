@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from collections import OrderedDict
+import collections
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -32,7 +32,7 @@ class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
     # all instruments have sensor_kernels dict, mapping SensorType to sampling kernel
-    sensor_kernels: ClassVar[dict[SensorType, callable]]
+    sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Ensure subclasses define sensor_kernels as class attribute."""
@@ -57,7 +57,7 @@ class Instrument(abc.ABC):
         self.expedition = expedition
         self.from_data = from_data
 
-        self.variables = OrderedDict(variables)
+        self.variables = collections.OrderedDict(variables)
         self.dimensions = {
             "lon": "longitude",
             "lat": "latitude",

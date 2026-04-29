@@ -1,11 +1,12 @@
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -160,8 +161,7 @@ def _argo_sample_salinity(particle, fieldset, time):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _argo_sample_temperature,
         SensorType.SALINITY: _argo_sample_salinity,
     }

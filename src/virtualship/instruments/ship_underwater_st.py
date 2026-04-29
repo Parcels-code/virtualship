@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
 
+from parcels import ParticleSet, ScipyParticle
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -57,8 +58,7 @@ def _sample_temperature(particle, fieldset, time):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
         SensorType.SALINITY: _sample_salinity,
     }

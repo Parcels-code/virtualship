@@ -1,10 +1,11 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 
+from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -65,8 +66,7 @@ def _check_lifetime(particle, fieldset, time):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
     }
 

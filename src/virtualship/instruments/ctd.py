@@ -1,10 +1,11 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
 
+from parcels import JITParticle, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -80,8 +81,7 @@ def _ctd_cast(particle, fieldset, time):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
         SensorType.SALINITY: _sample_salinity,
     }

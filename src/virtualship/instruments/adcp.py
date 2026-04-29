@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
 
+from parcels import ParticleSet, ScipyParticle
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -49,8 +50,7 @@ def _sample_velocity(particle, fieldset, time):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
-    # class attrs
-    sensor_kernels: ClassVar[dict[SensorType, callable]] = {
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.VELOCITY: _sample_velocity,
     }
 
