@@ -6,8 +6,8 @@ import numpy as np
 import pyproj
 import pytest
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
     Expedition,
