@@ -6,16 +6,21 @@ import numpy as np
 import pyproj
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
     Expedition,
     Location,
     Schedule,
     Waypoint,
+    _InstrumentConfigMixin,
 )
-from virtualship.utils import EXPEDITION, _get_expedition, get_example_expedition
+from virtualship.utils import (
+    EXPEDITION,
+    _get_expedition,
+    get_example_expedition,
+)
 
 projection = pyproj.Geod(ellps="WGS84")
 
@@ -355,3 +360,26 @@ def test_verify_instruments_config_errors(
 
     with pytest.raises(error, match=match):
         instruments_config.verify(expedition)
+
+
+def test_all_instrument_configs_use_mixin(expedition):
+    """Every registered instrument config must inherit _InstrumentConfigMixin and define the required ClassVars."""
+    instrument_configs = [
+        iconfig
+        for _, iconfig in expedition.instruments_config.__dict__.items()
+        if iconfig
+    ]
+
+    for iconfig in instrument_configs:
+        assert issubclass(iconfig.__class__, _InstrumentConfigMixin), (
+            f"{iconfig.__class__.__name__} does not inherit _InstrumentConfigMixin"
+        )
+        assert "_instrument_type" in iconfig.__class__.__dict__, (
+            f"{iconfig.__class__.__name__} does not define _instrument_type"
+        )
+        assert "_instrument_name" in iconfig.__class__.__dict__, (
+            f"{iconfig.__class__.__name__} does not define _instrument_name"
+        )
+        assert iconfig.__class__._instrument_type == iconfig._instrument_type, (
+            f"{iconfig.__class__.__name__}._instrument_type does not match its registered InstrumentType"
+        )

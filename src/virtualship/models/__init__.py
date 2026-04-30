@@ -14,6 +14,7 @@ from .expedition import (
     ShipUnderwaterSTConfig,
     Waypoint,
     XBTConfig,
+    _InstrumentConfigMixin,
 )
 from .location import Location
 from .spacetime import (
@@ -36,4 +37,5 @@ __all__ = [  # noqa: RUF022
     "Expedition",
     "InstrumentsConfig",
     "Checkpoint",
+    "_InstrumentConfigMixin",
 ]
