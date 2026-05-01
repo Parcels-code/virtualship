@@ -1,14 +1,14 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
+from parcels import ParticleSet, ScipyParticle
 
 from virtualship.instruments.base import Instrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import (
-    register_instrument,
-)
+from virtualship.utils import build_particle_class_from_sensors, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -23,16 +23,12 @@ class ADCP:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
+# ADCP has no non-sensor variables, only sensor variables.
+_ADCP_NONSENSOR_VARIABLES: list = []
 
-_ADCPParticle = ScipyParticle.add_variables(
-    [
-        Variable("U", dtype=np.float32, initial=np.nan),
-        Variable("V", dtype=np.float32, initial=np.nan),
-    ]
-)
 
 # =====================================================
 # SECTION: Kernels
@@ -54,9 +50,13 @@ def _sample_velocity(particle, fieldset, time):
 class ADCPInstrument(Instrument):
     """ADCP instrument class."""
 
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
+        SensorType.VELOCITY: _sample_velocity,
+    }
+
     def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
-        variables = {"U": "uo", "V": "vo"}
+        variables = expedition.instruments_config.adcp_config.active_variables()
         limit_spec = {
             "spatial": True
         }  # spatial limits; lat/lon constrained to waypoint locations + buffer
@@ -93,6 +93,12 @@ class ADCPInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
+        # build dynamic particle class from the active sensors
+        adcp_config = self.expedition.instruments_config.adcp_config
+        _ADCPParticle = build_particle_class_from_sensors(
+            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES, ScipyParticle
+        )
+
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
         num_particles = len(bins)
         particleset = ParticleSet.from_list(
@@ -108,6 +114,13 @@ class ADCPInstrument(Instrument):
 
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
+        # build kernel list from active sensors only
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in adcp_config.sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]
+
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
@@ -116,7 +129,7 @@ class ADCPInstrument(Instrument):
             )
 
             particleset.execute(
-                [_sample_velocity],
+                sampling_kernels,
                 dt=1,
                 runtime=1,
                 verbose_progress=self.verbose_progress,

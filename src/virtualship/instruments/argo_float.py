@@ -1,21 +1,17 @@
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import (
-    AdvectionRK4,
-    JITParticle,
-    ParticleSet,
-    StatusCode,
-    Variable,
-)
+from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
 
 from virtualship.instruments.base import Instrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import register_instrument
+from virtualship.utils import build_particle_class_from_sensors, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -37,25 +33,21 @@ class ArgoFloat:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_ArgoParticle = JITParticle.add_variables(
-    [
-        Variable("cycle_phase", dtype=np.int32, initial=0.0),
-        Variable("cycle_age", dtype=np.float32, initial=0.0),
-        Variable("drift_age", dtype=np.float32, initial=0.0),
-        Variable("salinity", dtype=np.float32, initial=np.nan),
-        Variable("temperature", dtype=np.float32, initial=np.nan),
-        Variable("min_depth", dtype=np.float32),
-        Variable("max_depth", dtype=np.float32),
-        Variable("drift_depth", dtype=np.float32),
-        Variable("vertical_speed", dtype=np.float32),
-        Variable("cycle_days", dtype=np.int32),
-        Variable("drift_days", dtype=np.int32),
-        Variable("grounded", dtype=np.int32, initial=0),
-    ]
-)
+_ARGO_NONSENSOR_VARIABLES = [
+    Variable("cycle_phase", dtype=np.int32, initial=0.0),
+    Variable("cycle_age", dtype=np.float32, initial=0.0),
+    Variable("drift_age", dtype=np.float32, initial=0.0),
+    Variable("min_depth", dtype=np.float32),
+    Variable("max_depth", dtype=np.float32),
+    Variable("drift_depth", dtype=np.float32),
+    Variable("vertical_speed", dtype=np.float32),
+    Variable("cycle_days", dtype=np.int32),
+    Variable("drift_days", dtype=np.int32),
+    Variable("grounded", dtype=np.int32, initial=0),
+]
 
 # =====================================================
 # SECTION: Kernels
@@ -118,18 +110,7 @@ def _argo_float_vertical_movement(particle, fieldset, time):
         particle.grounded = 0
         if particle.depth + particle_ddepth >= particle.min_depth:
             particle_ddepth = particle.min_depth - particle.depth
-            particle.temperature = (
-                math.nan
-            )  # reset temperature to NaN at end of sampling cycle
-            particle.salinity = math.nan  # idem
             particle.cycle_phase = 4
-        else:
-            particle.temperature = fieldset.T[
-                time, particle.depth, particle.lat, particle.lon
-            ]
-            particle.salinity = fieldset.S[
-                time, particle.depth, particle.lat, particle.lon
-            ]
 
     elif particle.cycle_phase == 4:
         # Phase 4: Transmitting at surface until cycletime is reached
@@ -153,6 +134,24 @@ def _check_error(particle, fieldset, time):
         particle.delete()
 
 
+def _argo_sample_temperature(particle, fieldset, time):
+    # Phase 3: ascending — sample temperature; NaN otherwise
+    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
+        particle.temperature = fieldset.T[
+            time, particle.depth, particle.lat, particle.lon
+        ]
+    else:
+        particle.temperature = math.nan
+
+
+def _argo_sample_salinity(particle, fieldset, time):
+    # Phase 3: ascending — sample salinity; NaN otherwise
+    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
+        particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+    else:
+        particle.salinity = math.nan
+
+
 # =====================================================
 # SECTION: Instrument Class
 # =====================================================
@@ -162,9 +161,21 @@ def _check_error(particle, fieldset, time):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
+        SensorType.TEMPERATURE: _argo_sample_temperature,
+        SensorType.SALINITY: _argo_sample_salinity,
+    }
+
     def __init__(self, expedition, from_data):
         """Initialize ArgoFloatInstrument."""
-        variables = {"U": "uo", "V": "vo", "S": "so", "T": "thetao"}
+        sensor_variables = (
+            expedition.instruments_config.argo_float_config.active_variables()
+        )
+        variables = {
+            "U": "uo",
+            "V": "vo",
+            **sensor_variables,
+        }  # advection variables (U and V) are always required for argo float simulation; sensor variables come from config
         spacetime_buffer_size = {
             "latlon": 3.0,  # [degrees]
             "time": expedition.instruments_config.argo_float_config.lifetime.total_seconds()
@@ -215,6 +226,14 @@ class ArgoFloatInstrument(Instrument):
                 f"{self.__class__.__name__} cannot be deployed in waters shallower than 50m. The following waypoints are too shallow: {shallow_waypoints}."
             )
 
+        # build dynamic particle class from the active sensors
+        argo_float_config = self.expedition.instruments_config.argo_float_config
+        _ArgoParticle = build_particle_class_from_sensors(
+            argo_float_config.sensors,
+            _ARGO_NONSENSOR_VARIABLES,
+            JITParticle,
+        )
+
         # define parcel particles
         argo_float_particleset = ParticleSet(
             fieldset=fieldset,
@@ -241,10 +260,18 @@ class ArgoFloatInstrument(Instrument):
         # endtime
         endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
 
+        # build kernel list from active sensors only
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in argo_float_config.sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]
+
         # execute simulation
         argo_float_particleset.execute(
             [
                 _argo_float_vertical_movement,
+                *sampling_kernels,
                 AdvectionRK4,
                 _keep_at_surface,
                 _check_error,

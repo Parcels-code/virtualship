@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
@@ -6,11 +7,16 @@ import numpy as np
 from parcels import JITParticle, ParticleSet, Variable
 
 from virtualship.instruments.base import Instrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 if TYPE_CHECKING:
     from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -28,19 +34,15 @@ class CTD:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_CTDParticle = JITParticle.add_variables(
-    [
-        Variable("salinity", dtype=np.float32, initial=np.nan),
-        Variable("temperature", dtype=np.float32, initial=np.nan),
-        Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
-        Variable("max_depth", dtype=np.float32),
-        Variable("min_depth", dtype=np.float32),
-        Variable("winch_speed", dtype=np.float32),
-    ]
-)
+_CTD_NONSENSOR_VARIABLES = [
+    Variable("raising", dtype=np.int8, initial=0.0),  # bool. 0 is False, 1 is True.
+    Variable("max_depth", dtype=np.float32),
+    Variable("min_depth", dtype=np.float32),
+    Variable("winch_speed", dtype=np.float32),
+]
 
 
 # =====================================================
@@ -79,9 +81,14 @@ def _ctd_cast(particle, fieldset, time):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
+        SensorType.TEMPERATURE: _sample_temperature,
+        SensorType.SALINITY: _sample_salinity,
+    }
+
     def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
-        variables = {"S": "so", "T": "thetao"}
+        variables = expedition.instruments_config.ctd_config.active_variables()
         limit_spec = {
             "spatial": True
         }  # spatial limits; lat/lon constrained to waypoint locations + buffer
@@ -115,11 +122,14 @@ class CTDInstrument(Instrument):
         # add dummy U
         add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
-        fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
-            fieldset.T.grid.time_full[0]
+        # use first active field for time reference
+        _time_ref_key = next(iter(self.variables))
+        _time_ref_field = getattr(fieldset, _time_ref_key)
+        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[0]
         )
-        fieldset_endtime = fieldset.T.grid.time_origin.fulltime(
-            fieldset.T.grid.time_full[-1]
+        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[-1]
         )
 
         # deploy time for all ctds should be later than fieldset start time
@@ -152,6 +162,12 @@ class CTDInstrument(Instrument):
                 f"CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
             )
 
+        # build dynamic particle class from the active sensors
+        ctd_config = self.expedition.instruments_config.ctd_config
+        _CTDParticle = build_particle_class_from_sensors(
+            ctd_config.sensors, _CTD_NONSENSOR_VARIABLES, JITParticle
+        )
+
         # define parcel particles
         ctd_particleset = ParticleSet(
             fieldset=fieldset,
@@ -168,9 +184,16 @@ class CTDInstrument(Instrument):
         # define output file for the simulation
         out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
+        # build kernel list from active sensors only
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in ctd_config.sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]
+
         # execute simulation
         ctd_particleset.execute(
-            [_sample_salinity, _sample_temperature, _ctd_cast],
+            [*sampling_kernels, _ctd_cast],
             endtime=fieldset_endtime,
             dt=DT,
             verbose_progress=self.verbose_progress,

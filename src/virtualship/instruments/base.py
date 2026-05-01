@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import abc
-from collections import OrderedDict
+import collections
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import copernicusmarine
 import xarray as xr
@@ -24,11 +24,23 @@ from virtualship.utils import (
 )
 
 if TYPE_CHECKING:
+    from virtualship.instruments.sensors import SensorType
     from virtualship.models import Expedition
 
 
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
+
+    # all instruments have sensor_kernels dict, mapping SensorType to sampling kernel
+    sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Ensure subclasses define sensor_kernels as class attribute."""
+        super().__init_subclass__(**kwargs)
+        if "sensor_kernels" not in cls.__dict__:
+            raise TypeError(
+                f"Instrument subclass '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
+            )
 
     def __init__(
         self,
@@ -45,7 +57,7 @@ class Instrument(abc.ABC):
         self.expedition = expedition
         self.from_data = from_data
 
-        self.variables = OrderedDict(variables)
+        self.variables = collections.OrderedDict(variables)
         self.dimensions = {
             "lon": "longitude",
             "lat": "latitude",

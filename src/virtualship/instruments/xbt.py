@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
@@ -6,9 +7,14 @@ import numpy as np
 from parcels import JITParticle, ParticleSet, Variable
 
 from virtualship.instruments.base import Instrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 # =====================================================
 # SECTION: Dataclass
@@ -28,18 +34,16 @@ class XBT:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_XBTParticle = JITParticle.add_variables(
-    [
-        Variable("temperature", dtype=np.float32, initial=np.nan),
-        Variable("max_depth", dtype=np.float32),
-        Variable("min_depth", dtype=np.float32),
-        Variable("fall_speed", dtype=np.float32),
-        Variable("deceleration_coefficient", dtype=np.float32),
-    ]
-)
+_XBT_NONSENSOR_VARIABLES = [
+    Variable("max_depth", dtype=np.float32),
+    Variable("min_depth", dtype=np.float32),
+    Variable("fall_speed", dtype=np.float32),
+    Variable("deceleration_coefficient", dtype=np.float32),
+]
+
 
 # =====================================================
 # SECTION: Kernels
@@ -77,9 +81,13 @@ def _xbt_cast(particle, fieldset, time):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
+        SensorType.TEMPERATURE: _sample_temperature,
+    }
+
     def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
-        variables = {"T": "thetao"}
+        variables = expedition.instruments_config.xbt_config.active_variables()
         limit_spec = {
             "spatial": True
         }  # spatial limits; lat/lon constrained to waypoint locations + buffer
@@ -112,11 +120,14 @@ class XBTInstrument(Instrument):
         # add dummy U
         add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
-        fieldset_starttime = fieldset.T.grid.time_origin.fulltime(
-            fieldset.T.grid.time_full[0]
+        # use first active field for time reference
+        _time_ref_key = next(iter(self.variables))
+        _time_ref_field = getattr(fieldset, _time_ref_key)
+        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[0]
         )
-        fieldset_endtime = fieldset.T.grid.time_origin.fulltime(
-            fieldset.T.grid.time_full[-1]
+        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
+            _time_ref_field.grid.time_full[-1]
         )
 
         # deploy time for all xbts should be later than fieldset start time
@@ -152,6 +163,12 @@ class XBTInstrument(Instrument):
                     f"XBT max_depth or bathymetry shallower than minimum {-DT * fall_speed}. It is likely the XBT cannot be deployed in this area, which is too shallow."
                 )
 
+        # build dynamic particle class from the active sensors
+        xbt_config = self.expedition.instruments_config.xbt_config
+        _XBTParticle = build_particle_class_from_sensors(
+            xbt_config.sensors, _XBT_NONSENSOR_VARIABLES, JITParticle
+        )
+
         # define xbt particles
         xbt_particleset = ParticleSet(
             fieldset=fieldset,
@@ -167,8 +184,15 @@ class XBTInstrument(Instrument):
 
         out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
+        # build kernel list from active sensors only
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in xbt_config.sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]
+
         xbt_particleset.execute(
-            [_sample_temperature, _xbt_cast],
+            [*sampling_kernels, _xbt_cast],
             endtime=fieldset_endtime,
             dt=DT,
             verbose_progress=self.verbose_progress,

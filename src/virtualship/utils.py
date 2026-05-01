@@ -15,7 +15,7 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet
+from parcels import FieldSet, Variable
 
 from virtualship.errors import CopernicusCatalogueError
 
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     )
     from virtualship.models import Expedition, InstrumentsConfig, Location
     from virtualship.models.checkpoint import Checkpoint
+    from virtualship.models.expedition import SensorConfig
 
 import pandas as pd
 import yaml
@@ -51,6 +52,7 @@ REPORT = "post_expedition_report.txt"
 
 EXPEDITION_ORIGINAL = "expedition_original.yaml"
 EXPEDITION_LATEST = "expedition_latest.yaml"
+
 
 # =====================================================
 # SECTION: Copernicus Marine Service constants
@@ -106,10 +108,17 @@ BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 # main instrument (simulation) class registry and registration utilities
 INSTRUMENT_CLASS_MAP = {}
 
+# maps InstrumentType to frozenset[SensorType], to set which sensors each instrument suppors, auto-populated by @register_instrument
+SUPPORTED_SENSORS_MAP: dict = {}
+
 
 def register_instrument(instrument_type):
     def decorator(cls):
         INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        if hasattr(cls, "sensor_kernels"):  # derive supported kernels from class attr
+            SUPPORTED_SENSORS_MAP[instrument_type] = frozenset(
+                cls.sensor_kernels.keys()
+            )
         return cls
 
     return decorator
@@ -117,6 +126,17 @@ def register_instrument(instrument_type):
 
 def get_instrument_class(instrument_type):
     return INSTRUMENT_CLASS_MAP.get(instrument_type)
+
+
+def get_supported_sensors(instrument_type):
+    """Return the frozenset of SensorTypes supported by the given InstrumentType."""
+    supported = SUPPORTED_SENSORS_MAP.get(instrument_type)
+    if supported is None:
+        raise KeyError(
+            f"No supported sensors registered for {instrument_type!r}. "
+            f"Does the instrument class define a `sensor_kernels` attribute?"
+        )
+    return supported
 
 
 # map for instrument type to instrument config (pydantic basemodel) names
@@ -617,13 +637,13 @@ def _calc_wp_stationkeeping_time(
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
     """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
-    from virtualship.instruments.types import InstrumentType  # avoid circular imports
-
     # to empty list if wp instruments set to 'null'
     if not wp_instrument_types:
         wp_instrument_types = []
 
     # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
+    from virtualship.instruments.types import InstrumentType
+
     both_ctd_and_bgc = (
         InstrumentType.CTD in wp_instrument_types
         and InstrumentType.CTD_BGC in wp_instrument_types
@@ -639,7 +659,7 @@ def _calc_wp_stationkeeping_time(
     for iconfig in valid_instrument_configs:
         for itype in wp_instrument_types:
             if (
-                instrument_config_map[itype] == iconfig.__class__.__name__
+                instrument_config_map.get(itype) == iconfig.__class__.__name__
                 and (
                     iconfig not in wp_instrument_configs
                 )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
@@ -649,13 +669,10 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        if (
-            both_ctd_and_bgc
-            and iconfig.__class__.__name__
-            == INSTRUMENT_CONFIG_MAP[InstrumentType.CTD_BGC]
+        if both_ctd_and_bgc and iconfig.__class__.__name__ == instrument_config_map.get(
+            InstrumentType.CTD_BGC
         ):
-            continue  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
-
+            continue  # only count stationkeeping once when both CTD and CTD_BGC are present; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 
@@ -667,6 +684,19 @@ def _make_hash(s: str, length: int) -> str:
     assert length % 2 == 0, "Length must be even."
     half_length = length // 2
     return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
+
+
+def build_particle_class_from_sensors(
+    sensors: list[SensorConfig],
+    nonsensor_variables: list[Variable],
+    particle_class: type,  # generic type annotation needed for v3 particle class behaviour # TODO: Update with Parcels v4
+) -> type:
+    """Build a Particle class (JITParticle or ScipyParticle) from nonsensor variables and active sensors."""
+    sensor_variables = [
+        variable for sc in sensors if sc.enabled for variable in sc.meta.particle_vars
+    ]
+
+    return particle_class.add_variables(nonsensor_variables + sensor_variables)
 
 
 # =====================================================
