@@ -488,13 +488,6 @@ class InstrumentsConfig(pydantic.BaseModel):
     If None, no CTDs can be cast.
     """
 
-    ctd_bgc_config: CTD_BGCConfig | None = None
-    """
-    CTD_BGC configuration.
-
-    If None, no BGC CTDs can be cast.
-    """
-
     ship_underwater_st_config: ShipUnderwaterSTConfig | None = None
     """
     Ship underwater salinity temperature measurementconfiguration.

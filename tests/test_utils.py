@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 
 import virtualship.utils
+from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition, SensorConfig
@@ -272,9 +272,8 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
 
     class DummyInstrumentsConfig:
-        def __init__(self, ctd, ctd_bgc, argo, xbt, drifter):
+        def __init__(self, ctd, argo, xbt, drifter):
             self.ctd = ctd
-            self.ctd_bgc = ctd_bgc
             self.argo = argo
             self.xbt = xbt
             self.drifter = drifter
@@ -308,7 +307,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # Create a dummy expedition with instruments_config containing the dummy configs
     instruments_config = DummyInstrumentsConfig(
         ctd=CTDConfig(),
-        ctd_bgc=CTD_BGCConfig(),
         argo=ArgoFloatConfig(),
         xbt=XBTConfig(),
         drifter=DrifterConfig(),

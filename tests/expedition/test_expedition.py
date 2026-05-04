@@ -6,8 +6,8 @@ import numpy as np
 import pyproj
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
+from parcels import FieldSet
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
     Expedition,
@@ -269,12 +269,6 @@ def instruments_config_no_ctd(expedition):
 
 
 @pytest.fixture
-def instruments_config_no_ctd_bgc(expedition):
-    delattr(expedition.instruments_config, "ctd_bgc_config")
-    return expedition.instruments_config
-
-
-@pytest.fixture
 def instruments_config_no_argo_float(expedition):
     delattr(expedition.instruments_config, "argo_float_config")
     return expedition.instruments_config
@@ -320,12 +314,6 @@ def test_verify_instruments_config_no_instrument(expedition, expedition_no_xbt) 
             InstrumentsConfigError,
             "Expedition includes instrument 'CTD', but instruments_config does not provide configuration for it.",
             id="InstrumentsConfigNoCTD",
-        ),
-        pytest.param(
-            "instruments_config_no_ctd_bgc",
-            InstrumentsConfigError,
-            "Expedition includes instrument 'CTD_BGC', but instruments_config does not provide configuration for it.",
-            id="InstrumentsConfigNoCTD_BGC",
         ),
         pytest.param(
             "instruments_config_no_argo_float",
