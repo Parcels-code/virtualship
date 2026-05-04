@@ -352,6 +352,13 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
             SensorConfig(sensor_type=SensorType.SALINITY),
+            SensorConfig(sensor_type=SensorType.OXYGEN),
+            SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+            SensorConfig(sensor_type=SensorType.NITRATE),
+            SensorConfig(sensor_type=SensorType.PHOSPHATE),
+            SensorConfig(sensor_type=SensorType.PH),
+            SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
+            SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
         ],
         description=("Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY. "),
     )
