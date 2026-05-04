@@ -360,7 +360,9 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
             SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
             SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
         ],
-        description=("Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY. "),
+        description=(
+            "Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY, OXYGEN, CHLOROPHYLL, NITRATE, PHOSPHATE, PH, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
+        ),
     )
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
