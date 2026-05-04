@@ -524,7 +524,6 @@ class InstrumentsConfig(pydantic.BaseModel):
             InstrumentType.DRIFTER: "drifter_config",
             InstrumentType.XBT: "xbt_config",
             InstrumentType.CTD: "ctd_config",
-            InstrumentType.CTD_BGC: "ctd_bgc_config",
             InstrumentType.ADCP: "adcp_config",
             InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
         }

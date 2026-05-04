@@ -60,11 +60,6 @@ instruments_config:
     sensors:
       - TEMPERATURE
       - SALINITY
-  ctd_bgc_config:
-    max_depth_meter: -2000.0
-    min_depth_meter: -11.0
-    stationkeeping_time_minutes: 50.0
-    sensors:
       - OXYGEN
       - CHLOROPHYLL
       - NITRATE
