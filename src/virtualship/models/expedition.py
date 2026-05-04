@@ -359,40 +359,6 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
-@register_instrument_config(InstrumentType.CTD_BGC)
-class CTD_BGCConfig(_InstrumentConfigMixin, pydantic.BaseModel):
-    """Configuration for CTD_BGC instrument."""
-
-    _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD_BGC
-    _instrument_name: ClassVar[str] = "CTD_BGC"
-
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-    min_depth_meter: float = pydantic.Field(le=0.0)
-    max_depth_meter: float = pydantic.Field(le=0.0)
-
-    sensors: list[SensorConfig] = pydantic.Field(
-        default_factory=lambda: [
-            SensorConfig(sensor_type=SensorType.OXYGEN),
-            SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
-            SensorConfig(sensor_type=SensorType.NITRATE),
-            SensorConfig(sensor_type=SensorType.PHOSPHATE),
-            SensorConfig(sensor_type=SensorType.PH),
-            SensorConfig(sensor_type=SensorType.PHYTOPLANKTON),
-            SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
-        ],
-        description=(
-            "Sensors fitted to the BGC CTD. "
-            "Supported: OXYGEN, CHLOROPHYLL, NITRATE, PHOSPHATE, PH, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
-        ),
-    )
-
-    model_config = pydantic.ConfigDict(populate_by_name=True)
-
-
 @register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for underwater ST."""

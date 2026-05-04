@@ -281,9 +281,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     class CTDConfig:
         stationkeeping_time = datetime.timedelta(minutes=50)
 
-    class CTD_BGCConfig:
-        stationkeeping_time = datetime.timedelta(minutes=50)
-
     class ArgoFloatConfig:
         stationkeeping_time = datetime.timedelta(minutes=20)
 
@@ -297,7 +294,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         "virtualship.utils.INSTRUMENT_CONFIG_MAP",
         {
             InstrumentType.CTD: "CTDConfig",
-            InstrumentType.CTD_BGC: "CTD_BGCConfig",
             InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
             InstrumentType.XBT: "XBTConfig",
             InstrumentType.DRIFTER: "DrifterConfig",
@@ -318,7 +314,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # instruments at a given waypoint
     wp_instrument_types_all = [
         InstrumentType.CTD,
-        InstrumentType.CTD_BGC,
         InstrumentType.ARGO_FLOAT,
         InstrumentType.XBT,
         InstrumentType.DRIFTER,
@@ -332,9 +327,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     assert (
         stationkeeping_time_all
         == CTDConfig.stationkeeping_time
-        + (
-            CTD_BGCConfig.stationkeeping_time * 0.0
-        )  # CTD(_BGC) counted once when both present
         + ArgoFloatConfig.stationkeeping_time
         + DrifterConfig.stationkeeping_time  # drifter should only be counted once despite being present at wp twice
     )
