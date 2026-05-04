@@ -25,6 +25,7 @@ from virtualship.models.expedition import (
 
 
 def test_simulate_ctds(tmpdir) -> None:
+    """Test that CTDInstrument simulates measurements correctly, incuding sampling physical and bgc variables."""
     # arbitrary time offset for the dummy fieldset
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
@@ -54,12 +55,18 @@ def test_simulate_ctds(tmpdir) -> None:
             "surface": {
                 "salinity": 5,
                 "temperature": 6,
+                "o2": 10.0,
+                "chl": 20.0,
+                "no3": 30.0,
                 "lat": ctds[0].spacetime.location.lat,
                 "lon": ctds[0].spacetime.location.lon,
             },
             "maxdepth": {
                 "salinity": 7,
                 "temperature": 8,
+                "o2": 11.0,
+                "chl": 21.0,
+                "no3": 31.0,
                 "lat": ctds[0].spacetime.location.lat,
                 "lon": ctds[0].spacetime.location.lon,
             },
@@ -68,12 +75,18 @@ def test_simulate_ctds(tmpdir) -> None:
             "surface": {
                 "salinity": 5,
                 "temperature": 6,
+                "o2": 12.0,
+                "chl": 22.0,
+                "no3": 32.0,
                 "lat": ctds[1].spacetime.location.lat,
                 "lon": ctds[1].spacetime.location.lon,
             },
             "maxdepth": {
                 "salinity": 7,
                 "temperature": 8,
+                "o2": 13.0,
+                "chl": 23.0,
+                "no3": 33.0,
                 "lat": ctds[1].spacetime.location.lat,
                 "lon": ctds[1].spacetime.location.lon,
             },
@@ -86,6 +99,9 @@ def test_simulate_ctds(tmpdir) -> None:
     v = np.zeros((2, 2, 2, 2))
     t = np.zeros((2, 2, 2, 2))
     s = np.zeros((2, 2, 2, 2))
+    o2 = np.zeros((2, 2, 2, 2))
+    chl = np.zeros((2, 2, 2, 2))
+    no3 = np.zeros((2, 2, 2, 2))
 
     t[:, 1, 0, 1] = ctd_exp[0]["surface"]["temperature"]
     t[:, 0, 0, 1] = ctd_exp[0]["maxdepth"]["temperature"]
@@ -97,8 +113,23 @@ def test_simulate_ctds(tmpdir) -> None:
     s[:, 1, 1, 0] = ctd_exp[1]["surface"]["salinity"]
     s[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["salinity"]
 
+    o2[:, 1, 0, 1] = ctd_exp[0]["surface"]["o2"]
+    o2[:, 0, 0, 1] = ctd_exp[0]["maxdepth"]["o2"]
+    o2[:, 1, 1, 0] = ctd_exp[1]["surface"]["o2"]
+    o2[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["o2"]
+
+    chl[:, 1, 0, 1] = ctd_exp[0]["surface"]["chl"]
+    chl[:, 0, 0, 1] = ctd_exp[0]["maxdepth"]["chl"]
+    chl[:, 1, 1, 0] = ctd_exp[1]["surface"]["chl"]
+    chl[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["chl"]
+
+    no3[:, 1, 0, 1] = ctd_exp[0]["surface"]["no3"]
+    no3[:, 0, 0, 1] = ctd_exp[0]["maxdepth"]["no3"]
+    no3[:, 1, 1, 0] = ctd_exp[1]["surface"]["no3"]
+    no3[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["no3"]
+
     fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t, "S": s},
+        {"V": v, "U": u, "T": t, "S": s, "o2": o2, "chl": chl, "no3": no3},
         {
             "time": [
                 np.datetime64(base_time + datetime.timedelta(hours=0)),
@@ -130,6 +161,9 @@ def test_simulate_ctds(tmpdir) -> None:
                 sensors=[
                     SensorConfig(sensor_type=SensorType.TEMPERATURE),
                     SensorConfig(sensor_type=SensorType.SALINITY),
+                    SensorConfig(sensor_type=SensorType.OXYGEN),
+                    SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+                    SensorConfig(sensor_type=SensorType.NITRATE),
                 ],
             )
         )
@@ -160,7 +194,7 @@ def test_simulate_ctds(tmpdir) -> None:
             (obs_maxdepth, "maxdepth"),
         ]:
             exp = exp_bothloc[loc]
-            for var in ["salinity", "temperature", "lat", "lon"]:
+            for var in ["salinity", "temperature", "o2", "chl", "no3", "lat", "lon"]:
                 obs_value = obs[var].values.item()
                 exp_value = exp[var]
 
@@ -177,10 +211,10 @@ def test_ctd_sensor_config_active_variables() -> None:
         max_depth_meter=-2000.0,
         sensors=[
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
-            SensorConfig(sensor_type=SensorType.SALINITY),
+            SensorConfig(sensor_type=SensorType.OXYGEN),
         ],
     )
-    assert config_both.active_variables() == {"T": "thetao", "S": "so"}
+    assert config_both.active_variables() == {"T": "thetao", "o2": "o2"}
 
     config_temp_only = CTDConfig(
         stationkeeping_time_minutes=50,
@@ -200,15 +234,18 @@ def test_ctd_sensor_config_yaml() -> None:
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[
-            SensorConfig(sensor_type=SensorType.TEMPERATURE)
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.OXYGEN),
         ],  # SALINITY omitted = disabled
     )
     dumped = config.model_dump(by_alias=True)
     loaded = CTDConfig.model_validate(dumped)
 
-    assert len(loaded.sensors) == 1
+    assert len(loaded.sensors) == 2
     assert loaded.sensors[0].sensor_type == SensorType.TEMPERATURE
     assert loaded.sensors[0].enabled is True
+    assert loaded.sensors[1].sensor_type == SensorType.OXYGEN
+    assert loaded.sensors[1].enabled is True
 
 
 def test_ctd_disabled_sensor_absent(tmpdir) -> None:
@@ -270,11 +307,21 @@ def test_ctd_disabled_sensor_absent(tmpdir) -> None:
 
 
 def test_ctd_supported_sensors():
-    """CTD supports TEMPERATURE and SALINITY."""
+    """CTD supports TEMPERATURE, SALINITY and all BGC sensors."""
     from virtualship.utils import get_supported_sensors
 
     assert get_supported_sensors(InstrumentType.CTD) == frozenset(
-        {SensorType.TEMPERATURE, SensorType.SALINITY}
+        {
+            SensorType.TEMPERATURE,
+            SensorType.SALINITY,
+            SensorType.OXYGEN,
+            SensorType.CHLOROPHYLL,
+            SensorType.NITRATE,
+            SensorType.PHOSPHATE,
+            SensorType.PH,
+            SensorType.PHYTOPLANKTON,
+            SensorType.PRIMARY_PRODUCTION,
+        }
     )
 
 
@@ -299,3 +346,59 @@ def test_ctd_config_unsupported_sensor_rejected():
             max_depth_meter=-2000.0,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
         )
+
+
+def test_sensor_absent(tmpdir) -> None:
+    """A (BGC) sensor that is disabled must not appear in the zarr output."""
+    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
+
+    ctds = [
+        CTD(
+            spacetime=Spacetime(
+                location=Location(latitude=0, longitude=0),
+                time=base_time,
+            ),
+            min_depth=0,
+            max_depth=-20,
+        ),
+    ]
+
+    o2_data = np.full((2, 2, 2), 5.0)
+    fieldset = FieldSet.from_data(
+        {"o2": o2_data},
+        {
+            "lon": np.array([0.0, 1.0]),
+            "lat": np.array([0.0, 1.0]),
+            "time": [
+                np.datetime64(base_time + datetime.timedelta(seconds=0)),
+                np.datetime64(base_time + datetime.timedelta(hours=4)),
+            ],
+        },
+    )
+    fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
+
+    class DummyExpedition:
+        class schedule:
+            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
+
+        instruments_config = InstrumentsConfig(
+            ctd_config=CTDConfig(
+                stationkeeping_time_minutes=50,
+                min_depth_meter=-11.0,
+                max_depth_meter=-2000.0,
+                sensors=[
+                    SensorConfig(sensor_type=SensorType.OXYGEN),
+                    # CHLOROPHYLL omitted = disabled
+                ],
+            )
+        )
+
+    expedition = DummyExpedition()
+    ctd_instrument = CTDInstrument(expedition, None)
+    out_path = tmpdir.join("out_bgc_disabled.zarr")
+    ctd_instrument.load_input_data = lambda: fieldset
+    ctd_instrument.simulate(ctds, out_path)
+
+    results = xr.open_zarr(out_path)
+    assert "o2" in results, "Enabled BGC sensor variable must be present"
+    assert "chl" not in results, "Disabled sensor variable must be absent from output"
