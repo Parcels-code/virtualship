@@ -32,7 +32,6 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     ADCPConfig,
     ArgoFloatConfig,
-    CTD_BGCConfig,
     CTDConfig,
     DrifterConfig,
     Expedition,
@@ -103,15 +102,6 @@ INSTRUMENT_FIELDS = {
     "ctd_config": {
         "class": CTDConfig,
         "title": "CTD",
-        "attributes": [
-            {"name": "max_depth_meter"},
-            {"name": "min_depth_meter"},
-            {"name": "stationkeeping_time", "minutes": True},
-        ],
-    },
-    "ctd_bgc_config": {
-        "class": CTD_BGCConfig,
-        "title": "CTD-BGC",
         "attributes": [
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},

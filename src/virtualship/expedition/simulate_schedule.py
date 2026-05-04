@@ -10,7 +10,6 @@ import pyproj
 
 from virtualship.instruments.argo_float import ArgoFloat
 from virtualship.instruments.ctd import CTD
-from virtualship.instruments.ctd_bgc import CTD_BGC
 from virtualship.instruments.drifter import Drifter
 from virtualship.instruments.types import InstrumentType
 from virtualship.instruments.xbt import XBT
@@ -53,7 +52,6 @@ class MeasurementsToSimulate:
         InstrumentType.ARGO_FLOAT: "argo_floats",
         InstrumentType.DRIFTER: "drifters",
         InstrumentType.CTD: "ctds",
-        InstrumentType.CTD_BGC: "ctd_bgcs",
         InstrumentType.XBT: "xbts",
     }
 
@@ -67,7 +65,6 @@ class MeasurementsToSimulate:
     argo_floats: list[ArgoFloat] = field(default_factory=list, init=False)
     drifters: list[Drifter] = field(default_factory=list, init=False)
     ctds: list[CTD] = field(default_factory=list, init=False)
-    ctd_bgcs: list[CTD_BGC] = field(default_factory=list, init=False)
     xbts: list[XBT] = field(default_factory=list, init=False)
 
 
@@ -265,12 +262,6 @@ class _ScheduleSimulator:
         # time costs of each measurement
         time_costs = [timedelta()]
 
-        # check if both CTD and CTD_BGC are present
-        # TODO: this can be avoided if CTD and CTD_BGC are merged into a single instrument
-        both_ctd_and_bgc = (
-            InstrumentType.CTD in instruments and InstrumentType.CTD_BGC in instruments
-        )
-
         for instrument in instruments:
             if instrument is InstrumentType.ARGO_FLOAT:
                 self._measurements_to_simulate.argo_floats.append(
@@ -302,20 +293,7 @@ class _ScheduleSimulator:
                 time_costs.append(
                     self._expedition.instruments_config.ctd_config.stationkeeping_time
                 )
-            elif instrument is InstrumentType.CTD_BGC:
-                self._measurements_to_simulate.ctd_bgcs.append(
-                    CTD_BGC(
-                        spacetime=Spacetime(self._location, self._time),
-                        min_depth=self._expedition.instruments_config.ctd_bgc_config.min_depth_meter,
-                        max_depth=self._expedition.instruments_config.ctd_bgc_config.max_depth_meter,
-                    )
-                )
-                if both_ctd_and_bgc:  # only need to add time cost once if both CTD and CTD_BGC are being taken; in reality they would be done on the same instrument
-                    pass
-                else:
-                    time_costs.append(
-                        self._expedition.instruments_config.ctd_bgc_config.stationkeeping_time
-                    )
+
             elif instrument is InstrumentType.DRIFTER:
                 self._measurements_to_simulate.drifters.append(
                     Drifter(

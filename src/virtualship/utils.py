@@ -641,14 +641,6 @@ def _calc_wp_stationkeeping_time(
     if not wp_instrument_types:
         wp_instrument_types = []
 
-    # TODO: this can be removed if/when CTD and CTD_BGC are merged to a single instrument
-    from virtualship.instruments.types import InstrumentType
-
-    both_ctd_and_bgc = (
-        InstrumentType.CTD in wp_instrument_types
-        and InstrumentType.CTD_BGC in wp_instrument_types
-    )
-
     # extract configs for all instruments present in expedition
     valid_instrument_configs = [
         iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
@@ -669,10 +661,6 @@ def _calc_wp_stationkeeping_time(
     # get wp total stationkeeping time
     cumulative_stationkeeping_time = timedelta()
     for iconfig in wp_instrument_configs:
-        if both_ctd_and_bgc and iconfig.__class__.__name__ == instrument_config_map.get(
-            InstrumentType.CTD_BGC
-        ):
-            continue  # only count stationkeeping once when both CTD and CTD_BGC are present; in reality they would be done on the same instrument
         if hasattr(iconfig, "stationkeeping_time"):
             cumulative_stationkeeping_time += iconfig.stationkeeping_time
 

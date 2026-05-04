@@ -272,17 +272,13 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
 
     class DummyInstrumentsConfig:
-        def __init__(self, ctd, ctd_bgc, argo, xbt, drifter):
+        def __init__(self, ctd, argo, xbt, drifter):
             self.ctd = ctd
-            self.ctd_bgc = ctd_bgc
             self.argo = argo
             self.xbt = xbt
             self.drifter = drifter
 
     class CTDConfig:
-        stationkeeping_time = datetime.timedelta(minutes=50)
-
-    class CTD_BGCConfig:
         stationkeeping_time = datetime.timedelta(minutes=50)
 
     class ArgoFloatConfig:
@@ -298,7 +294,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         "virtualship.utils.INSTRUMENT_CONFIG_MAP",
         {
             InstrumentType.CTD: "CTDConfig",
-            InstrumentType.CTD_BGC: "CTD_BGCConfig",
             InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
             InstrumentType.XBT: "XBTConfig",
             InstrumentType.DRIFTER: "DrifterConfig",
@@ -308,7 +303,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # Create a dummy expedition with instruments_config containing the dummy configs
     instruments_config = DummyInstrumentsConfig(
         ctd=CTDConfig(),
-        ctd_bgc=CTD_BGCConfig(),
         argo=ArgoFloatConfig(),
         xbt=XBTConfig(),
         drifter=DrifterConfig(),
@@ -320,7 +314,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # instruments at a given waypoint
     wp_instrument_types_all = [
         InstrumentType.CTD,
-        InstrumentType.CTD_BGC,
         InstrumentType.ARGO_FLOAT,
         InstrumentType.XBT,
         InstrumentType.DRIFTER,
@@ -334,9 +327,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     assert (
         stationkeeping_time_all
         == CTDConfig.stationkeeping_time
-        + (
-            CTD_BGCConfig.stationkeeping_time * 0.0
-        )  # CTD(_BGC) counted once when both present
         + ArgoFloatConfig.stationkeeping_time
         + DrifterConfig.stationkeeping_time  # drifter should only be counted once despite being present at wp twice
     )

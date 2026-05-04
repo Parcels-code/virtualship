@@ -29,7 +29,6 @@ schedule: # <-- 1. expedition schedule section
   waypoints:
     - instrument: # <-- Waypoint 1
         - CTD
-        - CTD_BGC
         - ARGO_FLOAT
         - DRIFTER
       location:
@@ -53,7 +52,6 @@ instruments_config: # <-- 2. instrument configuration section
   ship_underwater_st_config:
     period_minutes: 5.0
   argo_float_config: ...
-  ctd_bgc_config: ...
   ctd_config: ...
   drifter_config: ...
   xbt_config: ...
@@ -75,7 +73,7 @@ This section contains a list of `waypoints` that define the expedition's route. 
 - **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_. The instrument selection can also be left empty (i.e., no instruments deployed at that waypoint) by setting the parameter to: `instrument: null`.
 
 ```{tip}
-Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `CTD_BGC`, `DRIFTER`, `ARGO_FLOAT`, `XBT` (or `null`).
+Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `DRIFTER`, `ARGO_FLOAT`, `XBT` (or `null`).
 ```
 
 ```{tip}

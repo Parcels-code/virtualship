@@ -49,6 +49,8 @@ _CTD_NONSENSOR_VARIABLES = [
 # SECTION: Kernels
 # =====================================================
 
+## physical variables
+
 
 def _sample_temperature(particle, fieldset, time):
     particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
@@ -56,6 +58,40 @@ def _sample_temperature(particle, fieldset, time):
 
 def _sample_salinity(particle, fieldset, time):
     particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+
+
+## bgc variables
+
+
+def _sample_o2(particle, fieldset, time):
+    particle.o2 = fieldset.o2[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_chlorophyll(particle, fieldset, time):
+    particle.chl = fieldset.chl[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_nitrate(particle, fieldset, time):
+    particle.no3 = fieldset.no3[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_phosphate(particle, fieldset, time):
+    particle.po4 = fieldset.po4[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_ph(particle, fieldset, time):
+    particle.ph = fieldset.ph[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_phytoplankton(particle, fieldset, time):
+    particle.phyc = fieldset.phyc[time, particle.depth, particle.lat, particle.lon]
+
+
+def _sample_primary_production(particle, fieldset, time):
+    particle.nppv = fieldset.nppv[time, particle.depth, particle.lat, particle.lon]
+
+
+## cast
 
 
 def _ctd_cast(particle, fieldset, time):
@@ -84,6 +120,13 @@ class CTDInstrument(Instrument):
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
         SensorType.SALINITY: _sample_salinity,
+        SensorType.OXYGEN: _sample_o2,
+        SensorType.CHLOROPHYLL: _sample_chlorophyll,
+        SensorType.NITRATE: _sample_nitrate,
+        SensorType.PHOSPHATE: _sample_phosphate,
+        SensorType.PH: _sample_ph,
+        SensorType.PHYTOPLANKTON: _sample_phytoplankton,
+        SensorType.PRIMARY_PRODUCTION: _sample_primary_production,
     }
 
     def __init__(self, expedition, from_data):

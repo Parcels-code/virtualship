@@ -352,30 +352,6 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
             SensorConfig(sensor_type=SensorType.SALINITY),
-        ],
-        description=("Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY. "),
-    )
-
-    model_config = pydantic.ConfigDict(populate_by_name=True)
-
-
-@register_instrument_config(InstrumentType.CTD_BGC)
-class CTD_BGCConfig(_InstrumentConfigMixin, pydantic.BaseModel):
-    """Configuration for CTD_BGC instrument."""
-
-    _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD_BGC
-    _instrument_name: ClassVar[str] = "CTD_BGC"
-
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-    min_depth_meter: float = pydantic.Field(le=0.0)
-    max_depth_meter: float = pydantic.Field(le=0.0)
-
-    sensors: list[SensorConfig] = pydantic.Field(
-        default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.OXYGEN),
             SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
             SensorConfig(sensor_type=SensorType.NITRATE),
@@ -385,8 +361,7 @@ class CTD_BGCConfig(_InstrumentConfigMixin, pydantic.BaseModel):
             SensorConfig(sensor_type=SensorType.PRIMARY_PRODUCTION),
         ],
         description=(
-            "Sensors fitted to the BGC CTD. "
-            "Supported: OXYGEN, CHLOROPHYLL, NITRATE, PHOSPHATE, PH, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
+            "Sensors fitted to the CTD. Supported: TEMPERATURE, SALINITY, OXYGEN, CHLOROPHYLL, NITRATE, PHOSPHATE, PH, PHYTOPLANKTON, PRIMARY_PRODUCTION. "
         ),
     )
 
@@ -488,13 +463,6 @@ class InstrumentsConfig(pydantic.BaseModel):
     If None, no CTDs can be cast.
     """
 
-    ctd_bgc_config: CTD_BGCConfig | None = None
-    """
-    CTD_BGC configuration.
-
-    If None, no BGC CTDs can be cast.
-    """
-
     ship_underwater_st_config: ShipUnderwaterSTConfig | None = None
     """
     Ship underwater salinity temperature measurementconfiguration.
@@ -531,7 +499,6 @@ class InstrumentsConfig(pydantic.BaseModel):
             InstrumentType.DRIFTER: "drifter_config",
             InstrumentType.XBT: "xbt_config",
             InstrumentType.CTD: "ctd_config",
-            InstrumentType.CTD_BGC: "ctd_bgc_config",
             InstrumentType.ADCP: "adcp_config",
             InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
         }
