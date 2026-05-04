@@ -326,14 +326,24 @@ def test_ctd_supported_sensors():
 
 
 def test_ctd_config_default_sensors():
-    """CTDConfig defaults to TEMPERATURE + SALINITY."""
+    """CTDConfig defaults to all supported sensors (phys + bgc)."""
     config = CTDConfig(
         stationkeeping_time_minutes=50,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
     )
     types = {sc.sensor_type for sc in config.sensors}
-    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+    assert types == {
+        SensorType.TEMPERATURE,
+        SensorType.SALINITY,
+        SensorType.OXYGEN,
+        SensorType.CHLOROPHYLL,
+        SensorType.NITRATE,
+        SensorType.PHOSPHATE,
+        SensorType.PH,
+        SensorType.PHYTOPLANKTON,
+        SensorType.PRIMARY_PRODUCTION,
+    }
 
 
 # TODO: may need to be removed if add ADCP to CTDs in future PR...
