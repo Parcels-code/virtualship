@@ -1,0 +1,170 @@
+---
+title: "VirtualShip Classroom Advisory Group meeting"
+subtitle: "11th May 2026"
+format:
+    revealjs:
+        self-contained: true
+        scrollable: true
+        slide-number: true
+        theme: default
+        logo: "https://virtualship.readthedocs.io/en/latest/_static/virtual_ship_logo.png"
+        controls: true
+        include-in-header:
+            - text: |
+                <style>
+                    #title-slide .title {
+                    font-size: 1.4em;
+                    font-weight: 600;
+                    }
+                </style>
+                <style>
+                    #title-slide .subtitle {
+                    font-size: 1.0em;
+                    }
+                </style>
+
+---
+
+## Agenda
+
+1. Updates
+2. Gliders
+3. Gamification
+4. AOB
+
+## Team composition
+
+<!-- TODO: add photos? -->
+
+- New team members:
+    - Jamie (Postdoc)
+    - Gonçalo (Research Officer)
+
+
+## VirtualShip Classroom in new courses {.smaller}
+
+**At UU...**
+
+- In total 4 courses at UU (8 cycles), with implementation in each to continue in 2026/2027.
+- Implementation has been extended to two new courses:
+    - Ocean of the Future [**BSc**; Geosciences]
+    - Sustainable Water Resources Management [MSc; Geosciences]
+        - 4 hour 'masterclass'
+
+![DBR cycles at UU; Daniels et al. _In prep_.](DBRcycles.png){height=200px}
+
+## VirtualShip Classroom in new courses {.smaller}
+
+**Beyond UU... !**
+
+- €100k NKO funding to implement the VirtualShip Classroom at four new universities in the Netherlands:
+    - TU Delft
+    - University of Amsterdam
+    - Wageningen University and Research
+    - University of Groningen
+
+- Mixture of BSc and MSc courses, ranging from ecology to physics.
+- Implementation to start in 2026/2027, for two academic years.
+- A transition from us actively supporting the implementation at each university to a more hands-off approach.
+
+## Student evaluation (at UU){.smaller style="font-size: 0.6em;"}
+
+<br>
+Across 8 cycles of teaching (pooled results)...
+
+![Across 8 cycles of teaching at UU; Atkins et al. _Submitted_](evaluation.png){height=100%}
+
+## Updates to the software {.smaller}
+
+The software has updated over the last year... often in line with evolving user needs and feedback from students.
+
+![](DBR2_figure.png){height=100%}
+
+## Student evaluation (at UU){.smaller style="font-size: 0.6em;"}
+
+**Software** evaluation from students' perspective is less positive.
+
+![From Dynamical Oceanography 2025/2026 (**MSc**)](software_evaluation.png){height=100%}
+
+
+## Student evaluation (at UU){.smaller style="font-size: 0.6em;"}
+
+And even more challenging for **BSc** students with mixed programming experience.
+
+![From Ocean of the Future 2025/2026 (**BSc**)](software_evaluation_bsc.png){height=100%}
+
+## VR / 360° videos
+
+- 2024/2025: shorter videos, ship tours, scientist interviews and one instrument-focused video (ADCP).
+- **2025/2026**: 4 new longer videos (more instruments, day-at-sea videos) from DUST expedition that Emma and Gonçalo participated in.
+    - Newer videos after Gonçalo had 7 months more training in editing skills.
+- New bespoke video player application designed with the AV team at UU.
+    - Focusing on ability to deploy videos to students asynchronously.
+
+## VR / 360° videos {.smaller style="font-size: 0.6em;"}
+
+{{< video https://www.youtube.com/watch?v=AiuHntw3rmk&t=115s height="600" width="100%" >}}
+
+## VR / 360° videos
+
+<br>
+
+![Across 8 cycles of teaching at UU](evaluation_vr.png){height=100%}
+
+With more in-depth evaluation in Bhagat _et al._ (in review).
+
+## Publications {.smaller style="font-size: 0.6em;"}
+
+**Published**:
+
+<div style="position: relative; display: inline-block; width: 100%;">
+1.  Daniels, E., Chytas, C. and van Sebille, E. 2025. The Virtual Ship Classroom: Developing Virtual Fieldwork as an Authentic Learning Environment for Physical Oceanography. _Current:  The Journal of Marine Eduction_. 40(2), p. 44–57. https://doi.org/10.5334/cjme.121.
+<div class="fragment fade-in" data-fragment-index="1" style="position: absolute; top: -6px; left: -10px; right: -10px; bottom: -6px; border: 3px solid #40abedbc; background: rgba(98, 177, 234, 0.12); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center;"><span style="color: #000000ff; font-weight: bold; font-size: 1.2em; background: white; padding: 4px 10px; border-radius: 4px;">Evaluation of first two DBR cycles in teaching at UU.</span></div>
+</div>
+
+
+**Submitted/in review**:
+
+<div style="position: relative; display: inline-block; width: 100%;">
+2.  Bhagat, S. , Daniels, E. and Veldkamp, A. Authentic Learning in Marine Science Education Using Immersive 360˚ Videos. _Journal of Geoscience Education_.
+<div class="fragment fade-in" data-fragment-index="2" style="position: absolute; top: -6px; left: -10px; right: -10px; bottom: -6px; border: 3px solid #40abedbc; background: rgba(98, 177, 234, 0.12); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center;"><span style="color: #000000ff; font-weight: bold; font-size: 1.2em; background: white; padding: 4px 10px; border-radius: 4px;">Evaluation of __VR__ in first two DBR cycles in teaching at UU.</span></div>
+</div>
+
+<div style="position: relative; display: inline-block; width: 100%;">
+3.  Atkins, J., Daniels, E., Hodgskin, N., Stuurman, A., Simoes-Sousa, I. and van Sebille, E. VirtualShip: A Python package for simulating oceanographic fieldwork in the global ocean. _The Journal of Open Source Software_.
+<div class="fragment fade-in" data-fragment-index="3" style="position: absolute; top: -6px; left: -10px; right: -10px; bottom: -6px; border: 3px solid #40abedbc; background: rgba(98, 177, 234, 0.12); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center;"><span style="color: #000000ff; font-weight: bold; font-size: 1.2em; background: white; padding: 4px 10px; border-radius: 4px;">Presenting and describing the VirtualShip Python package.</span></div>
+</div>
+
+<div style="position: relative; display: inline-block; width: 100%;">
+4.  Atkins, J., Daniels, E. and van Sebille, E. The VirtualShip Classroom: Simulating Fieldwork in the Global Ocean. _Oceanography: Education_.
+<div class="fragment fade-in" data-fragment-index="4" style="position: absolute; top: -6px; left: -10px; right: -10px; bottom: -6px; border: 3px solid #40abedbc; background: rgba(98, 177, 234, 0.12); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center;"><span style="color: #000000ff; font-weight: bold; font-size: 1.2em; background: white; padding: 4px 10px; border-radius: 4px;">For teachers: overview & deploying the VSC in class.</span></div>
+</div>
+
+**In prep**:
+
+<div style="position: relative; display: inline-block; width: 100%;">
+5.  Daniels, E., Atkins, J. and van Sebille, E. Design-based research about virtual oceanography fieldwork as an authentic learning environment. _Journal of Computing in Higher Education_.
+<div class="fragment fade-in" data-fragment-index="5" style="position: absolute; top: -6px; left: -10px; right: -10px; bottom: -6px; border: 3px solid #40abedbc; background: rgba(98, 177, 234, 0.12); border-radius: 6px; pointer-events: none; display: flex; align-items: center; justify-content: center;"><span style="color: #000000ff; font-weight: bold; font-size: 1.2em; background: white; padding: 4px 10px; border-radius: 4px;">Evaluation & insights from eight DBR cycles (incl. derived design principles).</span></div>
+</div>
+
+## Other updates
+
+- We have partnered with the National Marine Facilities (NMF) to join their 'roadshow' (focused around new AWvB ship) and promote VirtualShip to new users.
+- VU Amsterdam, TU Delft, Radboud University, University of Groningen and UU.
+
+## What's next?
+
+- Implementation at new universities as part of NKO scale-up project.
+- Continued development of the software, VR and teaching material.
+- Continued evaluation of resources and implementations.
+- ... which leads us to the next agenda items!
+
+## Discussion point: Gliders
+
+_How to integrate and work with gliders in the VirtualShip Classroom?_
+
+## Discussion point: Gamification
+
+_How can/should we incorporate gamification into the VirtualShip Classroom?_
+
+_How does it relate to authenticity?_
