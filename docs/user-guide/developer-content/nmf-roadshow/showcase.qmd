@@ -122,8 +122,3 @@ Argo Float deployment
 :::
 
 # Now, a live software demo...
-
-
-## And now a live VR demo...
-
-[**Live VR Casting →**](https://horizon.meta.com/casting/){target="_blank"}
