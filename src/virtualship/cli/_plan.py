@@ -101,6 +101,7 @@ INSTRUMENT_FIELDS = {
             {"name": "num_bins"},
             {"name": "period", "minutes": True},
         ],
+        # underway instrument, so active/inactive is controlled by the on/off toggle, not the schedule (therefore no instrument_type key)
     },
     "ship_underwater_st_config": {
         "class": ShipUnderwaterSTConfig,
@@ -108,10 +109,12 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "period", "minutes": True},
         ],
+        # underway instrument, so active/inactive is controlled by the on/off toggle, not the schedule (therefore no instrument_type key)
     },
     "ctd_config": {
         "class": CTDConfig,
         "title": "CTD",
+        "instrument_type": InstrumentType.CTD,
         "attributes": [
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},
@@ -121,6 +124,7 @@ INSTRUMENT_FIELDS = {
     "xbt_config": {
         "class": XBTConfig,
         "title": "XBT",
+        "instrument_type": InstrumentType.XBT,
         "attributes": [
             {"name": "min_depth_meter"},
             {"name": "max_depth_meter"},
@@ -131,6 +135,7 @@ INSTRUMENT_FIELDS = {
     "argo_float_config": {
         "class": ArgoFloatConfig,
         "title": "Argo Float",
+        "instrument_type": InstrumentType.ARGO_FLOAT,
         "attributes": [
             {"name": "min_depth_meter"},
             {"name": "max_depth_meter"},
@@ -145,6 +150,7 @@ INSTRUMENT_FIELDS = {
     "drifter_config": {
         "class": DrifterConfig,
         "title": "Drifter",
+        "instrument_type": InstrumentType.DRIFTER,
         "attributes": [
             {"name": "depth_meter"},
             {"name": "lifetime", "days": True},
@@ -431,6 +437,8 @@ class ExpeditionEditor(Static):
             self._update_schedule()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
             return True
+        except UserError:
+            raise
         except Exception as e:
             log_exception_to_file(
                 e,
@@ -497,8 +505,31 @@ class ExpeditionEditor(Static):
                         f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
                     ).value
                 ]
-                if sensors:
-                    kwargs["sensors"] = sensors
+                if not sensors:
+                    # for schedule-based instruments, only raise if actually used in a waypoint
+                    # for underway, this is handled by the on/off toggle
+                    instrument_type = info.get("instrument_type")
+                    is_active = instrument_type is None or any(
+                        instrument_type
+                        in (
+                            wp.instrument
+                            if isinstance(wp.instrument, list)
+                            else [wp.instrument]
+                        )
+                        for wp in self.expedition.schedule.waypoints
+                        if wp.instrument
+                    )
+                    if is_active:
+                        title = info.get(
+                            "title", instrument_name.replace("_", " ").title()
+                        )
+                        raise UserError(
+                            f"'{title}' has no sensors selected. "
+                            f"At least one sensor must be enabled for each active instrument."
+                        )
+                kwargs["sensors"] = (
+                    sensors if sensors else _default_sensors(config_class)
+                )
             setattr(
                 self.expedition.instruments_config,
                 instrument_name,
