@@ -1337,6 +1337,18 @@ class PlanApp(App):
         margin: 0 1;
     }
 
+    .sensor-toggle-row {
+        height: auto;
+        margin: 0;
+        padding: 0;
+    }
+
+    .sensor-toggle-row Label {
+        width: 24;
+        margin-top: 1;
+        color: $text-muted;
+    }
+
     .year-select {
         width: 20;
     }
