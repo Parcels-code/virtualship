@@ -36,6 +36,7 @@ from virtualship.models import (
     DrifterConfig,
     Expedition,
     Location,
+    SensorConfig,
     ShipConfig,
     ShipUnderwaterSTConfig,
     Waypoint,
@@ -76,12 +77,21 @@ def log_exception_to_file(
         f.write("\n")
 
 
+def _default_sensors(config_class) -> list:
+    """List of SensorConfig instances from the config class's sensors default_factory."""
+    sensors_field = config_class.model_fields.get("sensors")
+    if sensors_field is None or sensors_field.default_factory is None:
+        return []
+    return sensors_field.default_factory()
+
+
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
     "period_minutes": 5.0,
 }
+
 
 INSTRUMENT_FIELDS = {
     "adcp_config": {
@@ -339,6 +349,34 @@ class ExpeditionEditor(Static):
                                     id=f"validation-failure-label-{instrument_name}_{attr}",
                                     classes="-hidden validation-failure",
                                 )
+                            # sensor toggles, derived from the config class's sensors default_factory
+                            default_sensor_configs = _default_sensors(config_class)
+                            if default_sensor_configs:
+                                yield Label("[b]Sensors:[/b]", markup=True)
+                                # which sensors are currently active
+                                if config_instance and hasattr(
+                                    config_instance, "sensors"
+                                ):
+                                    active_sensor_types = {
+                                        sc.sensor_type
+                                        for sc in config_instance.sensors
+                                        if sc.enabled
+                                    }
+                                else:
+                                    # if no config loaded yet, default all sensors on
+                                    active_sensor_types = {
+                                        sc.sensor_type for sc in default_sensor_configs
+                                    }
+                                for sc in default_sensor_configs:
+                                    sensor_id = f"{instrument_name}_sensor_{sc.sensor_type.value}"
+                                    with Horizontal(classes="sensor-toggle-row"):
+                                        yield Label(
+                                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
+                                        )
+                                        yield Switch(
+                                            value=sc.sensor_type in active_sensor_types,
+                                            id=sensor_id,
+                                        )
 
             ## 2) SCHEDULE EDITOR
 
@@ -449,6 +487,18 @@ class ExpeditionEditor(Static):
                     kwargs["max_depth_meter"] = -1000.0
                 else:
                     kwargs["max_depth_meter"] = -150.0
+            # collect sensor toggles
+            default_sensor_configs = _default_sensors(config_class)
+            if default_sensor_configs:
+                sensors = [
+                    SensorConfig(sensor_type=sc.sensor_type)
+                    for sc in default_sensor_configs
+                    if self.query_one(
+                        f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
+                    ).value
+                ]
+                if sensors:
+                    kwargs["sensors"] = sensors
             setattr(
                 self.expedition.instruments_config,
                 instrument_name,
