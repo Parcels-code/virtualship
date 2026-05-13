@@ -124,10 +124,6 @@ When you are happy with your ship configuration and schedule plan, press _Save C
 On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
 ```
 
-```{caution}
-The `virtualship plan` tool will check that the ship can reach each waypoint according to the prescribed ship speed. However, before the ultimate [simulation step](#run-the-expedition) there will be a final, automated check that the schedule also accounts for the time taken to conduct the measurements at each site (e.g. a CTD cast in deeper waters will take longer). Therefore, we recommend to take this extra time into account at this stage of the planning by estimating how long each measurement will take and adding this time on.
-```
-
 ## 4) Run the expedition
 
 You are now ready to run your virtual expedition! This stage will simulate the measurements taken by the instruments you selected at each waypoint in your expedition schedule, using input data sourced from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).

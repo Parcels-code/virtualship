@@ -4,7 +4,6 @@ from .checkpoint import Checkpoint
 from .expedition import (
     ADCPConfig,
     ArgoFloatConfig,
-    CTD_BGCConfig,
     CTDConfig,
     DrifterConfig,
     Expedition,
@@ -29,7 +28,6 @@ __all__ = [  # noqa: RUF022
     "ArgoFloatConfig",
     "ADCPConfig",
     "CTDConfig",
-    "CTD_BGCConfig",
     "ShipUnderwaterSTConfig",
     "DrifterConfig",
     "XBTConfig",
