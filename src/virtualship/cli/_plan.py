@@ -281,7 +281,7 @@ class ExpeditionEditor(Static):
             ## SECTION: "Instrument Configurations""
 
             with Collapsible(
-                title="[b]Instrument Configurations[/b] (advanced users only)",
+                title="[b]Instrument Configurations[/b]",
                 collapsed=True,
             ):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
