@@ -85,7 +85,7 @@ def _run(
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
     cache_dir = expedition_dir.joinpath(CACHE)
-    expedition_id = _unique_id(expedition, cache_dir)
+    expedition_id = _unique_id(expedition, cache_dir, difficulty_level)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
@@ -251,40 +251,43 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
+def _unique_id(expedition: Expedition, cache_dir: Path, difficulty_level: str) -> str:
     """
     Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
-    Simultaneously, log to .txt file if first run or if there have been additions of instruments since last run.
+    Returns the previous id if no instruments have been added since the last run, allowing re-use of previously encountered problems.
+    Otherwise generates and persists a new id.
     """
-    current_instruments = expedition.get_instruments()
+    cache_dir.mkdir(exist_ok=True)
+
+    id_path = cache_dir / EXPEDITION_IDENTIFIER
+    last_expedition_path = cache_dir / EXPEDITION_LATEST
     new_id = datetime.now().strftime("%Y%m%d%H%M%S")
-    previous_id = None
 
-    if not cache_dir.exists():
-        cache_dir.mkdir()
-    id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
-    last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
-
-    if id_path.exists():
-        previous_id = id_path.read_text().strip()
-        try:
-            last_expedition = Expedition.from_yaml(last_expedition_path)
-        except FileNotFoundError as e:
-            raise RuntimeError(
-                f"Previous expedition data is present but incomplete in {cache_dir}. This may be because a previous expedition run was interrupted/failed unexpectedly. Deleting the '{cache_dir}' directory and re-running the expedition should resolve this issue."
-            ) from e
-        last_instruments = last_expedition.get_instruments()
-
-        added_instruments = set(current_instruments) - set(last_instruments)
-        if not added_instruments:
-            return previous_id  # if no additions, keep previous id to allow re-use of previously encountered problems
-        else:
-            id_path.write_text(new_id)
-
-    else:
+    if not id_path.exists():
         id_path.write_text(new_id)
+        return new_id
 
+    previous_id = id_path.read_text().strip()
+
+    try:
+        last_expedition = Expedition.from_yaml(last_expedition_path)
+    except FileNotFoundError as e:
+        if difficulty_level == "easy":
+            # cache is irrelevant in easy mode; update passively
+            id_path.write_text(new_id)
+            return new_id
+        raise RuntimeError(
+            f"Previous expedition data is present but incomplete in {cache_dir}. This may be because a previous expedition run was interrupted/failed unexpectedly. Deleting the '{cache_dir}' directory and re-running the expedition should resolve this issue."
+        ) from e
+
+    added_instruments = set(expedition.get_instruments()) - set(
+        last_expedition.get_instruments()
+    )
+    if not added_instruments:
+        return previous_id  # if no additions, keep previous id to allow re-use of previously encountered problems
+
+    id_path.write_text(new_id)
     return new_id
 
 
