@@ -1,12 +1,16 @@
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock
 
-from virtualship.cli._run import _run
+import pytest
+
+from virtualship.cli._run import _run, _unique_id
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
     ScheduleOk,
 )
-from virtualship.utils import EXPEDITION, get_example_expedition
+from virtualship.instruments.types import InstrumentType
+from virtualship.utils import EXPEDITION, EXPEDITION_IDENTIFIER, get_example_expedition
 
 
 def _simulate_schedule(projection, expedition):
@@ -71,3 +75,30 @@ def test_run(tmp_path, monkeypatch):
     if difficulty_level == "easy":
         cache_dir = expedition_dir / "cache"
         assert not cache_dir.exists()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for _unique_id
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("difficulty_level", ["easy", "hard", "medium"])
+def test_unique_id_incomplete_cache_does_not_raise(tmp_path, difficulty_level):
+    """When expedition_latest.yaml is missing (incomplete cache from an interrupted run), _unique_id must not raise error for any 'difficulty_level', it should return a new id."""
+    ORIGINAL_TIMESTAMP = "20240101120000"
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    (cache_dir / EXPEDITION_IDENTIFIER).write_text(ORIGINAL_TIMESTAMP)
+    # EXPEDITION_LATEST intentionally absent to simulate an interrupted run
+
+    expedition = MagicMock()
+    expedition.get_instruments.return_value = {InstrumentType.CTD}
+
+    result = _unique_id(expedition, cache_dir, difficulty_level=difficulty_level)
+
+    assert result != ORIGINAL_TIMESTAMP
+    assert (
+        abs(datetime.strptime(result, "%Y%m%d%H%M%S") - datetime.now()).seconds < 30
+    ), "new ID should be timestamp close to the current time"
+    assert (cache_dir / EXPEDITION_IDENTIFIER).read_text().strip() == result
