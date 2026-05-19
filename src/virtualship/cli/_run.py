@@ -251,7 +251,7 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_id(expedition: Expedition, cache_dir: Path, difficulty_level: str) -> str:
+def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
     """
     Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
