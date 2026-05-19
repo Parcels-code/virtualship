@@ -53,6 +53,23 @@ async def simulate_input(pilot, box, new_value):
         await pilot.pause(0.05)
 
 
+async def _expand_instrument_configs(
+    expedition_editor, pilot, instrument_title: str | None = None
+):
+    """Expand the outer 'Instrument Configurations' collapsible and the instrument-specific inner one."""
+    for coll in expedition_editor.query(Collapsible):
+        if "Instrument Configurations" in (coll.title or ""):
+            coll.collapsed = False
+            await pilot.pause()
+            break
+    if instrument_title is not None:
+        for coll in expedition_editor.query(Collapsible):
+            if instrument_title in (coll.title or ""):
+                coll.collapsed = False
+                await pilot.pause()
+                break
+
+
 @pytest.mark.asyncio
 async def test_UI_changes(tmp_path):
     """Test making changes to UI inputs and saving to YAML (simulated botton presses and typing inputs)."""
@@ -213,6 +230,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
         plan_screen = pilot.app.screen
         plan_screen.notify = MagicMock()
         expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        await _expand_instrument_configs(expedition_editor, pilot, "CTD")
 
         # turn off SALINITY on CTD
         sal_switch = expedition_editor.query_one("#ctd_config_sensor_SALINITY", Switch)
@@ -258,6 +276,7 @@ async def test_deselecting_all_sensors_on_active_instrument_blocks_save(tmp_path
         plan_screen = pilot.app.screen
         plan_screen.notify = MagicMock()
         expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        await _expand_instrument_configs(expedition_editor, pilot, "XBT")
 
         # XBT only has TEMPERATURE, deselect it
         temp_switch = expedition_editor.query_one(
@@ -300,6 +319,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
         plan_screen = pilot.app.screen
         plan_screen.notify = MagicMock()
         expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        await _expand_instrument_configs(expedition_editor, pilot, "XBT")
 
         # deselect XBT's only sensor even though XBT is not in the schedule
         temp_switch = expedition_editor.query_one(
