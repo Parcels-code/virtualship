@@ -2,8 +2,6 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from virtualship.cli._run import _run, _unique_id
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
@@ -77,13 +75,7 @@ def test_run(tmp_path, monkeypatch):
         assert not cache_dir.exists()
 
 
-# ---------------------------------------------------------------------------
-# Unit tests for _unique_id
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("difficulty_level", ["easy", "hard", "medium"])
-def test_unique_id_incomplete_cache_does_not_raise(tmp_path, difficulty_level):
+def test_unique_id_incomplete_cache_does_not_raise(tmp_path):
     """When expedition_latest.yaml is missing (incomplete cache from an interrupted run), _unique_id must not raise error for any 'difficulty_level', it should return a new id."""
     ORIGINAL_TIMESTAMP = "20240101120000"
 
@@ -95,7 +87,7 @@ def test_unique_id_incomplete_cache_does_not_raise(tmp_path, difficulty_level):
     expedition = MagicMock()
     expedition.get_instruments.return_value = {InstrumentType.CTD}
 
-    result = _unique_id(expedition, cache_dir, difficulty_level=difficulty_level)
+    result = _unique_id(expedition, cache_dir)
 
     assert result != ORIGINAL_TIMESTAMP
     assert (
