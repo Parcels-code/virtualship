@@ -85,7 +85,7 @@ def _run(
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
     cache_dir = expedition_dir.joinpath(CACHE)
-    expedition_id = _unique_id(expedition, cache_dir, difficulty_level)
+    expedition_id = _unique_id(expedition, cache_dir)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
