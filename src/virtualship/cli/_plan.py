@@ -36,6 +36,7 @@ from virtualship.models import (
     DrifterConfig,
     Expedition,
     Location,
+    SensorConfig,
     ShipConfig,
     ShipUnderwaterSTConfig,
     Waypoint,
@@ -76,12 +77,21 @@ def log_exception_to_file(
         f.write("\n")
 
 
+def _default_sensors(config_class) -> list:
+    """List of SensorConfig instances from the config class's sensors default_factory."""
+    sensors_field = config_class.model_fields.get("sensors")
+    if sensors_field is None or sensors_field.default_factory is None:
+        return []
+    return sensors_field.default_factory()
+
+
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
     "period_minutes": 5.0,
 }
+
 
 INSTRUMENT_FIELDS = {
     "adcp_config": {
@@ -91,6 +101,7 @@ INSTRUMENT_FIELDS = {
             {"name": "num_bins"},
             {"name": "period", "minutes": True},
         ],
+        # underway instrument, so active/inactive is controlled by the on/off toggle, not the schedule (therefore no instrument_type key)
     },
     "ship_underwater_st_config": {
         "class": ShipUnderwaterSTConfig,
@@ -98,10 +109,12 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "period", "minutes": True},
         ],
+        # underway instrument, so active/inactive is controlled by the on/off toggle, not the schedule (therefore no instrument_type key)
     },
     "ctd_config": {
         "class": CTDConfig,
         "title": "CTD",
+        "instrument_type": InstrumentType.CTD,
         "attributes": [
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},
@@ -111,6 +124,7 @@ INSTRUMENT_FIELDS = {
     "xbt_config": {
         "class": XBTConfig,
         "title": "XBT",
+        "instrument_type": InstrumentType.XBT,
         "attributes": [
             {"name": "min_depth_meter"},
             {"name": "max_depth_meter"},
@@ -121,6 +135,7 @@ INSTRUMENT_FIELDS = {
     "argo_float_config": {
         "class": ArgoFloatConfig,
         "title": "Argo Float",
+        "instrument_type": InstrumentType.ARGO_FLOAT,
         "attributes": [
             {"name": "min_depth_meter"},
             {"name": "max_depth_meter"},
@@ -135,6 +150,7 @@ INSTRUMENT_FIELDS = {
     "drifter_config": {
         "class": DrifterConfig,
         "title": "Drifter",
+        "instrument_type": InstrumentType.DRIFTER,
         "attributes": [
             {"name": "depth_meter"},
             {"name": "lifetime", "days": True},
@@ -265,7 +281,7 @@ class ExpeditionEditor(Static):
             ## SECTION: "Instrument Configurations""
 
             with Collapsible(
-                title="[b]Instrument Configurations[/b] (advanced users only)",
+                title="[b]Instrument Configurations[/b]",
                 collapsed=True,
             ):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
@@ -339,6 +355,34 @@ class ExpeditionEditor(Static):
                                     id=f"validation-failure-label-{instrument_name}_{attr}",
                                     classes="-hidden validation-failure",
                                 )
+                            # sensor toggles, derived from the config class's sensors default_factory
+                            default_sensor_configs = _default_sensors(config_class)
+                            if default_sensor_configs:
+                                yield Label("[b]Sensors:[/b]", markup=True)
+                                # which sensors are currently active
+                                if config_instance and hasattr(
+                                    config_instance, "sensors"
+                                ):
+                                    active_sensor_types = {
+                                        sc.sensor_type
+                                        for sc in config_instance.sensors
+                                        if sc.enabled
+                                    }
+                                else:
+                                    # if no config loaded yet, default all sensors on
+                                    active_sensor_types = {
+                                        sc.sensor_type for sc in default_sensor_configs
+                                    }
+                                for sc in default_sensor_configs:
+                                    sensor_id = f"{instrument_name}_sensor_{sc.sensor_type.value}"
+                                    with Horizontal(classes="sensor-toggle-row"):
+                                        yield Label(
+                                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
+                                        )
+                                        yield Switch(
+                                            value=sc.sensor_type in active_sensor_types,
+                                            id=sensor_id,
+                                        )
 
             ## 2) SCHEDULE EDITOR
 
@@ -393,6 +437,8 @@ class ExpeditionEditor(Static):
             self._update_schedule()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
             return True
+        except UserError:
+            raise
         except Exception as e:
             log_exception_to_file(
                 e,
@@ -449,6 +495,41 @@ class ExpeditionEditor(Static):
                     kwargs["max_depth_meter"] = -1000.0
                 else:
                     kwargs["max_depth_meter"] = -150.0
+            # collect sensor toggles
+            default_sensor_configs = _default_sensors(config_class)
+            if default_sensor_configs:
+                sensors = [
+                    SensorConfig(sensor_type=sc.sensor_type)
+                    for sc in default_sensor_configs
+                    if self.query_one(
+                        f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
+                    ).value
+                ]
+                if not sensors:
+                    # for schedule-based instruments, only raise if actually used in a waypoint
+                    # for underway, this is handled by the on/off toggle
+                    instrument_type = info.get("instrument_type")
+                    is_active = instrument_type is None or any(
+                        instrument_type
+                        in (
+                            wp.instrument
+                            if isinstance(wp.instrument, list)
+                            else [wp.instrument]
+                        )
+                        for wp in self.expedition.schedule.waypoints
+                        if wp.instrument
+                    )
+                    if is_active:
+                        title = info.get(
+                            "title", instrument_name.replace("_", " ").title()
+                        )
+                        raise UserError(
+                            f"'{title}' has no sensors selected. "
+                            f"At least one sensor must be enabled for each active instrument."
+                        )
+                kwargs["sensors"] = (
+                    sensors if sensors else _default_sensors(config_class)
+                )
             setattr(
                 self.expedition.instruments_config,
                 instrument_name,
@@ -1254,6 +1335,18 @@ class PlanApp(App):
     .instrument-config Input {
         width: 30;
         margin: 0 1;
+    }
+
+    .sensor-toggle-row {
+        height: auto;
+        margin: 0;
+        padding: 0;
+    }
+
+    .sensor-toggle-row Label {
+        width: 24;
+        margin-top: 1;
+        color: $text-muted;
     }
 
     .year-select {
