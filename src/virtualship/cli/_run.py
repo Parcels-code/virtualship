@@ -272,14 +272,11 @@ def _unique_id(expedition: Expedition, cache_dir: Path, difficulty_level: str) -
 
     try:
         last_expedition = Expedition.from_yaml(last_expedition_path)
-    except FileNotFoundError as e:
-        if difficulty_level == "easy":
-            # cache is irrelevant in easy mode; update passively
-            id_path.write_text(new_id)
-            return new_id
-        raise RuntimeError(
-            f"Previous expedition data is present but incomplete in {cache_dir}. This may be because a previous expedition run was interrupted/failed unexpectedly. Deleting the '{cache_dir}' directory and re-running the expedition should resolve this issue."
-        ) from e
+    except FileNotFoundError:
+        # cache is not useful in this case as it implies the previous run was interrupted and is incomplete; update passively
+        # TODO: check this doesn't intefere with re-use of previously encountered problems in the case of interrupted runs (i.e. if no new instruments added, should still re-use previous id and problems)
+        id_path.write_text(new_id)
+        return new_id
 
     added_instruments = set(expedition.get_instruments()) - set(
         last_expedition.get_instruments()
