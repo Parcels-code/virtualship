@@ -7,7 +7,7 @@ name = "virtualship"
 description = "Code for the Virtual Ship Classroom, where Marine Scientists can combine Copernicus Marine Data with an OceanParcels ship to go on a virtual expedition."
 readme = "README.md"
 dynamic = ["version"]
-authors = [{ name = "oceanparcels.org team" }]
+authors = [{ name = "parcels-code.org team" }]
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 classifiers = [
@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "parcels >3.1.0",
+    "parcels >=4.0.0alpha",
     "pyproj >= 3, < 4",
     "sortedcontainers == 2.4.0",
     "opensimplex == 0.4.5",
@@ -40,7 +40,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://oceanparcels.org/" # TODO: Update this to just be repo?
+Homepage = "https://virtualship.parcels-code.org/"
 Repository = "https://github.com/OceanParcels/virtualship"
 Documentation = "https://virtualship.readthedocs.io/"
 "Bug Tracker" = "https://github.com/OceanParcels/virtualship/issues"
