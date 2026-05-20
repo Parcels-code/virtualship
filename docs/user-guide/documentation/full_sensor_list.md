@@ -6,21 +6,23 @@ The following table provides a comprehensive list of available sensors for each 
 Trying to add a sensor to an instrument that does not support it will result in errors in VirtualShip. Always refer to this table to check which sensors are available for each instrument.
 ```
 
-| Instrument             | Sensor Name        | Description                                         | Units                                | Category        |
-| :--------------------- | :----------------- | :-------------------------------------------------- | :----------------------------------- | :-------------- |
-| **ADCP**               | VELOCITY           | Current velocities (eastward (u) and northward (v)) | m/s                                  | Physical        |
-| **Ship Underwater ST** | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
-|                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
-| **CTD**                | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
-|                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
-|                        | OXYGEN             | Oxygen concentration                                | mmol m<sup>-3</sup>                  | Biogeochemistry |
-|                        | CHLOROPHYLL        | Chlorophyll concentration                           | mmol m<sup>-3</sup>                  | Biogeochemistry |
-|                        | NITRATE            | Nitrate concentration                               | mmol m<sup>-3</sup>                  | Biogeochemistry |
-|                        | PHOSPHATE          | Phosphate concentration                             | mmol m<sup>-3</sup>                  | Biogeochemistry |
-|                        | PH                 | pH                                                  | -                                    | Biogeochemistry |
-|                        | PHYTOPLANKTON      | Phytoplankton concentration in carbon               | mmol m<sup>-3</sup>                  | Biogeochemistry |
-|                        | PRIMARY_PRODUCTION | Net primary production                              | mmol m<sup>-3</sup> day<sup>-1</sup> | Biogeochemistry |
-| **ARGO_FLOAT**         | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
-|                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
-| **DRIFTER**            | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
-| **XBT**                | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
+<!-- NOTE: is important that the entries in the 'Instrument' column below match the enum values in the code (instruments/types.py), and that these parts are **bold**, for the tests to work (test_utils.py::test_allowed_sensors_matches_docs) -->
+
+| Instrument                             | Sensor Name        | Description                                         | Units                                | Category        |
+| :------------------------------------- | :----------------- | :-------------------------------------------------- | :----------------------------------- | :-------------- |
+| **ADCP**                               | VELOCITY           | Current velocities (eastward (u) and northward (v)) | m/s                                  | Physical        |
+| **UNDERWATER_ST** (Ship Underwater ST) | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
+|                                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
+| **CTD**                                | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
+|                                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
+|                                        | OXYGEN             | Oxygen concentration                                | mmol m<sup>-3</sup>                  | Biogeochemistry |
+|                                        | CHLOROPHYLL        | Chlorophyll concentration                           | mmol m<sup>-3</sup>                  | Biogeochemistry |
+|                                        | NITRATE            | Nitrate concentration                               | mmol m<sup>-3</sup>                  | Biogeochemistry |
+|                                        | PHOSPHATE          | Phosphate concentration                             | mmol m<sup>-3</sup>                  | Biogeochemistry |
+|                                        | PH                 | pH                                                  | -                                    | Biogeochemistry |
+|                                        | PHYTOPLANKTON      | Phytoplankton concentration in carbon               | mmol m<sup>-3</sup>                  | Biogeochemistry |
+|                                        | PRIMARY_PRODUCTION | Net primary production                              | mmol m<sup>-3</sup> day<sup>-1</sup> | Biogeochemistry |
+| **ARGO_FLOAT**                         | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
+|                                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
+| **DRIFTER**                            | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
+| **XBT**                                | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
