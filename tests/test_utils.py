@@ -462,3 +462,9 @@ def test_allowed_sensors_matches_docs():
             f"  In docs:      {sorted(s.value for s in doc_sensors)}\n"
             f"  In code:      {sorted(s.value for s in registered_sensors)}\n"
         )
+
+    # verify each instrument registered in code is also covered in the docs
+    for instrument_type in SUPPORTED_SENSORS_MAP:
+        assert instrument_type in expected, (
+            f"{instrument_type} is registered in SUPPORTED_SENSORS_MAP but not listed in full_sensor_list.md."
+        )
