@@ -1,7 +1,7 @@
 [workspace]
 name = "VirtualShip"
 preview = ["pixi-build"]
-channels = ["https://repo.prefix.dev/parcels", "conda-forge"]
+channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 exclude-newer = "5d" # security pre-caution against compromised packages
 requires-pixi = ">=0.67.0"
@@ -20,11 +20,10 @@ setuptools_scm = "*"
 [package.run-dependencies] # Keep in sync with `pyproject.toml` and feedstock recipe
 python = "3.11.*"
 click = "*"
-parcels = ">=4.0.0alpha"
 pyproj = ">=3,<4"
 sortedcontainers = "==2.4.0"
 opensimplex = "==0.4.5"
-numpy = ">=1,<2"
+numpy = ">=2.1.0"
 pydantic = ">=2,<3"
 pyyaml = "*"
 copernicusmarine = ">=2.2.2"
@@ -33,6 +32,13 @@ textual = "*"
 
 [dependencies]
 virtualship = { path = "." }
+# Pre-install as conda packages to avoid PyPI source builds
+netcdf4 = "*"
+numpy = ">=2.1.0"
+dask = "*"
+
+[pypi-dependencies]
+parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
 
 # Commented out whilst parcels v4 alpha only supports Python 3.11
 # [feature.py310.dependencies]
