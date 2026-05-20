@@ -5,8 +5,9 @@ from typing import ClassVar
 
 import numpy as np
 from parcels._core.statuscodes import StatusCode
+from parcels.kernels import AdvectionRK2
 
-from parcels import AdvectionRK4, ParticleSet, Variable
+from parcels import ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -176,7 +177,7 @@ class DrifterInstrument(Instrument):
 
         # execute simulation
         drifter_particleset.execute(
-            [AdvectionRK4, *sampling_kernels, _check_lifetime],
+            [AdvectionRK2, *sampling_kernels, _check_lifetime],
             endtime=endtime,
             dt=DT,
             output_file=out_file,

@@ -4,8 +4,9 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
+from parcels.kernels import AdvectionRK2
 
-from parcels import AdvectionRK4, ParticleSet, StatusCode, Variable
+from parcels import ParticleSet, StatusCode, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -291,7 +292,7 @@ class ArgoFloatInstrument(Instrument):
             [
                 _argo_float_vertical_movement,
                 *sampling_kernels,
-                AdvectionRK4,
+                AdvectionRK2,
                 _keep_at_surface,
                 _check_error,
             ],
