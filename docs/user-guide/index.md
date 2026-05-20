@@ -17,4 +17,5 @@ assignments/index
 documentation/copernicus_products.md
 documentation/pre_download_data.md
 documentation/example_copernicus_download.ipynb
+documentation/full_sensor_list.md
 ```
