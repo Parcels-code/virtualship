@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import copernicusmarine
+import parcels
 import xarray as xr
 from yaspin import yaspin
 
-import parcels
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,

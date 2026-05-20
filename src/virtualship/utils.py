@@ -13,11 +13,11 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import parcels
 import pyproj
 import xarray as xr
-
-import parcels
 from parcels import FieldSet, Particle, Variable
+
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
