@@ -260,8 +260,8 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
     """
     cache_dir.mkdir(exist_ok=True)
 
-    id_path = cache_dir / EXPEDITION_IDENTIFIER
-    last_expedition_path = cache_dir / EXPEDITION_LATEST
+    id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
+    last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
     new_id = datetime.now().strftime("%Y%m%d%H%M%S")
 
     if not id_path.exists():
