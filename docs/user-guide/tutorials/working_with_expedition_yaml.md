@@ -95,7 +95,7 @@ This section defines the configuration settings for each instrument used in the 
 
 ##### Sensors
 
-For most users, the most important instrument configuration settings to consider are the **sensors** for each instrument, which control what type of measurements/variables the instrument records in the simulation. For example, for the `CTD` instrument, you can specify which sensors to include in the simulation (e.g., `TEMPERATURE`, `SALINITY`, `OXYGEN`, etc.) by adding or removing entries from the `sensors` list in the `ctd_config` section. These must be added on _new lines_ and be in _uppercase_, for example:
+For most users, the most important instrument configuration setting to consider is the list of **sensors** for each instrument, which controls what type of measurements/variables the instrument records in the simulation. For example, for the `CTD` instrument, you can specify which sensors to include in the simulation (e.g., `TEMPERATURE`, `SALINITY`, `OXYGEN`, etc.) by adding or removing entries from the `sensors` list in the `ctd_config` section. These must be added on _new lines_ and be in _uppercase_, for example:
 
 ```yaml
 ctd_config:
