@@ -3,13 +3,12 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
 
+from parcels import ParticleSet
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    add_dummy_UV,
     build_particle_class_from_sensors,
     register_instrument,
 )
@@ -40,13 +39,13 @@ _ST_NONSENSOR_VARIABLES: list = []
 
 
 # define function sampling Salinity
-def _sample_salinity(particle, fieldset, time):
-    particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+def _sample_salinity(particles, fieldset):
+    particles.S = fieldset.S[particles.time, particles.z, particles.lat, particles.lon]
 
 
 # define function sampling Temperature
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.T = fieldset.T[particles.time, particles.z, particles.lat, particles.lon]
 
 
 # =====================================================
@@ -95,13 +94,10 @@ class Underwater_STInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
-
         # build dynamic particle class from the active sensors
         st_config = self.expedition.instruments_config.ship_underwater_st_config
         _ShipSTParticle = build_particle_class_from_sensors(
-            st_config.sensors, _ST_NONSENSOR_VARIABLES, ScipyParticle
+            st_config.sensors, _ST_NONSENSOR_VARIABLES
         )
 
         particleset = ParticleSet.from_list(

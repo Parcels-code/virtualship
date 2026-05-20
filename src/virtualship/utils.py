@@ -15,8 +15,8 @@ import copernicusmarine
 import numpy as np
 import pyproj
 import xarray as xr
-from parcels import FieldSet, Variable
 
+from parcels import FieldSet, Particle, Variable
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -677,14 +677,13 @@ def _make_hash(s: str, length: int) -> str:
 def build_particle_class_from_sensors(
     sensors: list[SensorConfig],
     nonsensor_variables: list[Variable],
-    particle_class: type,  # generic type annotation needed for v3 particle class behaviour # TODO: Update with Parcels v4
 ) -> type:
-    """Build a Particle class (JITParticle or ScipyParticle) from nonsensor variables and active sensors."""
+    """Build a Particle class from nonsensor variables and active sensors."""
     sensor_variables = [
         variable for sc in sensors if sc.enabled for variable in sc.meta.particle_vars
     ]
 
-    return particle_class.add_variables(nonsensor_variables + sensor_variables)
+    return Particle.add_variables(nonsensor_variables + sensor_variables)
 
 
 # =====================================================

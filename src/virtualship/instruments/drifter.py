@@ -4,8 +4,9 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
 
+from parcels import AdvectionRK4, ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -46,15 +47,21 @@ _DRIFTER_NONSENSOR_VARIABLES = [
 # =====================================================
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _check_lifetime(particle, fieldset, time):
-    if particle.has_lifetime == 1:
-        particle.age += particle.dt
-        if particle.age >= particle.lifetime:
-            particle.delete()
+def _check_lifetime(particles, fieldset):
+    particles_wlifetime = particles[particles.has_lifetime == 1]
+
+    particles_wlifetime.age += particles_wlifetime.dt
+    particles_wlifetime.state = np.where(
+        particles_wlifetime.age >= particles_wlifetime.lifetime,
+        StatusCode.Delete,
+        particles_wlifetime.state,
+    )
 
 
 # =====================================================
@@ -123,7 +130,7 @@ class DrifterInstrument(Instrument):
         # build dynamic particle class from the active sensors
         drifter_config = self.expedition.instruments_config.drifter_config
         _DrifterParticle = build_particle_class_from_sensors(
-            drifter_config.sensors, _DRIFTER_NONSENSOR_VARIABLES, JITParticle
+            drifter_config.sensors, _DRIFTER_NONSENSOR_VARIABLES
         )
 
         # define parcel particles

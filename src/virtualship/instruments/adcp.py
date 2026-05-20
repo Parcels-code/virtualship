@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
 
+from parcels import ParticleSet
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -35,9 +35,13 @@ _ADCP_NONSENSOR_VARIABLES: list = []
 # =====================================================
 
 
-def _sample_velocity(particle, fieldset, time):
-    particle.U, particle.V = fieldset.UV.eval(
-        time, particle.depth, particle.lat, particle.lon, applyConversion=False
+def _sample_velocity(particles, fieldset):
+    particles.U, particles.V = fieldset.UV.eval(
+        particles.time,
+        particles.z,
+        particles.lat,
+        particles.lon,
+        applyConversion=False,
     )
 
 
@@ -96,7 +100,7 @@ class ADCPInstrument(Instrument):
         # build dynamic particle class from the active sensors
         adcp_config = self.expedition.instruments_config.adcp_config
         _ADCPParticle = build_particle_class_from_sensors(
-            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES, ScipyParticle
+            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES
         )
 
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)

@@ -200,6 +200,7 @@ def _run(
             )
 
             # execute simulation
+            # TODO: outpath will be Parquet with v4...
             instrument.execute(
                 measurements=measurements,
                 out_path=expedition_dir.joinpath(RESULTS, f"{itype.name.lower()}.zarr"),

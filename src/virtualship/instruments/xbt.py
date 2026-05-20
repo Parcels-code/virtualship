@@ -4,14 +4,14 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
 
+from parcels import ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import (
-    add_dummy_UV,
     build_particle_class_from_sensors,
     register_instrument,
 )
@@ -50,26 +50,32 @@ _XBT_NONSENSOR_VARIABLES = [
 # =====================================================
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _xbt_cast(particle, fieldset, time):
-    particle_ddepth = -particle.fall_speed * particle.dt
+def _xbt_cast(particles, fieldset):
+    particles.dz = -particles.fall_speed * particles.dt
 
     # update the fall speed from the quadractic fall-rate equation
     # check https://doi.org/10.5194/os-7-231-2011
-    particle.fall_speed = (
-        particle.fall_speed - 2 * particle.deceleration_coefficient * particle.dt
+    particles.fall_speed = (
+        particles.fall_speed - 2 * particles.deceleration_coefficient * particles.dt
     )
 
     # delete particle if depth is exactly max_depth
-    if particle.depth == particle.max_depth:
-        particle.delete()
+    particles.state = np.where(
+        particles.z == particles.max_depth, StatusCode.Delete, particles.state
+    )
 
     # set particle depth to max depth if it's too deep
-    if particle.depth + particle_ddepth < particle.max_depth:
-        particle_ddepth = particle.max_depth - particle.depth
+    particles.dz = np.where(
+        particles.z + particles.dz < particles.max_depth,
+        particles.max_depth - particles.z,
+        particles.z,
+    )
 
 
 # =====================================================
@@ -117,9 +123,6 @@ class XBTInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
-
         # use first active field for time reference
         _time_ref_key = next(iter(self.variables))
         _time_ref_field = getattr(fieldset, _time_ref_key)
@@ -166,7 +169,7 @@ class XBTInstrument(Instrument):
         # build dynamic particle class from the active sensors
         xbt_config = self.expedition.instruments_config.xbt_config
         _XBTParticle = build_particle_class_from_sensors(
-            xbt_config.sensors, _XBT_NONSENSOR_VARIABLES, JITParticle
+            xbt_config.sensors, _XBT_NONSENSOR_VARIABLES
         )
 
         # define xbt particles
