@@ -340,29 +340,6 @@ def _get_expedition(expedition_dir: Path) -> Expedition:
         ) from e
 
 
-def add_dummy_UV(fieldset: FieldSet):
-    """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
-    if "U" not in fieldset.__dict__.keys():
-        for uv_var in ["U", "V"]:
-            dummy_field = getattr(
-                FieldSet.from_data(
-                    {"U": 0, "V": 0}, {"lon": 0, "lat": 0}, mesh="spherical"
-                ),
-                uv_var,
-            )
-            fieldset.add_field(dummy_field)
-            try:
-                fieldset.time_origin = (
-                    fieldset.T.grid.time_origin
-                    if "T" in fieldset.__dict__.keys()
-                    else fieldset.o2.grid.time_origin
-                )
-            except Exception:
-                raise ValueError(
-                    "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
-                ) from None
-
-
 def _select_product_id(
     physical: bool,
     schedule_start,
