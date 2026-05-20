@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 import copernicusmarine
 import xarray as xr
-from parcels import FieldSet
 from yaspin import yaspin
 
+import parcels
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -86,7 +86,7 @@ class Instrument(abc.ABC):
         self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
 
-    def load_input_data(self) -> FieldSet:
+    def load_input_data(self) -> parcels.FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
         try:
             fieldset = self._generate_fieldset()
@@ -97,7 +97,7 @@ class Instrument(abc.ABC):
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
-            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
+            getattr(fieldset, var).interp_method = parcels.interpolators.XLinear
 
         # depth negative
         for g in fieldset.gridset.grids:
@@ -183,11 +183,11 @@ class Instrument(abc.ABC):
             coordinates_selection_method="outside",
         )
 
-    def _generate_fieldset(self) -> FieldSet:
+    def _generate_fieldset(self) -> parcels.FieldSet:
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
-        Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
+        N.B. Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs (which can also have different temporal resolutions), which is often the case for BGC variables.
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -217,12 +217,11 @@ class Instrument(abc.ABC):
                     [data_dir.joinpath(f) for f in files]
                 )  # using: ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
 
-                fs = FieldSet.from_xarray_dataset(
-                    ds,
-                    variables={key: full_var_name},
-                    dimensions=self.dimensions,
-                    mesh="spherical",
-                )
+                # TODO: do docs on pre-downloading data need to be updated for these changes? Anything about conventions etc.?
+                fields = {key: ds[full_var_name]}
+                ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
             else:  # stream via Copernicus Marine Service
                 physical = var in COPERNICUSMARINE_PHYS_VARIABLES
                 ds = self._get_copernicus_ds(
@@ -230,9 +229,11 @@ class Instrument(abc.ABC):
                     physical=physical,
                     var=var,
                 )
-                fs = FieldSet.from_xarray_dataset(
-                    ds, {key: var}, self.dimensions, mesh="spherical"
-                )
+
+                fields = {key: ds[var]}
+                ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
             fieldsets_list.append(fs)
 
         base_fieldset = fieldsets_list[0]

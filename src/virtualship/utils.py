@@ -16,6 +16,7 @@ import numpy as np
 import pyproj
 import xarray as xr
 
+import parcels
 from parcels import FieldSet, Particle, Variable
 from virtualship.errors import CopernicusCatalogueError
 
@@ -425,13 +426,7 @@ def _start_end_in_product_timerange(
     )
 
 
-def _get_bathy_data(
-    min_lat: float,
-    max_lat: float,
-    min_lon: float,
-    max_lon: float,
-    from_data: Path | None = None,
-) -> FieldSet:
+def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
     if from_data is not None:  # load from local data
         var = "deptho"
@@ -443,11 +438,6 @@ def _get_bathy_data(
                 f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
         ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-        return FieldSet.from_xarray_dataset(
-            ds_bathymetry, bathymetry_variables, bathymetry_dimensions
-        )
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
@@ -455,12 +445,11 @@ def _get_bathy_data(
             variables=["deptho"],
             coordinates_selection_method="outside",
         )
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
 
-    return FieldSet.from_xarray_dataset(
-        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(
+        fields={var: ds_bathymetry[var]}
     )
+    return FieldSet.from_sgrid_conventions(ds_fset)
 
 
 def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:
