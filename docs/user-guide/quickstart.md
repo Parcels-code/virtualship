@@ -82,7 +82,7 @@ VirtualShip is capable of taking underway temperature and salinity measurements,
 
 For the underway ADCP, there is a choice of using the 38 kHz OceanObserver or the 300 kHz SeaSeven version (see [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#ADCP) for more detail on the two ADCP types).
 
-### Instrument configuration
+### Instrument/sensor configuration
 
 The most important instrument configuration setting to consider is the list of **sensors** for each instrument, which controls what type of measurements/variables the instrument records in the simulation and therefore what output data you will receive for each instrument.
 
@@ -94,7 +94,6 @@ Sensor choices are only relevant for the instruments you plan to deploy as [unde
 
 ```{tip}
 See [here](../documentation/full_sensor_list.md) for more information on the sensors available for each instrument.
-
 ```
 
 There are other instrument configurations settings that can be adjusted in the editor as well (e.g. `max_depth` for the CTD), but these are more advanced and in most cases do not need to be changed from the default values.
@@ -124,7 +123,7 @@ The MFP route planning tool will give estimated durations of sailing between sit
 You should now consider which measurements are to be taken at each sampling site, and therefore which instruments need to be selected in the planning tool.
 
 ```{tip}
-Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) for more information on what instrument options are available, and a brief introduction to each instrument.
+Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) for more information on what instrument options are available in VirtualShip, and a brief introduction to each.
 ```
 
 You can make instrument selections for each waypoint in the same sub-panels as the [waypoint time](#waypoint-datetimes) selection by simply switching each on or off. Multiple instruments are allowed at each waypoint.
