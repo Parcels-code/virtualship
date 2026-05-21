@@ -36,11 +36,12 @@ virtualship = { path = "." }
 netcdf4 = "*"
 numpy = ">=2.1.0"
 dask = "*"
+zarr = ">=3"
 
 [pypi-dependencies]
 parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
 
-# Commented out whilst parcels v4 alpha only supports Python 3.11
+# Commented out whilst parcels v4 alpha only supports Python 3.11 (?)
 # [feature.py310.dependencies]
 # python = "3.10.*"
 
