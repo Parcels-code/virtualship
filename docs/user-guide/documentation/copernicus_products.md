@@ -60,7 +60,7 @@ For biogeochemical variables `ph` and `phyc`, monthly products are required for 
 * Certain BGC variables (`ph`, `phyc`) are only available as monthly products in hindcast and hindcast interim periods.
 ```
 
-##### CMEMS variables legend
+##### Copernicus Marine Service variables legend
 
 | Variable Code | Full Variable Name                                            | Category       |
 | :------------ | :------------------------------------------------------------ | :------------- |
