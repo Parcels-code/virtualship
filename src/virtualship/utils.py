@@ -428,27 +428,28 @@ def _start_end_in_product_timerange(
 
 def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
+    VAR = "deptho"
     if from_data is not None:  # load from local data
-        var = "deptho"
         bathy_dir = from_data.joinpath("bathymetry")
         try:
-            filename, _ = _find_nc_file_with_variable(bathy_dir, var)
+            filename, _ = _find_nc_file_with_variable(bathy_dir, VAR)
         except Exception as e:
             raise RuntimeError(
-                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
+                f"\n\n❗️ Could not find bathymetry variable '{VAR}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
         ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id=BATHYMETRY_ID,
-            variables=["deptho"],
+            variables=[VAR],
             coordinates_selection_method="outside",
         )
 
     ds_fset = parcels.convert.copernicusmarine_to_sgrid(
-        fields={var: ds_bathymetry[var]}
+        fields={"bathymetry": ds_bathymetry[VAR]}
     )
+
     return FieldSet.from_sgrid_conventions(ds_fset)
 
 
