@@ -2,6 +2,8 @@
 
 The following table provides a comprehensive list of available sensors for each instrument. These sensors can be specified via the `virtualship plan` tool (see the [Quickstart guide](../quickstart.md)) or in the `sensors` section of the respective instrument configuration in the `expedition.yaml` file (see the [working with expedition.yaml tutorial](../tutorials/working_with_expedition_yaml.md)).
 
+The source data associated with these instrument sensor variables are described in the [Copernicus Marine products](copernicus_products.md) page.
+
 ```{note}
 Trying to add a sensor to an instrument that does not support it will result in errors in VirtualShip. Always refer to this table to check which sensors are available for each instrument.
 ```
