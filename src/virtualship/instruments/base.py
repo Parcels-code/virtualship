@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import copernicusmarine
+import parcels
 import xarray as xr
 from yaspin import yaspin
 
-import parcels
 from virtualship.errors import CopernicusCatalogueError
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
@@ -100,19 +100,15 @@ class Instrument(abc.ABC):
             getattr(fieldset, var).interp_method = parcels.interpolators.XLinear
 
         # depth negative
-        for g in fieldset.gridset.grids:
+        for g in fieldset.gridset:
             g.negate_depth()
 
         # bathymetry data
         if self.add_bathymetry:
-            bathymetry_field = _get_bathy_data(
-                self.min_lat,
-                self.max_lat,
-                self.min_lon,
-                self.max_lon,
-                from_data=self.from_data,
-            ).bathymetry
-            bathymetry_field.data = -bathymetry_field.data
+            bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
+            bathymetry_field.data = (
+                -bathymetry_field.data
+            )  # TODO: how does v4 handle? positive up or down?
             fieldset.add_field(bathymetry_field)
 
         return fieldset

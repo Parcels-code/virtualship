@@ -13,11 +13,11 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import parcels
 import pyproj
 import xarray as xr
-
-import parcels
 from parcels import FieldSet, Particle, Variable
+
 from virtualship.errors import CopernicusCatalogueError
 
 if TYPE_CHECKING:
@@ -445,6 +445,10 @@ def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
             variables=[VAR],
             coordinates_selection_method="outside",
         )
+
+    ds_bathymetry = ds_bathymetry.expand_dims(
+        {"depth": 1}
+    )  # TODO: bodge whilst parcels v4 does not support 2D fields and seeks depth dim; change when parcels v4 released
 
     ds_fset = parcels.convert.copernicusmarine_to_sgrid(
         fields={"bathymetry": ds_bathymetry[VAR]}

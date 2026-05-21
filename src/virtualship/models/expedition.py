@@ -139,7 +139,7 @@ class Schedule(pydantic.BaseModel):
             for wp_i, wp in enumerate(self.waypoints):
                 try:
                     value = bathymetry_field.eval(
-                        0,  # time
+                        np.float64(0.0),  # time
                         0,  # depth (surface)
                         wp.location.lat,
                         wp.location.lon,
