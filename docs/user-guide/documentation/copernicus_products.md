@@ -1,4 +1,4 @@
-# Copernicus Marine products
+# Copernicus Marine Service products
 
 VirtualShip supports running experiments anywhere in the global ocean from 1993 through to the present day (and approximately two weeks into the future), using the suite of products available from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 
