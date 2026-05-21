@@ -1,4 +1,5 @@
 import datetime
+import re
 from pathlib import Path
 
 import numpy as np
@@ -399,3 +400,71 @@ def test_build_particle_class_scipy_base():
 
     ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, ScipyParticle)
     assert issubclass(ParticleClass, ScipyParticle)
+
+
+def test_allowed_sensors_matches_docs():
+    """Test that SUPPORTED_SENSORS_MAP (sensors allowed for each instrument) matches the sensor table in full_sensor_list.md."""
+    # local imports to trigger instrument registration and avoid potential circular imports
+    import virtualship.instruments  # noqa: F401 - ensures all @register_instrument decorators run
+    from virtualship.utils import INSTRUMENT_CLASS_MAP, SUPPORTED_SENSORS_MAP
+
+    docs_path = (
+        Path(__file__).parent.parent
+        / "docs/user-guide/documentation/full_sensor_list.md"
+    )
+    content = docs_path.read_text(encoding="utf-8")
+
+    display_name_to_instrument_type: dict[str, InstrumentType] = {
+        instrument_type.value: instrument_type
+        for instrument_type in INSTRUMENT_CLASS_MAP
+        if isinstance(instrument_type, InstrumentType)
+    }  # all instruments should use their enum value as the bold display name in the markdown table
+
+    # parse markdown table rows
+    row_pattern = re.compile(r"^\|([^|]*)\|([^|]*)\|.*$", re.MULTILINE)
+
+    expected: dict[InstrumentType, set[SensorType]] = {}
+    current_instrument: InstrumentType | None = None
+
+    for match in row_pattern.finditer(content):
+        instrument_cell = match.group(1).strip()
+        sensor_cell = match.group(2).strip()
+
+        # extract only the **bold** text from the cell (e.g. "**UNDERWATER_ST** (Ship Underwater ST)" -> "UNDERWATER_ST")
+        bold_match = re.search(r"\*\*(.+?)\*\*", instrument_cell)
+        instrument_name = bold_match.group(1).strip() if bold_match else ""
+
+        if instrument_name and instrument_name in display_name_to_instrument_type:
+            current_instrument = display_name_to_instrument_type[instrument_name]
+            if current_instrument not in expected:
+                expected[current_instrument] = set()
+
+        # skip irrelevant cells
+        if (
+            not sensor_cell
+            or sensor_cell.startswith(":")
+            or sensor_cell == "Sensor Name"
+        ):
+            continue
+
+        sensor_name = sensor_cell.strip()
+        if current_instrument is not None and sensor_name:
+            expected[current_instrument].add(SensorType(sensor_name))
+
+    # verify each instrument in the docs is registered and has matching sensors
+    for instrument_type, doc_sensors in expected.items():
+        assert instrument_type in SUPPORTED_SENSORS_MAP, (
+            f"{instrument_type} is listed in full_sensor_list.md but not found in SUPPORTED_SENSORS_MAP."
+        )
+        registered_sensors = set(SUPPORTED_SENSORS_MAP[instrument_type])
+        assert registered_sensors == doc_sensors, (
+            f"Sensor mismatch for {instrument_type}:\n"
+            f"  In docs:      {sorted(s.value for s in doc_sensors)}\n"
+            f"  In code:      {sorted(s.value for s in registered_sensors)}\n"
+        )
+
+    # verify each instrument registered in code is also covered in the docs
+    for instrument_type in SUPPORTED_SENSORS_MAP:
+        assert instrument_type in expected, (
+            f"{instrument_type} is registered in SUPPORTED_SENSORS_MAP but not listed in full_sensor_list.md."
+        )

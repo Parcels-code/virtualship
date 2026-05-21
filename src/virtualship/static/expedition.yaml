@@ -1,7 +1,5 @@
 # see https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/working_with_expedition_yaml.html for more details on how to edit this file
 #
-# TODO: add a link to docs where lists what sensors are supported for each instrument
-#
 schedule:
   waypoints:
     - instrument:
