@@ -10,7 +10,7 @@ Trying to add a sensor to an instrument that does not support it will result in 
 
 | Instrument                             | Sensor Name        | Description                                         | Units                                | Category        |
 | :------------------------------------- | :----------------- | :-------------------------------------------------- | :----------------------------------- | :-------------- |
-| **ADCP**                               | VELOCITY           | Current velocities (eastward (u) and northward (v)) | m/s                                  | Physical        |
+| **ADCP**                               | VELOCITY           | Current velocities (eastward (u) and northward (v)) | m/s                                  | Physics         |
 | **UNDERWATER_ST** (Ship Underwater ST) | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
 |                                        | SALINITY           | Salinity                                            | psu                                  | Physics         |
 | **CTD**                                | TEMPERATURE        | Temperature                                         | °C                                   | Physics         |
