@@ -99,10 +99,6 @@ class Instrument(abc.ABC):
         for var in (v for v in self.variables if v not in ("U", "V")):
             getattr(fieldset, var).interp_method = parcels.interpolators.XLinear
 
-        # depth negative
-        for g in fieldset.gridset:
-            g.negate_depth()
-
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry

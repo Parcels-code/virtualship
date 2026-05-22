@@ -4,9 +4,9 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
+from parcels import ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
-from parcels import ParticleSet, Variable
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -117,6 +117,9 @@ def _ctd_cast(particles, fieldset):
     particles_raising = particles[particles.raising == 1]
 
     # TODO: change to boolean masking, like with Argo Floats?
+    # TODO: different handling of positive down for z now?! Doing positive down now... think kernels need adjusting...
+    # TODO: need to check on all other instrument kernels as well...
+    # TODO: plus how the configs are inputted in e.g. expedition.yaml
 
     # lowering
     particles_lowering.dz = -particles_lowering.winch_speed * particles_lowering.dt
