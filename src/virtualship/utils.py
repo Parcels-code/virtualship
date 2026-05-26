@@ -560,6 +560,24 @@ def _find_files_in_timerange(
     return [fname for _, fname in files_with_dates]
 
 
+def _compute_max_depths(measurements, fieldset) -> list[float]:
+    """Compute the effective max depth for each measurement, capped by bathymetry. Return as list of floats for best Parcels compatibility."""
+    return [
+        max(
+            m.max_depth,
+            float(
+                fieldset.bathymetry.eval(
+                    z=0,
+                    y=m.spacetime.location.lat,
+                    x=m.spacetime.location.lon,
+                    time=np.float64(0),
+                )
+            ),
+        )
+        for m in measurements
+    ]
+
+
 def _random_noise(scale: float = 0.05, limit: float = 0.1) -> float:
     """Generate a small random noise value for drifter seeding locations."""
     value = np.random.normal(loc=0.0, scale=scale)
@@ -654,7 +672,7 @@ def build_particle_class_from_sensors(
         variable for sc in sensors if sc.enabled for variable in sc.meta.particle_vars
     ]
 
-    return Particle.add_variables(nonsensor_variables + sensor_variables)
+    return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
 # =====================================================

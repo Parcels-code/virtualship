@@ -12,6 +12,7 @@ from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import (
+    _compute_max_depths,
     build_particle_class_from_sensors,
     register_instrument,
 )
@@ -143,18 +144,7 @@ class XBTInstrument(Instrument):
             raise ValueError("XBT deployed before fieldset starts.")
 
         # depth the xbt will go to. shallowest between xbt max depth and bathymetry.
-        max_depths = [
-            max(
-                xbt.max_depth,
-                fieldset.bathymetry.eval(
-                    z=0,
-                    y=xbt.spacetime.location.lat,
-                    x=xbt.spacetime.location.lon,
-                    time=0,
-                ),
-            )
-            for xbt in measurements
-        ]
+        max_depths = _compute_max_depths(measurements, fieldset)
 
         # initial fall speeds
         initial_fall_speeds = [xbt.fall_speed for xbt in measurements]

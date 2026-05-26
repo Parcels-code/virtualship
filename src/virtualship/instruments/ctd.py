@@ -11,6 +11,7 @@ from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    _compute_max_depths,
     build_particle_class_from_sensors,
     register_instrument,
 )
@@ -195,12 +196,9 @@ class CTDInstrument(Instrument):
         # use first active field for time reference
         _time_ref_key = next(iter(self.variables))
         _time_ref_field = getattr(fieldset, _time_ref_key)
-        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[0]
-        )
-        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[-1]
-        )
+
+        fieldset_starttime = _time_ref_field.data.time.isel(time=0)
+        fieldset_endtime = _time_ref_field.data.time.isel(time=-1)
 
         # deploy time for all ctds should be later than fieldset start time
         if not all(
@@ -212,18 +210,7 @@ class CTDInstrument(Instrument):
             raise ValueError("CTD deployed before fieldset starts.")
 
         # depth the ctd will go to. shallowest between ctd max depth and bathymetry.
-        max_depths = [
-            max(
-                ctd.max_depth,
-                fieldset.bathymetry.eval(
-                    z=0,
-                    y=ctd.spacetime.location.lat,
-                    x=ctd.spacetime.location.lon,
-                    time=0,
-                ),
-            )
-            for ctd in measurements
-        ]
+        max_depths = _compute_max_depths(measurements, fieldset)
 
         # CTD depth can not be too shallow, because kernel would break.
         # This shallow is not useful anyway, no need to support.
@@ -245,7 +232,9 @@ class CTDInstrument(Instrument):
             lon=[ctd.spacetime.location.lon for ctd in measurements],
             lat=[ctd.spacetime.location.lat for ctd in measurements],
             depth=[ctd.min_depth for ctd in measurements],
-            time=[ctd.spacetime.time for ctd in measurements],
+            time=[
+                np.datetime64(ctd.spacetime.time) for ctd in measurements
+            ],  # TODO: v4 question... docstring says takes datetime, but here requires -> np.datetime64?
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],
