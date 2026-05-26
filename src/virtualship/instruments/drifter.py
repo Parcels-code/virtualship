@@ -147,7 +147,7 @@ class DrifterInstrument(Instrument):
             pclass=_DrifterParticle,
             lat=lat_release,
             lon=lon_release,
-            depth=[drifter.depth for drifter in measurements],
+            z=[drifter.depth for drifter in measurements],
             time=[drifter.spacetime.time for drifter in measurements],
             has_lifetime=[
                 1 if drifter.lifetime is not None else 0 for drifter in measurements

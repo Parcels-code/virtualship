@@ -105,14 +105,14 @@ class ADCPInstrument(Instrument):
 
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
         num_particles = len(bins)
-        particleset = ParticleSet.from_list(
+        particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ADCPParticle,
             lon=np.full(
                 num_particles, 0.0
             ),  # initial lat/lon are irrelevant and will be overruled later.s
             lat=np.full(num_particles, 0.0),
-            depth=bins,
+            z=bins,
             time=0,
         )
 

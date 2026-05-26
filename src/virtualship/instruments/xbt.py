@@ -168,7 +168,7 @@ class XBTInstrument(Instrument):
             pclass=_XBTParticle,
             lon=[xbt.spacetime.location.lon for xbt in measurements],
             lat=[xbt.spacetime.location.lat for xbt in measurements],
-            depth=[xbt.min_depth for xbt in measurements],
+            z=[xbt.min_depth for xbt in measurements],
             time=[xbt.spacetime.time for xbt in measurements],
             max_depth=max_depths,
             min_depth=[xbt.min_depth for xbt in measurements],

@@ -100,7 +100,7 @@ class Underwater_STInstrument(Instrument):
             st_config.sensors, _ST_NONSENSOR_VARIABLES
         )
 
-        particleset = ParticleSet.from_list(
+        particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ShipSTParticle,
             lon=0.0,

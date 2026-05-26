@@ -260,7 +260,7 @@ class ArgoFloatInstrument(Instrument):
             pclass=_ArgoParticle,
             lat=[argo.spacetime.location.lat for argo in measurements],
             lon=[argo.spacetime.location.lon for argo in measurements],
-            depth=[argo.min_depth for argo in measurements],
+            z=[argo.min_depth for argo in measurements],
             time=[argo.spacetime.time for argo in measurements],
             min_depth=[argo.min_depth for argo in measurements],
             max_depth=[argo.max_depth for argo in measurements],
