@@ -120,14 +120,19 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
+        TMP = False
+
         if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+            if TMP:
+                with yaspin(
+                    text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+            else:
                 self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
         else:
             print(
                 f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "

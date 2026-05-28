@@ -232,9 +232,7 @@ class CTDInstrument(Instrument):
             lon=[ctd.spacetime.location.lon for ctd in measurements],
             lat=[ctd.spacetime.location.lat for ctd in measurements],
             z=[ctd.min_depth for ctd in measurements],
-            time=[
-                np.datetime64(ctd.spacetime.time) for ctd in measurements
-            ],  # TODO: v4 question... docstring says takes datetime, but here requires -> np.datetime64?
+            time=[np.datetime64(ctd.spacetime.time) for ctd in measurements],
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],

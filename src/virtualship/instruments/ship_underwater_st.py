@@ -106,7 +106,6 @@ class Underwater_STInstrument(Instrument):
             lon=0.0,
             lat=0.0,
             depth=DEPTH,
-            time=0,
         )
 
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)

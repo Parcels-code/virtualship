@@ -561,18 +561,16 @@ def _find_files_in_timerange(
 
 
 def _compute_max_depths(measurements, fieldset) -> list[float]:
-    """Compute the effective max depth for each measurement, capped by bathymetry. Return as list of floats for best Parcels compatibility."""
+    """Compute the effective max depth for each measurement, capped by bathymetry."""
     return [
         max(
             m.max_depth,
-            float(
-                fieldset.bathymetry.eval(
-                    z=0,
-                    y=m.spacetime.location.lat,
-                    x=m.spacetime.location.lon,
-                    time=np.float64(0),
-                )
-            ),
+            fieldset.bathymetry.eval(
+                z=0,
+                y=m.spacetime.location.lat,
+                x=m.spacetime.location.lon,
+                time=np.float64(0),
+            )[0],
         )
         for m in measurements
     ]

@@ -113,7 +113,6 @@ class ADCPInstrument(Instrument):
             ),  # initial lat/lon are irrelevant and will be overruled later.s
             lat=np.full(num_particles, 0.0),
             z=bins,
-            time=0,
         )
 
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
