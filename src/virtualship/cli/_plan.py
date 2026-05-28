@@ -7,6 +7,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.dom import NoMatches
+from textual.markup import escape
 from textual.screen import ModalScreen, Screen
 from textual.validation import Function, Integer
 from textual.widgets import (
@@ -530,11 +531,25 @@ class ExpeditionEditor(Static):
                 kwargs["sensors"] = (
                     sensors if sensors else _default_sensors(config_class)
                 )
-            setattr(
-                self.expedition.instruments_config,
-                instrument_name,
-                config_class(**kwargs),
-            )
+            try:
+                setattr(
+                    self.expedition.instruments_config,
+                    instrument_name,
+                    config_class(**kwargs),
+                )
+            except (ValueError, Exception) as e:
+                # catch validation errors, e.g. drift_days >= cycle_days
+                if isinstance(e, ValueError):
+                    title = info.get("title", instrument_name.replace("_", " ").title())
+                    raise UserError(f"'{title}' configuration error: {e}") from None
+                elif (  # pydantic validation error
+                    hasattr(e, "__class__")
+                    and "ValidationError" in e.__class__.__name__
+                ):
+                    title = info.get("title", instrument_name.replace("_", " ").title())
+                    raise UserError(f"'{title}' configuration error: {e}") from None
+                else:
+                    raise
 
     def _update_schedule(self):
         for i, wp in enumerate(self.expedition.schedule.waypoints):
@@ -1150,7 +1165,9 @@ class PlanScreen(Screen):
 
         except Exception as e:
             self.notify(
-                f"*** Error saving changes ***:\n\n{e}\n",
+                escape(
+                    f"*** Error saving changes ***:\n\n{e}\n"
+                ),  # escape avoids issues with special characters being interpreted as markup
                 severity="error",
                 timeout=20,
             )
