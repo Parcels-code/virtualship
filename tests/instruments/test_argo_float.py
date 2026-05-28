@@ -229,3 +229,32 @@ def test_argo_config_unsupported_sensor_rejected():
             stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
         )
+
+
+def test_argo_config_drift_days_exceeds_cycle_days():
+    """ArgoFloatConfig should reject drift_days >= cycle_days."""
+    base_kwargs = {
+        "min_depth_meter": 0.0,
+        "max_depth_meter": -2000,
+        "drift_depth_meter": -1000,
+        "vertical_speed_meter_per_second": -0.10,
+        "lifetime": timedelta(days=30),
+        "stationkeeping_time_minutes": 10,
+    }
+
+    # drift_days > cycle_days should raise validation error
+    with pytest.raises(
+        pydantic.ValidationError, match="drift_days .* must be less than cycle_days"
+    ):
+        ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=15)
+
+    # drift_days == cycle_days should also raise validation error
+    with pytest.raises(
+        pydantic.ValidationError, match="drift_days .* must be less than cycle_days"
+    ):
+        ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=10)
+
+    # check a valid configuration: drift_days < cycle_days
+    config = ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=9)
+    assert config.drift_days == 9
+    assert config.cycle_days == 10
