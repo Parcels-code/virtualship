@@ -293,6 +293,15 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
+    @pydantic.model_validator(mode="after")
+    def _drift_days_less_than_cycle_days(self) -> ArgoFloatConfig:
+        """Ensure drift_days is less than cycle_days."""
+        if self.drift_days >= self.cycle_days:
+            raise ValueError(
+                f"drift_days ({self.drift_days}) must be less than cycle_days ({self.cycle_days}). "
+            )
+        return self
+
 
 @register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
