@@ -21,8 +21,8 @@
 <!-- SPHINX-START -->
 <table>
     <tr>
-        <th>VirtualShip Team</th>
-        <td>virtualship@uu.nl</td>
+        <th>Project Owner</th>
+        <td>VirtualShip Team (virtualship@uu.nl)</td>
     </tr>
     <tr>
         <!-- Should mirror pyproject.toml. Use one of the "Development status" flags from https://pypi.org/classifiers/-->
