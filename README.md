@@ -61,7 +61,8 @@ For a development installation (using Pixi), please follow the instructions deta
 
 ## Usage
 
-> [!TIP]
+> **💡 Tip**
+>
 > See the [Quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) in our documentation for a step-by-step introduction to using VirtualShip.
 
 You can run the VirtualShip via the command line interface (CLI) using the `virtualship` command. It has three subcommands: `init`, `plan`, and `run`.
