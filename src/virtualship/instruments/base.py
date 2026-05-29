@@ -210,9 +210,8 @@ class Instrument(abc.ABC):
                     data_dir, var
                 )  # get full variable name from one of the files; var may only appear as substring in variable name in file
 
-                ds = xr.open_mfdataset(
-                    [data_dir.joinpath(f) for f in files]
-                )  # using: ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+                ds = xr.open_mfdataset([data_dir.joinpath(f) for f in files])
+                ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
 
                 # TODO: do docs on pre-downloading data need to be updated for these changes? Anything about conventions etc.?
                 fields = {key: ds[full_var_name]}
@@ -226,6 +225,7 @@ class Instrument(abc.ABC):
                     physical=physical,
                     var=var,
                 )
+                ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
 
                 fields = {key: ds[var]}
                 ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
