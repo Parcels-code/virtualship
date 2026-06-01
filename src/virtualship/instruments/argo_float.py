@@ -131,6 +131,23 @@ def _keep_at_surface(particle, fieldset, time):
 
 def _check_error(particle, fieldset, time):
     if particle.state >= 50:  # This captures all Errors
+        if particle.state == 50:
+            print("WARNING: Error during Argo Float simulation...")
+        elif particle.state == 51:
+            print("WARNING: ErrorInterpolation during Argo Float simulation...")
+        elif particle.state == 60:
+            print("WARNING: ErrorOutOfBounds during Argo Float simulation...")
+        elif particle.state == 61:
+            print("WARNING: ErrorThroughSurface during Argo Float simulation...")
+        elif particle.state == 70:
+            print("WARNING: ErrorTimeExtrapolation during Argo Float simulation...")
+        else:
+            print("Unknown error during Argo Float simulation...")
+        print(
+            "WARNING: An error occured during simulation but the expedition will continue. If ErrorOutOfBounds, consider reducing the lifetime in Argo Float config (the fieldset spatial bounds are constrained under-the-hood). For further advice please contact the VirtualShip team via GitHub (https://github.com/Parcels-code/virtualship/issues) or email (virtualship@uu.nl). Carrying on with the expedition..."
+        )
+        # TODO: warnings are a bit limited in Parcels v3, but v4 should allow more informative (+ not all these if statements) when e.g. f-strings are supported in kernels
+
         particle.delete()
 
 
