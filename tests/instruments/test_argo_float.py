@@ -18,70 +18,83 @@ from virtualship.models.expedition import (
     Waypoint,
 )
 
+# Constants
+BASE_TIME = datetime.strptime("1950-01-01", "%Y-%m-%d")
+DRIFT_DEPTH = -1000
+MAX_DEPTH = -2000
+VERTICAL_SPEED = -0.10
+CYCLE_DAYS = 10
+DRIFT_DAYS = 9
+STATIONKEEPING_TIME = 10
 
-def test_simulate_argo_floats(tmpdir) -> None:
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
 
-    DRIFT_DEPTH = -1000
-    MAX_DEPTH = -2000
-    VERTICAL_SPEED = -0.10
-    CYCLE_DAYS = 10
-    DRIFT_DAYS = 9
-    LIFETIME = timedelta(days=1)
+@pytest.fixture
+def argo_config_kwargs():
+    """Common ArgoFloatConfig parameters."""
+    return {
+        "min_depth_meter": 0.0,
+        "max_depth_meter": MAX_DEPTH,
+        "drift_depth_meter": DRIFT_DEPTH,
+        "vertical_speed_meter_per_second": VERTICAL_SPEED,
+        "cycle_days": CYCLE_DAYS,
+        "drift_days": DRIFT_DAYS,
+        "stationkeeping_time_minutes": STATIONKEEPING_TIME,
+    }
 
-    CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
-    CONST_SALINITY = 1.0  # constant salinity in fieldset
 
+def create_fieldset(
+    lon_range=(0.0, 10.0), lat_range=(0.0, 10.0), include_salinity=True, lifetime_days=1
+):
+    """Create a test fieldset with optional salinity."""
     v = np.full((2, 2, 2), 1.0)
     u = np.full((2, 2, 2), 1.0)
-    t = np.full((2, 2, 2), CONST_TEMPERATURE)
-    s = np.full((2, 2, 2), CONST_SALINITY)
+    t = np.full((2, 2, 2), 1.0)
     bathy = np.full((2, 2), -5000.0)
 
+    data = {"V": v, "U": u, "T": t}
+    if include_salinity:
+        data["S"] = np.full((2, 2, 2), 1.0)
+
     fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t, "S": s},
+        data,
         {
-            "lon": np.array([0.0, 10.0]),
-            "lat": np.array([0.0, 10.0]),
+            "lon": np.array(lon_range),
+            "lat": np.array(lat_range),
             "time": [
-                np.datetime64(base_time + timedelta(seconds=0)),
-                np.datetime64(base_time + timedelta(hours=4)),
+                np.datetime64(BASE_TIME),
+                np.datetime64(BASE_TIME + timedelta(days=lifetime_days + 1)),
             ],
         },
     )
     fieldset.add_field(
         FieldSet.from_data(
             {"bathymetry": bathy},
-            {
-                "lon": np.array([0.0, 10.0]),
-                "lat": np.array([0.0, 10.0]),
-            },
+            {"lon": np.array(lon_range), "lat": np.array(lat_range)},
         ).bathymetry
     )
+    return fieldset
 
-    # argo floats to deploy
-    argo_floats = [
-        ArgoFloat(
-            spacetime=Spacetime(location=Location(latitude=0, longitude=0), time=0),
-            min_depth=0.0,
-            max_depth=MAX_DEPTH,
-            drift_depth=DRIFT_DEPTH,
-            vertical_speed=VERTICAL_SPEED,
-            cycle_days=CYCLE_DAYS,
-            drift_days=DRIFT_DAYS,
-        )
-    ]
 
-    # dummy expedition for ArgoFloatInstrument
+def create_argo_float(lat=0.0, lon=0.0):
+    """Create a single ArgoFloat instance."""
+    return ArgoFloat(
+        spacetime=Spacetime(location=Location(latitude=lat, longitude=lon), time=0),
+        min_depth=0.0,
+        max_depth=MAX_DEPTH,
+        drift_depth=DRIFT_DEPTH,
+        vertical_speed=VERTICAL_SPEED,
+        cycle_days=CYCLE_DAYS,
+        drift_days=DRIFT_DAYS,
+    )
+
+
+def create_dummy_expedition(sensors, lifetime=timedelta(days=1), location=(1, 2)):
+    """Create a DummyExpedition class with specified sensors and parameters."""
+
     class DummyExpedition:
         class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                ),
+            waypoints: list[Waypoint] = [  # noqa: RUF012
+                Waypoint(location=Location(*location), time=BASE_TIME)
             ]
 
         instruments_config = InstrumentsConfig(
@@ -92,28 +105,32 @@ def test_simulate_argo_floats(tmpdir) -> None:
                 vertical_speed_meter_per_second=VERTICAL_SPEED,
                 cycle_days=CYCLE_DAYS,
                 drift_days=DRIFT_DAYS,
-                lifetime=LIFETIME,
-                stationkeeping_time_minutes=10,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
-                    SensorConfig(sensor_type=SensorType.SALINITY),
-                ],
+                lifetime=lifetime,
+                stationkeeping_time_minutes=STATIONKEEPING_TIME,
+                sensors=sensors,
             )
         )
 
-    expedition = DummyExpedition()
-    from_data = None
+    return DummyExpedition()
 
-    argo_instrument = ArgoFloatInstrument(expedition, from_data)
+
+def test_simulate_argo_floats(tmpdir) -> None:
+    """Test basic Argo float simulation with temperature and salinity sensors."""
+    fieldset = create_fieldset()
+    argo_floats = [create_argo_float()]
+
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+    ]
+    expedition = create_dummy_expedition(sensors)
+
+    argo_instrument = ArgoFloatInstrument(expedition, None)
     out_path = tmpdir.join("out.zarr")
-
     argo_instrument.load_input_data = lambda: fieldset
     argo_instrument.simulate(argo_floats, out_path)
 
-    # test if output is as expected
     results = xr.open_zarr(out_path)
-
-    # check the following variables are in the dataset
     assert len(results.trajectory) == len(argo_floats)
     for var in ["lon", "lat", "z", "temperature", "salinity"]:
         assert var in results, f"Results don't contain {var}"
@@ -121,72 +138,13 @@ def test_simulate_argo_floats(tmpdir) -> None:
 
 def test_argo_float_disabled_sensor(tmpdir) -> None:
     """Variables for disabled sensors must not appear in the zarr output."""
-    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+    fieldset = create_fieldset(include_salinity=False)
+    argo_floats = [create_argo_float()]
 
-    DRIFT_DEPTH = -1000
-    MAX_DEPTH = -2000
-    VERTICAL_SPEED = -0.10
-    CYCLE_DAYS = 10
-    DRIFT_DAYS = 9
-    LIFETIME = timedelta(days=1)
+    # only temperature sensor enabled
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    expedition = create_dummy_expedition(sensors)
 
-    v = np.full((2, 2, 2), 1.0)
-    u = np.full((2, 2, 2), 1.0)
-    t = np.full((2, 2, 2), 1.0)
-    bathy = np.full((2, 2), -5000.0)
-
-    # only temperature fieldset, no salinity
-    fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t},
-        {
-            "lon": np.array([0.0, 10.0]),
-            "lat": np.array([0.0, 10.0]),
-            "time": [
-                np.datetime64(base_time + timedelta(seconds=0)),
-                np.datetime64(base_time + timedelta(hours=4)),
-            ],
-        },
-    )
-    fieldset.add_field(
-        FieldSet.from_data(
-            {"bathymetry": bathy},
-            {"lon": np.array([0.0, 10.0]), "lat": np.array([0.0, 10.0])},
-        ).bathymetry
-    )
-
-    argo_floats = [
-        ArgoFloat(
-            spacetime=Spacetime(location=Location(latitude=0, longitude=0), time=0),
-            min_depth=0.0,
-            max_depth=MAX_DEPTH,
-            drift_depth=DRIFT_DEPTH,
-            vertical_speed=VERTICAL_SPEED,
-            cycle_days=CYCLE_DAYS,
-            drift_days=DRIFT_DAYS,
-        )
-    ]
-
-    class DummyExpedition:
-        class schedule:
-            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
-
-        instruments_config = InstrumentsConfig(
-            argo_float_config=ArgoFloatConfig(
-                min_depth_meter=0.0,
-                max_depth_meter=MAX_DEPTH,
-                drift_depth_meter=DRIFT_DEPTH,
-                vertical_speed_meter_per_second=VERTICAL_SPEED,
-                cycle_days=CYCLE_DAYS,
-                drift_days=DRIFT_DAYS,
-                lifetime=LIFETIME,
-                stationkeeping_time_minutes=10,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE)
-                ],  # SALINITY omitted = disabled
-            )
-        )
-
-    expedition = DummyExpedition()
     argo_instrument = ArgoFloatInstrument(expedition, None)
     out_path = tmpdir.join("out_disabled.zarr")
     argo_instrument.load_input_data = lambda: fieldset
@@ -199,58 +157,40 @@ def test_argo_float_disabled_sensor(tmpdir) -> None:
     )
 
 
-def test_argo_config_default_sensors():
+def test_argo_config_default_sensors(argo_config_kwargs):
     """ArgoFloatConfig defaults to TEMPERATURE + SALINITY."""
-    config = ArgoFloatConfig(
-        min_depth_meter=0.0,
-        max_depth_meter=-2000,
-        drift_depth_meter=-1000,
-        vertical_speed_meter_per_second=-0.10,
-        cycle_days=10,
-        drift_days=9,
-        lifetime=timedelta(days=30),
-        stationkeeping_time_minutes=10,
-    )
+    config = ArgoFloatConfig(**argo_config_kwargs, lifetime=timedelta(days=30))
     types = {sc.sensor_type for sc in config.sensors}
     assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
 
 
-def test_argo_config_unsupported_sensor_rejected():
+def test_argo_config_unsupported_sensor_rejected(argo_config_kwargs):
     """Unsupported sensor on ArgoFloat is rejected."""
     with pytest.raises(pydantic.ValidationError, match="does not support"):
         ArgoFloatConfig(
-            min_depth_meter=0.0,
-            max_depth_meter=-2000,
-            drift_depth_meter=-1000,
-            vertical_speed_meter_per_second=-0.10,
-            cycle_days=10,
-            drift_days=9,
+            **argo_config_kwargs,
             lifetime=timedelta(days=30),
-            stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
         )
 
 
-def test_argo_config_drift_days_exceeds_cycle_days():
+def test_argo_config_drift_days_exceeds_cycle_days(argo_config_kwargs):
     """ArgoFloatConfig should reject drift_days >= cycle_days."""
-    base_kwargs = {
-        "min_depth_meter": 0.0,
-        "max_depth_meter": -2000,
-        "drift_depth_meter": -1000,
-        "vertical_speed_meter_per_second": -0.10,
-        "lifetime": timedelta(days=30),
-        "stationkeeping_time_minutes": 10,
-    }
+    base_kwargs = {**argo_config_kwargs, "lifetime": timedelta(days=30)}
+
+    # remove cycle_days and drift_days from base_kwargs since override here
+    base_kwargs.pop("cycle_days", None)
+    base_kwargs.pop("drift_days", None)
 
     # drift_days > cycle_days should raise validation error
     with pytest.raises(
-        pydantic.ValidationError, match="drift_days .* must be less than cycle_days"
+        pydantic.ValidationError, match=r"drift_days .* must be less than cycle_days"
     ):
         ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=15)
 
     # drift_days == cycle_days should also raise validation error
     with pytest.raises(
-        pydantic.ValidationError, match="drift_days .* must be less than cycle_days"
+        pydantic.ValidationError, match=r"drift_days .* must be less than cycle_days"
     ):
         ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=10)
 
@@ -262,110 +202,36 @@ def test_argo_config_drift_days_exceeds_cycle_days():
 
 def test_argo_fieldoutofbounds_error(tmpdir, capsys) -> None:
     """
-    Test Argo Float handles Parcels FieldOutOfBoundsError when it drifts outside the fieldset, but does not exit the simulation.
+    Test Argo Float handles Parcels FieldOutOfBoundsError.
 
-    The check is housed in the Instrument base class, but we test it here in the context of ArgoFloat since it is the only instrument (at time of writing) that can drift out of bounds (Drifters have unbounded fieldsets).
+    When it drifts outside the fieldset, it should not exit the simulation.
     """
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+    lifetime = timedelta(days=3)  # give time to drift out of bounds
 
-    DRIFT_DEPTH = -1000
-    MAX_DEPTH = -2000
-    VERTICAL_SPEED = -0.10
-    CYCLE_DAYS = 10
-    DRIFT_DAYS = 9
-    LIFETIME = timedelta(days=3)  # give time to drift out of bounds
-
-    CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
-    CONST_SALINITY = 1.0  # constant salinity in fieldset
-
-    v = np.full((2, 2, 2), 1.0)
-    u = np.full((2, 2, 2), 1.0)
-    t = np.full((2, 2, 2), CONST_TEMPERATURE)
-    s = np.full((2, 2, 2), CONST_SALINITY)
-    bathy = np.full((2, 2), -5000.0)
-
-    # small fieldset
-    LON_MIN, LON_MAX = 0.0, 0.1
-    LAT_MIN, LAT_MAX = 0.0, 0.1
-    fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t, "S": s},
-        {
-            "lon": np.array([LON_MIN, LON_MAX]),
-            "lat": np.array([LAT_MIN, LAT_MAX]),
-            "time": [
-                np.datetime64(base_time + timedelta(seconds=0)),
-                np.datetime64(
-                    base_time + timedelta(days=LIFETIME.days + 1)
-                ),  # ensure fieldset covers entire simulation period
-            ],
-        },
+    # small fieldset to ensure float drifts out of bounds
+    fieldset = create_fieldset(
+        lon_range=(0.0, 0.1), lat_range=(0.0, 0.1), lifetime_days=lifetime.days
     )
-    fieldset.add_field(
-        FieldSet.from_data(
-            {"bathymetry": bathy},
-            {
-                "lon": np.array([LON_MIN, LON_MAX]),
-                "lat": np.array([LAT_MIN, LAT_MAX]),
-            },
-        ).bathymetry
-    )
+    argo_floats = [create_argo_float()]
 
-    # argo floats to deploy
-    argo_floats = [
-        ArgoFloat(
-            spacetime=Spacetime(location=Location(latitude=0, longitude=0), time=0),
-            min_depth=0.0,
-            max_depth=MAX_DEPTH,
-            drift_depth=DRIFT_DEPTH,
-            vertical_speed=VERTICAL_SPEED,
-            cycle_days=CYCLE_DAYS,
-            drift_days=DRIFT_DAYS,
-        )
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
     ]
+    expedition = create_dummy_expedition(
+        sensors, lifetime=lifetime, location=(0.0, 0.0)
+    )
 
-    # dummy expedition for ArgoFloatInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(0.0, 0.0),
-                    time=base_time,
-                ),
-            ]
-
-        instruments_config = InstrumentsConfig(
-            argo_float_config=ArgoFloatConfig(
-                min_depth_meter=0.0,
-                max_depth_meter=MAX_DEPTH,
-                drift_depth_meter=DRIFT_DEPTH,
-                vertical_speed_meter_per_second=VERTICAL_SPEED,
-                cycle_days=CYCLE_DAYS,
-                drift_days=DRIFT_DAYS,
-                lifetime=LIFETIME,
-                stationkeeping_time_minutes=10,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
-                    SensorConfig(sensor_type=SensorType.SALINITY),
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
-    from_data = None
-
-    argo_instrument = ArgoFloatInstrument(expedition, from_data)
+    argo_instrument = ArgoFloatInstrument(expedition, None)
     out_path = tmpdir.join("out.zarr")
-
     argo_instrument.load_input_data = lambda: fieldset
     argo_instrument.simulate(argo_floats, out_path)
 
-    # test if output is as expected; results file should exist even if data is incomplete due to out-of-bounds error, and simulation should not crash
+    # results file should exist even if data is incomplete due to out-of-bounds error
     results = xr.open_zarr(out_path)
 
-    # not reaching expected final time indicates simulation was stopped due to FieldOutOfBounds error
-    expected_final_time = np.datetime64(base_time + LIFETIME)
+    # not reaching expected final time indicates simulation was stopped due to FieldOutOfBounds
+    expected_final_time = np.datetime64(BASE_TIME + lifetime)
     actual_final_time = results.time.values[np.isfinite(results.time.values)].max()
     assert actual_final_time < expected_final_time, (
         "Actual final time should be less than expected final time due to out-of-bounds error/warning"
