@@ -361,9 +361,6 @@ def test_argo_fieldoutofbounds_error(tmpdir, capsys) -> None:
     argo_instrument.load_input_data = lambda: fieldset
     argo_instrument.simulate(argo_floats, out_path)
 
-    # capture the output to check for error message/warning
-    captured = capsys.readouterr()
-
     # test if output is as expected; results file should exist even if data is incomplete due to out-of-bounds error, and simulation should not crash
     results = xr.open_zarr(out_path)
 
