@@ -258,3 +258,121 @@ def test_argo_config_drift_days_exceeds_cycle_days():
     config = ArgoFloatConfig(**base_kwargs, cycle_days=10, drift_days=9)
     assert config.drift_days == 9
     assert config.cycle_days == 10
+
+
+def test_argo_fieldoutofbounds_error(tmpdir, capsys) -> None:
+    """
+    Test Argo Float handles Parcels FieldOutOfBoundsError when it drifts outside the fieldset, but does not exit the simulation.
+
+    The check is housed in the Instrument base class, but we test it here in the context of ArgoFloat since it is the only instrument (at time of writing) that can drift out of bounds (Drifters have unbounded fieldsets).
+    """
+    # arbitrary time offset for the dummy fieldset
+    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+
+    DRIFT_DEPTH = -1000
+    MAX_DEPTH = -2000
+    VERTICAL_SPEED = -0.10
+    CYCLE_DAYS = 10
+    DRIFT_DAYS = 9
+    LIFETIME = timedelta(days=3)  # give time to drift out of bounds
+
+    CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
+    CONST_SALINITY = 1.0  # constant salinity in fieldset
+
+    v = np.full((2, 2, 2), 1.0)
+    u = np.full((2, 2, 2), 1.0)
+    t = np.full((2, 2, 2), CONST_TEMPERATURE)
+    s = np.full((2, 2, 2), CONST_SALINITY)
+    bathy = np.full((2, 2), -5000.0)
+
+    # small fieldset
+    LON_MIN, LON_MAX = 0.0, 0.1
+    LAT_MIN, LAT_MAX = 0.0, 0.1
+    fieldset = FieldSet.from_data(
+        {"V": v, "U": u, "T": t, "S": s},
+        {
+            "lon": np.array([LON_MIN, LON_MAX]),
+            "lat": np.array([LAT_MIN, LAT_MAX]),
+            "time": [
+                np.datetime64(base_time + timedelta(seconds=0)),
+                np.datetime64(
+                    base_time + timedelta(days=LIFETIME.days + 1)
+                ),  # ensure fieldset covers entire simulation period
+            ],
+        },
+    )
+    fieldset.add_field(
+        FieldSet.from_data(
+            {"bathymetry": bathy},
+            {
+                "lon": np.array([LON_MIN, LON_MAX]),
+                "lat": np.array([LAT_MIN, LAT_MAX]),
+            },
+        ).bathymetry
+    )
+
+    # argo floats to deploy
+    argo_floats = [
+        ArgoFloat(
+            spacetime=Spacetime(location=Location(latitude=0, longitude=0), time=0),
+            min_depth=0.0,
+            max_depth=MAX_DEPTH,
+            drift_depth=DRIFT_DEPTH,
+            vertical_speed=VERTICAL_SPEED,
+            cycle_days=CYCLE_DAYS,
+            drift_days=DRIFT_DAYS,
+        )
+    ]
+
+    # dummy expedition for ArgoFloatInstrument
+    class DummyExpedition:
+        class schedule:
+            # ruff: noqa
+            waypoints = [
+                Waypoint(
+                    location=Location(0.0, 0.0),
+                    time=base_time,
+                ),
+            ]
+
+        instruments_config = InstrumentsConfig(
+            argo_float_config=ArgoFloatConfig(
+                min_depth_meter=0.0,
+                max_depth_meter=MAX_DEPTH,
+                drift_depth_meter=DRIFT_DEPTH,
+                vertical_speed_meter_per_second=VERTICAL_SPEED,
+                cycle_days=CYCLE_DAYS,
+                drift_days=DRIFT_DAYS,
+                lifetime=LIFETIME,
+                stationkeeping_time_minutes=10,
+                sensors=[
+                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
+                    SensorConfig(sensor_type=SensorType.SALINITY),
+                ],
+            )
+        )
+
+    expedition = DummyExpedition()
+    from_data = None
+
+    argo_instrument = ArgoFloatInstrument(expedition, from_data)
+    out_path = tmpdir.join("out.zarr")
+
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
+
+    # capture the output to check for error message/warning
+    captured = capsys.readouterr()
+
+    # test if output is as expected; results file should exist even if data is incomplete due to out-of-bounds error, and simulation should not crash
+    results = xr.open_zarr(out_path)
+
+    # not reaching expected final time indicates simulation was stopped due to FieldOutOfBounds error
+    expected_final_time = np.datetime64(base_time + LIFETIME)
+    actual_final_time = results.time.values[np.isfinite(results.time.values)].max()
+    assert actual_final_time < expected_final_time, (
+        "Actual final time should be less than expected final time due to out-of-bounds error/warning"
+    )
+
+    # TODO: capturing the warnings in the tests is complicated by the Parcels C-level print statements; but the logic of not crashing on out-of-bounds is tested if the test simulation runs
+    # TODO: when using Parcels v4, this test can become much more robust by capturing the specific warning as well
