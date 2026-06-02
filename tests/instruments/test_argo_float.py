@@ -200,7 +200,7 @@ def test_argo_config_drift_days_exceeds_cycle_days(argo_config_kwargs):
     assert config.cycle_days == 10
 
 
-def test_argo_fieldoutofbounds_error(tmpdir, capsys) -> None:
+def test_argo_fieldoutofbounds_error(tmpdir) -> None:
     """
     Test Argo Float handles Parcels FieldOutOfBoundsError.
 
