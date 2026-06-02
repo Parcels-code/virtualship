@@ -4,12 +4,20 @@ import datetime
 from typing import ClassVar
 
 import numpy as np
+import pydantic
+import pytest
 import xarray as xr
 from parcels import FieldSet
 
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.models import Location, Spacetime
-from virtualship.models.expedition import Waypoint
+from virtualship.models.expedition import (
+    DrifterConfig,
+    InstrumentsConfig,
+    SensorConfig,
+    Waypoint,
+)
 
 BASE_TIME = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 LIFETIME = datetime.timedelta(days=1)
@@ -31,10 +39,14 @@ def create_dummy_expedition():
                 ),
             ]
 
-        class instruments_config:
-            class drifter_config:
-                lifetime = LIFETIME
-                depth_meter = DEPLOY_DEPTH
+        instruments_config = InstrumentsConfig(
+            drifter_config=DrifterConfig(
+                lifetime=LIFETIME,
+                depth_meter=DEPLOY_DEPTH,
+                stationkeeping_time_minutes=10,
+                sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+            )
+        )
 
     return DummyExpedition()
 
@@ -188,3 +200,35 @@ def test_drifter_depths(tmpdir) -> None:
     assert drifter_surface.temperature[0] != drifter_depth.temperature[0], (
         "Surface and deeper drifter should have different temperature measurements"
     )
+
+
+def test_drifter_disabled_sensor_absent_from_output(tmpdir) -> None:
+    """A DrifterConfig with no enabled sensors should be rejected at construction time."""
+    with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
+        DrifterConfig(
+            lifetime=LIFETIME,
+            depth_meter=DEPLOY_DEPTH,
+            stationkeeping_time_minutes=10,
+            sensors=[],
+        )
+
+
+def test_drifter_config_default_sensors():
+    """DrifterConfig defaults to TEMPERATURE."""
+    config = DrifterConfig(
+        lifetime=LIFETIME,
+        depth_meter=DEPLOY_DEPTH,
+        stationkeeping_time_minutes=10,
+    )
+    assert config.sensors[0].sensor_type is SensorType.TEMPERATURE
+
+
+def test_drifter_config_unsupported_sensor_rejected():
+    """Unsupported sensor on Drifter is rejected."""
+    with pytest.raises(pydantic.ValidationError, match="does not support"):
+        DrifterConfig(
+            lifetime=LIFETIME,
+            depth_meter=DEPLOY_DEPTH,
+            stationkeeping_time_minutes=10,
+            sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+        )

@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import get_instrument_class
@@ -13,6 +15,8 @@ def test_all_instruments_have_instrument_class():
 
 class DummyInstrument(Instrument):
     """Minimal concrete Instrument for testing."""
+
+    sensor_kernels = {}  # noqa
 
     def simulate(self, data_dir, measurements, out_path):
         """Dummy simulate implementation for test."""
@@ -147,3 +151,12 @@ def test_load_input_data_error(monkeypatch):
         dummy.load_input_data()
     except virtualship.errors.CopernicusCatalogueError as e:
         assert "Failed to load input data" in str(e)
+
+
+def test_instrument_subclass_without_sensor_kernels_error():
+    """Defining a concrete Instrument subclass without sensor_kernels raises TypeError."""
+    with pytest.raises(TypeError, match="sensor_kernels"):
+
+        class ErrorInstrument(Instrument):
+            def simulate(self, data_dir, measurements, out_path):
+                pass

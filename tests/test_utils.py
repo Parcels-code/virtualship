@@ -1,14 +1,16 @@
 import datetime
+import re
 from pathlib import Path
 
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet
+from parcels import FieldSet, JITParticle, ScipyParticle, Variable
 
 import virtualship.utils
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition
+from virtualship.models.expedition import Expedition, SensorConfig
 from virtualship.models.location import Location
 from virtualship.utils import (
     PROJECTION,
@@ -19,6 +21,7 @@ from virtualship.utils import (
     _select_product_id,
     _start_end_in_product_timerange,
     add_dummy_UV,
+    build_particle_class_from_sensors,
     get_example_expedition,
 )
 
@@ -270,17 +273,13 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
 
     class DummyInstrumentsConfig:
-        def __init__(self, ctd, ctd_bgc, argo, xbt, drifter):
+        def __init__(self, ctd, argo, xbt, drifter):
             self.ctd = ctd
-            self.ctd_bgc = ctd_bgc
             self.argo = argo
             self.xbt = xbt
             self.drifter = drifter
 
     class CTDConfig:
-        stationkeeping_time = datetime.timedelta(minutes=50)
-
-    class CTD_BGCConfig:
         stationkeeping_time = datetime.timedelta(minutes=50)
 
     class ArgoFloatConfig:
@@ -296,7 +295,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
         "virtualship.utils.INSTRUMENT_CONFIG_MAP",
         {
             InstrumentType.CTD: "CTDConfig",
-            InstrumentType.CTD_BGC: "CTD_BGCConfig",
             InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
             InstrumentType.XBT: "XBTConfig",
             InstrumentType.DRIFTER: "DrifterConfig",
@@ -306,7 +304,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # Create a dummy expedition with instruments_config containing the dummy configs
     instruments_config = DummyInstrumentsConfig(
         ctd=CTDConfig(),
-        ctd_bgc=CTD_BGCConfig(),
         argo=ArgoFloatConfig(),
         xbt=XBTConfig(),
         drifter=DrifterConfig(),
@@ -318,7 +315,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     # instruments at a given waypoint
     wp_instrument_types_all = [
         InstrumentType.CTD,
-        InstrumentType.CTD_BGC,
         InstrumentType.ARGO_FLOAT,
         InstrumentType.XBT,
         InstrumentType.DRIFTER,
@@ -332,9 +328,6 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     assert (
         stationkeeping_time_all
         == CTDConfig.stationkeeping_time
-        + (
-            CTD_BGCConfig.stationkeeping_time * 0.0
-        )  # CTD(_BGC) counted once when both present
         + ArgoFloatConfig.stationkeeping_time
         + DrifterConfig.stationkeeping_time  # drifter should only be counted once despite being present at wp twice
     )
@@ -360,3 +353,118 @@ def test_calc_wp_stationkeeping_time_no_instruments(expedition):
 
     assert stationkeeping_null == stationkeeping_emptylist  # are equivalent
     assert stationkeeping_null == datetime.timedelta(0)  # at least one is 0 time
+
+
+# helper
+def _make_sensors(*sensor_types, enabled=True):
+    """Helper to build a list of SensorConfig from SensorType values."""
+    return [SensorConfig(sensor_type=st, enabled=enabled) for st in sensor_types]
+
+
+def test_build_basic_particle_class():
+    """Build basic particle class with T+S sensors and nonsensor variables."""
+    nonsensor = [Variable("cycle_phase", dtype=np.int32, initial=0)]
+    sensors = _make_sensors(SensorType.TEMPERATURE, SensorType.SALINITY)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
+    assert issubclass(ParticleClass, JITParticle)
+
+
+def test_build_particle_class_disabled_sensors_excluded():
+    """Disabled sensors should not contribute variables."""
+    nonsensor = []
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=True),
+        SensorConfig(sensor_type=SensorType.SALINITY, enabled=False),
+    ]
+
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
+    assert hasattr(ParticleClass, "temperature")
+    assert not hasattr(ParticleClass, "salinity")
+
+
+def test_build_particle_class_velocity_adds_U_V():
+    """VELOCITY sensor should add both U and V particle variables."""
+    nonsensor = []
+    sensors = _make_sensors(SensorType.VELOCITY)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
+    assert hasattr(ParticleClass, "U")
+    assert hasattr(ParticleClass, "V")
+
+
+def test_build_particle_class_scipy_base():
+    """Should also work with ScipyParticle as the base class."""
+    nonsensor = []
+    sensors = _make_sensors(SensorType.TEMPERATURE)
+
+    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, ScipyParticle)
+    assert issubclass(ParticleClass, ScipyParticle)
+
+
+def test_allowed_sensors_matches_docs():
+    """Test that SUPPORTED_SENSORS_MAP (sensors allowed for each instrument) matches the sensor table in full_sensor_list.md."""
+    # local imports to trigger instrument registration and avoid potential circular imports
+    import virtualship.instruments  # noqa: F401 - ensures all @register_instrument decorators run
+    from virtualship.utils import INSTRUMENT_CLASS_MAP, SUPPORTED_SENSORS_MAP
+
+    docs_path = (
+        Path(__file__).parent.parent
+        / "docs/user-guide/documentation/full_sensor_list.md"
+    )
+    content = docs_path.read_text(encoding="utf-8")
+
+    display_name_to_instrument_type: dict[str, InstrumentType] = {
+        instrument_type.value: instrument_type
+        for instrument_type in INSTRUMENT_CLASS_MAP
+        if isinstance(instrument_type, InstrumentType)
+    }  # all instruments should use their enum value as the bold display name in the markdown table
+
+    # parse markdown table rows
+    row_pattern = re.compile(r"^\|([^|]*)\|([^|]*)\|.*$", re.MULTILINE)
+
+    expected: dict[InstrumentType, set[SensorType]] = {}
+    current_instrument: InstrumentType | None = None
+
+    for match in row_pattern.finditer(content):
+        instrument_cell = match.group(1).strip()
+        sensor_cell = match.group(2).strip()
+
+        # extract only the **bold** text from the cell (e.g. "**UNDERWATER_ST** (Ship Underwater ST)" -> "UNDERWATER_ST")
+        bold_match = re.search(r"\*\*(.+?)\*\*", instrument_cell)
+        instrument_name = bold_match.group(1).strip() if bold_match else ""
+
+        if instrument_name and instrument_name in display_name_to_instrument_type:
+            current_instrument = display_name_to_instrument_type[instrument_name]
+            if current_instrument not in expected:
+                expected[current_instrument] = set()
+
+        # skip irrelevant cells
+        if (
+            not sensor_cell
+            or sensor_cell.startswith(":")
+            or sensor_cell == "Sensor Name"
+        ):
+            continue
+
+        sensor_name = sensor_cell.strip()
+        if current_instrument is not None and sensor_name:
+            expected[current_instrument].add(SensorType(sensor_name))
+
+    # verify each instrument in the docs is registered and has matching sensors
+    for instrument_type, doc_sensors in expected.items():
+        assert instrument_type in SUPPORTED_SENSORS_MAP, (
+            f"{instrument_type} is listed in full_sensor_list.md but not found in SUPPORTED_SENSORS_MAP."
+        )
+        registered_sensors = set(SUPPORTED_SENSORS_MAP[instrument_type])
+        assert registered_sensors == doc_sensors, (
+            f"Sensor mismatch for {instrument_type}:\n"
+            f"  In docs:      {sorted(s.value for s in doc_sensors)}\n"
+            f"  In code:      {sorted(s.value for s in registered_sensors)}\n"
+        )
+
+    # verify each instrument registered in code is also covered in the docs
+    for instrument_type in SUPPORTED_SENSORS_MAP:
+        assert instrument_type in expected, (
+            f"{instrument_type} is registered in SUPPORTED_SENSORS_MAP but not listed in full_sensor_list.md."
+        )

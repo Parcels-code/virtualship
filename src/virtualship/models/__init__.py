@@ -4,16 +4,17 @@ from .checkpoint import Checkpoint
 from .expedition import (
     ADCPConfig,
     ArgoFloatConfig,
-    CTD_BGCConfig,
     CTDConfig,
     DrifterConfig,
     Expedition,
     InstrumentsConfig,
     Schedule,
+    SensorConfig,
     ShipConfig,
     ShipUnderwaterSTConfig,
     Waypoint,
     XBTConfig,
+    _InstrumentConfigMixin,
 )
 from .location import Location
 from .spacetime import (
@@ -23,12 +24,12 @@ from .spacetime import (
 __all__ = [  # noqa: RUF022
     "Location",
     "Schedule",
+    "SensorConfig",
     "ShipConfig",
     "Waypoint",
     "ArgoFloatConfig",
     "ADCPConfig",
     "CTDConfig",
-    "CTD_BGCConfig",
     "ShipUnderwaterSTConfig",
     "DrifterConfig",
     "XBTConfig",
@@ -36,4 +37,5 @@ __all__ = [  # noqa: RUF022
     "Expedition",
     "InstrumentsConfig",
     "Checkpoint",
+    "_InstrumentConfigMixin",
 ]

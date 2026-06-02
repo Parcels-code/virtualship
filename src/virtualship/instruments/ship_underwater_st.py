@@ -1,12 +1,18 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle, Variable
+from parcels import ParticleSet, ScipyParticle
 
 from virtualship.instruments.base import Instrument
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import add_dummy_UV, register_instrument
+from virtualship.utils import (
+    add_dummy_UV,
+    build_particle_class_from_sensors,
+    register_instrument,
+)
 
 # =====================================================
 # SECTION: Dataclass
@@ -21,15 +27,12 @@ class Underwater_ST:
 
 
 # =====================================================
-# SECTION: Particle Class
+# SECTION: non-sensor Particle Variables (non-sampling)
 # =====================================================
 
-_ShipSTParticle = ScipyParticle.add_variables(
-    [
-        Variable("S", dtype=np.float32, initial=np.nan),
-        Variable("T", dtype=np.float32, initial=np.nan),
-    ]
-)
+# Underwater ST has no non-sensor variables, only sensor variables.
+_ST_NONSENSOR_VARIABLES: list = []
+
 
 # =====================================================
 # SECTION: Kernels
@@ -38,12 +41,12 @@ _ShipSTParticle = ScipyParticle.add_variables(
 
 # define function sampling Salinity
 def _sample_salinity(particle, fieldset, time):
-    particle.S = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+    particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
 
 
 # define function sampling Temperature
 def _sample_temperature(particle, fieldset, time):
-    particle.T = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
 
 
 # =====================================================
@@ -55,9 +58,16 @@ def _sample_temperature(particle, fieldset, time):
 class Underwater_STInstrument(Instrument):
     """Underwater_ST instrument class."""
 
+    sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
+        SensorType.TEMPERATURE: _sample_temperature,
+        SensorType.SALINITY: _sample_salinity,
+    }
+
     def __init__(self, expedition, from_data):
         """Initialize Underwater_STInstrument."""
-        variables = {"S": "so", "T": "thetao"}
+        variables = (
+            expedition.instruments_config.ship_underwater_st_config.active_variables()
+        )
         spacetime_buffer_size = {
             "latlon": 0.25,  # [degrees]
             "time": 0.0,  # [days]
@@ -88,6 +98,12 @@ class Underwater_STInstrument(Instrument):
         # add dummy U
         add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
 
+        # build dynamic particle class from the active sensors
+        st_config = self.expedition.instruments_config.ship_underwater_st_config
+        _ShipSTParticle = build_particle_class_from_sensors(
+            st_config.sensors, _ST_NONSENSOR_VARIABLES, ScipyParticle
+        )
+
         particleset = ParticleSet.from_list(
             fieldset=fieldset,
             pclass=_ShipSTParticle,
@@ -99,6 +115,13 @@ class Underwater_STInstrument(Instrument):
 
         out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
 
+        # build kernel list from active sensors only
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in st_config.sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]
+
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon
             particleset.lat_nextloop[:] = point.location.lat
@@ -107,7 +130,7 @@ class Underwater_STInstrument(Instrument):
             )
 
             particleset.execute(
-                [_sample_salinity, _sample_temperature],
+                sampling_kernels,
                 dt=1,
                 runtime=1,
                 verbose_progress=self.verbose_progress,

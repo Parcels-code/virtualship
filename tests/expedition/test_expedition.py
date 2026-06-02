@@ -14,8 +14,13 @@ from virtualship.models import (
     Location,
     Schedule,
     Waypoint,
+    _InstrumentConfigMixin,
 )
-from virtualship.utils import EXPEDITION, _get_expedition, get_example_expedition
+from virtualship.utils import (
+    EXPEDITION,
+    _get_expedition,
+    get_example_expedition,
+)
 
 projection = pyproj.Geod(ellps="WGS84")
 
@@ -264,12 +269,6 @@ def instruments_config_no_ctd(expedition):
 
 
 @pytest.fixture
-def instruments_config_no_ctd_bgc(expedition):
-    delattr(expedition.instruments_config, "ctd_bgc_config")
-    return expedition.instruments_config
-
-
-@pytest.fixture
 def instruments_config_no_argo_float(expedition):
     delattr(expedition.instruments_config, "argo_float_config")
     return expedition.instruments_config
@@ -317,12 +316,6 @@ def test_verify_instruments_config_no_instrument(expedition, expedition_no_xbt) 
             id="InstrumentsConfigNoCTD",
         ),
         pytest.param(
-            "instruments_config_no_ctd_bgc",
-            InstrumentsConfigError,
-            "Expedition includes instrument 'CTD_BGC', but instruments_config does not provide configuration for it.",
-            id="InstrumentsConfigNoCTD_BGC",
-        ),
-        pytest.param(
             "instruments_config_no_argo_float",
             InstrumentsConfigError,
             "Expedition includes instrument 'ARGO_FLOAT', but instruments_config does not provide configuration for it.",
@@ -355,3 +348,26 @@ def test_verify_instruments_config_errors(
 
     with pytest.raises(error, match=match):
         instruments_config.verify(expedition)
+
+
+def test_all_instrument_configs_use_mixin(expedition):
+    """Every registered instrument config must inherit _InstrumentConfigMixin and define the required ClassVars."""
+    instrument_configs = [
+        iconfig
+        for _, iconfig in expedition.instruments_config.__dict__.items()
+        if iconfig
+    ]
+
+    for iconfig in instrument_configs:
+        assert issubclass(iconfig.__class__, _InstrumentConfigMixin), (
+            f"{iconfig.__class__.__name__} does not inherit _InstrumentConfigMixin"
+        )
+        assert "_instrument_type" in iconfig.__class__.__dict__, (
+            f"{iconfig.__class__.__name__} does not define _instrument_type"
+        )
+        assert "_instrument_name" in iconfig.__class__.__dict__, (
+            f"{iconfig.__class__.__name__} does not define _instrument_name"
+        )
+        assert iconfig.__class__._instrument_type == iconfig._instrument_type, (
+            f"{iconfig.__class__.__name__}._instrument_type does not match its registered InstrumentType"
+        )

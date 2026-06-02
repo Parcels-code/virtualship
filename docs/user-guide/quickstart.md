@@ -56,7 +56,7 @@ This will create a folder/directory called `EXPEDITION_NAME` with a single file:
 For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write an example `expedition.yaml` file in the `EXPEDITION_NAME` folder/directory. This file contains example waypoints, timings, instrument selections, and ship configuration, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.
 ```
 
-## 3) Expedition scheduling & ship configuration
+## 3) Expedition scheduling & configuration
 
 ```{important}
 This section describes the process of finalising the expedition schedule and instrument selection using the `virtualship plan` application. This is the recommended way for most users but when expeditions become larger with many waypoints, it can become cumbersome to use the planning tool (note, using VirtualShip in a remote terminal / cloud-based environment can also introduce lag in the user-interface). **In this case, you may prefer to edit the `expedition.yaml` file directly (see [here](./tutorials/working_with_expedition_yaml.md) for more details on how to do so)**.
@@ -81,6 +81,22 @@ In the planning tool, under _Ship Config Editor_ > _Ship Speed & Onboard Measure
 VirtualShip is capable of taking underway temperature and salinity measurements, as well as onboard ADCP measurements, as the ship sails across the length of the expedition (see [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Underway-Data) for more detail). These underway measurements can be switched on/off under _Ship Config Editor_ > _Ship Speed & Onboard Measurements_ as well.
 
 For the underway ADCP, there is a choice of using the 38 kHz OceanObserver or the 300 kHz SeaSeven version (see [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#ADCP) for more detail on the two ADCP types).
+
+### Instrument/sensor configuration
+
+The most important instrument configuration setting to consider is the list of **sensors** for each instrument, which controls what type of measurements/variables the instrument records in the simulation and therefore what output data you will receive for each instrument.
+
+Sensor lists can be configured for each instrument under _Ship Config Editor_ > _Instrument Configurations_. For example, for the CTD instrument, you can specify which sensors to include in the simulation (e.g., `TEMPERATURE`, `SALINITY`, `OXYGEN`, etc.) by toggling the respective switches on or off.
+
+```{note}
+Sensor choices are only relevant for the instruments you plan to deploy as [underway measurements](#underway-measurements) or at waypoints across your expedition schedule [(see below)](#instrument-selection). For example, if you do not select to deploy a CTD at any of your waypoints, the CTD sensor choices will not affect any output data.
+```
+
+```{tip}
+See [here](../documentation/full_sensor_list.md) for more information on the sensors available for each instrument.
+```
+
+There are other instrument configurations settings that can be adjusted in the editor as well (e.g. `max_depth` for the CTD), but these are more advanced and in most cases do not need to be changed from the default values.
 
 ### Waypoint datetimes
 
@@ -107,14 +123,10 @@ The MFP route planning tool will give estimated durations of sailing between sit
 You should now consider which measurements are to be taken at each sampling site, and therefore which instruments need to be selected in the planning tool.
 
 ```{tip}
-Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) for more information on what measurement options are available, and a brief introduction to each instrument.
+Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Research_proposal_intro.html#Measurement-Options) for more information on what instrument options are available in VirtualShip, and a brief introduction to each.
 ```
 
 You can make instrument selections for each waypoint in the same sub-panels as the [waypoint time](#waypoint-datetimes) selection by simply switching each on or off. Multiple instruments are allowed at each waypoint.
-
-```{note}
-For advanced users: you can also make further customisations to behaviours of all instruments under _Ship Config Editor_ > _Instrument Configurations_.
-```
 
 ### Save changes
 
@@ -122,10 +134,6 @@ When you are happy with your ship configuration and schedule plan, press _Save C
 
 ```{note}
 On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
-```
-
-```{caution}
-The `virtualship plan` tool will check that the ship can reach each waypoint according to the prescribed ship speed. However, before the ultimate [simulation step](#run-the-expedition) there will be a final, automated check that the schedule also accounts for the time taken to conduct the measurements at each site (e.g. a CTD cast in deeper waters will take longer). Therefore, we recommend to take this extra time into account at this stage of the planning by estimating how long each measurement will take and adding this time on.
 ```
 
 ## 4) Run the expedition

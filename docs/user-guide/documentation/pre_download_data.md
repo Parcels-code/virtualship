@@ -1,6 +1,6 @@
 # Pre-downloading data
 
-By default, VirtualShip will automatically 'stream' data from the Copernicus Marine Service via the [copernicusmarine toolbox](https://github.com/mercator-ocean/copernicus-marine-toolbox?tab=readme-ov-file). However, for users who wish to manage data locally, it is possible to pre-download the required datasets and feed them into VirtualShip simulations.
+By default, VirtualShip will automatically 'stream' data from the Copernicus Marine Service via the `copernicusmarine` [toolbox](https://github.com/mercator-ocean/copernicus-marine-toolbox?tab=readme-ov-file). However, for users who wish to manage data locally, it is possible to pre-download the required datasets and feed them into VirtualShip simulations.
 
 <!-- TODO: quickstart guide needs full update! -->
 
@@ -74,7 +74,7 @@ The following assumptions are also made about the data:
 1. All pre-downloaded data files must be in NetCDF format (`.nc`).
 2. Physical data files must contain the following variables: `uo`, `vo`, `so`, `thetao`
    - Or these strings must appear as substrings within the variable names (e.g. `uo_glor` is acceptable for `uo`).
-3. If using BGC instruments (e.g. `CTD_BGC`), the relevant biogeochemical data files must contain the following variables: `o2`, `chl`, `no3`, `po4`, `nppv`, `ph`, `phyc`.
+3. If using BGC-enabled instruments (e.g. BGC variables on the `CTD`), the relevant biogeochemical data files must contain the following variables: `o2`, `chl`, `no3`, `po4`, `nppv`, `ph`, `phyc`.
    - Or these strings must appear as substrings within the variable names (e.g. `o2_glor` is acceptable for `o2`).
 4. Bathymetry data files must contain a variable named `deptho`.
 

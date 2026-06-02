@@ -29,7 +29,6 @@ schedule: # <-- 1. expedition schedule section
   waypoints:
     - instrument: # <-- Waypoint 1
         - CTD
-        - CTD_BGC
         - ARGO_FLOAT
         - DRIFTER
       location:
@@ -50,10 +49,14 @@ instruments_config: # <-- 2. instrument configuration section
     num_bins: 40
     max_depth_meter: -1000.0
     period_minutes: 5.0
+    sensors:
+      - VELOCITY
   ship_underwater_st_config:
     period_minutes: 5.0
+    sensors:
+      - TEMPERATURE
+      - SALINITY
   argo_float_config: ...
-  ctd_bgc_config: ...
   ctd_config: ...
   drifter_config: ...
   xbt_config: ...
@@ -75,7 +78,7 @@ This section contains a list of `waypoints` that define the expedition's route. 
 - **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_. The instrument selection can also be left empty (i.e., no instruments deployed at that waypoint) by setting the parameter to: `instrument: null`.
 
 ```{tip}
-Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `CTD_BGC`, `DRIFTER`, `ARGO_FLOAT`, `XBT` (or `null`).
+Full list of instruments supported for deployment at waypoints (case-sensitive): `CTD`, `DRIFTER`, `ARGO_FLOAT`, `XBT` (or `null`).
 ```
 
 ```{tip}
@@ -90,6 +93,27 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 This section defines the configuration settings for each instrument used in the expedition. Each instrument has its own subsection where specific parameters can be set.
 
+##### Sensors
+
+For most users, the most important instrument configuration setting to consider is the list of **sensors** for each instrument, which controls what type of measurements/variables the instrument records in the simulation. For example, for the `CTD` instrument, you can specify which sensors to include in the simulation (e.g., `TEMPERATURE`, `SALINITY`, `OXYGEN`, etc.) by adding or removing entries from the `sensors` list in the `ctd_config` section. These must be added on _new lines_ and be in _uppercase_, for example:
+
+```yaml
+ctd_config:
+  max_depth_meter: -2000.0
+  min_depth_meter: -11.0
+  stationkeeping_time_minutes: 50.0
+  sensors:
+    - TEMPERATURE
+    - SALINITY
+    - OXYGEN
+```
+
+```{important}
+See [here](../documentation/full_sensor_list.md) for a full list of available sensors for each instrument. Trying to add a sensor to an instrument that does not support it will result in errors in VirtualShip.
+```
+
+##### Underway Instruments
+
 Because **underway instruments** (e.g., ADCP, Ship Underwater ST) collect data continuously while the ship is moving, their deployment is not tied to specific waypoints. Instead, the presence of their configuration sections in `instruments_config` indicates that they will be active throughout the expedition. This means that if you wish to turn off an underway instrument, you can remove its configuration section or simply set it to `null`, for example:
 
 ```yaml
@@ -98,7 +122,7 @@ instruments_config:
   ship_underwater_st_config: null
 ```
 
-For **all other instruments**, e.g. CTD, ARGO_FLOAT etc., the parameters can often be left as the default values unless advanced customisations are required.
+For **all other instruments**, e.g. CTD, ARGO_FLOAT etc., the parameters can often be left as the default values unless further, advanced customisations are required.
 
 #### 3. `ship_config`
 

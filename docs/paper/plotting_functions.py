@@ -109,7 +109,7 @@ def plot_ctd(ds, ax, plot_variable, vmin, vmax, axes_labels=False):
     var_down = _ctd_descent_only(ctd_distance, MAP_VARNAMES[plot_variable])
 
     # 1d array of depth dimension (from deepest trajectory)
-    traj_idx, obs_idx = np.where(z_down == np.nanmin(z_down))
+    traj_idx, _ = np.where(z_down == np.nanmin(z_down))
     z1d = z_down.values[traj_idx[0], :]
 
     # distance as 1d array
