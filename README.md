@@ -35,7 +35,7 @@
 
 <!-- Insert catchy summary -->
 
-VirtualShip is a command line simulator allowing scientists to plan and conduct a research expedition in a digital ocean, receiving measurements as if they were coming from actual oceanographic instruments including:
+VirtualShip is a command line simulator allowing users to plan and conduct a research expedition in a digital ocean, receiving measurements as if they were coming from actual oceanographic instruments including:
 
 - ADCP (currents)
 - CTD (conductivity and temperature + biogeochemical variables)
