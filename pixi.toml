@@ -38,6 +38,7 @@ numpy = ">=2.1.0"
 dask = "*"
 zarr = ">=3"
 ipdb = ">=0.13.13,<0.14"
+cmocean = ">=4.0.3,<5"
 
 [pypi-dependencies]
 parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }

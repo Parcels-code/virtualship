@@ -258,7 +258,7 @@ class CTDInstrument(Instrument):
         )
 
         # there should be no particles left, as they delete themselves when they resurface
-        if len(ctd_particleset.particledata) != 0:
+        if len(ctd_particleset.lon) != 0:
             raise ValueError(
                 "Simulation ended before CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
             )
