@@ -239,7 +239,7 @@ class CTDInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(path=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
         sampling_kernels = [

@@ -160,13 +160,12 @@ class DrifterInstrument(Instrument):
 
         # define output file for the simulation
         out_file = ParticleFile(
-            name=out_path,
+            path=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(drifter_particleset), 100],
         )
 
         # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
-        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        endtime = fieldset.U.data.time.isel(time=-1)
 
         # build kernel list from active sensors only
         sampling_kernels = [

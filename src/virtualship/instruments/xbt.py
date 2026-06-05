@@ -127,12 +127,9 @@ class XBTInstrument(Instrument):
         # use first active field for time reference
         _time_ref_key = next(iter(self.variables))
         _time_ref_field = getattr(fieldset, _time_ref_key)
-        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[0]
-        )
-        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[-1]
-        )
+
+        fieldset_starttime = _time_ref_field.data.time.isel(time=0)
+        fieldset_endtime = _time_ref_field.data.time.isel(time=-1)
 
         # deploy time for all xbts should be later than fieldset start time
         if not all(
@@ -175,7 +172,7 @@ class XBTInstrument(Instrument):
             fall_speed=[xbt.fall_speed for xbt in measurements],
         )
 
-        out_file = ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(path=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
         sampling_kernels = [

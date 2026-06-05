@@ -115,7 +115,7 @@ class ADCPInstrument(Instrument):
             z=bins,
         )
 
-        out_file = ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = ParticleFile(path=out_path, outputdt=np.inf)
 
         # build kernel list from active sensors only
         sampling_kernels = [
@@ -123,6 +123,9 @@ class ADCPInstrument(Instrument):
             for sc in adcp_config.sensors
             if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
+
+        # TODO: need to overhaul ADCP/underway instruments generally... don't think this Parcels API works anymore
+        # TODO: a good time to implement https://github.com/Parcels-code/virtualship/issues/231
 
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon

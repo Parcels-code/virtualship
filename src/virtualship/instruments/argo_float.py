@@ -247,7 +247,7 @@ class ArgoFloatInstrument(Instrument):
         shallow_waypoints = {}
         for i, m in enumerate(measurements):
             loc_bathy = fieldset.bathymetry.eval(
-                time=0,
+                time=np.float64(0),
                 z=0,
                 y=m.spacetime.location.lat,
                 x=m.spacetime.location.lon,
@@ -284,13 +284,12 @@ class ArgoFloatInstrument(Instrument):
 
         # define output file for the simulation
         out_file = ParticleFile(
-            name=out_path,
+            path=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(argo_float_particleset), 100],
         )
 
         # endtime
-        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        endtime = fieldset.U.data.time.isel(time=-1)
 
         # build kernel list from active sensors only
         sampling_kernels = [
