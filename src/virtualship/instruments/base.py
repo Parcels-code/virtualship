@@ -102,9 +102,7 @@ class Instrument(abc.ABC):
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
-            bathymetry_field.data = (
-                -bathymetry_field.data
-            )  # TODO: how does v4 handle? positive up or down?
+            bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
 
         return fieldset
@@ -120,12 +118,13 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False
+        TMP = False  # TODO: just for dev; remove before merging
+        instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
             if TMP:
                 with yaspin(
-                    text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
+                    text=f"Simulating {instrument_name} measurements... ",
                     side="right",
                     spinner=ship_spinner,
                 ) as spinner:
@@ -134,9 +133,7 @@ class Instrument(abc.ABC):
             else:
                 self.simulate(measurements, out_path)
         else:
-            print(
-                f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
-            )
+            print(f"Simulating {instrument_name} measurements... ")
             self.simulate(measurements, out_path)
             print("\n")
 
