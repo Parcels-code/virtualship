@@ -202,7 +202,9 @@ def _run(
             # execute simulation
             instrument.execute(
                 measurements=measurements,
-                out_path=expedition_dir.joinpath(RESULTS, f"{itype.name.lower()}.zarr"),
+                out_path=expedition_dir.joinpath(
+                    RESULTS, f"{itype.name.lower()}.parquet"
+                ),
             )
         except Exception as e:
             # clean up if unexpected error occurs

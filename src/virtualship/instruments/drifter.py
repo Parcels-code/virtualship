@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, Variable
+from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 from parcels.kernels import AdvectionRK2
 
@@ -159,7 +159,7 @@ class DrifterInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = drifter_particleset.ParticleFile(
+        out_file = ParticleFile(
             name=out_path,
             outputdt=OUTPUT_DT,
             chunks=[len(drifter_particleset), 100],

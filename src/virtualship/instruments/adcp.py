@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet
+from parcels import ParticleFile, ParticleSet
 
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
@@ -115,7 +115,7 @@ class ADCPInstrument(Instrument):
             z=bins,
         )
 
-        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = ParticleFile(name=out_path, outputdt=np.inf)
 
         # build kernel list from active sensors only
         sampling_kernels = [

@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, Variable
+from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
 from virtualship.instruments.base import Instrument
@@ -175,7 +175,7 @@ class XBTInstrument(Instrument):
             fall_speed=[xbt.fall_speed for xbt in measurements],
         )
 
-        out_file = xbt_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
         sampling_kernels = [

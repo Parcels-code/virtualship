@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from parcels import ParticleSet, Variable
+from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
 from virtualship.instruments.base import Instrument
@@ -239,7 +239,7 @@ class CTDInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(name=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
         sampling_kernels = [

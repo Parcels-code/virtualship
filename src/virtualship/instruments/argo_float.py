@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, StatusCode, Variable
+from parcels import ParticleFile, ParticleSet, StatusCode, Variable
 from parcels.kernels import AdvectionRK2
 
 from virtualship.instruments.base import Instrument
@@ -283,7 +283,7 @@ class ArgoFloatInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = argo_float_particleset.ParticleFile(
+        out_file = ParticleFile(
             name=out_path,
             outputdt=OUTPUT_DT,
             chunks=[len(argo_float_particleset), 100],
