@@ -126,7 +126,6 @@ def _argo_float_vertical_movement(particles, fieldset):
 
     # Phase 3: Rising with vertical_speed until at surface
     ptcls3.dz -= particles.vertical_speed * ptcls3.dt
-    ptcls3.temp = fieldset.thetao[ptcls3.time, ptcls3.z, ptcls3.lat, ptcls3.lon]
     next_phase = ptcls3.z + ptcls3.dz <= particles.min_depth
     ptcls3.cycle_phase[next_phase] = 4
     ptcls3.dz[next_phase] = (
@@ -289,7 +288,7 @@ class ArgoFloatInstrument(Instrument):
         )
 
         # endtime
-        endtime = fieldset.U.data.time.isel(time=-1)
+        endtime = fieldset.U.data.time.isel(time=-1).values
 
         # build kernel list from active sensors only
         sampling_kernels = [
