@@ -216,6 +216,7 @@ class Instrument(abc.ABC):
                 )
                 field_var_name = var
 
+            # TODO: I think this is potentially slowing down simulations slightly... compared to v0.3 anyway for *drifters*
             ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
 
             fields = {key: ds[field_var_name]}
