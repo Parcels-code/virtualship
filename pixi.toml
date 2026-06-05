@@ -93,6 +93,15 @@ lint = "pre-commit run --all-files"
 [feature.typing.dependencies]
 mypy = "*"
 lxml = "*"
+pandas-stubs="*"
+types-PyYAML="*"
+scipy-stubs="*"
+types-openpyxl = "*"
+types-psutil = "*"
+types-python-dateutil = "*"
+
+[feature.typing.pypi-dependencies]
+types-xlrd = "*"
 
 [feature.typing.tasks]
 typing = "mypy src/virtualship --install-types"

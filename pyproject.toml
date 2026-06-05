@@ -117,3 +117,33 @@ ignore = [
     # TODO: Remove later
     "D100", "D103"
 ]
+
+
+[tool.mypy]
+files = ['src']
+disable_error_code = "import-untyped"
+check_untyped_defs = true
+show_error_context = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+exclude = [
+  # Temporarily exclude files. As we improve typechecking across the codebase, remove these
+  "src/virtualship/cli/_plan.py",
+  "src/virtualship/cli/_run.py",
+  "src/virtualship/cli/commands.py",
+  "src/virtualship/cli/validator_utils.py",
+  "src/virtualship/expedition/simulate_schedule.py",
+  "src/virtualship/instruments/adcp.py",
+  "src/virtualship/instruments/argo_float.py",
+  "src/virtualship/instruments/base.py",
+  "src/virtualship/instruments/ctd.py",
+  "src/virtualship/instruments/drifter.py",
+  "src/virtualship/instruments/ship_underwater_st.py",
+  "src/virtualship/instruments/xbt.py",
+  "src/virtualship/make_realistic/problems/simulator.py",
+  "src/virtualship/models/checkpoint.py",
+  "src/virtualship/models/expedition.py",
+  "src/virtualship/utils.py",
+]
