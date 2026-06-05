@@ -136,7 +136,7 @@ def _argo_float_vertical_movement(particles, fieldset):
     next_phase = ptcls4.cycle_age >= particles.cycle_days * 86400
     ptcls4.cycle_phase[next_phase] = 0
     ptcls4.cycle_age[next_phase] = 0  # reset cycle_age for next cycle
-    ptcls4.temp = np.nan  # no temperature measurement when at surface
+    ptcls4.T = np.nan  # no temperature measurement when at surface
 
     particles.cycle_age += particles.dt  # update cycle_age
 
