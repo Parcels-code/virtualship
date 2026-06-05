@@ -193,12 +193,11 @@ class Instrument(abc.ABC):
 
         for key in keys:
             var = self.variables[key]
+            physical = var in COPERNICUSMARINE_PHYS_VARIABLES
+
+            # TODO: do docs on pre-downloading data need to be updated for these changes? Anything about conventions etc.?
             if self.from_data is not None:  # load from local data
-                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
-                if physical:
-                    data_dir = self.from_data.joinpath("phys")
-                else:
-                    data_dir = self.from_data.joinpath("bgc")
+                data_dir = self.from_data.joinpath("phys" if physical else "bgc")
 
                 files = _find_files_in_timerange(
                     data_dir,
@@ -206,30 +205,25 @@ class Instrument(abc.ABC):
                     self.max_time + timedelta(days=time_buffer),
                 )
 
-                _, full_var_name = _find_nc_file_with_variable(
+                _, field_var_name = _find_nc_file_with_variable(
                     data_dir, var
                 )  # get full variable name from one of the files; var may only appear as substring in variable name in file
 
                 ds = xr.open_mfdataset([data_dir.joinpath(f) for f in files])
-                ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
-
-                # TODO: do docs on pre-downloading data need to be updated for these changes? Anything about conventions etc.?
-                fields = {key: ds[full_var_name]}
-                ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
             else:  # stream via Copernicus Marine Service
-                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
                 ds = self._get_copernicus_ds(
                     time_buffer,
                     physical=physical,
                     var=var,
                 )
-                ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
+                field_var_name = var
 
-                fields = {key: ds[var]}
-                ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+            ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
+
+            fields = {key: ds[field_var_name]}
+            ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
             fieldsets_list.append(fs)
 
