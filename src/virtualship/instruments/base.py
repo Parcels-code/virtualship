@@ -228,6 +228,17 @@ class Instrument(abc.ABC):
         for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
             base_fieldset.add_field(getattr(fs, key))
 
+        # some instruments use AdvectionRKn kernels which require a combined UV vector field
+        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time, therefore build combined VectorField here in FieldSet
+        if "U" in keys and "V" in keys:
+            uv = parcels.VectorField(
+                "UV",
+                base_fieldset.U,
+                base_fieldset.V,
+                vector_interp_method=parcels.interpolators.XLinear_Velocity,
+            )
+            base_fieldset.add_field(uv)
+
         return base_fieldset
 
     def _get_spec_value(self, spec_type: str, key: str, default=None):
