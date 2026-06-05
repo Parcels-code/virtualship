@@ -22,12 +22,12 @@
 <table>
     <tr>
         <th>Project Owner</th>
-        <td>Emma Daniels (e.e.daniels1@uu.nl)</td>
+        <td>VirtualShip Team (virtualship@uu.nl)</td>
     </tr>
     <tr>
         <!-- Should mirror pyproject.toml. Use one of the "Development status" flags from https://pypi.org/classifiers/-->
         <th>Development status</th>
-        <td>Alpha</td>
+        <td>Beta</td>
     </tr>
 </table>
 
@@ -35,20 +35,20 @@
 
 <!-- Insert catchy summary -->
 
-VirtualShip is a command line simulator allowing students to plan and conduct a virtual research expedition, receiving measurements as if they were coming from actual oceanographic instruments including:
+VirtualShip is a command line simulator allowing users to plan and conduct a research expedition in a digital ocean, receiving measurements as if they were coming from actual oceanographic instruments including:
 
 - ADCP (currents)
 - CTD (conductivity and temperature + biogeochemical variables)
 - XBT (temperature)
 - Ship-mounted underwater measurements (salinity and temperature)
-- Surface drifters
-- Argo float deployments
+- Surface drifters (temperature)
+- Argo float deployments (salinity and temperature)
 
-Along the way, students will encounter realistic problems that may occur during an oceanographic expedition, requiring them to make decisions to adapt their plans accordingly. For example, delays due to equipment failures, pre-depature logistical issues or safety drills.
+Along the way, users will encounter realistic problems that may occur during an oceanographic expedition, requiring them to make decisions to adapt their plans accordingly. For example, delays due to equipment failures, pre-depature logistical issues or safety drills.
 
 ## Installation
 
-For a normal installation do:
+For a normal installation using Conda do:
 
 ```bash
 conda create -n ship -c conda-forge virtualship
@@ -57,11 +57,12 @@ conda activate ship
 
 which creates an environment named `ship` with the latest version of `virtualship`. You can replace `ship` with any name you like.
 
-For a development installation, please follow the instructions detailed in the [contributing page](https://virtualship.readthedocs.io/en/latest/contributing/index.html).
+For a development installation (using Pixi), please follow the instructions detailed in the [contributing page](https://virtualship.readthedocs.io/en/latest/contributing/index.html).
 
 ## Usage
 
-> [!TIP]
+> **💡 Tip**
+>
 > See the [Quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html) in our documentation for a step-by-step introduction to using VirtualShip.
 
 You can run the VirtualShip via the command line interface (CLI) using the `virtualship` command. It has three subcommands: `init`, `plan`, and `run`.
@@ -137,7 +138,7 @@ For examples of VirtualShip simulation output post-processing, see [the tutorial
 
 ## Input data
 
-The scripts are written to work with [A-grid ocean data from the Copernicus Marine Service](https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description).
+The code is written to work with [A-grid ocean data from the Copernicus Marine Service](https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description).
 
 ## Source code
 
