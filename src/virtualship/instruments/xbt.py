@@ -128,8 +128,8 @@ class XBTInstrument(Instrument):
         _time_ref_key = next(iter(self.variables))
         _time_ref_field = getattr(fieldset, _time_ref_key)
 
-        fieldset_starttime = _time_ref_field.data.time.isel(time=0)
-        fieldset_endtime = _time_ref_field.data.time.isel(time=-1)
+        fieldset_starttime = _time_ref_field.data.time.isel(time=0).values
+        fieldset_endtime = _time_ref_field.data.time.isel(time=-1).values
 
         # deploy time for all xbts should be later than fieldset start time
         if not all(

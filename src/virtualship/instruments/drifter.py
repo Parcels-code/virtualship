@@ -165,7 +165,7 @@ class DrifterInstrument(Instrument):
         )
 
         # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
-        endtime = fieldset.U.data.time.isel(time=-1)
+        endtime = fieldset.U.data.time.isel(time=-1).values
 
         # build kernel list from active sensors only
         sampling_kernels = [
