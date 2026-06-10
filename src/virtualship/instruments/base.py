@@ -97,7 +97,9 @@ class Instrument(abc.ABC):
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
-            getattr(fieldset, var).interp_method = parcels.interpolators.XLinear
+            getattr(
+                fieldset, var
+            ).interp_method = parcels.interpolators.XLinearInvdistLandTracer
 
         # bathymetry data
         if self.add_bathymetry:
@@ -118,7 +120,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True  # TODO: just for dev; remove before merging
+        TMP = False  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -192,7 +194,6 @@ class Instrument(abc.ABC):
             var = self.variables[key]
             physical = var in COPERNICUSMARINE_PHYS_VARIABLES
 
-            # TODO: do docs on pre-downloading data need to be updated for these changes? Anything about conventions etc.?
             if self.from_data is not None:  # load from local data
                 data_dir = self.from_data.joinpath("phys" if physical else "bgc")
 

@@ -117,13 +117,8 @@ def _ctd_cast(particles, fieldset):
     particles_lowering = particles[particles.raising == 0]
     particles_raising = particles[particles.raising == 1]
 
-    # TODO: change to boolean masking, like with Argo Floats?
-    # TODO: different handling of positive down for z now?! Doing positive down now... think kernels need adjusting...
-    # TODO: need to check on all other instrument kernels as well...
-    # TODO: plus how the configs are inputted in e.g. expedition.yaml
-
     # lowering
-    particles_lowering.dz = -particles_lowering.winch_speed * particles_lowering.dt
+    particles_lowering.dz += -particles_lowering.winch_speed * particles_lowering.dt
     particles_lowering.raising = np.where(
         particles_lowering.z + particles_lowering.dz < particles_lowering.max_depth,
         1,
@@ -131,7 +126,7 @@ def _ctd_cast(particles, fieldset):
     )
 
     # raising
-    particles_raising.dz = particles_raising.winch_speed * particles_raising.dt
+    particles_raising.dz += particles_raising.winch_speed * particles_raising.dt
     particles_raising.state = np.where(
         particles_raising.z + particles_raising.dz > particles_raising.min_depth,
         StatusCode.Delete,
