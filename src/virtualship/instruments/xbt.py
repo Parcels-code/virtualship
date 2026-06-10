@@ -58,7 +58,7 @@ def _sample_temperature(particles, fieldset):
 
 
 def _xbt_cast(particles, fieldset):
-    particles.dz = -particles.fall_speed * particles.dt
+    particles.dz = particles.fall_speed * particles.dt
 
     # update the fall speed from the quadractic fall-rate equation
     # check https://doi.org/10.5194/os-7-231-2011
@@ -73,9 +73,9 @@ def _xbt_cast(particles, fieldset):
 
     # set particle depth to max depth if it's too deep
     particles.dz = np.where(
-        particles.z + particles.dz < particles.max_depth,
+        particles.z + particles.dz > particles.max_depth,
         particles.max_depth - particles.z,
-        particles.z,
+        particles.dz,
     )
 
 

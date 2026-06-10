@@ -255,10 +255,10 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.ARGO_FLOAT
     _instrument_name: ClassVar[str] = "ArgoFloat"
 
-    min_depth_meter: float = pydantic.Field(le=0.0)
-    max_depth_meter: float = pydantic.Field(le=0.0)
-    drift_depth_meter: float = pydantic.Field(le=0.0)
-    vertical_speed_meter_per_second: float = pydantic.Field(lt=0.0)
+    min_depth_meter: float = pydantic.Field(ge=0.0)
+    max_depth_meter: float = pydantic.Field(ge=0.0)
+    drift_depth_meter: float = pydantic.Field(ge=0.0)
+    vertical_speed_meter_per_second: float = pydantic.Field(gt=0.0)
     cycle_days: float = pydantic.Field(gt=0.0)
     drift_days: float = pydantic.Field(gt=0.0)
     lifetime: timedelta = pydantic.Field(
@@ -302,7 +302,7 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.ADCP
     _instrument_name: ClassVar[str] = "ADCP"
 
-    max_depth_meter: float = pydantic.Field(le=0.0)
+    max_depth_meter: float = pydantic.Field(ge=0.0)
     num_bins: int = pydantic.Field(gt=0.0)
     period: timedelta = pydantic.Field(
         serialization_alias="period_minutes",
@@ -346,8 +346,8 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         validation_alias="stationkeeping_time_minutes",
         gt=timedelta(),
     )
-    min_depth_meter: float = pydantic.Field(le=0.0)
-    max_depth_meter: float = pydantic.Field(le=0.0)
+    min_depth_meter: float = pydantic.Field(ge=0.0)
+    max_depth_meter: float = pydantic.Field(ge=0.0)
 
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
@@ -402,7 +402,7 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.DRIFTER
     _instrument_name: ClassVar[str] = "Drifter"
 
-    depth_meter: float = pydantic.Field(le=0.0)
+    depth_meter: float = pydantic.Field(ge=0.0)
     lifetime: timedelta = pydantic.Field(
         serialization_alias="lifetime_days",
         validation_alias="lifetime_days",
@@ -429,8 +429,8 @@ class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.XBT
     _instrument_name: ClassVar[str] = "XBT"
 
-    min_depth_meter: float = pydantic.Field(le=0.0)
-    max_depth_meter: float = pydantic.Field(le=0.0)
+    min_depth_meter: float = pydantic.Field(ge=0.0)
+    max_depth_meter: float = pydantic.Field(ge=0.0)
     fall_speed_meter_per_second: float = pydantic.Field(gt=0.0)
     deceleration_coefficient: float = pydantic.Field(gt=0.0)
 

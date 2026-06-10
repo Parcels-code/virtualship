@@ -104,7 +104,6 @@ class Instrument(abc.ABC):
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
-            bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
 
         return fieldset

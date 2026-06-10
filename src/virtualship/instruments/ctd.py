@@ -118,17 +118,17 @@ def _ctd_cast(particles, fieldset):
     particles_raising = particles[particles.raising == 1]
 
     # lowering
-    particles_lowering.dz += -particles_lowering.winch_speed * particles_lowering.dt
+    particles_lowering.dz += particles_lowering.winch_speed * particles_lowering.dt
     particles_lowering.raising = np.where(
-        particles_lowering.z + particles_lowering.dz < particles_lowering.max_depth,
+        particles_lowering.z + particles_lowering.dz > particles_lowering.max_depth,
         1,
         particles_lowering.raising,
     )
 
     # raising
-    particles_raising.dz += particles_raising.winch_speed * particles_raising.dt
+    particles_raising.dz += -particles_raising.winch_speed * particles_raising.dt
     particles_raising.state = np.where(
-        particles_raising.z + particles_raising.dz > particles_raising.min_depth,
+        particles_raising.z + particles_raising.dz < particles_raising.min_depth,
         StatusCode.Delete,
         particles_raising.state,
     )
@@ -209,9 +209,10 @@ class CTDInstrument(Instrument):
 
         # CTD depth can not be too shallow, because kernel would break.
         # This shallow is not useful anyway, no need to support.
-        if not all([max_depth <= -DT * WINCH_SPEED for max_depth in max_depths]):
+        # TODO: should make this say which CTD(s) are the issue, and which max depth(s) are the issue, to make it easier for users to fix
+        if not all([max_depth >= DT * WINCH_SPEED for max_depth in max_depths]):
             raise ValueError(
-                f"CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
+                f"CTD max_depth or bathymetry shallower than maximum {DT * WINCH_SPEED}"
             )
 
         # build dynamic particle class from the active sensors
