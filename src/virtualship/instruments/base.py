@@ -120,7 +120,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False  # TODO: just for dev; remove before merging
+        TMP = True  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -219,6 +219,10 @@ class Instrument(abc.ABC):
 
             # TODO: I think this is potentially slowing down simulations slightly... compared to v0.3 anyway for *drifters*
             ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
+
+            # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
+            ds["depth"] = -ds["depth"]
+            ds = ds.reindex(depth=ds["depth"][::-1])  #
 
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
