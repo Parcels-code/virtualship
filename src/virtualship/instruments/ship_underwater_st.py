@@ -88,7 +88,7 @@ class Underwater_STInstrument(Instrument):
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate underway salinity and temperature measurements."""
-        DEPTH = 2.0
+        DEPTH = -2.0
 
         measurements.sort(key=lambda p: p.time)
 

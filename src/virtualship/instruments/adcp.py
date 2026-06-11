@@ -82,7 +82,7 @@ class ADCPInstrument(Instrument):
             self.expedition.instruments_config.adcp_config.max_depth_meter
         )
 
-        if config_max_depth > 1600.0:
+        if config_max_depth < -1600.0:
             print(
                 f"\n\n⚠️  Warning: The configured ADCP max depth of {abs(config_max_depth)} m exceeds the 1600 m limit for the technology (e.g. https://www.geomar.de/en/research/fb1/fb1-po/observing-systems/adcp)."
                 "\n\n This expedition will continue using the prescribed configuration. However, note, the results will not necessarily represent authentic ADCP instrument readings and could also lead to slower simulations ."
@@ -90,7 +90,7 @@ class ADCPInstrument(Instrument):
             )
 
         MAX_DEPTH = config_max_depth
-        MIN_DEPTH = 5.0
+        MIN_DEPTH = -5.0
         NUM_BINS = self.expedition.instruments_config.adcp_config.num_bins
 
         measurements.sort(key=lambda p: p.time)

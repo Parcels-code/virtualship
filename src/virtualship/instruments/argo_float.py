@@ -162,7 +162,7 @@ def _check_error(particles, fieldset):
 def _argo_sample_temperature(particles, fieldset):
     # Phase 3: ascending — sample temperature; NaN otherwise
     phase_mask = particles.cycle_phase == 3
-    depth_mask = particles.z > particles.min_depth
+    depth_mask = particles.z < particles.min_depth
     sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
     sampling_particles.temperature = fieldset.T[
         sampling_particles.time,
@@ -175,7 +175,7 @@ def _argo_sample_temperature(particles, fieldset):
 def _argo_sample_salinity(particles, fieldset):
     # Phase 3: ascending — sample salinity; NaN otherwise
     phase_mask = particles.cycle_phase == 3
-    depth_mask = particles.z > particles.min_depth
+    depth_mask = particles.z < particles.min_depth
     sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
     sampling_particles.salinity = fieldset.S[
         sampling_particles.time,

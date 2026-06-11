@@ -563,7 +563,7 @@ def _find_files_in_timerange(
 def _compute_max_depths(measurements, fieldset) -> list[float]:
     """Compute the effective max depth for each measurement, capped by bathymetry."""
     return [
-        min(  # min because depth is positive down
+        max(
             m.max_depth,
             fieldset.bathymetry.eval(
                 z=0,
