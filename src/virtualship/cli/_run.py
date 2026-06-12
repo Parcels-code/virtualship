@@ -35,11 +35,9 @@ from virtualship.utils import (
     get_instrument_class,
 )
 
-# parcels logger (suppress INFO messages to prevent log being flooded)
-external_logger = logging.getLogger("parcels.tools.loggers")
-external_logger.setLevel(logging.WARNING)
-
-# copernicusmarine logger (suppress INFO messages to prevent log being flooded)
+# suppress INFO messages from copernicusmarine and parcels loggers; prevent log flooding
+parcels_logger = logging.getLogger("parcels._logger")
+parcels_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
@@ -204,7 +202,9 @@ def _run(
             # execute simulation
             instrument.execute(
                 measurements=measurements,
-                out_path=expedition_dir.joinpath(RESULTS, f"{itype.name.lower()}.zarr"),
+                out_path=expedition_dir.joinpath(
+                    RESULTS, f"{itype.name.lower()}.parquet"
+                ),
             )
         except Exception as e:
             # clean up if unexpected error occurs

@@ -1,17 +1,22 @@
-import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, StatusCode, Variable
+from parcels import ParticleFile, ParticleSet, StatusCode, Variable
+from parcels.kernels import AdvectionRK2
 
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
 from virtualship.utils import build_particle_class_from_sensors, register_instrument
+
+# mapping from StatusCode integer value to attribute name (e.g. 60 -> "ErrorOutOfBounds")
+_STATUS_CODE_NAMES: dict[int, str] = {
+    v: k for k, v in vars(StatusCode).items() if not k.startswith("_")
+}
 
 # =====================================================
 # SECTION: Dataclass
@@ -54,119 +59,174 @@ _ARGO_NONSENSOR_VARIABLES = [
 # =====================================================
 
 
-def _argo_float_vertical_movement(particle, fieldset, time):
-    if particle.cycle_phase == 0:
-        # Phase 0: Sinking with vertical_speed until depth is drift_depth
-        particle_ddepth += (  # noqa
-            particle.vertical_speed * particle.dt
+def _argo_float_vertical_movement(particles, fieldset):
+    # Split particles based on their current cycle_phase
+    ptcls0 = particles[particles.cycle_phase == 0]
+    ptcls1 = particles[particles.cycle_phase == 1]
+    ptcls2 = particles[particles.cycle_phase == 2]
+    ptcls3 = particles[particles.cycle_phase == 3]
+    ptcls4 = particles[particles.cycle_phase == 4]
+
+    # Phase 0: Sinking with vertical_speed until depth is driftdepth
+    ptcls0.dz += particles.vertical_speed * ptcls0.dt
+    loc_bathy = fieldset.bathymetry.eval(ptcls0.time, ptcls0.z, ptcls0.lat, ptcls0.lon)
+    driftdepth_mask = ptcls0.z + ptcls0.dz <= particles.drift_depth  # noqa:has reached drift depth
+    bathysafe_mask = ptcls0.z + ptcls0.dz >= loc_bathy  # noqa:has not reached bathymetry
+    next_phase = np.logical_and(driftdepth_mask, bathysafe_mask)
+    ptcls0.cycle_phase[next_phase] = 1
+    ptcls0.dz[next_phase] = particles.drift_depth - ptcls0.z[next_phase]  # noqa:avoid overshoot
+
+    # Phase 0.5: Check for grounding at bathymetry and raise if necessary
+    _handle_grounding(
+        ptcls0,
+        bathysafe_mask,
+        loc_bathy,
+        fieldset,
+        "sinking to drift depth",
+        target_phase=1,
+    )
+
+    # Phase 1: Drifting at depth for drifttime seconds
+    ptcls1.drift_age += ptcls1.dt
+    next_phase = ptcls1.drift_age >= particles.drift_days * 86400  # [seconds]
+    ptcls1.cycle_phase[next_phase] = 2
+    ptcls1.drift_age[next_phase] = 0  # reset drift_age for next cycle
+
+    # Phase 2: Sinking further to maxdepth
+    ptcls2.dz += particles.vertical_speed * ptcls2.dt
+    loc_bathy = fieldset.bathymetry.eval(ptcls2.time, ptcls2.z, ptcls2.lat, ptcls2.lon)
+    maxdepth_mask = ptcls2.z + ptcls2.dz <= particles.max_depth  # noqa:has reached max depth
+    bathysafe_mask = ptcls2.z + ptcls2.dz >= loc_bathy  # noqa:has not reached bathymetry
+    next_phase = np.logical_and(maxdepth_mask, bathysafe_mask)
+    ptcls2.cycle_phase[next_phase] = 3
+    ptcls2.dz[next_phase] = particles.max_depth - ptcls2.z[next_phase]  # noqa:avoid overshoot
+
+    # Phase 2.5: Check for grounding at bathymetry and raise if necessary
+    _handle_grounding(
+        ptcls2,
+        bathysafe_mask,
+        loc_bathy,
+        fieldset,
+        "sinking to max depth",
+        target_phase=3,
+    )
+
+    # Phase 3: Rising with vertical_speed until at surface
+    ptcls3.dz -= particles.vertical_speed * ptcls3.dt
+    next_phase = ptcls3.z + ptcls3.dz >= particles.min_depth
+    ptcls3.cycle_phase[next_phase] = 4
+    ptcls3.dz[next_phase] = particles.min_depth - ptcls3.z[next_phase]  # noqa:avoid overshoot
+
+    # Phase 4: Transmitting at surface until cycletime is reached
+    next_phase = ptcls4.cycle_age >= particles.cycle_days * 86400
+    ptcls4.cycle_phase[next_phase] = 0
+    ptcls4.cycle_age[next_phase] = 0  # reset cycle_age for next cycle
+    ptcls4.temperature = np.nan  # no temperature measurement when at surface
+
+    particles.cycle_age += particles.dt  # update cycle_age
+
+
+def _keep_at_surface(particles, fieldset):
+    through_surface = particles.state == StatusCode.ErrorThroughSurface
+    particles.z[through_surface] = particles.min_depth[through_surface]
+    particles.state[through_surface] = StatusCode.Success
+
+
+def _check_error(particles, fieldset):
+    errors = particles.state >= 50
+    if not np.any(errors):
+        return
+
+    error_ints = particles.state[errors].astype(int)
+    error_times, error_lats, error_lons = _format_log_metadata(
+        particles, errors, fieldset
+    )
+
+    error_details = ", ".join(
+        f"{_STATUS_CODE_NAMES.get(err, str(err))} at time(s): {t}, lat(s): {lat}, lon(s): {lon}"
+        for err, lat, lon, t in zip(
+            error_ints, error_lats, error_lons, error_times, strict=True
         )
+    )
+    print(
+        "WARNING: Error(s) found during Argo Float simulation but the expedition will continue...\n\n"
+        f"Error code(s): {error_details}\n\n"
+        "If ErrorOutOfBounds, consider reducing the lifetime in Argo Float config "
+        "(the fieldset spatial bounds are constrained under-the-hood). For further advice "
+        "please contact the VirtualShip team via GitHub (https://github.com/Parcels-code/virtualship/issues) "
+        "or email (virtualship@uu.nl).\n"
+        "Carrying on with the expedition..."
+    )
 
-        # bathymetry at particle location
-        loc_bathy = fieldset.bathymetry.eval(
-            time, particle.depth, particle.lat, particle.lon
-        )
-        if particle.depth + particle_ddepth <= loc_bathy:
-            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
-            particle.cycle_phase = 1
-            particle.grounded = 1
-            print(
-                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to drift depth. Raising by 50m above bathymetry and continuing cycle."
-            )
-
-        elif particle.depth + particle_ddepth <= particle.drift_depth:
-            particle_ddepth = particle.drift_depth - particle.depth
-            particle.cycle_phase = 1
-
-    elif particle.cycle_phase == 1:
-        # Phase 1: Drifting at depth for drifttime seconds
-        particle.drift_age += particle.dt
-        if particle.drift_age >= particle.drift_days * 86400:
-            particle.drift_age = 0  # reset drift_age for next cycle
-            particle.cycle_phase = 2
-
-    elif particle.cycle_phase == 2:
-        # Phase 2: Sinking further to max_depth
-        particle_ddepth += particle.vertical_speed * particle.dt
-        loc_bathy = fieldset.bathymetry.eval(
-            time, particle.depth, particle.lat, particle.lon
-        )
-        if particle.depth + particle_ddepth <= loc_bathy:
-            particle_ddepth = loc_bathy - particle.depth + 50.0  # 50m above bathy
-            particle.cycle_phase = 3
-            particle.grounded = 1
-            print(
-                "Shallow bathymetry warning: Argo float grounded at bathymetry depth during sinking to max depth. Raising by 50m above bathymetry and continuing cycle."
-            )
-        elif particle.depth + particle_ddepth <= particle.max_depth:
-            particle_ddepth = particle.max_depth - particle.depth
-            particle.cycle_phase = 3
-
-    elif particle.cycle_phase == 3:
-        # Phase 3: Rising with vertical_speed until at surface
-        particle_ddepth -= particle.vertical_speed * particle.dt
-        particle.cycle_age += (
-            particle.dt
-        )  # solve issue of not updating cycle_age during ascent
-        particle.grounded = 0
-        if particle.depth + particle_ddepth >= particle.min_depth:
-            particle_ddepth = particle.min_depth - particle.depth
-            particle.cycle_phase = 4
-
-    elif particle.cycle_phase == 4:
-        # Phase 4: Transmitting at surface until cycletime is reached
-        if particle.cycle_age > particle.cycle_days * 86400:
-            particle.cycle_phase = 0
-            particle.cycle_age = 0
-
-    if particle.state == StatusCode.Evaluate:
-        particle.cycle_age += particle.dt  # update cycle_age
+    particles.state[errors] = StatusCode.Delete
 
 
-def _keep_at_surface(particle, fieldset, time):
-    # Prevent error when float reaches surface
-    if particle.state == StatusCode.ErrorThroughSurface:
-        particle.depth = particle.min_depth
-        particle.state = StatusCode.Success
+def _argo_sample_temperature(particles, fieldset):
+    # Phase 3: ascending — sample temperature
+    phase_mask = particles.cycle_phase == 3
+    depth_mask = particles.z < particles.min_depth  # still ascending
+    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    sampling_particles.temperature = fieldset.T[
+        sampling_particles.time,
+        sampling_particles.z,
+        sampling_particles.lat,
+        sampling_particles.lon,
+    ]
 
 
-def _check_error(particle, fieldset, time):
-    if particle.state >= 50:  # This captures all Errors
-        if particle.state == 50:
-            print("WARNING: Error during Argo Float simulation...")
-        elif particle.state == 51:
-            print("WARNING: ErrorInterpolation during Argo Float simulation...")
-        elif particle.state == 60:
-            print("WARNING: ErrorOutOfBounds during Argo Float simulation...")
-        elif particle.state == 61:
-            print("WARNING: ErrorThroughSurface during Argo Float simulation...")
-        elif particle.state == 70:
-            print("WARNING: ErrorTimeExtrapolation during Argo Float simulation...")
-        else:
-            print("Unknown error during Argo Float simulation...")
-        print(
-            "WARNING: An error occured during simulation but the expedition will continue. If ErrorOutOfBounds, consider reducing the lifetime in Argo Float config (the fieldset spatial bounds are constrained under-the-hood). For further advice please contact the VirtualShip team via GitHub (https://github.com/Parcels-code/virtualship/issues) or email (virtualship@uu.nl). Carrying on with the expedition..."
-        )
-        # TODO: warnings are a bit limited in Parcels v3, but v4 should allow more informative (+ not all these if statements) when e.g. f-strings are supported in kernels
-
-        particle.delete()
+def _argo_sample_salinity(particles, fieldset):
+    # Phase 3: ascending — sample salinity
+    phase_mask = particles.cycle_phase == 3
+    depth_mask = particles.z < particles.min_depth  # still ascending
+    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    sampling_particles.salinity = fieldset.S[
+        sampling_particles.time,
+        sampling_particles.z,
+        sampling_particles.lat,
+        sampling_particles.lon,
+    ]
 
 
-def _argo_sample_temperature(particle, fieldset, time):
-    # Phase 3: ascending — sample temperature; NaN otherwise
-    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
-        particle.temperature = fieldset.T[
-            time, particle.depth, particle.lat, particle.lon
-        ]
-    else:
-        particle.temperature = math.nan
+# =====================================================
+# SECTION: Helper Functions
+# =====================================================
 
 
-def _argo_sample_salinity(particle, fieldset, time):
-    # Phase 3: ascending — sample salinity; NaN otherwise
-    if particle.cycle_phase == 3 and particle.depth < particle.min_depth:
-        particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
-    else:
-        particle.salinity = math.nan
+def _handle_grounding(
+    ptcls_subset, bathysafe_mask, loc_bathy, fieldset, phase_name, target_phase
+):
+    """Handle grounding logic, logging warnings, and raising particles above bathymetry."""
+    grounded_mask = ~bathysafe_mask
+    if not np.any(grounded_mask):
+        return
+
+    ptcls_subset.grounded[grounded_mask] = 1
+
+    # extract log data
+    times, lats, lons = _format_log_metadata(ptcls_subset, grounded_mask, fieldset)
+
+    print(
+        f"Shallow bathymetry warning: Argo float grounded at bathymetry during {phase_name} "
+        f"(time(s): {times}, lat(s): {lats}, lon(s): {lons}). "
+        f"Raising by 50m above bathymetry and continuing cycle."
+    )
+
+    # adjust vertical displacement to be 50m above bathymetry and transition phase
+    ptcls_subset.dz[grounded_mask] = (
+        loc_bathy[grounded_mask] - ptcls_subset.z[grounded_mask] + 50.0
+    )
+    ptcls_subset.cycle_phase[grounded_mask] = target_phase
+
+
+def _format_log_metadata(ptcls_subset, mask, fieldset):
+    """Extracts and formats timestamps, latitudes, and longitudes for particles."""
+    lats = ptcls_subset.lat[mask].astype(float)
+    lons = ptcls_subset.lon[mask].astype(float)
+
+    time_origin = fieldset.U.data.time[0].values
+    times = ptcls_subset.time[mask].astype("timedelta64[s]") + time_origin
+
+    return times, lats, lons
 
 
 # =====================================================
@@ -230,7 +290,7 @@ class ArgoFloatInstrument(Instrument):
         shallow_waypoints = {}
         for i, m in enumerate(measurements):
             loc_bathy = fieldset.bathymetry.eval(
-                time=0,
+                time=np.float64(0),
                 z=0,
                 y=m.spacetime.location.lat,
                 x=m.spacetime.location.lon,
@@ -246,9 +306,7 @@ class ArgoFloatInstrument(Instrument):
         # build dynamic particle class from the active sensors
         argo_float_config = self.expedition.instruments_config.argo_float_config
         _ArgoParticle = build_particle_class_from_sensors(
-            argo_float_config.sensors,
-            _ARGO_NONSENSOR_VARIABLES,
-            JITParticle,
+            argo_float_config.sensors, _ARGO_NONSENSOR_VARIABLES
         )
 
         # define parcel particles
@@ -257,8 +315,8 @@ class ArgoFloatInstrument(Instrument):
             pclass=_ArgoParticle,
             lat=[argo.spacetime.location.lat for argo in measurements],
             lon=[argo.spacetime.location.lon for argo in measurements],
-            depth=[argo.min_depth for argo in measurements],
-            time=[argo.spacetime.time for argo in measurements],
+            z=[argo.min_depth for argo in measurements],
+            time=[np.datetime64(argo.spacetime.time) for argo in measurements],
             min_depth=[argo.min_depth for argo in measurements],
             max_depth=[argo.max_depth for argo in measurements],
             drift_depth=[argo.drift_depth for argo in measurements],
@@ -268,14 +326,13 @@ class ArgoFloatInstrument(Instrument):
         )
 
         # define output file for the simulation
-        out_file = argo_float_particleset.ParticleFile(
-            name=out_path,
+        out_file = ParticleFile(
+            path=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(argo_float_particleset), 100],
         )
 
         # endtime
-        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        endtime = fieldset.U.data.time.isel(time=-1).values
 
         # build kernel list from active sensors only
         sampling_kernels = [
@@ -289,7 +346,7 @@ class ArgoFloatInstrument(Instrument):
             [
                 _argo_float_vertical_movement,
                 *sampling_kernels,
-                AdvectionRK4,
+                AdvectionRK2,
                 _keep_at_surface,
                 _check_error,
             ],

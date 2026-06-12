@@ -7,7 +7,7 @@ name = "virtualship"
 description = "Code for the Virtual Ship Classroom, where Marine Scientists can combine Copernicus Marine Data with an OceanParcels ship to go on a virtual expedition."
 readme = "README.md"
 dynamic = ["version"]
-authors = [{ name = "oceanparcels.org team" }]
+authors = [{ name = "parcels-code.org team" }]
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 classifiers = [
@@ -26,11 +26,11 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "parcels >3.1.0",
+    "parcels >=4.0.0alpha",
     "pyproj >= 3, < 4",
     "sortedcontainers == 2.4.0",
     "opensimplex == 0.4.5",
-    "numpy >=1, < 2",
+    "numpy >=2.1.0",
     "pydantic >=2, <3",
     "PyYAML",
     "copernicusmarine >= 2.2.2",
@@ -40,7 +40,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://oceanparcels.org/" # TODO: Update this to just be repo?
+Homepage = "https://virtualship.parcels-code.org/"
 Repository = "https://github.com/OceanParcels/virtualship"
 Documentation = "https://virtualship.readthedocs.io/"
 "Bug Tracker" = "https://github.com/OceanParcels/virtualship/issues"
@@ -69,7 +69,8 @@ filterwarnings = [
   "error",
   "default::DeprecationWarning",
   "error::DeprecationWarning:virtualship",
-  "ignore:ParticleSet is empty.*:RuntimeWarning" # TODO: Probably should be ignored in the source code
+  "ignore:ParticleSet is empty.*:RuntimeWarning", # TODO: Probably should be ignored in the source code
+  "ignore:This is an alpha version of Parcels v4.*:UserWarning" # TODO: necessary whilst Parcels v4 is still alpha
 ]
 log_cli_level = "INFO"
 testpaths = [

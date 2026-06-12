@@ -17,7 +17,6 @@ from virtualship.utils import (
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
-    _get_waypoint_latlons,
     _validate_numeric_to_timedelta,
     get_supported_sensors,
     register_instrument_config,
@@ -131,14 +130,7 @@ class Schedule(pydantic.BaseModel):
         land_waypoints = []
         if not ignore_land_test:
             try:
-                wp_lats, wp_lons = _get_waypoint_latlons(self.waypoints)
-                bathymetry_field = _get_bathy_data(
-                    min(wp_lats),
-                    max(wp_lats),
-                    min(wp_lons),
-                    max(wp_lons),
-                    from_data=from_data,
-                ).bathymetry
+                bathymetry_field = _get_bathy_data(from_data=from_data).bathymetry
             except Exception as e:
                 raise ScheduleError(
                     f"Problem loading bathymetry data (used to verify waypoints are in water) directly via copernicusmarine. \n\n original message: {e}"
@@ -147,7 +139,7 @@ class Schedule(pydantic.BaseModel):
             for wp_i, wp in enumerate(self.waypoints):
                 try:
                     value = bathymetry_field.eval(
-                        0,  # time
+                        np.float64(0.0),  # time
                         0,  # depth (surface)
                         wp.location.lat,
                         wp.location.lon,

@@ -18,13 +18,12 @@ setuptools = "*"
 setuptools_scm = "*"
 
 [package.run-dependencies] # Keep in sync with `pyproject.toml` and feedstock recipe
-python = ">=3.10"
+python = "3.11.*"
 click = "*"
-parcels = ">3.1.0"
 pyproj = ">=3,<4"
 sortedcontainers = "==2.4.0"
 opensimplex = "==0.4.5"
-numpy = ">=1,<2"
+numpy = ">=2.1.0"
 pydantic = ">=2,<3"
 pyyaml = "*"
 copernicusmarine = ">=2.2.2"
@@ -33,15 +32,26 @@ textual = "*"
 
 [dependencies]
 virtualship = { path = "." }
+# Pre-install as conda packages to avoid PyPI source builds
+netcdf4 = "*"
+numpy = ">=2.1.0"
+dask = "*"
+zarr = ">=3"
+ipdb = ">=0.13.13,<0.14"
+cmocean = ">=4.0.3,<5"
 
-[feature.py310.dependencies]
-python = "3.10.*"
+[pypi-dependencies]
+parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
 
-[feature.py311.dependencies]
-python = "3.11.*"
+# Commented out whilst parcels v4 alpha only supports Python 3.11 (?)
+# [feature.py310.dependencies]
+# python = "3.10.*"
 
-[feature.py312.dependencies]
-python = "3.12.*"
+# [feature.py311.dependencies]
+# python = "3.11.*"
+
+# [feature.py312.dependencies]
+# python = "3.12.*"
 
 [feature.test.dependencies]
 pytest = "*"
@@ -109,9 +119,6 @@ typing = "mypy src/virtualship --install-types"
 [environments]
 default = { features = ["test", "notebooks", "typing", "pre-commit", "analysis"] }
 test-latest = { features = ["test"], solve-group = "test" }
-test-py310 = { features = ["test", "py310"] }
-test-py311 = { features = ["test", "py311"] }
-test-py312 = { features = ["test", "py312"] }
 test-notebooks = { features = ["test", "notebooks"], solve-group = "test" }
 analysis = { features = ["analysis"], solve-group = "analysis" }
 docs = { features = ["docs"], solve-group = "docs" }

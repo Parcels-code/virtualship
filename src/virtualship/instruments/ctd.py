@@ -4,13 +4,14 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from parcels import JITParticle, ParticleSet, Variable
+from parcels import ParticleFile, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
 
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    add_dummy_UV,
+    _compute_max_depths,
     build_particle_class_from_sensors,
     register_instrument,
 )
@@ -52,60 +53,85 @@ _CTD_NONSENSOR_VARIABLES = [
 ## physical variables
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_salinity(particle, fieldset, time):
-    particle.salinity = fieldset.S[time, particle.depth, particle.lat, particle.lon]
+def _sample_salinity(particles, fieldset):
+    particles.salinity = fieldset.S[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
 ## bgc variables
 
 
-def _sample_o2(particle, fieldset, time):
-    particle.o2 = fieldset.o2[time, particle.depth, particle.lat, particle.lon]
+def _sample_o2(particles, fieldset):
+    particles.o2 = fieldset.o2[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_chlorophyll(particle, fieldset, time):
-    particle.chl = fieldset.chl[time, particle.depth, particle.lat, particle.lon]
+def _sample_chlorophyll(particles, fieldset):
+    particles.chl = fieldset.chl[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_nitrate(particle, fieldset, time):
-    particle.no3 = fieldset.no3[time, particle.depth, particle.lat, particle.lon]
+def _sample_nitrate(particles, fieldset):
+    particles.no3 = fieldset.no3[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phosphate(particle, fieldset, time):
-    particle.po4 = fieldset.po4[time, particle.depth, particle.lat, particle.lon]
+def _sample_phosphate(particles, fieldset):
+    particles.po4 = fieldset.po4[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_ph(particle, fieldset, time):
-    particle.ph = fieldset.ph[time, particle.depth, particle.lat, particle.lon]
+def _sample_ph(particles, fieldset):
+    particles.ph = fieldset.ph[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_phytoplankton(particle, fieldset, time):
-    particle.phyc = fieldset.phyc[time, particle.depth, particle.lat, particle.lon]
+def _sample_phytoplankton(particles, fieldset):
+    particles.phyc = fieldset.phyc[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
-def _sample_primary_production(particle, fieldset, time):
-    particle.nppv = fieldset.nppv[time, particle.depth, particle.lat, particle.lon]
+def _sample_primary_production(particles, fieldset):
+    particles.nppv = fieldset.nppv[
+        particles.time, particles.z, particles.lat, particles.lon
+    ]
 
 
 ## cast
 
 
-def _ctd_cast(particle, fieldset, time):
+def _ctd_cast(particles, fieldset):
+    particles_lowering = particles[particles.raising == 0]
+    particles_raising = particles[particles.raising == 1]
+
     # lowering
-    if particle.raising == 0:
-        particle_ddepth = -particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth < particle.max_depth:
-            particle.raising = 1
-            particle_ddepth = -particle_ddepth
+    particles_lowering.dz += -particles_lowering.winch_speed * particles_lowering.dt
+    particles_lowering.raising = np.where(
+        particles_lowering.z + particles_lowering.dz < particles_lowering.max_depth,
+        1,
+        particles_lowering.raising,
+    )
+
     # raising
-    else:
-        particle_ddepth = particle.winch_speed * particle.dt
-        if particle.depth + particle_ddepth > particle.min_depth:
-            particle.delete()
+    particles_raising.dz += particles_raising.winch_speed * particles_raising.dt
+    particles_raising.state = np.where(
+        particles_raising.z + particles_raising.dz > particles_raising.min_depth,
+        StatusCode.Delete,
+        particles_raising.state,
+    )
 
 
 # =====================================================
@@ -162,18 +188,12 @@ class CTDInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # add dummy U
-        add_dummy_UV(fieldset)  # TODO: parcels v3 bodge; remove when parcels v4 is used
-
         # use first active field for time reference
         _time_ref_key = next(iter(self.variables))
         _time_ref_field = getattr(fieldset, _time_ref_key)
-        fieldset_starttime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[0]
-        )
-        fieldset_endtime = _time_ref_field.grid.time_origin.fulltime(
-            _time_ref_field.grid.time_full[-1]
-        )
+
+        fieldset_starttime = _time_ref_field.data.time.isel(time=0).values
+        fieldset_endtime = _time_ref_field.data.time.isel(time=-1).values
 
         # deploy time for all ctds should be later than fieldset start time
         if not all(
@@ -185,18 +205,7 @@ class CTDInstrument(Instrument):
             raise ValueError("CTD deployed before fieldset starts.")
 
         # depth the ctd will go to. shallowest between ctd max depth and bathymetry.
-        max_depths = [
-            max(
-                ctd.max_depth,
-                fieldset.bathymetry.eval(
-                    z=0,
-                    y=ctd.spacetime.location.lat,
-                    x=ctd.spacetime.location.lon,
-                    time=0,
-                ),
-            )
-            for ctd in measurements
-        ]
+        max_depths = _compute_max_depths(measurements, fieldset)
 
         # CTD depth can not be too shallow, because kernel would break.
         # This shallow is not useful anyway, no need to support.
@@ -208,7 +217,7 @@ class CTDInstrument(Instrument):
         # build dynamic particle class from the active sensors
         ctd_config = self.expedition.instruments_config.ctd_config
         _CTDParticle = build_particle_class_from_sensors(
-            ctd_config.sensors, _CTD_NONSENSOR_VARIABLES, JITParticle
+            ctd_config.sensors, _CTD_NONSENSOR_VARIABLES
         )
 
         # define parcel particles
@@ -217,15 +226,15 @@ class CTDInstrument(Instrument):
             pclass=_CTDParticle,
             lon=[ctd.spacetime.location.lon for ctd in measurements],
             lat=[ctd.spacetime.location.lat for ctd in measurements],
-            depth=[ctd.min_depth for ctd in measurements],
-            time=[ctd.spacetime.time for ctd in measurements],
+            z=[ctd.min_depth for ctd in measurements],
+            time=[np.datetime64(ctd.spacetime.time) for ctd in measurements],
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
         # define output file for the simulation
-        out_file = ctd_particleset.ParticleFile(name=out_path, outputdt=OUTPUT_DT)
+        out_file = ParticleFile(path=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
         sampling_kernels = [
@@ -244,7 +253,7 @@ class CTDInstrument(Instrument):
         )
 
         # there should be no particles left, as they delete themselves when they resurface
-        if len(ctd_particleset.particledata) != 0:
+        if len(ctd_particleset.lon) != 0:
             raise ValueError(
                 "Simulation ended before CTD resurfaced. This most likely means the field time dimension did not match the simulation time span."
             )

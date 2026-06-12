@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import copernicusmarine
+import parcels
 import xarray as xr
-from parcels import FieldSet
 from yaspin import yaspin
 
 from virtualship.errors import CopernicusCatalogueError
@@ -86,7 +86,7 @@ class Instrument(abc.ABC):
         self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
 
-    def load_input_data(self) -> FieldSet:
+    def load_input_data(self) -> parcels.FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
         try:
             fieldset = self._generate_fieldset()
@@ -97,21 +97,13 @@ class Instrument(abc.ABC):
 
         # interpolation methods
         for var in (v for v in self.variables if v not in ("U", "V")):
-            getattr(fieldset, var).interp_method = "linear_invdist_land_tracer"
-
-        # depth negative
-        for g in fieldset.gridset.grids:
-            g.negate_depth()
+            getattr(
+                fieldset, var
+            ).interp_method = parcels.interpolators.XLinearInvdistLandTracer
 
         # bathymetry data
         if self.add_bathymetry:
-            bathymetry_field = _get_bathy_data(
-                self.min_lat,
-                self.max_lat,
-                self.min_lon,
-                self.max_lon,
-                from_data=self.from_data,
-            ).bathymetry
+            bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
             bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
 
@@ -128,18 +120,22 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
+        TMP = True  # TODO: just for dev; remove before merging
+        instrument_name = self.__class__.__name__.split("Instrument")[0]
+
         if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+            if TMP:
+                with yaspin(
+                    text=f"Simulating {instrument_name} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+            else:
                 self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
         else:
-            print(
-                f"Simulating {self.__class__.__name__.split('Instrument')[0]} measurements... "
-            )
+            print(f"Simulating {instrument_name} measurements... ")
             self.simulate(measurements, out_path)
             print("\n")
 
@@ -183,11 +179,11 @@ class Instrument(abc.ABC):
             coordinates_selection_method="outside",
         )
 
-    def _generate_fieldset(self) -> FieldSet:
+    def _generate_fieldset(self) -> parcels.FieldSet:
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
-        Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs, which is often the case for BGC variables.
+        N.B. Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs (which can also have different temporal resolutions), which is often the case for BGC variables.
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -196,12 +192,10 @@ class Instrument(abc.ABC):
 
         for key in keys:
             var = self.variables[key]
+            physical = var in COPERNICUSMARINE_PHYS_VARIABLES
+
             if self.from_data is not None:  # load from local data
-                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
-                if physical:
-                    data_dir = self.from_data.joinpath("phys")
-                else:
-                    data_dir = self.from_data.joinpath("bgc")
+                data_dir = self.from_data.joinpath("phys" if physical else "bgc")
 
                 files = _find_files_in_timerange(
                     data_dir,
@@ -209,35 +203,50 @@ class Instrument(abc.ABC):
                     self.max_time + timedelta(days=time_buffer),
                 )
 
-                _, full_var_name = _find_nc_file_with_variable(
+                _, field_var_name = _find_nc_file_with_variable(
                     data_dir, var
                 )  # get full variable name from one of the files; var may only appear as substring in variable name in file
 
-                ds = xr.open_mfdataset(
-                    [data_dir.joinpath(f) for f in files]
-                )  # using: ds --> .from_xarray_dataset seems more robust than .from_netcdf for handling different temporal resolutions for different variables ...
+                ds = xr.open_mfdataset([data_dir.joinpath(f) for f in files])
 
-                fs = FieldSet.from_xarray_dataset(
-                    ds,
-                    variables={key: full_var_name},
-                    dimensions=self.dimensions,
-                    mesh="spherical",
-                )
             else:  # stream via Copernicus Marine Service
-                physical = var in COPERNICUSMARINE_PHYS_VARIABLES
                 ds = self._get_copernicus_ds(
                     time_buffer,
                     physical=physical,
                     var=var,
                 )
-                fs = FieldSet.from_xarray_dataset(
-                    ds, {key: var}, self.dimensions, mesh="spherical"
-                )
+                field_var_name = var
+
+            # TODO: I think this is potentially slowing down simulations slightly... compared to v0.3 anyway for *drifters*
+            ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
+
+            # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
+            ds["depth"] = -ds["depth"]
+            ds = ds.reindex(depth=ds["depth"][::-1])
+
+            # TODO: update when decision on handling of nans/0s in v4 is made (i.e. https://github.com/Parcels-code/Parcels/issues/2393)
+            ds = ds.fillna(0)
+
+            fields = {key: ds[field_var_name]}
+            ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
             fieldsets_list.append(fs)
 
         base_fieldset = fieldsets_list[0]
         for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
             base_fieldset.add_field(getattr(fs, key))
+
+        # some instruments use AdvectionRKn kernels which require a combined UV vector field
+        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time, therefore build combined VectorField here in FieldSet
+        if "U" in keys and "V" in keys:
+            uv = parcels.VectorField(
+                "UV",
+                base_fieldset.U,
+                base_fieldset.V,
+                vector_interp_method=parcels.interpolators.XLinear_Velocity,
+            )
+            base_fieldset.add_field(uv)
 
         return base_fieldset
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleSet, ScipyParticle
+from parcels import ParticleFile, ParticleSet
 
 from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
@@ -35,9 +35,13 @@ _ADCP_NONSENSOR_VARIABLES: list = []
 # =====================================================
 
 
-def _sample_velocity(particle, fieldset, time):
-    particle.U, particle.V = fieldset.UV.eval(
-        time, particle.depth, particle.lat, particle.lon, applyConversion=False
+def _sample_velocity(particles, fieldset):
+    particles.U, particles.V = fieldset.UV.eval(
+        particles.time,
+        particles.z,
+        particles.lat,
+        particles.lon,
+        applyConversion=False,
     )
 
 
@@ -96,23 +100,22 @@ class ADCPInstrument(Instrument):
         # build dynamic particle class from the active sensors
         adcp_config = self.expedition.instruments_config.adcp_config
         _ADCPParticle = build_particle_class_from_sensors(
-            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES, ScipyParticle
+            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES
         )
 
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
         num_particles = len(bins)
-        particleset = ParticleSet.from_list(
+        particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ADCPParticle,
             lon=np.full(
                 num_particles, 0.0
             ),  # initial lat/lon are irrelevant and will be overruled later.s
             lat=np.full(num_particles, 0.0),
-            depth=bins,
-            time=0,
+            z=bins,
         )
 
-        out_file = particleset.ParticleFile(name=out_path, outputdt=np.inf)
+        out_file = ParticleFile(path=out_path, outputdt=np.inf)
 
         # build kernel list from active sensors only
         sampling_kernels = [
@@ -120,6 +123,9 @@ class ADCPInstrument(Instrument):
             for sc in adcp_config.sensors
             if sc.enabled and sc.sensor_type in self.sensor_kernels
         ]
+
+        # TODO: need to overhaul ADCP/underway instruments generally... don't think this Parcels API works anymore
+        # TODO: a good time to implement https://github.com/Parcels-code/virtualship/issues/231
 
         for point in measurements:
             particleset.lon_nextloop[:] = point.location.lon

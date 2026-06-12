@@ -33,7 +33,6 @@ def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_Fie
     mock_fieldset = MagicMock()
     mock_FieldSet.from_netcdf.return_value = mock_fieldset
     mock_FieldSet.from_xarray_dataset.return_value = mock_fieldset
-    mock_fieldset.gridset.grids = [MagicMock(negate_depth=MagicMock())]
     mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
     mock_copernicusmarine.open_dataset.return_value = MagicMock()
     # Create a mock waypoint with latitude and longitude
