@@ -99,12 +99,11 @@ class Instrument(abc.ABC):
         for var in (v for v in self.variables if v not in ("U", "V")):
             getattr(
                 fieldset, var
-            ).interp_method = parcels.interpolators.XLinearInvdistLandTracer
+            ).interp_method = parcels.interpolators.XLinearInvdistLandTracer()
 
         # bathymetry data
         if self.add_bathymetry:
             bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
-            bathymetry_field.data = -bathymetry_field.data
             fieldset.add_field(bathymetry_field)
 
         return fieldset
@@ -236,16 +235,16 @@ class Instrument(abc.ABC):
         for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
             base_fieldset.add_field(getattr(fs, key))
 
-        # some instruments use AdvectionRKn kernels which require a combined UV vector field
-        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time, therefore build combined VectorField here in FieldSet
-        if "U" in keys and "V" in keys:
-            uv = parcels.VectorField(
-                "UV",
-                base_fieldset.U,
-                base_fieldset.V,
-                vector_interp_method=parcels.interpolators.XLinear_Velocity,
-            )
-            base_fieldset.add_field(uv)
+        # # some instruments use AdvectionRKn kernels which require a combined UV vector field
+        # # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time, therefore build combined VectorField here in FieldSet
+        # if "U" in keys and "V" in keys:
+        #     uv = parcels.VectorField(
+        #         "UV",
+        #         base_fieldset.U,
+        #         base_fieldset.V,
+        #         interp_method=parcels.interpolators.XLinear_Velocity,
+        #     )
+        #     base_fieldset.add_field(uv)
 
         return base_fieldset
 
