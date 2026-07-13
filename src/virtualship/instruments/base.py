@@ -217,9 +217,6 @@ class Instrument(abc.ABC):
                 )
                 field_var_name = var
 
-            # TODO: I think this is potentially slowing down simulations slightly... compared to v0.3 anyway for *drifters*
-            ds.load()  # TODO: tmp step during v4 alpha stage... probably to be updated on the Parcels end
-
             # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
             ds["depth"] = -ds["depth"]
             ds = ds.reindex(depth=ds["depth"][::-1])
@@ -229,7 +226,9 @@ class Instrument(abc.ABC):
 
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+            fs.to_windowed_arrays()  # TODO: for enhanced performance in Parcels v4, Parcels-side recommendations may change in the future...
 
             fieldsets_list.append(fs)
 
