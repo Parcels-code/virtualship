@@ -450,6 +450,9 @@ def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
         {"depth": 1}
     )  # TODO: bodge whilst parcels v4 does not support 2D fields and seeks depth dim; change when parcels v4 released
 
+    # Negate bathymetry to convert from depth below geoid to negative depth (Parcels convention)
+    ds_bathymetry[VAR] = -ds_bathymetry[VAR]
+
     ds_fset = parcels.convert.copernicusmarine_to_sgrid(
         fields={"bathymetry": ds_bathymetry[VAR]}
     )
