@@ -40,12 +40,12 @@ _ST_NONSENSOR_VARIABLES: list = []
 
 # define function sampling Salinity
 def _sample_salinity(particles, fieldset):
-    particles.S = fieldset.S[particles.time, particles.z, particles.lat, particles.lon]
+    particles.S = fieldset.S[particles.t, particles.z, particles.y, particles.x]
 
 
 # define function sampling Temperature
 def _sample_temperature(particles, fieldset):
-    particles.T = fieldset.T[particles.time, particles.z, particles.lat, particles.lon]
+    particles.T = fieldset.T[particles.t, particles.z, particles.y, particles.x]
 
 
 # =====================================================
@@ -103,9 +103,9 @@ class Underwater_STInstrument(Instrument):
         particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ShipSTParticle,
-            lon=0.0,
-            lat=0.0,
-            depth=DEPTH,
+            x=0.0,
+            y=0.0,
+            z=DEPTH,
         )
 
         out_file = ParticleFile(path=out_path, outputdt=np.inf)

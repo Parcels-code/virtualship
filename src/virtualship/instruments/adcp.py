@@ -37,10 +37,10 @@ _ADCP_NONSENSOR_VARIABLES: list = []
 
 def _sample_velocity(particles, fieldset):
     particles.U, particles.V = fieldset.UV.eval(
-        particles.time,
+        particles.t,
         particles.z,
-        particles.lat,
-        particles.lon,
+        particles.x,
+        particles.y,
         applyConversion=False,
     )
 
@@ -108,10 +108,10 @@ class ADCPInstrument(Instrument):
         particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ADCPParticle,
-            lon=np.full(
+            x=np.full(
                 num_particles, 0.0
-            ),  # initial lat/lon are irrelevant and will be overruled later.s
-            lat=np.full(num_particles, 0.0),
+            ),  # initial lat/lon are irrelevant and will be overruled later
+            y=np.full(num_particles, 0.0),
             z=bins,
         )
 

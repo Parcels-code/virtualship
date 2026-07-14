@@ -60,6 +60,8 @@ _ARGO_NONSENSOR_VARIABLES = [
 
 
 def _argo_float_vertical_movement(particles, fieldset):
+    breakpoint()
+
     # Split particles based on their current cycle_phase
     ptcls0 = particles[particles.cycle_phase == 0]
     ptcls1 = particles[particles.cycle_phase == 1]
@@ -69,7 +71,7 @@ def _argo_float_vertical_movement(particles, fieldset):
 
     # Phase 0: Sinking with vertical_speed until depth is driftdepth
     ptcls0.dz += particles.vertical_speed * ptcls0.dt
-    loc_bathy = fieldset.bathymetry.eval(ptcls0.time, ptcls0.z, ptcls0.lat, ptcls0.lon)
+    loc_bathy = fieldset.bathymetry.eval(ptcls0.t, ptcls0.z, ptcls0.y, ptcls0.x)
     driftdepth_mask = ptcls0.z + ptcls0.dz <= particles.drift_depth  # noqa:has reached drift depth
     bathysafe_mask = ptcls0.z + ptcls0.dz >= loc_bathy  # noqa:has not reached bathymetry
     next_phase = np.logical_and(driftdepth_mask, bathysafe_mask)
@@ -94,7 +96,7 @@ def _argo_float_vertical_movement(particles, fieldset):
 
     # Phase 2: Sinking further to maxdepth
     ptcls2.dz += particles.vertical_speed * ptcls2.dt
-    loc_bathy = fieldset.bathymetry.eval(ptcls2.time, ptcls2.z, ptcls2.lat, ptcls2.lon)
+    loc_bathy = fieldset.bathymetry.eval(ptcls2.t, ptcls2.z, ptcls2.y, ptcls2.x)
     maxdepth_mask = ptcls2.z + ptcls2.dz <= particles.max_depth  # noqa:has reached max depth
     bathysafe_mask = ptcls2.z + ptcls2.dz >= loc_bathy  # noqa:has not reached bathymetry
     next_phase = np.logical_and(maxdepth_mask, bathysafe_mask)
@@ -167,10 +169,10 @@ def _argo_sample_temperature(particles, fieldset):
     depth_mask = particles.z < particles.min_depth  # still ascending
     sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
     sampling_particles.temperature = fieldset.T[
-        sampling_particles.time,
+        sampling_particles.t,
         sampling_particles.z,
-        sampling_particles.lat,
-        sampling_particles.lon,
+        sampling_particles.y,
+        sampling_particles.x,
     ]
 
 
@@ -180,10 +182,10 @@ def _argo_sample_salinity(particles, fieldset):
     depth_mask = particles.z < particles.min_depth  # still ascending
     sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
     sampling_particles.salinity = fieldset.S[
-        sampling_particles.time,
+        sampling_particles.t,
         sampling_particles.z,
-        sampling_particles.lat,
-        sampling_particles.lon,
+        sampling_particles.y,
+        sampling_particles.x,
     ]
 
 
@@ -220,11 +222,11 @@ def _handle_grounding(
 
 def _format_log_metadata(ptcls_subset, mask, fieldset):
     """Extracts and formats timestamps, latitudes, and longitudes for particles."""
-    lats = ptcls_subset.lat[mask].astype(float)
-    lons = ptcls_subset.lon[mask].astype(float)
+    lats = ptcls_subset.y[mask].astype(float)
+    lons = ptcls_subset.x[mask].astype(float)
 
     time_origin = fieldset.U.data.time[0].values
-    times = ptcls_subset.time[mask].astype("timedelta64[s]") + time_origin
+    times = ptcls_subset.t[mask].astype("timedelta64[s]") + time_origin
 
     return times, lats, lons
 
@@ -290,7 +292,7 @@ class ArgoFloatInstrument(Instrument):
         shallow_waypoints = {}
         for i, m in enumerate(measurements):
             loc_bathy = fieldset.bathymetry.eval(
-                time=np.float64(0),
+                t=np.float64(0),
                 z=0,
                 y=m.spacetime.location.lat,
                 x=m.spacetime.location.lon,
@@ -313,10 +315,10 @@ class ArgoFloatInstrument(Instrument):
         argo_float_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ArgoParticle,
-            lat=[argo.spacetime.location.lat for argo in measurements],
-            lon=[argo.spacetime.location.lon for argo in measurements],
+            y=[argo.spacetime.location.lat for argo in measurements],
+            x=[argo.spacetime.location.lon for argo in measurements],
             z=[argo.min_depth for argo in measurements],
-            time=[np.datetime64(argo.spacetime.time) for argo in measurements],
+            t=[np.datetime64(argo.spacetime.time) for argo in measurements],
             min_depth=[argo.min_depth for argo in measurements],
             max_depth=[argo.max_depth for argo in measurements],
             drift_depth=[argo.drift_depth for argo in measurements],

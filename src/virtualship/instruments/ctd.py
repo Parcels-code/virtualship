@@ -55,59 +55,43 @@ _CTD_NONSENSOR_VARIABLES = [
 
 def _sample_temperature(particles, fieldset):
     particles.temperature = fieldset.T[
-        particles.time, particles.z, particles.lat, particles.lon
+        particles.t, particles.z, particles.y, particles.x
     ]
 
 
 def _sample_salinity(particles, fieldset):
-    particles.salinity = fieldset.S[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.salinity = fieldset.S[particles.t, particles.z, particles.y, particles.x]
 
 
 ## bgc variables
 
 
 def _sample_o2(particles, fieldset):
-    particles.o2 = fieldset.o2[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.o2 = fieldset.o2[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_chlorophyll(particles, fieldset):
-    particles.chl = fieldset.chl[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.chl = fieldset.chl[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_nitrate(particles, fieldset):
-    particles.no3 = fieldset.no3[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.no3 = fieldset.no3[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_phosphate(particles, fieldset):
-    particles.po4 = fieldset.po4[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.po4 = fieldset.po4[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_ph(particles, fieldset):
-    particles.ph = fieldset.ph[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.ph = fieldset.ph[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_phytoplankton(particles, fieldset):
-    particles.phyc = fieldset.phyc[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.phyc = fieldset.phyc[particles.t, particles.z, particles.y, particles.x]
 
 
 def _sample_primary_production(particles, fieldset):
-    particles.nppv = fieldset.nppv[
-        particles.time, particles.z, particles.lat, particles.lon
-    ]
+    particles.nppv = fieldset.nppv[particles.t, particles.z, particles.y, particles.x]
 
 
 ## cast
@@ -224,10 +208,10 @@ class CTDInstrument(Instrument):
         ctd_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_CTDParticle,
-            lon=[ctd.spacetime.location.lon for ctd in measurements],
-            lat=[ctd.spacetime.location.lat for ctd in measurements],
+            x=[ctd.spacetime.location.lon for ctd in measurements],
+            y=[ctd.spacetime.location.lat for ctd in measurements],
             z=[ctd.min_depth for ctd in measurements],
-            time=[np.datetime64(ctd.spacetime.time) for ctd in measurements],
+            t=[np.datetime64(ctd.spacetime.time) for ctd in measurements],
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
             winch_speed=[WINCH_SPEED for _ in measurements],

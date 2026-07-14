@@ -53,7 +53,7 @@ _XBT_NONSENSOR_VARIABLES = [
 
 def _sample_temperature(particles, fieldset):
     particles.temperature = fieldset.T[
-        particles.time, particles.z, particles.lat, particles.lon
+        particles.t, particles.z, particles.y, particles.x
     ]
 
 
@@ -163,10 +163,10 @@ class XBTInstrument(Instrument):
         xbt_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_XBTParticle,
-            lon=[xbt.spacetime.location.lon for xbt in measurements],
-            lat=[xbt.spacetime.location.lat for xbt in measurements],
+            x=[xbt.spacetime.location.lon for xbt in measurements],
+            y=[xbt.spacetime.location.lat for xbt in measurements],
             z=[xbt.min_depth for xbt in measurements],
-            time=[np.datetime64(xbt.spacetime.time) for xbt in measurements],
+            t=[np.datetime64(xbt.spacetime.time) for xbt in measurements],
             max_depth=max_depths,
             min_depth=[xbt.min_depth for xbt in measurements],
             fall_speed=[xbt.fall_speed for xbt in measurements],

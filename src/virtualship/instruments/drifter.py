@@ -50,7 +50,7 @@ _DRIFTER_NONSENSOR_VARIABLES = [
 
 def _sample_temperature(particles, fieldset):
     particles.temperature = fieldset.T[
-        particles.time, particles.z, particles.lat, particles.lon
+        particles.t, particles.z, particles.y, particles.x
     ]
 
 
@@ -145,10 +145,10 @@ class DrifterInstrument(Instrument):
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=lat_release,
-            lon=lon_release,
+            y=lat_release,
+            x=lon_release,
             z=[drifter.depth for drifter in measurements],
-            time=[np.datetime64(drifter.spacetime.time) for drifter in measurements],
+            t=[np.datetime64(drifter.spacetime.time) for drifter in measurements],
             has_lifetime=[
                 1 if drifter.lifetime is not None else 0 for drifter in measurements
             ],
