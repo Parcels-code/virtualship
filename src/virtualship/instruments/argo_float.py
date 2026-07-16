@@ -60,8 +60,6 @@ _ARGO_NONSENSOR_VARIABLES = [
 
 
 def _argo_float_vertical_movement(particles, fieldset):
-    breakpoint()
-
     # Split particles based on their current cycle_phase
     ptcls0 = particles[particles.cycle_phase == 0]
     ptcls1 = particles[particles.cycle_phase == 1]
@@ -151,7 +149,7 @@ def _check_error(particles, fieldset):
         )
     )
     print(
-        "WARNING: Error(s) found during Argo Float simulation but the expedition will continue...\n\n"
+        "\nWARNING: Error(s) found during Argo Float simulation but the expedition will continue...\n\n"
         f"Error code(s): {error_details}\n\n"
         "If ErrorOutOfBounds, consider reducing the lifetime in Argo Float config "
         "(the fieldset spatial bounds are constrained under-the-hood). For further advice "
@@ -311,15 +309,18 @@ class ArgoFloatInstrument(Instrument):
             argo_float_config.sensors, _ARGO_NONSENSOR_VARIABLES
         )
 
+        # in case fieldset depth is smaller than the config min_depth, possible when min_depth config is 0 and fieldset surface is ~ -0.4...
+        grid_shallowest = fieldset.U.grid.depth[-1]
+
         # define parcel particles
         argo_float_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ArgoParticle,
             y=[argo.spacetime.location.lat for argo in measurements],
             x=[argo.spacetime.location.lon for argo in measurements],
-            z=[argo.min_depth for argo in measurements],
+            z=[min(argo.min_depth, grid_shallowest) for argo in measurements],
             t=[np.datetime64(argo.spacetime.time) for argo in measurements],
-            min_depth=[argo.min_depth for argo in measurements],
+            min_depth=[min(argo.min_depth, grid_shallowest) for argo in measurements],
             max_depth=[argo.max_depth for argo in measurements],
             drift_depth=[argo.drift_depth for argo in measurements],
             vertical_speed=[argo.vertical_speed for argo in measurements],
