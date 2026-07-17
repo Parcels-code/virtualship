@@ -208,6 +208,8 @@ class Instrument(abc.ABC):
 
                 ds = xr.open_mfdataset([data_dir.joinpath(f) for f in files])
 
+                # TODO: for the local data it's useful to sel the relevant depth layer(s), in case the user's data is full depth
+
             else:  # stream via Copernicus Marine Service
                 ds = self._get_copernicus_ds(
                     time_buffer,
@@ -227,7 +229,6 @@ class Instrument(abc.ABC):
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
 
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
-            fs = fs.to_windowed_arrays()  # TODO: for enhanced performance in Parcels v4, Parcels-side recommendations may change in the future...
 
             fieldsets_list.append(fs)
 
