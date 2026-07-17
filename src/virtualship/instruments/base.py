@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import tempfile
 from dataclasses import dataclass
 from datetime import timedelta
 from itertools import pairwise
@@ -192,6 +193,9 @@ class Instrument(abc.ABC):
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
 
         N.B. Per variable avoids issues when using copernicusmarine and creating directly one FieldSet of ds's sourced from different Copernicus Marine product IDs (which can also have different temporal resolutions), which is often the case for BGC variables.
+
+        Includes an intermediate step of writing to tmp files, as per https://github.com/Parcels-code/parcels-benchmarks/pull/49
+        TODO: the need for this step may be removed as Parcels x copernicusmarine integration improves, tracked in https://github.com/Parcels-code/Parcels/issues/2756 and xref'd in VirtualShip #357 (https://github.com/Parcels-code/virtualship/issues/357)
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -231,11 +235,12 @@ class Instrument(abc.ABC):
             # ds["depth"] = -ds["depth"]
             # ds = ds.reindex(depth=ds["depth"][::-1])
 
-            # TODO: update when decision on handling of nans/0s in v4 is made (i.e. https://github.com/Parcels-code/Parcels/issues/2393)
+            # TODO: to be removed when Parcels #2746 is merged (i.e. https://github.com/Parcels-code/Parcels/pull/2746)
             ds = ds.fillna(0)
 
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            ds_fset = self._via_tmp_ds(ds_fset)
 
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
@@ -257,3 +262,12 @@ class Instrument(abc.ABC):
             base_fieldset.add_field(uv)
 
         return base_fieldset
+
+    @staticmethod
+    def _via_tmp_ds(ds) -> xr.Dataset:
+        """Create and re-load a temporary local dataset."""
+        tmpdir = tempfile.TemporaryDirectory()
+        tmp_fpath = Path(tmpdir.name).joinpath("tmp.nc")
+        ds.to_netcdf(tmp_fpath)
+        del ds
+        return xr.open_dataset(tmp_fpath)
