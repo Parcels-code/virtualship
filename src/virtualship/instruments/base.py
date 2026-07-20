@@ -176,6 +176,9 @@ class Instrument(abc.ABC):
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             coordinates_selection_method="outside",
+            service="arco-geo-series",
+            chunk_size_limit=1,
+            vertical_axis="elevation",
         )
 
     def _generate_fieldset(self) -> parcels.FieldSet:
@@ -218,9 +221,9 @@ class Instrument(abc.ABC):
                 )
                 field_var_name = var
 
-            # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
-            ds["depth"] = -ds["depth"]
-            ds = ds.reindex(depth=ds["depth"][::-1])
+            # # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
+            # ds["depth"] = -ds["depth"]
+            # ds = ds.reindex(depth=ds["depth"][::-1])
 
             # TODO: update when decision on handling of nans/0s in v4 is made (i.e. https://github.com/Parcels-code/Parcels/issues/2393)
             ds = ds.fillna(0)
