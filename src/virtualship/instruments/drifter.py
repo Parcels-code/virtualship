@@ -89,7 +89,7 @@ class DrifterInstrument(Instrument):
             **sensor_variables,
         }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
         fetch_spec = FetchSpec(
-            latlon_buffer=30.0,  # TODO: generous buffer to limit tmp file size download, can potentially be removed in the future as and when Parcels streaming performance improves (see #358)
+            latlon_buffer=30.0,  # TODO: generous buffer to reduce tmp file footprint, can potentially be removed in the future as/when Parcels streaming performance improves (see #358)
             time_buffer=expedition.instruments_config.drifter_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
             depth_min=abs(
