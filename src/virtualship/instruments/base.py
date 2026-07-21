@@ -231,10 +231,6 @@ class Instrument(abc.ABC):
                 )
                 field_var_name = var
 
-            # # negate depth and reindex (to suit Parcels XGrid strictly increasing depth convention)
-            # ds["depth"] = -ds["depth"]
-            # ds = ds.reindex(depth=ds["depth"][::-1])
-
             # TODO: to be removed when Parcels #2746 is merged (i.e. https://github.com/Parcels-code/Parcels/pull/2746)
             ds = ds.fillna(0)
 
