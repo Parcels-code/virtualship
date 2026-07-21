@@ -8,7 +8,7 @@ from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 from parcels.kernels import AdvectionRK2
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -88,20 +88,17 @@ class DrifterInstrument(Instrument):
             "V": "vo",
             **sensor_variables,
         }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
-        fetch_spec = {
-            "spatial": True,
-            "latlon": 30.0,  # [degrees]; TODO: generous buffer to limit tmp file size download, can potentially be removed in the future as and when Parcels streaming performance improves (see #358)
-            "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
-            / (
-                24 * 3600
-            ),  # [days]; TODO: as above, can potentially be removed in the future
-            "depth_min": abs(
+        fetch_spec = FetchSpec(
+            latlon_buffer=30.0,  # TODO: generous buffer to limit tmp file size download, can potentially be removed in the future as and when Parcels streaming performance improves (see #358)
+            time_buffer=expedition.instruments_config.drifter_config.lifetime.total_seconds()
+            / (24 * 3600),  # [days]
+            depth_min=abs(
                 expedition.instruments_config.drifter_config.depth_meter
             ),  # [meters]
-            "depth_max": abs(
+            depth_max=abs(
                 expedition.instruments_config.drifter_config.depth_meter
             ),  # [meters]
-        }
+        )
 
         super().__init__(
             expedition,

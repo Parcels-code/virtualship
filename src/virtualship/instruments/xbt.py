@@ -7,7 +7,7 @@ import numpy as np
 from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -95,9 +95,6 @@ class XBTInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize XBTInstrument."""
         variables = expedition.instruments_config.xbt_config.active_variables()
-        fetch_spec = {
-            "spatial": True,
-        }  # lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -105,7 +102,7 @@ class XBTInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            fetch_spec=fetch_spec,
+            fetch_spec=FetchSpec(),
             from_data=from_data,
         )
 

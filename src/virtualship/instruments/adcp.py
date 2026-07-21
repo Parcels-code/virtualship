@@ -5,7 +5,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import ParticleFile, ParticleSet
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import build_particle_class_from_sensors, register_instrument
@@ -61,9 +61,6 @@ class ADCPInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
         variables = expedition.instruments_config.adcp_config.active_variables()
-        fetch_spec = {
-            "spatial": True,
-        }  # lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -71,7 +68,7 @@ class ADCPInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            fetch_spec=fetch_spec,
+            fetch_spec=FetchSpec(),
             from_data=from_data,
         )
 

@@ -7,7 +7,7 @@ import numpy as np
 from parcels import ParticleFile, ParticleSet, StatusCode, Variable
 from parcels.kernels import AdvectionRK2
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -253,12 +253,11 @@ class ArgoFloatInstrument(Instrument):
             "V": "vo",
             **sensor_variables,
         }  # advection variables (U and V) are always required for argo float simulation; sensor variables come from config
-        fetch_spec = {
-            "spatial": True,
-            "latlon": 3.0,  # [degrees]
-            "time": expedition.instruments_config.argo_float_config.lifetime.total_seconds()
+        fetch_spec = FetchSpec(
+            latlon_buffer=3.0,  # [degrees]
+            time_buffer=expedition.instruments_config.argo_float_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
-        }
+        )
 
         super().__init__(
             expedition,
