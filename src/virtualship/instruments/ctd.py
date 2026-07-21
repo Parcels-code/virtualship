@@ -142,9 +142,9 @@ class CTDInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
         variables = expedition.instruments_config.ctd_config.active_variables()
-        limit_spec = {
-            "spatial": True
-        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
+        fetch_spec = {
+            "spatial": True,
+        }  # lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -152,8 +152,7 @@ class CTDInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=None,
-            limit_spec=limit_spec,
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 

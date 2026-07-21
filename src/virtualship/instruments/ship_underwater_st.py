@@ -67,13 +67,11 @@ class Underwater_STInstrument(Instrument):
         variables = (
             expedition.instruments_config.ship_underwater_st_config.active_variables()
         )
-        spacetime_buffer_size = {
+        fetch_spec = {
+            "spatial": True,
             "latlon": 0.25,  # [degrees]
             "time": 0.0,  # [days]
         }
-        limit_spec = {
-            "spatial": True
-        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -81,8 +79,7 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=limit_spec,
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 

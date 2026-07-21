@@ -50,8 +50,7 @@ class Instrument(abc.ABC):
         allow_time_extrapolation: bool,
         verbose_progress: bool,
         from_data: Path | None,
-        spacetime_buffer_size: dict | None = None,
-        limit_spec: dict | None = None,
+        fetch_spec: dict | None = None,
     ):
         """Initialise instrument."""
         self.expedition = expedition
@@ -67,8 +66,7 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
-        self.spacetime_buffer_size = spacetime_buffer_size
-        self.limit_spec = limit_spec
+        self.fetch_spec = fetch_spec
 
         wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
         wp_times = [
@@ -153,11 +151,11 @@ class Instrument(abc.ABC):
         )
 
         latlon_buffer = self._get_spec_value(
-            "buffer", "latlon", 0.25
+            "latlon", 0.25
         )  # [degrees]; default 0.25 deg buffer to ensure coverage in field cell edge cases
-        depth_min = self._get_spec_value("limit", "depth_min", None)
-        depth_max = self._get_spec_value("limit", "depth_max", None)
-        spatial_constraint = self._get_spec_value("limit", "spatial", True)
+        depth_min = self._get_spec_value("depth_min", None)
+        depth_max = self._get_spec_value("depth_max", None)
+        spatial_constraint = self._get_spec_value("spatial", True)
 
         min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
         max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
@@ -176,8 +174,6 @@ class Instrument(abc.ABC):
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             coordinates_selection_method="outside",
-            service="arco-geo-series",
-            chunk_size_limit=1,
             vertical_axis="elevation",
         )
 
@@ -190,7 +186,7 @@ class Instrument(abc.ABC):
         fieldsets_list = []
         keys = list(self.variables.keys())
 
-        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+        time_buffer = self._get_spec_value("time", 0.0)
 
         for key in keys:
             var = self.variables[key]
@@ -251,8 +247,3 @@ class Instrument(abc.ABC):
             base_fieldset.add_field(uv)
 
         return base_fieldset
-
-    def _get_spec_value(self, spec_type: str, key: str, default=None):
-        """Helper to extract a value from spacetime_buffer_size or limit_spec."""
-        spec = self.spacetime_buffer_size if spec_type == "buffer" else self.limit_spec
-        return spec.get(key) if spec and spec.get(key) is not None else default

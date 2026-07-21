@@ -88,13 +88,13 @@ class DrifterInstrument(Instrument):
             "V": "vo",
             **sensor_variables,
         }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
-        spacetime_buffer_size = {
-            "latlon": None,
+        fetch_spec = {
+            "spatial": True,
+            "latlon": 30.0,  # [degrees]; TODO: generous buffer to limit tmp file size download, can potentially be removed in the future as and when Parcels streaming performance improves (see #358)
             "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
-            / (24 * 3600),  # [days]
-        }
-        limit_spec = {
-            "spatial": False,  # no spatial limits; generate global fieldset
+            / (
+                24 * 3600
+            ),  # [days]; TODO: as above, can potentially be removed in the future
             "depth_min": abs(
                 expedition.instruments_config.drifter_config.depth_meter
             ),  # [meters]
@@ -109,8 +109,7 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
-            spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=limit_spec,
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 
