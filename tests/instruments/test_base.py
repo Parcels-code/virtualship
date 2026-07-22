@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import xarray as xr
 
 from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.types import InstrumentType
@@ -111,6 +112,21 @@ def test_fetch_spec_applied_to_instrument():
     # unset values use dataclass defaults
     assert dummy.fetch_spec.time_buffer == 0.0
     assert dummy.fetch_spec.depth_max is None
+
+
+def test_via_tmp_ds_roundtrip():
+    """_via_tmp_ds writes to a tmp file and re-opens it."""
+    ds = xr.Dataset(
+        {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
+        coords={"x": [0, 1], "y": [10, 20]},
+    )
+    result = Instrument._via_tmp_ds(ds)
+
+    assert isinstance(result, xr.Dataset)
+    assert "temperature" in result
+    assert (
+        result is not ds
+    )  # result is new object loaded from tmp file, not the original
 
 
 def test_generate_fieldset_combines_fields(monkeypatch):
