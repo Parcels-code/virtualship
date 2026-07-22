@@ -89,25 +89,28 @@ def test_execute_calls_simulate(monkeypatch):
     dummy.simulate.assert_called_once()
 
 
-def test_get_spec_value_buffer_and_limit():
+def test_fetch_spec_applied_to_instrument():
+    """FetchSpec values are correctly stored on the instrument."""
     mock_waypoint = MagicMock()
     mock_waypoint.location.latitude = 1.0
     mock_waypoint.location.longitude = 2.0
     mock_schedule = MagicMock()
     mock_schedule.waypoints = [mock_waypoint]
+    fetch_spec = FetchSpec(latlon_buffer=5.0, depth_min=10.0)
     dummy = DummyInstrument(
         expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
         verbose_progress=False,
-        spacetime_buffer_size={"latlon": 5.0},
-        limit_spec={"depth_min": 10.0},
+        fetch_spec=fetch_spec,
         from_data=None,
     )
-    assert dummy._get_spec_value("buffer", "latlon", 0.0) == 5.0
-    assert dummy._get_spec_value("limit", "depth_min", None) == 10.0
-    assert dummy._get_spec_value("buffer", "missing", 42) == 42
+    assert dummy.fetch_spec.latlon_buffer == 5.0
+    assert dummy.fetch_spec.depth_min == 10.0
+    # unset values use dataclass defaults
+    assert dummy.fetch_spec.time_buffer == 0.0
+    assert dummy.fetch_spec.depth_max is None
 
 
 def test_generate_fieldset_combines_fields(monkeypatch):
