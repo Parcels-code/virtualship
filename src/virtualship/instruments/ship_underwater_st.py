@@ -5,7 +5,7 @@ from typing import ClassVar
 import numpy as np
 from parcels import ParticleFile, ParticleSet
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
@@ -67,13 +67,6 @@ class Underwater_STInstrument(Instrument):
         variables = (
             expedition.instruments_config.ship_underwater_st_config.active_variables()
         )
-        spacetime_buffer_size = {
-            "latlon": 0.25,  # [degrees]
-            "time": 0.0,  # [days]
-        }
-        limit_spec = {
-            "spatial": True
-        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -81,8 +74,7 @@ class Underwater_STInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=limit_spec,
+            fetch_spec=FetchSpec(),
             from_data=from_data,
         )
 

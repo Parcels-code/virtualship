@@ -8,7 +8,7 @@ from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 from parcels.kernels import AdvectionRK2
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -88,20 +88,17 @@ class DrifterInstrument(Instrument):
             "V": "vo",
             **sensor_variables,
         }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
-        spacetime_buffer_size = {
-            "latlon": None,
-            "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
+        fetch_spec = FetchSpec(
+            latlon_buffer=30.0,  # TODO: generous buffer to limit tmp file size download, can potentially be removed in the future as and when Parcels streaming performance improves (see #358)
+            time_buffer=expedition.instruments_config.drifter_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
-        }
-        limit_spec = {
-            "spatial": False,  # no spatial limits; generate global fieldset
-            "depth_min": abs(
+            depth_min=abs(
                 expedition.instruments_config.drifter_config.depth_meter
             ),  # [meters]
-            "depth_max": abs(
+            depth_max=abs(
                 expedition.instruments_config.drifter_config.depth_meter
             ),  # [meters]
-        }
+        )
 
         super().__init__(
             expedition,
@@ -109,8 +106,7 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
-            spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=limit_spec,
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 

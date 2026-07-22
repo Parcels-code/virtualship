@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+from dataclasses import dataclass
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -28,6 +29,17 @@ if TYPE_CHECKING:
     from virtualship.models import Expedition
 
 
+@dataclass
+class FetchSpec:
+    """Fetch constraints and parameters for dataset retrieval."""
+
+    spatial: bool = True
+    latlon_buffer: float = 0.25  # degrees
+    time_buffer: float = 0.0  # days
+    depth_min: float | None = None
+    depth_max: float | None = None
+
+
 class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
@@ -50,8 +62,7 @@ class Instrument(abc.ABC):
         allow_time_extrapolation: bool,
         verbose_progress: bool,
         from_data: Path | None,
-        spacetime_buffer_size: dict | None = None,
-        limit_spec: dict | None = None,
+        fetch_spec: FetchSpec | None = None,
     ):
         """Initialise instrument."""
         self.expedition = expedition
@@ -67,8 +78,7 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
-        self.spacetime_buffer_size = spacetime_buffer_size
-        self.limit_spec = limit_spec
+        self.fetch_spec = fetch_spec or FetchSpec()
 
         wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
         wp_times = [
@@ -152,12 +162,10 @@ class Instrument(abc.ABC):
             variable=var if not physical else None,
         )
 
-        latlon_buffer = self._get_spec_value(
-            "buffer", "latlon", 0.25
-        )  # [degrees]; default 0.25 deg buffer to ensure coverage in field cell edge cases
-        depth_min = self._get_spec_value("limit", "depth_min", None)
-        depth_max = self._get_spec_value("limit", "depth_max", None)
-        spatial_constraint = self._get_spec_value("limit", "spatial", True)
+        latlon_buffer = self.fetch_spec.latlon_buffer
+        depth_min = self.fetch_spec.depth_min
+        depth_max = self.fetch_spec.depth_max
+        spatial_constraint = self.fetch_spec.spatial
 
         min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
         max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
@@ -176,8 +184,6 @@ class Instrument(abc.ABC):
             minimum_depth=depth_min,
             maximum_depth=depth_max,
             coordinates_selection_method="outside",
-            service="arco-geo-series",
-            chunk_size_limit=1,
             vertical_axis="elevation",
         )
 
@@ -190,7 +196,7 @@ class Instrument(abc.ABC):
         fieldsets_list = []
         keys = list(self.variables.keys())
 
-        time_buffer = self._get_spec_value("buffer", "time", 0.0)
+        time_buffer = self.fetch_spec.time_buffer
 
         for key in keys:
             var = self.variables[key]
@@ -251,8 +257,3 @@ class Instrument(abc.ABC):
             base_fieldset.add_field(uv)
 
         return base_fieldset
-
-    def _get_spec_value(self, spec_type: str, key: str, default=None):
-        """Helper to extract a value from spacetime_buffer_size or limit_spec."""
-        spec = self.spacetime_buffer_size if spec_type == "buffer" else self.limit_spec
-        return spec.get(key) if spec and spec.get(key) is not None else default

@@ -2,9 +2,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import get_instrument_class
+
+
+def test_FetchSpec():
+    fetch_spec = FetchSpec()
+
+    # test that default values are set
+    assert fetch_spec.latlon_buffer is not None
+    assert fetch_spec.time_buffer is not None
+
+    # test setting values (in new instance) and that original is unchanged in memory
+    fetch_spec2 = FetchSpec(latlon_buffer=0.5, time_buffer=1.0)
+    assert fetch_spec2.latlon_buffer == 0.5
+    assert fetch_spec2.time_buffer == 1.0
+
+    assert fetch_spec.latlon_buffer != fetch_spec2.latlon_buffer
 
 
 def test_all_instruments_have_instrument_class():

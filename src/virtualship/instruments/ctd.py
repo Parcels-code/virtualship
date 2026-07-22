@@ -7,7 +7,7 @@ import numpy as np
 from parcels import ParticleFile, ParticleSet, Variable
 from parcels._core.statuscodes import StatusCode
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
@@ -142,9 +142,6 @@ class CTDInstrument(Instrument):
     def __init__(self, expedition, from_data):
         """Initialize CTDInstrument."""
         variables = expedition.instruments_config.ctd_config.active_variables()
-        limit_spec = {
-            "spatial": True
-        }  # spatial limits; lat/lon constrained to waypoint locations + buffer
 
         super().__init__(
             expedition,
@@ -152,8 +149,7 @@ class CTDInstrument(Instrument):
             add_bathymetry=True,
             allow_time_extrapolation=True,
             verbose_progress=False,
-            spacetime_buffer_size=None,
-            limit_spec=limit_spec,
+            fetch_spec=FetchSpec(),
             from_data=from_data,
         )
 
