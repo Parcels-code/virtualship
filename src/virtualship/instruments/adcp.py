@@ -3,12 +3,11 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleFile, ParticleSet
 
 from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import build_particle_class_from_sensors, register_instrument
+from virtualship.utils import _write_underway_to_parquet, register_instrument
 
 # =====================================================
 # SECTION: Dataclass
@@ -20,14 +19,6 @@ class ADCP:
     """ADCP configuration."""
 
     name: ClassVar[str] = "ADCP"
-
-
-# =====================================================
-# SECTION: non-sensor Particle Variables (non-sampling)
-# =====================================================
-
-# ADCP has no non-sensor variables, only sensor variables.
-_ADCP_NONSENSOR_VARIABLES: list = []
 
 
 # =====================================================
@@ -92,50 +83,37 @@ class ADCPInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # build dynamic particle class from the active sensors
-        adcp_config = self.expedition.instruments_config.adcp_config
-        _ADCPParticle = build_particle_class_from_sensors(
-            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES
+        # use first active field for time reference
+        _time_ref_key = next(iter(self.variables))
+        _time_ref_field = getattr(fieldset, _time_ref_key)
+        fieldset_starttime = _time_ref_field.data.time.isel(time=0).values
+
+        # times in seconds since fieldset time origin, expanded across depth bins
+        times = np.array(
+            [
+                (np.datetime64(point.time) - fieldset_starttime)
+                / np.timedelta64(1, "s")
+                for point in measurements
+            ]
         )
-
-        times = [np.datetime64(point.time) for point in measurements]
-        lons = [point.location.lon for point in measurements]
-        lats = [point.location.lat for point in measurements]
-        depth_full = ...  # noqa
-
+        lons = np.array([point.location.lon for point in measurements])
+        lats = np.array([point.location.lat for point in measurements])
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
-        particleset = ParticleSet(
-            fieldset=fieldset,
-            pclass=_ADCPParticle,
-            t=times,
-            x=lons,
-            y=lats,
-            z=bins,
+
+        times_full = np.repeat(times, NUM_BINS)
+        lons_full = np.repeat(lons, NUM_BINS)
+        lats_full = np.repeat(lats, NUM_BINS)
+        depths_full = np.tile(bins, len(times))
+
+        u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
+
+        _write_underway_to_parquet(
+            dat_arrays=[u, v],
+            var_names=self.variables.keys(),
+            times_full=times_full,
+            lons_full=lons_full,
+            lats_full=lats_full,
+            depths_full=depths_full,
+            fieldset_time_origin=fieldset_starttime,
+            out_path=out_path,
         )
-
-        out_file = ParticleFile(path=out_path, outputdt=np.inf)
-
-        # build kernel list from active sensors only
-        sampling_kernels = [
-            self.sensor_kernels[sc.sensor_type]
-            for sc in adcp_config.sensors
-            if sc.enabled and sc.sensor_type in self.sensor_kernels
-        ]
-
-        # TODO: need to overhaul ADCP/underway instruments generally... don't think this Parcels API works anymore
-        # TODO: a good time to implement https://github.com/Parcels-code/virtualship/issues/231
-
-        for point in measurements:
-            particleset.lon_nextloop[:] = point.location.lon
-            particleset.lat_nextloop[:] = point.location.lat
-            particleset.time_nextloop[:] = fieldset.time_origin.reltime(
-                np.datetime64(point.time)
-            )
-
-            particleset.execute(
-                sampling_kernels,
-                dt=1,
-                runtime=1,
-                verbose_progress=self.verbose_progress,
-                output_file=out_file,
-            )
