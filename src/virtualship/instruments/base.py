@@ -239,6 +239,7 @@ class Instrument(abc.ABC):
             ds_fset = self._via_tmp_ds(ds_fset)
 
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+            fs.to_windowed_arrays()  # always to windowed arrays, just in case any ds is Dask backed
 
             fieldsets_list.append(fs)
 
