@@ -41,7 +41,6 @@ def _sample_velocity(particles, fieldset):
         particles.z,
         particles.x,
         particles.y,
-        applyConversion=False,
     )
 
 
@@ -99,15 +98,18 @@ class ADCPInstrument(Instrument):
             adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES
         )
 
+        times = [np.datetime64(point.time) for point in measurements]
+        lons = [point.location.lon for point in measurements]
+        lats = [point.location.lat for point in measurements]
+        depth_full = ...  # noqa
+
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
-        num_particles = len(bins)
         particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_ADCPParticle,
-            x=np.full(
-                num_particles, 0.0
-            ),  # initial lat/lon are irrelevant and will be overruled later
-            y=np.full(num_particles, 0.0),
+            t=times,
+            x=lons,
+            y=lats,
             z=bins,
         )
 
