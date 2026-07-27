@@ -5,15 +5,17 @@ Fields are kept static over time and time component of XBT measurements is not t
 """
 
 import datetime
+from typing import ClassVar
 
 import numpy as np
 import pydantic
 import pytest
 import xarray as xr
-
 from parcels import Field, FieldSet
-from virtualship.instruments.xbt import XBT, XBTInstrument
+
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
+from virtualship.instruments.xbt import XBT, XBTInstrument
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,
@@ -22,8 +24,43 @@ from virtualship.models.expedition import (
     XBTConfig,
 )
 
+BASE_TIME = datetime.datetime.strptime(
+    "1950-01-01", "%Y-%m-%d"
+)  # arbitrary time offset for the dummy fieldset
+MIN_DEPTH = -2.0
+MAX_DEPTH = -285.0
+FALL_SPEED = 6.7
+DECELERATION_COEFFICIENT = 0.00225
 
-def test_simulate_xbts(tmpdir) -> None:
+
+@pytest.fixture
+def xbt_expedition():
+    """Minimal Expedition for Underwater_STInstrument instantiation."""
+
+    class DummyExpedition:
+        class schedule:
+            waypoints: ClassVar[list] = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=BASE_TIME,
+                    instrument=InstrumentType.XBT,
+                ),
+            ]
+
+        instruments_config = InstrumentsConfig(
+            xbt_config=XBTConfig(
+                min_depth_meter=MIN_DEPTH,
+                max_depth_meter=MAX_DEPTH,
+                fall_speed_meter_per_second=FALL_SPEED,
+                deceleration_coefficient=DECELERATION_COEFFICIENT,
+                sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+            )
+        )
+
+    return DummyExpedition()
+
+
+def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
     # arbitrary time offset for the dummy fieldset
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
@@ -104,31 +141,9 @@ def test_simulate_xbts(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition for XBTInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                ),
-            ]
-
-        instruments_config = InstrumentsConfig(
-            xbt_config=XBTConfig(
-                min_depth_meter=-2.0,
-                max_depth_meter=-285.0,
-                fall_speed_meter_per_second=6.7,
-                deceleration_coefficient=0.00225,
-                sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
-            )
-        )
-
-    expedition = DummyExpedition()
     from_data = None
 
-    xbt_instrument = XBTInstrument(expedition, from_data)
+    xbt_instrument = XBTInstrument(xbt_expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     xbt_instrument.load_input_data = lambda: fieldset
@@ -208,3 +223,10 @@ def test_xbt_config_unsupported_sensor_rejected():
             deceleration_coefficient=0.00225,
             sensors=[SensorConfig(sensor_type=SensorType.SALINITY)],
         )
+
+
+def test_xbt_instrument_type(xbt_expedition):
+    """XBTInstrument returns the correct InstrumentType and if is underway instrument."""
+    xbt_instrument = XBTInstrument(xbt_expedition, from_data=None)
+    assert xbt_instrument.instrument_type == InstrumentType.XBT
+    assert not xbt_instrument.instrument_type.is_underway
