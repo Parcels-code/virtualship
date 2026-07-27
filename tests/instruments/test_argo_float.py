@@ -10,6 +10,7 @@ from parcels import FieldSet
 
 from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     ArgoFloatConfig,
@@ -239,3 +240,16 @@ def test_argo_fieldoutofbounds_error(tmpdir) -> None:
 
     # TODO: capturing the warnings in the tests is complicated by the Parcels C-level print statements; but the logic of not crashing on out-of-bounds is tested if the test simulation runs
     # TODO: when using Parcels v4, this test can become much more robust by capturing the specific warning as well
+
+
+def test_argo_float_instrument_type():
+    """ArgoFloatInstrument returns the correct InstrumentType and if is underway instrument."""
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+    ]
+    expedition = create_dummy_expedition(sensors)
+
+    argo_instrument = ArgoFloatInstrument(expedition, from_data=None)
+    assert argo_instrument.instrument_type == InstrumentType.ARGO_FLOAT
+    assert not argo_instrument.instrument_type.is_underway

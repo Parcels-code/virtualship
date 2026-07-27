@@ -1,32 +1,64 @@
 """Test the simulation of ADCP instruments."""
 
 import datetime
+from typing import ClassVar
 
 import numpy as np
 import pydantic
 import pytest
 import xarray as xr
-
 from parcels import FieldSet
+
 from virtualship.instruments.adcp import ADCPInstrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime, Waypoint
 from virtualship.models.expedition import ADCPConfig, InstrumentsConfig, SensorConfig
 
+# =====================================================
+# Shared constants and fixtures
+# =====================================================
 
-def test_simulate_adcp(tmpdir) -> None:
-    MAX_DEPTH = -1000
+BASE_TIME = datetime.datetime.strptime(
+    "1950-01-01", "%Y-%m-%d"
+)  # arbitrary time offset for the dummy fieldset
+MAX_DEPTH = -1000
+NUM_BINS = 40
+
+
+@pytest.fixture
+def adcp_expedition():
+    """Minimal Expedition for ADCPInstrument instantiation."""
+
+    class DummyExpedition:
+        class schedule:
+            waypoints: ClassVar[list] = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=BASE_TIME,
+                    instrument=InstrumentType.ADCP,
+                ),
+            ]
+
+        instruments_config = InstrumentsConfig(
+            adcp_config=ADCPConfig(
+                max_depth_meter=MAX_DEPTH,
+                num_bins=NUM_BINS,
+                period_minutes=5.0,
+                sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
+            )
+        )
+
+    return DummyExpedition()
+
+
+def test_simulate_adcp(tmpdir, adcp_expedition) -> None:
     MIN_DEPTH = -5
-    NUM_BINS = 40
-
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
     # where to sample
     sample_points = [
-        Spacetime(Location(1, 2), base_time + datetime.timedelta(seconds=0)),
-        Spacetime(Location(3, 4), base_time + datetime.timedelta(seconds=1)),
+        Spacetime(Location(1, 2), BASE_TIME + datetime.timedelta(seconds=0)),
+        Spacetime(Location(3, 4), BASE_TIME + datetime.timedelta(seconds=1)),
     ]
 
     # expected observations at sample points
@@ -36,14 +68,14 @@ def test_simulate_adcp(tmpdir) -> None:
             "U": {"surface": 7, "max_depth": 8},
             "lat": sample_points[0].location.lat,
             "lon": sample_points[0].location.lon,
-            "time": base_time + datetime.timedelta(seconds=0),
+            "time": BASE_TIME + datetime.timedelta(seconds=0),
         },
         {
             "V": {"surface": 9, "max_depth": 10},
             "U": {"surface": 11, "max_depth": 12},
             "lat": sample_points[1].location.lat,
             "lon": sample_points[1].location.lon,
-            "time": base_time + datetime.timedelta(seconds=1),
+            "time": BASE_TIME + datetime.timedelta(seconds=1),
         },
     ]
 
@@ -79,31 +111,7 @@ def test_simulate_adcp(tmpdir) -> None:
         },
     )
 
-    # dummy expedition for ADCPInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                    instrument=InstrumentType.ADCP,
-                ),
-            ]
-
-        instruments_config = InstrumentsConfig(
-            adcp_config=ADCPConfig(
-                max_depth_meter=MAX_DEPTH,
-                num_bins=NUM_BINS,
-                period_minutes=5.0,
-                sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
-            )
-        )
-
-    expedition = DummyExpedition()
-    from_data = None
-
-    adcp_instrument = ADCPInstrument(expedition, from_data)
+    adcp_instrument = ADCPInstrument(adcp_expedition, from_data=None)
     out_path = tmpdir.join("out.zarr")
 
     adcp_instrument.load_input_data = lambda: fieldset
@@ -183,3 +191,10 @@ def test_adcp_config_unsupported_sensor_rejected():
             period_minutes=30.0,
             sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         )
+
+
+def test_adcp_instrument_type(adcp_expedition):
+    """ADCPInstrument returns the correct InstrumentType and if is underway instrument."""
+    adcp_instrument = ADCPInstrument(adcp_expedition, from_data=None)
+    assert adcp_instrument.instrument_type == InstrumentType.ADCP
+    assert adcp_instrument.instrument_type.is_underway

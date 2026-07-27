@@ -11,6 +11,7 @@ from parcels import FieldSet
 
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     DrifterConfig,
@@ -232,3 +233,12 @@ def test_drifter_config_unsupported_sensor_rejected():
             stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
         )
+
+
+def test_drifter_instrument_type():
+    """DrifterInstrument returns the correct InstrumentType and if is underway instrument."""
+    expedition = create_dummy_expedition()
+
+    drifter_instrument = DrifterInstrument(expedition, from_data=None)
+    assert drifter_instrument.instrument_type == InstrumentType.DRIFTER
+    assert not drifter_instrument.instrument_type.is_underway
