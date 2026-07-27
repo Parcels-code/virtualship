@@ -582,7 +582,6 @@ def _write_underway_to_parquet(
 
     Designed so that output files can be re-read back in with Parcels.read_particlefile for downstream workflows.
     """
-    breakpoint()
     assert len(dat_arrays) == len(var_names), (
         "dat_arrays and var_names must have the same length"
     )
