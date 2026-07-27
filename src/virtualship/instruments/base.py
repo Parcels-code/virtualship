@@ -243,9 +243,9 @@ class Instrument(abc.ABC):
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
             # non-underway instruments to windowed arrays, just in case any ds is Dask backed
-            # underway instruments not to windowed arrays, they use fieldset.eval() which could cause a big memory usage if the fieldset is windowed
+            # underway instruments should not to converted to windowed arrays, as they use one direct fieldset.eval() call which could cause a big memory usage if the fieldset is windowed
             if not self.instrument_type.is_underway:
-                fs.to_windowed_arrays()
+                fs = fs.to_windowed_arrays()
 
             fieldsets_list.append(fs)
 

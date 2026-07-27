@@ -10,8 +10,8 @@ import numpy as np
 import pydantic
 import pytest
 import xarray as xr
-
 from parcels import Field, FieldSet
+
 from virtualship.instruments.ctd import CTD, CTDInstrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -23,18 +23,43 @@ from virtualship.models.expedition import (
     Waypoint,
 )
 
+BASE_TIME = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
+MIN_DEPTH = -11
+MAX_DEPTH = -2000
+STATIONKEEPING_TIME = 50
+
+
+def create_dummy_expedition(
+    sensors, lifetime=datetime.timedelta(days=1), location=(1, 2)
+):
+    """Create a DummyExpedition class with specified sensors and parameters."""
+
+    class DummyExpedition:
+        class schedule:
+            waypoints: list[Waypoint] = [  # noqa: RUF012
+                Waypoint(location=Location(*location), time=BASE_TIME)
+            ]
+
+        instruments_config = InstrumentsConfig(
+            ctd_config=CTDConfig(
+                stationkeeping_time_minutes=STATIONKEEPING_TIME,
+                min_depth_meter=MIN_DEPTH,
+                max_depth_meter=MAX_DEPTH,
+                sensors=sensors,
+            )
+        )
+
+    return DummyExpedition()
+
 
 def test_simulate_ctds(tmpdir) -> None:
     """Test that CTDInstrument simulates measurements correctly, incuding sampling physical and bgc variables."""
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
-
     # where to cast CTDs
     ctds = [
         CTD(
             spacetime=Spacetime(
                 location=Location(latitude=0, longitude=1),
-                time=base_time + datetime.timedelta(hours=0),
+                time=BASE_TIME + datetime.timedelta(hours=0),
             ),
             min_depth=0,
             max_depth=float("-inf"),
@@ -42,7 +67,7 @@ def test_simulate_ctds(tmpdir) -> None:
         CTD(
             spacetime=Spacetime(
                 location=Location(latitude=1, longitude=0),
-                time=base_time,
+                time=BASE_TIME,
             ),
             min_depth=0,
             max_depth=float("-inf"),
@@ -132,8 +157,8 @@ def test_simulate_ctds(tmpdir) -> None:
         {"V": v, "U": u, "T": t, "S": s, "o2": o2, "chl": chl, "no3": no3},
         {
             "time": [
-                np.datetime64(base_time + datetime.timedelta(hours=0)),
-                np.datetime64(base_time + datetime.timedelta(hours=1)),
+                np.datetime64(BASE_TIME + datetime.timedelta(hours=0)),
+                np.datetime64(BASE_TIME + datetime.timedelta(hours=1)),
             ],
             "depth": [-1000, 0],
             "lat": [0, 1],
@@ -142,33 +167,15 @@ def test_simulate_ctds(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition for CTDInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                ),
-            ]
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+        SensorConfig(sensor_type=SensorType.OXYGEN),
+        SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+        SensorConfig(sensor_type=SensorType.NITRATE),
+    ]
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
-                    SensorConfig(sensor_type=SensorType.SALINITY),
-                    SensorConfig(sensor_type=SensorType.OXYGEN),
-                    SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
-                    SensorConfig(sensor_type=SensorType.NITRATE),
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     from_data = None
 
     ctd_instrument = CTDInstrument(expedition, from_data)
@@ -278,22 +285,11 @@ def test_ctd_disabled_sensor_absent(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    class DummyExpedition:
-        class schedule:
-            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
+    sensors = (
+        [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+    )  # SALINITY omitted = disabled
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE)
-                ],  # SALINITY omitted = disabled
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     ctd_instrument = CTDInstrument(expedition, None)
     out_path = tmpdir.join("out_disabled.zarr")
     ctd_instrument.load_input_data = lambda: fieldset
@@ -387,23 +383,12 @@ def test_sensor_absent(tmpdir) -> None:
     )
     fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    class DummyExpedition:
-        class schedule:
-            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
+    sensors = [
+        SensorConfig(sensor_type=SensorType.OXYGEN),
+        # CHLOROPHYLL omitted = disabled
+    ]
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.OXYGEN),
-                    # CHLOROPHYLL omitted = disabled
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     ctd_instrument = CTDInstrument(expedition, None)
     out_path = tmpdir.join("out_bgc_disabled.zarr")
     ctd_instrument.load_input_data = lambda: fieldset
@@ -412,3 +397,13 @@ def test_sensor_absent(tmpdir) -> None:
     results = xr.open_zarr(out_path)
     assert "o2" in results, "Enabled BGC sensor variable must be present"
     assert "chl" not in results, "Disabled sensor variable must be absent from output"
+
+
+def test_ctd_instrument_type():
+    """CTDInstrument returns the correct InstrumentType and if is underway instrument."""
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]  # only need one
+    expedition = create_dummy_expedition(sensors)
+
+    ctd_instrument = CTDInstrument(expedition, from_data=None)
+    assert ctd_instrument.instrument_type == InstrumentType.CTD
+    assert not ctd_instrument.instrument_type.is_underway

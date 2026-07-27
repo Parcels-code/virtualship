@@ -1,15 +1,17 @@
 """Test the simulation of ship salinity temperature measurements."""
 
 import datetime
+from typing import ClassVar
 
 import numpy as np
 import pydantic
 import pytest
 import xarray as xr
-
 from parcels import FieldSet
-from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
+
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     InstrumentsConfig,
@@ -18,8 +20,40 @@ from virtualship.models.expedition import (
     Waypoint,
 )
 
+BASE_TIME = datetime.datetime.strptime(
+    "1950-01-01", "%Y-%m-%d"
+)  # arbitrary time offset for the dummy fieldset
+PERIOD = 5.0  # minutes
 
-def test_simulate_ship_underwater_st(tmpdir) -> None:
+
+@pytest.fixture
+def underwater_st_expedition():
+    """Minimal Expedition for Underwater_STInstrument instantiation."""
+
+    class DummyExpedition:
+        class schedule:
+            waypoints: ClassVar[list] = [
+                Waypoint(
+                    location=Location(1, 2),
+                    time=BASE_TIME,
+                    instrument=InstrumentType.UNDERWATER_ST,
+                ),
+            ]
+
+        instruments_config = InstrumentsConfig(
+            ship_underwater_st_config=ShipUnderwaterSTConfig(
+                period_minutes=PERIOD,
+                sensors=[
+                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
+                    SensorConfig(sensor_type=SensorType.SALINITY),
+                ],
+            )
+        )
+
+    return DummyExpedition()
+
+
+def test_simulate_ship_underwater_st(tmpdir, underwater_st_expedition) -> None:
     # arbitrary time offset for the dummy fieldset
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
@@ -76,31 +110,9 @@ def test_simulate_ship_underwater_st(tmpdir) -> None:
         },
     )
 
-    # dummy expedition for Underwater_STInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                ),
-            ]
-
-        instruments_config = InstrumentsConfig(
-            ship_underwater_st_config=ShipUnderwaterSTConfig(
-                period_minutes=5.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
-                    SensorConfig(sensor_type=SensorType.SALINITY),
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
     from_data = None
 
-    st_instrument = Underwater_STInstrument(expedition, from_data)
+    st_instrument = Underwater_STInstrument(underwater_st_expedition, from_data)
     out_path = tmpdir.join("out.zarr")
 
     st_instrument.load_input_data = lambda: fieldset
@@ -180,3 +192,12 @@ def test_underwater_st_config_unsupported_sensor_rejected():
             period_minutes=5.0,
             sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
         )
+
+
+def test_underwater_st_instrument_type(underwater_st_expedition):
+    """Underwater_STInstrument returns the correct InstrumentType and if is underway instrument."""
+    underwater_st_instrument = Underwater_STInstrument(
+        underwater_st_expedition, from_data=None
+    )
+    assert underwater_st_instrument.instrument_type == InstrumentType.UNDERWATER_ST
+    assert underwater_st_instrument.instrument_type.is_underway
