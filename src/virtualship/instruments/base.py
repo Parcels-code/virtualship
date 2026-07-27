@@ -15,8 +15,10 @@ import xarray as xr
 from yaspin import yaspin
 
 from virtualship.errors import CopernicusCatalogueError
+from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
+    INSTRUMENT_CLASS_MAP,
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
@@ -130,7 +132,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True  # TODO: just for dev; remove before merging
+        TMP = False  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -239,7 +241,11 @@ class Instrument(abc.ABC):
             ds_fset = self._via_tmp_ds(ds_fset)
 
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
-            fs.to_windowed_arrays()  # always to windowed arrays, just in case any ds is Dask backed
+
+            # non-underway instruments to windowed arrays, just in case any ds is Dask backed
+            # underway instruments not to windowed arrays, they use fieldset.eval() which could cause a big memory usage if the fieldset is windowed
+            if not self.instrument_type.is_underway:
+                fs.to_windowed_arrays()
 
             fieldsets_list.append(fs)
 
@@ -268,3 +274,8 @@ class Instrument(abc.ABC):
         ds.to_netcdf(tmp_fpath)
         del ds
         return xr.open_dataset(tmp_fpath)
+
+    @property
+    def instrument_type(self) -> InstrumentType:
+        """Return the InstrumentType for this instrument instance."""
+        return next(k for k, v in INSTRUMENT_CLASS_MAP.items() if type(self) is v)
