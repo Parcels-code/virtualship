@@ -96,6 +96,7 @@ class ADCPInstrument(Instrument):
                 for point in measurements
             ]
         )
+
         lons = np.array([point.location.lon for point in measurements])
         lats = np.array([point.location.lat for point in measurements])
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
@@ -105,7 +106,10 @@ class ADCPInstrument(Instrument):
         lats_full = np.repeat(lats, NUM_BINS)
         depths_full = np.tile(bins, len(times))
 
-        u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
+        u, v = (
+            fieldset.U.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full),
+            fieldset.V.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full),
+        )
 
         _write_underway_to_parquet(
             dat_arrays=[u, v],
