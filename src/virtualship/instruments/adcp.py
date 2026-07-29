@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import ClassVar
 
 import numpy as np
+import parcels
 
 from virtualship.instruments.base import (
     FetchSpec,
@@ -21,12 +22,14 @@ from virtualship.utils import register_instrument
 # Instead, the 'kernel' function is used only once to evaluate the fieldset at given times, depths, lats, lons.
 
 
-def _sample_underway_velocity(fieldset, times_full, depths_full, lats_full, lons_full):
+def _sample_underway_velocity(fieldset: parcels.FieldSet, coords: UnderwayCoordinates):
     # eval
-    u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
+    u, v = fieldset.UV.eval(
+        t=coords.times, z=coords.depths, x=coords.lons, y=coords.lats
+    )
 
     # convert from degrees s-1 to metres s-1
-    u = u * 1852 * 60 * np.cos(np.deg2rad(lats_full))
+    u = u * 1852 * 60 * np.cos(np.deg2rad(coords.lats))
     v = v * 1852 * 60
 
     return u, v
