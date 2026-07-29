@@ -7,10 +7,13 @@ from dataclasses import dataclass
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import copernicusmarine
+import numpy as np
 import parcels
+import pyarrow as pa
+import pyarrow.parquet as pq
 import xarray as xr
 from yaspin import yaspin
 
@@ -132,7 +135,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False  # TODO: just for dev; remove before merging
+        TMP = True  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -279,3 +282,127 @@ class Instrument(abc.ABC):
     def instrument_type(self) -> InstrumentType:
         """Return the InstrumentType for this instrument instance."""
         return next(k for k, v in INSTRUMENT_CLASS_MAP.items() if type(self) is v)
+
+
+@dataclass()
+class UnderwayCoordinates(frozen=True):
+    """1D evaluation grid arrays for underway instruments."""
+
+    times: np.ndarray  # seconds since origin
+    lons: np.ndarray
+    lats: np.ndarray
+    depths: np.ndarray | None = None
+
+
+class UnderwayInstrument(Instrument):
+    """Intermediate base class for underway instruments, which perform variable sampling without ParticleSets."""
+
+    def _sample_underway(
+        self,
+        config_sensors: list,
+        fieldset: parcels.FieldSet,
+        coords: UnderwayCoordinates,
+    ):
+        """Perform variable sampling for underway instruments and their active sensors."""
+        sampling_kernels = [
+            self.sensor_kernels[sc.sensor_type]
+            for sc in config_sensors
+            if sc.enabled and sc.sensor_type in self.sensor_kernels
+        ]  # active sensors only
+
+        sampled = [
+            kernel(fieldset, coords) for kernel in sampling_kernels
+        ]  # perform sampling
+
+        # ensure that sampled is a flat list of arrays, even if some kernels return tuples/lists of arrays
+        sampled_flat = [
+            arr
+            for item in sampled
+            for arr in (item if isinstance(item, (tuple, list)) else (item,))
+        ]
+
+        return sampled_flat
+
+    @staticmethod
+    def _write_underway_to_parquet(
+        dat_arrays: list[np.ndarray],
+        var_names: list[str],
+        fieldset_time_origin: np.datetime64,
+        out_path: Path | str,
+        coords: UnderwayCoordinates,
+        depth_fill: float = np.nan,
+        compression: Literal["zstd", "gzip", "snappy", "brotli", None] = "zstd",
+    ) -> None:
+        """
+        Write underway instrument data to a Parquet file mirroring the Parcels v4 ParticleFile schema.
+
+        Designed so that output files can be re-read back in with Parcels.read_particlefile for downstream workflows.
+        """
+        assert len(dat_arrays) == len(var_names), (
+            "dat_arrays and var_names must have the same length"
+        )
+
+        n = len(coords.times)
+
+        origin_str = str(fieldset_time_origin).replace("T", " ")
+        t_metadata = {"units": f"seconds since {origin_str}", "calendar": "standard"}
+
+        # base schema mirroring Parcels ParticleFile schema, not yet with sampled variables
+        base_schema = pa.schema(
+            [
+                pa.field("t", pa.float64(), metadata=t_metadata),
+                pa.field("z", pa.float32()),
+                pa.field("y", pa.float32()),
+                pa.field("x", pa.float32()),
+                pa.field("particle_id", pa.int64()),
+                pa.field("dt", pa.float64()),
+                pa.field("state", pa.int32()),
+            ],
+            metadata={
+                "feature_type": "trajectory",
+                "Conventions": "CF-1.6/CF-1.7",
+                "ncei_template_version": "NCEI_NetCDF_Trajectory_Template_v2.0",
+                "parcels_version": parcels.__version__,
+                "parcels_grid_mesh": "spherical",  # TODO: is the case as long as using Copernicus Marine data...
+            },
+        )
+
+        for var in var_names:
+            base_schema = base_schema.append(
+                pa.field(var, pa.float32())
+            )  # add sampled variable to schema
+
+        out_path = Path(out_path)
+        if out_path.suffix != ".parquet":
+            raise ValueError(
+                f"out_path must end in '.parquet', got {out_path.suffix!r}"
+            )
+
+        if coords.depths is None:
+            depths_full = np.full(n, depth_fill, dtype=np.float32)
+        else:
+            depths_full = coords.depths
+
+        # build table with all data, including sampled variables
+        table = pa.table(
+            {
+                "t": pa.array(coords.times.astype(np.float64)),
+                "z": pa.array(depths_full.astype(np.float32))
+                if depths_full is not None
+                else pa.array(np.full(n, depth_fill, dtype=np.float32)),
+                "y": pa.array(coords.lats.astype(np.float32)),
+                "x": pa.array(coords.lons.astype(np.float32)),
+                "particle_id": pa.array(
+                    np.arange(n, dtype=np.int64)
+                ),  # doesn't necessarily correspond to an actual particle_id in the simulation, but required for Parcels ParticleFile schema
+                "dt": pa.array(np.full(n, np.nan, dtype=np.float64)),
+                "state": pa.array(np.zeros(n, dtype=np.int32)),
+                **{
+                    var: pa.array(dat.astype(np.float32))
+                    for var, dat in zip(var_names, dat_arrays, strict=True)
+                },
+            },
+            schema=base_schema,
+        )
+
+        pq.write_table(table, out_path, compression=compression)

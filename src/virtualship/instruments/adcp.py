@@ -1,38 +1,35 @@
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
 
-from virtualship.instruments.base import FetchSpec, Instrument
+from virtualship.instruments.base import (
+    FetchSpec,
+    UnderwayCoordinates,
+    UnderwayInstrument,
+)
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import _write_underway_to_parquet, register_instrument
-
-# =====================================================
-# SECTION: Dataclass
-# =====================================================
-
-
-@dataclass
-class ADCP:
-    """ADCP configuration."""
-
-    name: ClassVar[str] = "ADCP"
-
+from virtualship.utils import register_instrument
 
 # =====================================================
 # SECTION: Kernels
 # =====================================================
 
 
-def _sample_velocity(particles, fieldset):
-    particles.U, particles.V = fieldset.UV.eval(
-        particles.t,
-        particles.z,
-        particles.x,
-        particles.y,
-    )
+# N.B. underway 'kernels' are special cases, where the particleset is not needed, and the kernel is not passed to `pset.execute()` as would be done for a typical Parcels workflow.
+# Instead, the 'kernel' function is used only once to evaluate the fieldset at given times, depths, lats, lons.
+
+
+def _sample_underway_velocity(fieldset, times_full, depths_full, lats_full, lons_full):
+    # eval
+    u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
+
+    # convert from degrees s-1 to metres s-1
+    u = u * 1852 * 60 * np.cos(np.deg2rad(lats_full))
+    v = v * 1852 * 60
+
+    return u, v
 
 
 # =====================================================
@@ -41,11 +38,11 @@ def _sample_velocity(particles, fieldset):
 
 
 @register_instrument(InstrumentType.ADCP)
-class ADCPInstrument(Instrument):
+class ADCPInstrument(UnderwayInstrument):
     """ADCP instrument class."""
 
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
-        SensorType.VELOCITY: _sample_velocity,
+        SensorType.VELOCITY: _sample_underway_velocity,
     }
 
     def __init__(self, expedition, from_data):
@@ -64,9 +61,9 @@ class ADCPInstrument(Instrument):
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate ADCP measurements."""
-        config_max_depth = (
-            self.expedition.instruments_config.adcp_config.max_depth_meter
-        )
+        adcp_config = self.expedition.instruments_config.adcp_config
+
+        config_max_depth = adcp_config.max_depth_meter
 
         if config_max_depth < -1600.0:
             print(
@@ -77,7 +74,7 @@ class ADCPInstrument(Instrument):
 
         MAX_DEPTH = config_max_depth
         MIN_DEPTH = -5.0
-        NUM_BINS = self.expedition.instruments_config.adcp_config.num_bins
+        NUM_BINS = adcp_config.num_bins
 
         measurements.sort(key=lambda p: p.time)
 
@@ -101,22 +98,22 @@ class ADCPInstrument(Instrument):
         lats = np.array([point.location.lat for point in measurements])
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
 
-        times_full = np.repeat(times, NUM_BINS)
-        lons_full = np.repeat(lons, NUM_BINS)
-        lats_full = np.repeat(lats, NUM_BINS)
-        depths_full = np.tile(bins, len(times))
+        # full sampling coordinates
+        coords = UnderwayCoordinates(
+            times=np.repeat(times, NUM_BINS),
+            lons=np.repeat(lons, NUM_BINS),
+            lats=np.repeat(lats, NUM_BINS),
+            depths=np.tile(bins, len(times)),
+        )
 
-        u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
-        u = u * 1852 * 60 * np.cos(np.deg2rad(lats_full))
-        v = v * 1852 * 60
+        sampled = self._sample_underway(
+            config_sensors=adcp_config.sensors, fieldset=fieldset, coords=coords
+        )
 
-        _write_underway_to_parquet(
-            dat_arrays=[u, v],
+        self._write_underway_to_parquet(
+            dat_arrays=sampled,
             var_names=self.variables.keys(),
-            times_full=times_full,
-            lons_full=lons_full,
-            lats_full=lats_full,
-            depths_full=depths_full,
             fieldset_time_origin=fieldset_starttime,
             out_path=out_path,
+            coords=coords,
         )
