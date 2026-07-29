@@ -295,7 +295,28 @@ class UnderwayCoordinates:
     times: np.ndarray  # seconds since origin
     lons: np.ndarray
     lats: np.ndarray
-    depths: np.ndarray | None = None
+    depths: np.ndarray
+
+    def __post_init__(self):
+        """Validate that all arrays are 1D and have the same length."""
+        shapes = {
+            "times": self.times.shape,
+            "lons": self.lons.shape,
+            "lats": self.lats.shape,
+            "depths": self.depths.shape,
+        }
+
+        for name, shape in shapes.items():
+            if len(shape) != 1:
+                raise ValueError(f"Array '{name}' must be 1D, but got shape {shape}.")
+
+        n = len(self.times)
+        if not (len(self.lons) == len(self.lats) == len(self.depths) == n):
+            raise ValueError(
+                f"Array length mismatch in UnderwayCoordinates: "
+                f"times={len(self.times)}, lons={len(self.lons)}, "
+                f"lats={len(self.lats)}, depths={len(self.depths)}"
+            )
 
 
 class UnderwayInstrument(Instrument):
@@ -328,7 +349,7 @@ class UnderwayInstrument(Instrument):
         return sampled_flat
 
     @staticmethod
-    def _write_underway_to_parquet(
+    def _to_parquet(
         dat_arrays: list[np.ndarray],
         var_names: list[str],
         fieldset_time_origin: np.datetime64,
