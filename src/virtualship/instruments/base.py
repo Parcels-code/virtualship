@@ -334,7 +334,6 @@ class UnderwayInstrument(Instrument):
         fieldset_time_origin: np.datetime64,
         out_path: Path | str,
         coords: UnderwayCoordinates,
-        depth_fill: float = np.nan,
         compression: Literal["zstd", "gzip", "snappy", "brotli", None] = "zstd",
     ) -> None:
         """
@@ -382,18 +381,13 @@ class UnderwayInstrument(Instrument):
                 f"out_path must end in '.parquet', got {out_path.suffix!r}"
             )
 
-        if coords.depths is None:
-            depths_full = np.full(n, depth_fill, dtype=np.float32)
-        else:
-            depths_full = coords.depths
-
         # build table with all data, including sampled variables
         table = pa.table(
             {
                 "t": pa.array(coords.times.astype(np.float64)),
-                "z": pa.array(depths_full.astype(np.float32))
-                if depths_full is not None
-                else pa.array(np.full(n, depth_fill, dtype=np.float32)),
+                "z": pa.array(coords.depths.astype(np.float32))
+                if coords.depths is not None
+                else pa.array(np.full(n, np.nan, dtype=np.float32)),
                 "y": pa.array(coords.lats.astype(np.float32)),
                 "x": pa.array(coords.lons.astype(np.float32)),
                 "particle_id": pa.array(
