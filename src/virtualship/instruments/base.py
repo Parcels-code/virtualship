@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import inspect
 import tempfile
 from dataclasses import dataclass
 from datetime import timedelta
@@ -53,8 +54,11 @@ class Instrument(abc.ABC):
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Ensure subclasses define sensor_kernels as class attribute."""
+        """Ensure non-abstract subclasses (i.e. final instrument classes) define sensor_kernels as a class attribute."""
         super().__init_subclass__(**kwargs)
+        if inspect.isabstract(cls):
+            return
+
         if "sensor_kernels" not in cls.__dict__:
             raise TypeError(
                 f"Instrument subclass '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
@@ -135,7 +139,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True  # TODO: just for dev; remove before merging
+        TMP = False  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -284,8 +288,8 @@ class Instrument(abc.ABC):
         return next(k for k, v in INSTRUMENT_CLASS_MAP.items() if type(self) is v)
 
 
-@dataclass()
-class UnderwayCoordinates(frozen=True):
+@dataclass(frozen=True)
+class UnderwayCoordinates:
     """1D evaluation grid arrays for underway instruments."""
 
     times: np.ndarray  # seconds since origin
