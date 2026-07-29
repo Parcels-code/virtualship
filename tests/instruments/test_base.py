@@ -1,11 +1,26 @@
+from dataclasses import dataclass
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import parcels
+import pyarrow.parquet as pq
 import pytest
 import xarray as xr
 
-from virtualship.instruments.base import FetchSpec, Instrument
+from virtualship.instruments.base import (
+    FetchSpec,
+    Instrument,
+    UnderwayCoordinates,
+    UnderwayInstrument,
+)
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import get_instrument_class
+
+# =============================================================================
+# Instrument base class testing
+# =============================================================================
 
 
 def test_FetchSpec():
@@ -193,3 +208,176 @@ def test_instrument_subclass_without_sensor_kernels_error():
         class ErrorInstrument(Instrument):
             def simulate(self, data_dir, measurements, out_path):
                 pass
+
+
+# =============================================================================
+# UnderwayInstrument intermediate class testing
+# =============================================================================
+
+
+@dataclass
+class DummySensorConfig:
+    """Mock sensor configuration."""
+
+    sensor_type: SensorType
+    enabled: bool = True
+
+
+class ConcreteUnderwayInstrument(UnderwayInstrument):
+    """Concrete subclass of UnderwayInstrument for testing."""
+
+    sensor_kernels: ClassVar = {
+        SensorType.TEMPERATURE: lambda fieldset, coords: np.array(
+            [15.0, 16.0], dtype=np.float32
+        ),
+        SensorType.SALINITY: lambda fieldset, coords: np.array(
+            [35.0, 35.1], dtype=np.float32
+        ),
+        SensorType.VELOCITY: lambda fieldset, coords: (
+            np.array([0.5, 0.6], dtype=np.float32),  # U vector component
+            np.array([-0.1, -0.2], dtype=np.float32),  # V vector component
+        ),
+    }
+
+    def simulate(self, measurements, out_path) -> None:  # noqa
+        pass
+
+
+@pytest.fixture
+def sample_underway_coords():
+    """Fixture providing valid 1D UnderwayCoordinates."""
+    return UnderwayCoordinates(
+        times=np.array([0.0, 3600.0]),
+        lons=np.array([-5.0, -5.1]),
+        lats=np.array([50.0, 50.1]),
+        depths=np.array([-2.0, -2.0]),
+    )
+
+
+@pytest.fixture
+def dummy_underway_inst():
+    """Bypass __init__ and requirements for expedition object etc. for testing."""
+    return ConcreteUnderwayInstrument.__new__(ConcreteUnderwayInstrument)
+
+
+def test_underway_coordinates_validation():
+    """UnderwayCoordinates validates array lengths upon instantiation."""
+    # valid coordinates work cleanly
+    coords = UnderwayCoordinates(
+        times=np.array([0.0, 1.0]),
+        lons=np.array([10.0, 11.0]),
+        lats=np.array([20.0, 21.0]),
+        depths=np.array([-1.0, -1.0]),
+    )
+    assert len(coords.times) == 2
+
+    # mismatched array lengths raise ValueError
+    with pytest.raises(ValueError, match="Array length mismatch"):
+        UnderwayCoordinates(
+            times=np.array([0.0, 1.0]),
+            lons=np.array([10.0]),  # length 1 vs 2
+            lats=np.array([20.0, 21.0]),
+            depths=np.array([-1.0, -1.0]),
+        )
+
+
+def test_sample_underway_filters_and_flattens(
+    dummy_underway_inst, sample_underway_coords
+):
+    """_sample_underway evaluates active sensors and flattens multi-output tuple kernels."""
+    configs = [
+        DummySensorConfig(SensorType.VELOCITY, enabled=True),
+        DummySensorConfig(SensorType.TEMPERATURE, enabled=True),
+        DummySensorConfig(SensorType.SALINITY, enabled=True),
+    ]
+
+    sampled = dummy_underway_inst._sample_underway(
+        config_sensors=configs,
+        fieldset=None,
+        coords=sample_underway_coords,
+    )
+
+    assert len(sampled) == 4  # total flattened arrays (u, v, temp, sal)
+    np.testing.assert_array_equal(sampled[0], np.array([0.5, 0.6], dtype=np.float32))
+    np.testing.assert_array_equal(sampled[1], np.array([-0.1, -0.2], dtype=np.float32))
+    np.testing.assert_array_equal(sampled[2], np.array([15.0, 16.0], dtype=np.float32))
+    np.testing.assert_array_equal(sampled[3], np.array([35.0, 35.1], dtype=np.float32))
+
+
+def test_to_parquet_writes_valid_file(
+    tmp_path, dummy_underway_inst, sample_underway_coords
+):
+    """_to_parquet writes a valid Parquet table with expected schema metadata and data values."""
+    out_path = tmp_path / "output.parquet"
+    dat_arrays = [
+        np.array([15.0, 16.0], dtype=np.float32),
+        np.array([35.0, 35.1], dtype=np.float32),
+    ]
+    var_names = ["temp", "sal"]
+    origin = np.datetime64("2026-01-01T00:00:00")
+
+    dummy_underway_inst._to_parquet(
+        dat_arrays=dat_arrays,
+        var_names=var_names,
+        fieldset_time_origin=origin,
+        out_path=out_path,
+        coords=sample_underway_coords,
+    )
+
+    assert out_path.exists()
+
+    # verify parquet table, metadata, and columns
+    table = pq.read_table(out_path)
+    schema = table.schema
+
+    assert table.column_names == [
+        "t",
+        "z",
+        "y",
+        "x",
+        "particle_id",
+        "dt",
+        "state",
+        "temp",
+        "sal",
+    ]
+    assert schema.metadata[b"feature_type"] == b"trajectory"
+    assert b"units" in schema.field("t").metadata
+
+    np.testing.assert_array_equal(
+        table["x"].to_numpy(), np.array(sample_underway_coords.lons, dtype=np.float32)
+    )
+    np.testing.assert_array_equal(table["temp"].to_numpy(), dat_arrays[0])
+
+
+def test_parquet_openable_by_read_particles(tmp_path):
+    """Test that a parquet file written by _to_parquet can be read back by parcels.read_particlefile."""
+    coords = UnderwayCoordinates(
+        times=np.array([0.0, 3600.0]),
+        lons=np.array([-5.0, -5.1]),
+        lats=np.array([50.0, 50.1]),
+        depths=np.array([-2.0, -2.0]),
+    )
+    dat_arrays = [
+        np.array([15.0, 16.0], dtype=np.float32),
+        np.array([35.0, 35.1], dtype=np.float32),
+    ]
+    var_names = ["temp", "sal"]
+    origin = np.datetime64("2026-01-01T00:00:00")
+
+    UnderwayInstrument._to_parquet(
+        dat_arrays=dat_arrays,
+        var_names=var_names,
+        fieldset_time_origin=origin,
+        out_path=tmp_path / "test_particles.parquet",
+        coords=coords,
+    )
+
+    # read it back
+    results = parcels.read_particlefile(tmp_path / "test_particles.parquet")
+
+    assert len(results) == 2
+
+    # sampling results may differ slightly due to float32 precision
+    assert np.isclose(results["temp"][0], 15.0)
+    assert np.isclose(results["sal"][1], 35.1)
