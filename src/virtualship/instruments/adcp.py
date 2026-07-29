@@ -106,10 +106,9 @@ class ADCPInstrument(Instrument):
         lats_full = np.repeat(lats, NUM_BINS)
         depths_full = np.tile(bins, len(times))
 
-        u, v = (
-            fieldset.U.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full),
-            fieldset.V.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full),
-        )
+        u, v = fieldset.UV.eval(t=times_full, z=depths_full, x=lons_full, y=lats_full)
+        u = u * 1852 * 60 * np.cos(np.deg2rad(lats_full))
+        v = v * 1852 * 60
 
         _write_underway_to_parquet(
             dat_arrays=[u, v],
