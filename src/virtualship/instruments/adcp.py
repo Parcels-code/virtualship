@@ -113,7 +113,7 @@ class ADCPInstrument(UnderwayInstrument):
             config_sensors=adcp_config.sensors, fieldset=fieldset, coords=coords
         )
 
-        self._write_underway_to_parquet(
+        self._to_parquet(
             dat_arrays=sampled,
             var_names=self.variables.keys(),
             fieldset_time_origin=fieldset_starttime,
