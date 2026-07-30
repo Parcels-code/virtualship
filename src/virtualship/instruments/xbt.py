@@ -120,12 +120,8 @@ class XBTInstrument(Instrument):
 
         fieldset = self.load_input_data()
 
-        # use first active field for time reference
-        _time_ref_key = next(iter(self.variables))
-        _time_ref_field = getattr(fieldset, _time_ref_key)
-
-        fieldset_starttime = _time_ref_field.data.time.isel(time=0).values
-        fieldset_endtime = _time_ref_field.data.time.isel(time=-1).values
+        fieldset_starttime = fieldset.time_interval.left
+        fieldset_endtime = fieldset.time_interval.right
 
         # deploy time for all xbts should be later than fieldset start time
         if not all(

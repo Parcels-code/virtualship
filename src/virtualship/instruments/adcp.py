@@ -83,12 +83,8 @@ class ADCPInstrument(UnderwayInstrument):
 
         fieldset = self.load_input_data()
 
-        # use first active field for time reference
-        _time_ref_key = next(iter(self.variables))
-        _time_ref_field = getattr(fieldset, _time_ref_key)
-        fieldset_starttime = _time_ref_field.data.time.isel(time=0).values
-
         # times in seconds since fieldset time origin, expanded across depth bins
+        fieldset_starttime = fieldset.time_interval.left
         times = np.array(
             [
                 (np.datetime64(point.time) - fieldset_starttime)
