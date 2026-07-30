@@ -54,7 +54,7 @@ class Instrument(abc.ABC):
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Ensure non-abstract subclasses (i.e. final instrument classes) define sensor_kernels as a class attribute."""
+        """Ensure non-abstract subclasses (i.e. final/concrete instrument classes) define sensor_kernels as a class attribute."""
         super().__init_subclass__(**kwargs)
         if inspect.isabstract(cls):
             return
@@ -139,7 +139,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False  # TODO: just for dev; remove before merging
+        TMP = True  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -340,6 +340,7 @@ class UnderwayInstrument(Instrument):
         ]  # perform sampling
 
         # ensure that sampled is a flat list of arrays, even if some kernels return tuples/lists of arrays
+        # e.g. ADCP kernel returns (u, v) tuple of arrays, whilst UnderwaterST returns single array of temperature/salinity
         sampled_flat = [
             arr
             for item in sampled
@@ -360,7 +361,7 @@ class UnderwayInstrument(Instrument):
         """
         Write underway instrument data to a Parquet file mirroring the Parcels v4 ParticleFile schema.
 
-        Designed so that output files can be re-read back in with Parcels.read_particlefile for downstream workflows.
+        Designed so that output files can be re-read back in with Parcels.read_particlefile for consistent downstream workflows with non-underway instruments.
         """
         assert len(dat_arrays) == len(var_names), (
             "dat_arrays and var_names must have the same length"
@@ -387,7 +388,7 @@ class UnderwayInstrument(Instrument):
                 "Conventions": "CF-1.6/CF-1.7",
                 "ncei_template_version": "NCEI_NetCDF_Trajectory_Template_v2.0",
                 "parcels_version": parcels.__version__,
-                "parcels_grid_mesh": "spherical",  # TODO: is the case as long as using Copernicus Marine data...
+                "parcels_grid_mesh": "spherical",
             },
         )
 
