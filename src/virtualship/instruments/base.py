@@ -139,7 +139,7 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = True  # TODO: just for dev; remove before merging
+        TMP = False  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
@@ -290,7 +290,7 @@ class Instrument(abc.ABC):
 
 @dataclass(frozen=True)
 class UnderwayCoordinates:
-    """1D evaluation grid arrays for underway instruments."""
+    """1D sampling location arrays for underway instruments."""
 
     times: np.ndarray  # seconds since origin
     lons: np.ndarray
@@ -413,8 +413,8 @@ class UnderwayInstrument(Instrument):
                 "y": pa.array(coords.lats.astype(np.float32)),
                 "x": pa.array(coords.lons.astype(np.float32)),
                 "particle_id": pa.array(
-                    np.arange(n, dtype=np.int64)
-                ),  # doesn't necessarily correspond to an actual particle_id in the simulation, but required for Parcels ParticleFile schema
+                    np.zeros(n, dtype=np.int64)
+                ),  # ship is a single 'particle' (here represented by a constant particle_id of 0)
                 "dt": pa.array(np.full(n, np.nan, dtype=np.float64)),
                 "state": pa.array(np.zeros(n, dtype=np.int32)),
                 **{
