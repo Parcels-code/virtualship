@@ -139,20 +139,17 @@ class Instrument(abc.ABC):
 
     def execute(self, measurements: list, out_path: str | Path) -> None:
         """Run instrument simulation."""
-        TMP = False  # TODO: just for dev; remove before merging
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
         if not self.verbose_progress:
-            if TMP:
-                with yaspin(
-                    text=f"Simulating {instrument_name} measurements... ",
-                    side="right",
-                    spinner=ship_spinner,
-                ) as spinner:
-                    self.simulate(measurements, out_path)
-                    spinner.ok("✅\n")
-            else:
+            with yaspin(
+                text=f"Simulating {instrument_name} measurements... ",
+                side="right",
+                spinner=ship_spinner,
+            ) as spinner:
                 self.simulate(measurements, out_path)
+                spinner.ok("✅\n")
+
         else:
             print(f"Simulating {instrument_name} measurements... ")
             self.simulate(measurements, out_path)
