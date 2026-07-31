@@ -324,6 +324,11 @@ class ArgoFloatInstrument(Instrument):
             drift_days=[argo.drift_days for argo in measurements],
         )
 
+        # add initial conditions to sampling variables
+        self._sample_initial(
+            argo_float_particleset, fieldset, argo_float_config.sensors
+        )
+
         # define output file for the simulation
         out_file = ParticleFile(
             path=out_path,
