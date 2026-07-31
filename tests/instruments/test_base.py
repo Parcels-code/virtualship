@@ -432,7 +432,7 @@ def test_underway_schema_matches_parcels(tmp_path):
     parcels_output = parcels.ParticleFile(parcels_path, outputdt=3600.0)
     pset.execute(
         [dummy_sample_temperature],
-        runtime=np.timedelta64(1, "D"),
+        runtime=np.timedelta64(60, "m"),
         dt=np.timedelta64(60, "m"),
         output_file=parcels_output,
     )
