@@ -1,48 +1,38 @@
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from parcels import ParticleFile, ParticleSet
+import parcels
 
-from virtualship.instruments.base import FetchSpec, Instrument
+from virtualship.instruments.base import (
+    FetchSpec,
+    UnderwayCoordinates,
+    UnderwayInstrument,
+)
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import build_particle_class_from_sensors, register_instrument
-
-# =====================================================
-# SECTION: Dataclass
-# =====================================================
-
-
-@dataclass
-class ADCP:
-    """ADCP configuration."""
-
-    name: ClassVar[str] = "ADCP"
-
-
-# =====================================================
-# SECTION: non-sensor Particle Variables (non-sampling)
-# =====================================================
-
-# ADCP has no non-sensor variables, only sensor variables.
-_ADCP_NONSENSOR_VARIABLES: list = []
-
+from virtualship.utils import register_instrument
 
 # =====================================================
 # SECTION: Kernels
 # =====================================================
 
 
-def _sample_velocity(particles, fieldset):
-    particles.U, particles.V = fieldset.UV.eval(
-        particles.t,
-        particles.z,
-        particles.x,
-        particles.y,
-        applyConversion=False,
+# N.B. underway 'kernels' are special cases, where the particleset is not needed, and the kernel is not passed to `pset.execute()` as would be done for a typical Parcels workflow.
+# Instead, the 'kernel' function is used only once to evaluate the fieldset at given times, depths, lats, lons.
+
+
+def _sample_underway_velocity(fieldset: parcels.FieldSet, coords: UnderwayCoordinates):
+    # eval
+    u, v = fieldset.UV.eval(
+        t=coords.times, z=coords.depths, x=coords.lons, y=coords.lats
     )
+
+    # convert from degrees s-1 to metres s-1
+    u = u * 1852 * 60 * np.cos(np.deg2rad(coords.lats))
+    v = v * 1852 * 60
+
+    return u, v
 
 
 # =====================================================
@@ -51,11 +41,11 @@ def _sample_velocity(particles, fieldset):
 
 
 @register_instrument(InstrumentType.ADCP)
-class ADCPInstrument(Instrument):
+class ADCPInstrument(UnderwayInstrument):
     """ADCP instrument class."""
 
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
-        SensorType.VELOCITY: _sample_velocity,
+        SensorType.VELOCITY: _sample_underway_velocity,
     }
 
     def __init__(self, expedition, from_data):
@@ -74,9 +64,9 @@ class ADCPInstrument(Instrument):
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate ADCP measurements."""
-        config_max_depth = (
-            self.expedition.instruments_config.adcp_config.max_depth_meter
-        )
+        adcp_config = self.expedition.instruments_config.adcp_config
+
+        config_max_depth = adcp_config.max_depth_meter
 
         if config_max_depth < -1600.0:
             print(
@@ -87,53 +77,42 @@ class ADCPInstrument(Instrument):
 
         MAX_DEPTH = config_max_depth
         MIN_DEPTH = -5.0
-        NUM_BINS = self.expedition.instruments_config.adcp_config.num_bins
+        NUM_BINS = adcp_config.num_bins
 
         measurements.sort(key=lambda p: p.time)
 
         fieldset = self.load_input_data()
 
-        # build dynamic particle class from the active sensors
-        adcp_config = self.expedition.instruments_config.adcp_config
-        _ADCPParticle = build_particle_class_from_sensors(
-            adcp_config.sensors, _ADCP_NONSENSOR_VARIABLES
+        # times in seconds since fieldset time origin, expanded across depth bins
+        fieldset_starttime = fieldset.time_interval.left
+        times = np.array(
+            [
+                (np.datetime64(point.time) - fieldset_starttime)
+                / np.timedelta64(1, "s")
+                for point in measurements
+            ]
         )
 
+        lons = np.array([point.location.lon for point in measurements])
+        lats = np.array([point.location.lat for point in measurements])
         bins = np.linspace(MAX_DEPTH, MIN_DEPTH, NUM_BINS)
-        num_particles = len(bins)
-        particleset = ParticleSet(
-            fieldset=fieldset,
-            pclass=_ADCPParticle,
-            x=np.full(
-                num_particles, 0.0
-            ),  # initial lat/lon are irrelevant and will be overruled later
-            y=np.full(num_particles, 0.0),
-            z=bins,
+
+        # full sampling coordinates
+        coords = UnderwayCoordinates(
+            times=np.repeat(times, NUM_BINS),
+            lons=np.repeat(lons, NUM_BINS),
+            lats=np.repeat(lats, NUM_BINS),
+            depths=np.tile(bins, len(times)),
         )
 
-        out_file = ParticleFile(path=out_path, outputdt=np.inf)
+        sampled = self._sample_underway(
+            config_sensors=adcp_config.sensors, fieldset=fieldset, coords=coords
+        )
 
-        # build kernel list from active sensors only
-        sampling_kernels = [
-            self.sensor_kernels[sc.sensor_type]
-            for sc in adcp_config.sensors
-            if sc.enabled and sc.sensor_type in self.sensor_kernels
-        ]
-
-        # TODO: need to overhaul ADCP/underway instruments generally... don't think this Parcels API works anymore
-        # TODO: a good time to implement https://github.com/Parcels-code/virtualship/issues/231
-
-        for point in measurements:
-            particleset.lon_nextloop[:] = point.location.lon
-            particleset.lat_nextloop[:] = point.location.lat
-            particleset.time_nextloop[:] = fieldset.time_origin.reltime(
-                np.datetime64(point.time)
-            )
-
-            particleset.execute(
-                sampling_kernels,
-                dt=1,
-                runtime=1,
-                verbose_progress=self.verbose_progress,
-                output_file=out_file,
-            )
+        self._to_parquet(
+            dat_arrays=sampled,
+            var_names=self.variables.keys(),
+            fieldset_time_origin=fieldset_starttime,
+            out_path=out_path,
+            coords=coords,
+        )

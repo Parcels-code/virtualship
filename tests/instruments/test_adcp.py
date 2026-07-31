@@ -4,10 +4,11 @@ import datetime
 from typing import ClassVar
 
 import numpy as np
+import parcels
+import polars as pl
 import pydantic
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 from virtualship.instruments.adcp import ADCPInstrument
 from virtualship.instruments.sensors import SensorType
@@ -22,6 +23,7 @@ from virtualship.models.expedition import ADCPConfig, InstrumentsConfig, SensorC
 BASE_TIME = datetime.datetime.strptime(
     "1950-01-01", "%Y-%m-%d"
 )  # arbitrary time offset for the dummy fieldset
+MIN_DEPTH = -5
 MAX_DEPTH = -1000
 NUM_BINS = 40
 
@@ -53,8 +55,6 @@ def adcp_expedition():
 
 
 def test_simulate_adcp(tmpdir, adcp_expedition) -> None:
-    MIN_DEPTH = -5
-
     # where to sample
     sample_points = [
         Spacetime(Location(1, 2), BASE_TIME + datetime.timedelta(seconds=0)),
@@ -93,53 +93,58 @@ def test_simulate_adcp(tmpdir, adcp_expedition) -> None:
     u[1, 0, 1, 1] = expected_obs[1]["U"]["max_depth"]
     u[1, 1, 1, 1] = expected_obs[1]["U"]["surface"]
 
-    fieldset = FieldSet.from_data(
-        {
-            "V": v,
-            "U": u,
+    # make ds
+    times = np.array([expected_obs[0]["time"], expected_obs[1]["time"]])
+    lats = np.array([expected_obs[0]["lat"], expected_obs[1]["lat"]])
+    lons = np.array([expected_obs[0]["lon"], expected_obs[1]["lon"]])
+
+    ds_fields = xr.Dataset(
+        data_vars={
+            "U": (["time", "depth", "lat", "lon"], u, {"units": "m s-1"}),
+            "V": (["time", "depth", "lat", "lon"], v, {"units": "m s-1"}),
         },
-        {
-            "lat": np.array([expected_obs[0]["lat"], expected_obs[1]["lat"]]),
-            "lon": np.array([expected_obs[0]["lon"], expected_obs[1]["lon"]]),
-            "depth": np.array([MAX_DEPTH, MIN_DEPTH]),
-            "time": np.array(
-                [
-                    np.datetime64(expected_obs[0]["time"]),
-                    np.datetime64(expected_obs[1]["time"]),
-                ]
-            ),
+        coords={
+            "time": ("time", times, {"axis": "T"}),
+            "depth": ("depth", [MAX_DEPTH, MIN_DEPTH], {"units": "m", "axis": "Z"}),
+            "lat": ("lat", lats, {"units": "degrees_north"}),
+            "lon": ("lon", lons, {"units": "degrees_east"}),
         },
     )
 
+    # to fieldset
+    fields = {"U": ds_fields["U"], "V": ds_fields["V"]}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
     adcp_instrument = ADCPInstrument(adcp_expedition, from_data=None)
-    out_path = tmpdir.join("out.zarr")
+    out_path = tmpdir.join("out.parquet")
 
     adcp_instrument.load_input_data = lambda: fieldset
     adcp_instrument.simulate(sample_points, out_path)
 
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    # test if output is as expected
-    assert len(results.trajectory) == NUM_BINS
+    assert np.unique(results["z"].to_numpy()).size == NUM_BINS
 
     # for every obs, check if the variables match the expected observations
     # we only verify at the surface and max depth of the adcp, because in between is tricky
-    for traj, vert_loc in [
-        (results.trajectory[0], "max_depth"),
-        (results.trajectory[-1], "surface"),
+    for df_depth, vert_loc in [
+        (results.filter(pl.col("z") == MAX_DEPTH), "max_depth"),
+        (results.filter(pl.col("z") == MIN_DEPTH), "surface"),
     ]:
-        obs_all = results.sel(trajectory=traj).obs
-        assert len(obs_all) == len(sample_points)
-        for i, (obs_i, exp) in enumerate(zip(obs_all, expected_obs, strict=True)):
-            obs = results.sel(trajectory=traj, obs=obs_i)
-            for var in ["lat", "lon"]:
-                obs_value = obs[var].values.item()
-                exp_value = exp[var]
+        assert len(df_depth) == len(sample_points)
+
+        for i, (obs_i, exp) in enumerate(
+            zip(df_depth.iter_rows(named=True), expected_obs, strict=True)
+        ):
+            for var in [("y", "lat"), ("x", "lon")]:
+                obs_value = obs_i[var[0]]
+                exp_value = exp[var[1]]
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {vert_loc=} {obs_i=} {var=} {obs_value=} {exp_value=}."
                 )
             for var in ["V", "U"]:
-                obs_value = obs[var].values.item()
+                obs_value = obs_i[var]
                 exp_value = exp[var][vert_loc]
                 assert np.isclose(obs_value, exp_value), (
                     f"Observation incorrect {vert_loc=} {i=} {var=} {obs_value=} {exp_value=}."

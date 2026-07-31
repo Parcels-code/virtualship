@@ -4,10 +4,10 @@ import datetime
 from typing import ClassVar
 
 import numpy as np
+import parcels
 import pydantic
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.ship_underwater_st import Underwater_STInstrument
@@ -54,87 +54,88 @@ def underwater_st_expedition():
 
 
 def test_simulate_ship_underwater_st(tmpdir, underwater_st_expedition) -> None:
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
-
     # where to sample
     sample_points = [
-        Spacetime(Location(1, 2), base_time + datetime.timedelta(seconds=0)),
-        Spacetime(Location(3, 4), base_time + datetime.timedelta(seconds=1)),
+        Spacetime(Location(1, 2), BASE_TIME + datetime.timedelta(seconds=0)),
+        Spacetime(Location(3, 4), BASE_TIME + datetime.timedelta(seconds=1)),
     ]
 
     # expected observations at sample points
     expected_obs = [
         {
-            "salinity": 5,
-            "temperature": 6,
+            "S": 5,
+            "T": 6,
             "lat": sample_points[0].location.lat,
             "lon": sample_points[0].location.lon,
-            "time": base_time + datetime.timedelta(seconds=0),
+            "time": BASE_TIME + datetime.timedelta(seconds=0),
         },
         {
-            "salinity": 7,
-            "temperature": 8,
+            "S": 7,
+            "T": 8,
             "lat": sample_points[1].location.lat,
             "lon": sample_points[1].location.lon,
-            "time": base_time + datetime.timedelta(seconds=1),
+            "time": BASE_TIME + datetime.timedelta(seconds=1),
         },
     ]
 
     # create fieldset based on the expected observations
     # indices are time, latitude, longitude
     salinity = np.zeros((2, 2, 2))
-    salinity[0, 0, 0] = expected_obs[0]["salinity"]
-    salinity[1, 1, 1] = expected_obs[1]["salinity"]
+    salinity[0, 0, 0] = expected_obs[0]["S"]
+    salinity[1, 1, 1] = expected_obs[1]["S"]
 
     temperature = np.zeros((2, 2, 2))
-    temperature[0, 0, 0] = expected_obs[0]["temperature"]
-    temperature[1, 1, 1] = expected_obs[1]["temperature"]
+    temperature[0, 0, 0] = expected_obs[0]["T"]
+    temperature[1, 1, 1] = expected_obs[1]["T"]
 
-    fieldset = FieldSet.from_data(
-        {
-            "V": np.zeros((2, 2, 2)),
-            "U": np.zeros((2, 2, 2)),
-            "S": salinity,
-            "T": temperature,
+    # make ds
+    times = np.array([expected_obs[0]["time"], expected_obs[1]["time"]])
+    lats = np.array([expected_obs[0]["lat"], expected_obs[1]["lat"]])
+    lons = np.array([expected_obs[0]["lon"], expected_obs[1]["lon"]])
+
+    ds_fields = xr.Dataset(
+        data_vars={
+            "T": (["time", "lat", "lon"], temperature, {"units": "degC"}),
+            "S": (["time", "lat", "lon"], salinity, {"units": "psu"}),
         },
-        {
-            "lat": np.array([expected_obs[0]["lat"], expected_obs[1]["lat"]]),
-            "lon": np.array([expected_obs[0]["lon"], expected_obs[1]["lon"]]),
-            "time": np.array(
-                [
-                    np.datetime64(expected_obs[0]["time"]),
-                    np.datetime64(expected_obs[1]["time"]),
-                ]
-            ),
+        coords={
+            "time": ("time", times, {"axis": "T"}),
+            "lat": ("lat", lats, {"units": "degrees_north"}),
+            "lon": ("lon", lons, {"units": "degrees_east"}),
         },
     )
 
-    from_data = None
+    # to fieldset
+    fields = {"T": ds_fields["T"], "S": ds_fields["S"]}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
-    st_instrument = Underwater_STInstrument(underwater_st_expedition, from_data)
-    out_path = tmpdir.join("out.zarr")
+    st_instrument = Underwater_STInstrument(underwater_st_expedition, from_data=None)
+    out_path = tmpdir.join("out.parquet")
 
     st_instrument.load_input_data = lambda: fieldset
-    # The instrument expects measurements as sample_points
     st_instrument.simulate(sample_points, out_path)
 
-    # test if output is as expected
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    assert len(results.trajectory) == 1  # expect a single trajectory
-    traj = results.trajectory.item()
-    assert len(results.sel(trajectory=traj).obs) == len(
-        sample_points
-    )  # expect as many obs as sample points
+    # expect a single depth level
+    assert np.unique(results["z"].to_numpy()).size == 1
+
+    # expect as many obs as sample points (given the period is 5 minutes and the sample points are 1 second apart)
+    assert len(results) == len(sample_points)
 
     # for every obs, check if the variables match the expected observations
     for i, (obs_i, exp) in enumerate(
-        zip(results.sel(trajectory=traj).obs, expected_obs, strict=True)
+        zip(results.iter_rows(named=True), expected_obs, strict=True)
     ):
-        obs = results.sel(trajectory=traj, obs=obs_i)
-        for var in ["salinity", "temperature", "lat", "lon"]:
-            obs_value = obs[var].values.item()
+        for var in [("y", "lat"), ("x", "lon")]:
+            obs_value = obs_i[var[0]]
+            exp_value = exp[var[1]]
+            assert np.isclose(obs_value, exp_value), (
+                f"Observation incorrect {obs_i=} {var=} {obs_value=} {exp_value=}."
+            )
+        for var in ["T", "S"]:
+            obs_value = obs_i[var]
             exp_value = exp[var]
             assert np.isclose(obs_value, exp_value), (
                 f"Observation incorrect {i=} {var=} {obs_value=} {exp_value=}."
