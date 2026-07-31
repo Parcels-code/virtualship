@@ -381,7 +381,7 @@ def dummy_sample_temperature(particles, fieldset):
     particles.T = fieldset.T[particles.t, particles.z, particles.y, particles.x]
 
 
-def test_parquet_openable_by_read_particles(tmp_path):
+def test_parquet_openable_by_parcels_read_particlefile(tmp_path):
     """Test that a parquet file written by _to_parquet can be read back by parcels.read_particlefile."""
     parquet_path = tmp_path / "test_particles.parquet"
     _create_underway_parquet(
