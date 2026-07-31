@@ -336,8 +336,6 @@ def test_to_parquet_writes_valid_file(
         "y",
         "x",
         "particle_id",
-        "dt",
-        "state",
         "temp",
         "sal",
     ]
@@ -350,34 +348,105 @@ def test_to_parquet_writes_valid_file(
     np.testing.assert_array_equal(table["temp"].to_numpy(), dat_arrays[0])
 
 
-def test_parquet_openable_by_read_particles(tmp_path):
-    """Test that a parquet file written by _to_parquet can be read back by parcels.read_particlefile."""
+def _create_underway_parquet(
+    out_path,
+    var_names,
+    dat_arrays=None,
+    origin=np.datetime64("2026-01-01T00:00:00"),  # noqa
+):
+    """Helper to generate an UnderwayInstrument parquet output file."""
     coords = UnderwayCoordinates(
         times=np.array([0.0, 3600.0]),
         lons=np.array([-5.0, -5.1]),
         lats=np.array([50.0, 50.1]),
         depths=np.array([-2.0, -2.0]),
     )
-    dat_arrays = [
-        np.array([15.0, 16.0], dtype=np.float32),
-        np.array([35.0, 35.1], dtype=np.float32),
-    ]
-    var_names = ["temp", "sal"]
-    origin = np.datetime64("2026-01-01T00:00:00")
+
+    if dat_arrays is None:
+        dat_arrays = [
+            np.array([15.0, 16.0], dtype=np.float32),
+            np.array([35.0, 35.1], dtype=np.float32),
+        ]
 
     UnderwayInstrument._to_parquet(
         dat_arrays=dat_arrays,
         var_names=var_names,
         fieldset_time_origin=origin,
-        out_path=tmp_path / "test_particles.parquet",
+        out_path=out_path,
         coords=coords,
     )
 
-    # read it back
-    results = parcels.read_particlefile(tmp_path / "test_particles.parquet")
 
+def dummy_sample_temperature(particles, fieldset):
+    particles.T = fieldset.T[particles.t, particles.z, particles.y, particles.x]
+
+
+def test_parquet_openable_by_read_particles(tmp_path):
+    """Test that a parquet file written by _to_parquet can be read back by parcels.read_particlefile."""
+    parquet_path = tmp_path / "test_particles.parquet"
+    _create_underway_parquet(
+        out_path=parquet_path,
+        var_names=["temp", "sal"],
+        dat_arrays=[
+            np.array([15.0, 16.0], dtype=np.float32),
+            np.array([35.0, 35.1], dtype=np.float32),
+        ],
+    )
+
+    # read back and assert values
+    results = parcels.read_particlefile(parquet_path)
     assert len(results) == 2
-
-    # sampling results may differ slightly due to float32 precision
     assert np.isclose(results["temp"][0], 15.0)
     assert np.isclose(results["sal"][1], 35.1)
+
+
+def test_underway_schema_matches_parcels(tmp_path):
+    """Verify that underway instrument parquet output base schema matches Parcels' ParticleFile."""
+    # minimal Parcels FieldSet
+    T = np.zeros((2, 1, 1))
+    T[0, 0, 0], T[1, 0, 0] = 15.0, 16.0
+
+    t1 = np.datetime64("2024-01-01T00:00:00")
+    t2 = np.datetime64("2024-01-02T00:00:00")
+    ds_fields = xr.Dataset(
+        data_vars={"temperature": (["time", "lat", "lon"], T, {"units": "degC"})},
+        coords={
+            "time": ("time", [t1, t2], {"axis": "T"}),
+            "lat": ("lat", [0.0], {"units": "degrees_north"}),
+            "lon": ("lon", [0.0], {"units": "degrees_east"}),
+        },
+    )
+
+    fields = {"T": ds_fields["temperature"]}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
+    # parcels simualtion
+    SampleParticle = parcels.Particle.add_variable(parcels.Variable("T"))
+
+    pset = parcels.ParticleSet(
+        fieldset=fieldset, pclass=SampleParticle, t=t1, y=[0.0], x=[0.0]
+    )
+
+    parcels_path = tmp_path / "parcels_particles.parquet"
+    parcels_output = parcels.ParticleFile(parcels_path, outputdt=3600.0)
+    pset.execute(
+        [dummy_sample_temperature],
+        runtime=np.timedelta64(1, "D"),
+        dt=np.timedelta64(60, "m"),
+        output_file=parcels_output,
+    )
+    parcels_df = parcels.read_particlefile(parcels_path)
+
+    # UnderwayInstrument output
+    underway_path = tmp_path / "underway_particles.parquet"
+    _create_underway_parquet(
+        out_path=underway_path,
+        var_names=["T"],
+        dat_arrays=[np.array([15.0, 16.0], dtype=np.float32)],
+        origin=np.datetime64("2024-01-01T00:00:00"),
+    )
+    underway_df = parcels.read_particlefile(underway_path)
+
+    # assert schemas match
+    assert parcels_df.schema == underway_df.schema
