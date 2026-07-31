@@ -380,8 +380,6 @@ class UnderwayInstrument(Instrument):
                 pa.field("y", pa.float32()),
                 pa.field("x", pa.float32()),
                 pa.field("particle_id", pa.int64()),
-                pa.field("dt", pa.float64()),
-                pa.field("state", pa.int32()),
             ],
             metadata={
                 "feature_type": "trajectory",
