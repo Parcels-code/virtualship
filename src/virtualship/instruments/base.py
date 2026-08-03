@@ -237,9 +237,6 @@ class Instrument(abc.ABC):
                 )
                 field_var_name = var
 
-            # TODO: to be removed when Parcels #2746 is merged (i.e. https://github.com/Parcels-code/Parcels/pull/2746)
-            ds = ds.fillna(0)
-
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
             ds_fset = self._via_tmp_ds(ds_fset)
