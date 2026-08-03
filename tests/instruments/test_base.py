@@ -16,7 +16,47 @@ from virtualship.instruments.base import (
 )
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
+from virtualship.models.expedition import SensorConfig
 from virtualship.utils import get_instrument_class
+
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+
+@pytest.fixture()
+def fieldset():
+    """Minimal Parcels FieldSet containing a temperature field."""
+    T = np.zeros((2, 1, 1))
+    T[0, 0, 0], T[1, 0, 0] = 15.0, 16.0
+
+    t1 = np.datetime64("2024-01-01T00:00:00")
+    t2 = np.datetime64("2024-01-02T00:00:00")
+
+    ds_fields = xr.Dataset(
+        data_vars={"temperature": (["time", "lat", "lon"], T, {"units": "degC"})},
+        coords={
+            "time": ("time", [t1, t2], {"axis": "T"}),
+            "lat": ("lat", [0.0], {"units": "degrees_north"}),
+            "lon": ("lon", [0.0], {"units": "degrees_east"}),
+        },
+    )
+
+    fields = {"T": ds_fields["temperature"]}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    return parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
+
+@pytest.fixture()
+def pset(fieldset):
+    """Minimal ParticleSet initialized with a custom Particle class and the fieldset fixture."""
+    SampleParticle = parcels.Particle.add_variable(parcels.Variable("temperature"))
+    t1 = np.datetime64("2024-01-01T00:00:00")
+
+    return parcels.ParticleSet(
+        fieldset=fieldset, pclass=SampleParticle, t=t1, y=[0.0], x=[0.0]
+    )
+
 
 # =============================================================================
 # Instrument base class testing
@@ -210,6 +250,24 @@ def test_instrument_subclass_without_sensor_kernels_error():
                 pass
 
 
+def test_instrument_samples_initial_conditions(fieldset, pset):
+    """_sample_initial adds initial conditions to particles."""
+    psetT_preinit = pset.temperature.copy()  # before sampling initial conditions
+
+    sensor_config = SensorConfig(sensor_type=SensorType.TEMPERATURE, enabled=True)
+    pset = Instrument._sample_initial(pset, fieldset, [sensor_config])
+
+    psetT_postinit = pset.temperature  # once initialised
+
+    assert not np.array_equal(psetT_preinit, psetT_postinit), (
+        "Initial conditions were not added."
+    )
+
+    assert np.allclose(psetT_postinit, [15.0]), (
+        "Initial conditions do not match expected values."
+    )
+
+
 # =============================================================================
 # UnderwayInstrument intermediate class testing
 # =============================================================================
@@ -378,7 +436,9 @@ def _create_underway_parquet(
 
 
 def dummy_sample_temperature(particles, fieldset):
-    particles.T = fieldset.T[particles.t, particles.z, particles.y, particles.x]
+    particles.temperature = fieldset.T[
+        particles.t, particles.z, particles.y, particles.x
+    ]
 
 
 def test_parquet_openable_by_parcels_read_particlefile(tmp_path):
@@ -400,34 +460,8 @@ def test_parquet_openable_by_parcels_read_particlefile(tmp_path):
     assert np.isclose(results["sal"][1], 35.1)
 
 
-def test_underway_schema_matches_parcels(tmp_path):
+def test_underway_schema_matches_parcels(tmp_path, pset):
     """Verify that underway instrument parquet output base schema matches Parcels' ParticleFile."""
-    # minimal Parcels FieldSet
-    T = np.zeros((2, 1, 1))
-    T[0, 0, 0], T[1, 0, 0] = 15.0, 16.0
-
-    t1 = np.datetime64("2024-01-01T00:00:00")
-    t2 = np.datetime64("2024-01-02T00:00:00")
-    ds_fields = xr.Dataset(
-        data_vars={"temperature": (["time", "lat", "lon"], T, {"units": "degC"})},
-        coords={
-            "time": ("time", [t1, t2], {"axis": "T"}),
-            "lat": ("lat", [0.0], {"units": "degrees_north"}),
-            "lon": ("lon", [0.0], {"units": "degrees_east"}),
-        },
-    )
-
-    fields = {"T": ds_fields["temperature"]}
-    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
-
-    # parcels simualtion
-    SampleParticle = parcels.Particle.add_variable(parcels.Variable("T"))
-
-    pset = parcels.ParticleSet(
-        fieldset=fieldset, pclass=SampleParticle, t=t1, y=[0.0], x=[0.0]
-    )
-
     parcels_path = tmp_path / "parcels_particles.parquet"
     parcels_output = parcels.ParticleFile(parcels_path, outputdt=3600.0)
     pset.execute(
