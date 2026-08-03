@@ -297,7 +297,7 @@ class Instrument(abc.ABC):
             particle_vars = [pv.name for pv in sensor.meta.particle_vars]
 
             for var in particle_vars:
-                setattr(pset, var, field[pset.t, pset.z, pset.y, pset.x])
+                setattr(pset, var, field[pset])
 
         return pset
 
