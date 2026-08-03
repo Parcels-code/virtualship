@@ -209,6 +209,9 @@ class CTDInstrument(Instrument):
             winch_speed=[WINCH_SPEED for _ in measurements],
         )
 
+        # add initial conditions to sampling variables
+        self._sample_initial(ctd_particleset, fieldset, ctd_config.sensors)
+
         # define output file for the simulation
         out_file = ParticleFile(path=out_path, outputdt=OUTPUT_DT)
 

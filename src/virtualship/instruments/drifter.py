@@ -154,6 +154,9 @@ class DrifterInstrument(Instrument):
             ],
         )
 
+        # add initial conditions to sampling variables
+        self._sample_initial(drifter_particleset, fieldset, drifter_config.sensors)
+
         # define output file for the simulation
         out_file = ParticleFile(
             path=out_path,

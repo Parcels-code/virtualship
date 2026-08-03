@@ -279,6 +279,28 @@ class Instrument(abc.ABC):
         del ds
         return xr.open_dataset(tmp_fpath)
 
+    @staticmethod
+    def _sample_initial(
+        pset: parcels.ParticleSet,
+        fieldset: parcels.FieldSet,
+        sensors_config: object,
+    ) -> parcels.ParticleSet:
+        """Perform initial Field sampling with ParticleSet."""
+        for sensor in sensors_config:
+            if not sensor.enabled:
+                raise ValueError(
+                    f"Attempted to initialise sensor '{sensor.sensor_type}' but it is not enabled in the expedition configuration."
+                )
+
+            fs_key = sensor.meta.fs_key
+            field = getattr(fieldset, fs_key)
+            particle_vars = [pv.name for pv in sensor.meta.particle_vars]
+
+            for var in particle_vars:
+                setattr(pset, var, field[pset])
+
+        return pset
+
     @property
     def instrument_type(self) -> InstrumentType:
         """Return the InstrumentType for this instrument instance."""

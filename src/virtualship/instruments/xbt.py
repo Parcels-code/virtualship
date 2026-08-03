@@ -164,6 +164,9 @@ class XBTInstrument(Instrument):
             fall_speed=[xbt.fall_speed for xbt in measurements],
         )
 
+        # add initial conditions to sampling variables
+        self._sample_initial(xbt_particleset, fieldset, xbt_config.sensors)
+
         out_file = ParticleFile(path=out_path, outputdt=OUTPUT_DT)
 
         # build kernel list from active sensors only
