@@ -155,26 +155,6 @@ class Instrument(abc.ABC):
             self.simulate(measurements, out_path)
             print("\n")
 
-    def _sample_initial(
-        self,
-        pset: parcels.ParticleSet,
-        fieldset: parcels.FieldSet,
-        sensors_config: object,
-    ) -> None:
-        """Perform initial Field sampling with ParticleSet."""
-        for sensor in sensors_config:
-            if not (sensor.enabled and sensor.sensor_type in self.sensor_kernels):
-                raise ValueError(
-                    f"Attempted to initialise sensor '{sensor.sensor_type}' but it is not enabled or not in sensor_kernels."
-                )
-
-            fs_key = sensor.meta.fs_key
-            field = getattr(fieldset, fs_key)
-            particle_vars = [pv.name for pv in sensor.meta.particle_vars]
-
-            for var in particle_vars:
-                setattr(pset, var, field[pset.t, pset.z, pset.y, pset.x])
-
     def _get_copernicus_ds(
         self,
         time_buffer: float | None,
@@ -298,6 +278,28 @@ class Instrument(abc.ABC):
         ds.to_netcdf(tmp_fpath)
         del ds
         return xr.open_dataset(tmp_fpath)
+
+    @staticmethod
+    def _sample_initial(
+        pset: parcels.ParticleSet,
+        fieldset: parcels.FieldSet,
+        sensors_config: object,
+    ) -> parcels.ParticleSet:
+        """Perform initial Field sampling with ParticleSet."""
+        for sensor in sensors_config:
+            if not sensor.enabled:
+                raise ValueError(
+                    f"Attempted to initialise sensor '{sensor.sensor_type}' but it is not enabled in the expedition configuration."
+                )
+
+            fs_key = sensor.meta.fs_key
+            field = getattr(fieldset, fs_key)
+            particle_vars = [pv.name for pv in sensor.meta.particle_vars]
+
+            for var in particle_vars:
+                setattr(pset, var, field[pset.t, pset.z, pset.y, pset.x])
+
+        return pset
 
     @property
     def instrument_type(self) -> InstrumentType:
