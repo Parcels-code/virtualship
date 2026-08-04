@@ -155,45 +155,6 @@ class Instrument(abc.ABC):
             self.simulate(measurements, out_path)
             print("\n")
 
-    def _get_copernicus_ds(
-        self,
-        time_buffer: float | None,
-        physical: bool,
-        var: str,
-    ) -> xr.Dataset:
-        """Get Copernicus Marine dataset for direct ingestion."""
-        product_id = _select_product_id(
-            physical=physical,
-            schedule_start=self.min_time,
-            schedule_end=self.max_time,
-            variable=var if not physical else None,
-        )
-
-        latlon_buffer = self.fetch_spec.latlon_buffer
-        depth_min = self.fetch_spec.depth_min
-        depth_max = self.fetch_spec.depth_max
-        spatial_constraint = self.fetch_spec.spatial
-
-        min_lon_bound = self.min_lon - latlon_buffer if spatial_constraint else None
-        max_lon_bound = self.max_lon + latlon_buffer if spatial_constraint else None
-        min_lat_bound = self.min_lat - latlon_buffer if spatial_constraint else None
-        max_lat_bound = self.max_lat + latlon_buffer if spatial_constraint else None
-
-        return copernicusmarine.open_dataset(
-            dataset_id=product_id,
-            minimum_longitude=min_lon_bound,
-            maximum_longitude=max_lon_bound,
-            minimum_latitude=min_lat_bound,
-            maximum_latitude=max_lat_bound,
-            variables=[var],
-            start_datetime=self.min_time,
-            end_datetime=self.max_time + timedelta(days=time_buffer),
-            minimum_depth=depth_min,
-            maximum_depth=depth_max,
-            coordinates_selection_method="outside",
-            vertical_axis="elevation",
-        )
-
     def _generate_fieldset(self) -> parcels.FieldSet:
         """
         Create and combine FieldSets for each variable, supporting both local and Copernicus Marine data sources.
@@ -225,9 +186,7 @@ class Instrument(abc.ABC):
                     data_dir, var
                 )  # get full variable name from one of the files; var may only appear as substring in variable name in file
 
-                ds = xr.open_mfdataset([data_dir.joinpath(f) for f in files])
-
-                # TODO: for the local data it's useful to sel the relevant depth layer(s), in case the user's data is full depth
+                ds = self._get_local_ds([data_dir.joinpath(f) for f in files])
 
             else:  # stream via Copernicus Marine Service
                 ds = self._get_copernicus_ds(
@@ -240,6 +199,7 @@ class Instrument(abc.ABC):
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
 
+            # streaming data performance is improved by writing to a temporary file, unnecessary for local data
             if self.from_data is None:
                 ds_fset = self._via_tmp_ds(ds_fset)
 
@@ -268,6 +228,81 @@ class Instrument(abc.ABC):
             base_fieldset.add_field(uv)
 
         return base_fieldset
+
+    def _get_copernicus_ds(
+        self,
+        time_buffer: float | None,
+        physical: bool,
+        var: str,
+    ) -> xr.Dataset:
+        """Get Copernicus Marine dataset for direct ingestion."""
+        product_id = _select_product_id(
+            physical=physical,
+            schedule_start=self.min_time,
+            schedule_end=self.max_time,
+            variable=var if not physical else None,
+        )
+
+        # spatial bounds with buffer, if spatial constraints apply
+        min_lon_wbuf, max_lon_wbuf, min_lat_wbuf, max_lat_wbuf = self.spatial_bounds
+
+        return copernicusmarine.open_dataset(
+            dataset_id=product_id,
+            minimum_longitude=min_lon_wbuf,
+            maximum_longitude=max_lon_wbuf,
+            minimum_latitude=min_lat_wbuf,
+            maximum_latitude=max_lat_wbuf,
+            variables=[var],
+            start_datetime=self.min_time,
+            end_datetime=self.max_time + timedelta(days=time_buffer),
+            minimum_depth=abs(self.fetch_spec.depth_min),
+            maximum_depth=abs(self.fetch_spec.depth_max),
+            coordinates_selection_method="outside",
+            vertical_axis="elevation",
+        )
+
+    def _get_local_ds(self, files: list[Path]) -> xr.Dataset:
+        """Get local dataset for direct ingestion."""
+        # TODO: add flexibility to ingest one .nc file / not split across time? (i.e. #366)
+        ds = xr.open_mfdataset([f for f in files])
+
+        # TODO: update docs about the depth dimension metadata requirement, but will be superseded by #366
+        try:
+            if ds["depth"].attrs.get("positive") == "down":
+                ds["depth"] = -ds["depth"]
+                ds = ds.reindex(depth=ds["depth"][::-1])
+                ds["depth"].attrs["positive"] = "up"
+            elif ds["depth"].attrs.get("positive") != "up":
+                pass
+
+        except Exception as e:
+            raise ValueError(
+                f"Missing or invalid 'positive' attribute for 'depth' coordinate in {files[0].parent}. Expected 'positive: up' or 'positive: down'. Original error: {e}"
+            ) from e
+
+        # sel only relevant latlon and depth subsets, to speed up simulations (avoid bringing in potentially global data)
+        # spatial bounds with buffer, if spatial constraints apply
+        min_lon_wbuf, max_lon_wbuf, min_lat_wbuf, max_lat_wbuf = self.spatial_bounds
+
+        depth_min = self.fetch_spec.depth_min
+        depth_max = self.fetch_spec.depth_max
+        if depth_min == depth_max:
+            depth_sel = {
+                "depth": [depth_min],
+                "method": "nearest",
+            }  # preserve depth dim with square brackets
+        else:
+            # max, min slice because depth is negative and positive: up
+            depth_sel = {"depth": slice(depth_max, depth_min)}
+
+        ds = ds.sel(
+            longitude=slice(min_lon_wbuf, max_lon_wbuf),
+            latitude=slice(min_lat_wbuf, max_lat_wbuf),
+        )
+        # separate sel for depth to allow nearest selection if not using slices
+        ds = ds.sel(**depth_sel)
+
+        return ds
 
     @staticmethod
     def _via_tmp_ds(ds) -> xr.Dataset:
@@ -304,6 +339,22 @@ class Instrument(abc.ABC):
     def instrument_type(self) -> InstrumentType:
         """Return the InstrumentType for this instrument instance."""
         return next(k for k, v in INSTRUMENT_CLASS_MAP.items() if type(self) is v)
+
+    @property
+    def spatial_bounds(
+        self,
+    ) -> tuple[float | None, float | None, float | None, float | None]:
+        """Return (min_lon, max_lon, min_lat, max_lat) bounds including buffer if spatial constraints apply."""
+        if not self.fetch_spec.spatial:
+            return None, None, None, None
+
+        buf = self.fetch_spec.latlon_buffer
+        return (
+            self.min_lon - buf,
+            self.max_lon + buf,
+            self.min_lat - buf,
+            self.max_lat + buf,
+        )
 
 
 @dataclass(frozen=True)
