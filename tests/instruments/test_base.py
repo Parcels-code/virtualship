@@ -93,36 +93,45 @@ class DummyInstrument(Instrument):
         """Dummy simulate implementation for test."""
         self.simulate_called = True
 
+    @property
+    def instrument_type(self) -> InstrumentType:
+        """Return a valid InstrumentType for the test."""
+        return InstrumentType.CTD
 
-@patch("virtualship.instruments.base.FieldSet")
-@patch(
-    "virtualship.instruments.base._select_product_id", return_value="dummy_product_id"
-)
-@patch("virtualship.instruments.base.copernicusmarine")
-def test_load_input_data(mock_copernicusmarine, mock_select_product_id, mock_FieldSet):
+
+def test_load_input_data():
     """Test Instrument.load_input_data with mocks."""
-    mock_fieldset = MagicMock()
-    mock_FieldSet.from_netcdf.return_value = mock_fieldset
-    mock_FieldSet.from_xarray_dataset.return_value = mock_fieldset
-    mock_fieldset.__getitem__.side_effect = lambda k: MagicMock()
-    mock_copernicusmarine.open_dataset.return_value = MagicMock()
-    # Create a mock waypoint with latitude and longitude
     mock_waypoint = MagicMock()
     mock_waypoint.location.latitude = 1.0
     mock_waypoint.location.longitude = 2.0
-    mock_schedule = MagicMock()
-    mock_schedule.waypoints = [mock_waypoint]
+
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=mock_schedule),
+        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )
-    fieldset = dummy.load_input_data()
-    assert mock_FieldSet.from_xarray_dataset.called
-    assert fieldset == mock_fieldset
+
+    mock_fieldset = MagicMock()
+    mock_fieldset.to_windowed_arrays.return_value = mock_fieldset
+
+    with (
+        patch(
+            "virtualship.instruments.base._select_product_id",
+            return_value="dummy_product_id",
+        ),
+        patch("copernicusmarine.open_dataset"),
+        patch.object(dummy, "_via_tmp_ds", side_effect=lambda ds: ds),
+        patch("parcels.convert.copernicusmarine_to_sgrid"),
+        patch(
+            "parcels.FieldSet.from_sgrid_conventions", return_value=mock_fieldset
+        ) as mock_from_sgrid,
+    ):
+        fieldset = dummy.load_input_data()
+
+    mock_from_sgrid.assert_called_once()
     assert fieldset == mock_fieldset
 
 
@@ -184,35 +193,34 @@ def test_via_tmp_ds_roundtrip():
     )  # result is new object loaded from tmp file, not the original
 
 
-def test_generate_fieldset_combines_fields(monkeypatch):
+def test_generate_fieldset_combines_fields():
     mock_waypoint = MagicMock()
     mock_waypoint.location.latitude = 1.0
     mock_waypoint.location.longitude = 2.0
-    mock_schedule = MagicMock()
-    mock_schedule.waypoints = [mock_waypoint]
+
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=mock_schedule),
+        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a", "B": "b"},
         add_bathymetry=False,
         allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )
-    dummy.from_data = None
-
-    monkeypatch.setattr(
-        dummy, "_get_copernicus_ds", lambda *args, **kwargs: MagicMock()
-    )
 
     fs_A = MagicMock()
     fs_B = MagicMock()
-    fs_B.B = MagicMock()
-    monkeypatch.setattr(
-        "virtualship.instruments.base.FieldSet.from_xarray_dataset",
-        lambda ds, varmap, dims, mesh=None: fs_A if "A" in varmap else fs_B,
-    )
-    monkeypatch.setattr(fs_A, "add_field", MagicMock())
-    dummy._generate_fieldset()
+
+    fs_A.to_windowed_arrays.return_value = fs_A
+    fs_B.to_windowed_arrays.return_value = fs_B
+
+    with (
+        patch.object(dummy, "_get_copernicus_ds"),
+        patch.object(dummy, "_via_tmp_ds"),
+        patch("parcels.convert.copernicusmarine_to_sgrid"),
+        patch("parcels.FieldSet.from_sgrid_conventions", side_effect=[fs_A, fs_B]),
+    ):
+        dummy._generate_fieldset()
+
     fs_A.add_field.assert_called_once_with(fs_B.B)
 
 
@@ -476,7 +484,7 @@ def test_underway_schema_matches_parcels(tmp_path, pset):
     underway_path = tmp_path / "underway_particles.parquet"
     _create_underway_parquet(
         out_path=underway_path,
-        var_names=["T"],
+        var_names=["temperature"],
         dat_arrays=[np.array([15.0, 16.0], dtype=np.float32)],
         origin=np.datetime64("2024-01-01T00:00:00"),
     )
