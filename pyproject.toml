@@ -70,7 +70,8 @@ filterwarnings = [
   "default::DeprecationWarning",
   "error::DeprecationWarning:virtualship",
   "ignore:ParticleSet is empty.*:RuntimeWarning", # TODO: Probably should be ignored in the source code
-  "ignore:This is an alpha version of Parcels v4.*:UserWarning" # TODO: necessary whilst Parcels v4 is still alpha
+  "ignore:This is an alpha version of Parcels v4.*:UserWarning", # TODO: necessary whilst Parcels v4 is still alpha
+  "ignore:numpy.ndarray size changed:RuntimeWarning" # TODO: annoying incompatability issue with pixi env, see if fixed when relying on a Parcels v4 release rather than pulling from main
 ]
 log_cli_level = "INFO"
 testpaths = [
