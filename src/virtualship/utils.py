@@ -437,7 +437,9 @@ def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
             raise RuntimeError(
                 f"\n\n❗️ Could not find bathymetry variable '{VAR}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
-        ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
+        ds_bathymetry = xr.open_dataset(
+            bathy_dir.joinpath(filename), engine="h5netcdf"
+        )  # h5netcdf for more robust handling
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
@@ -446,11 +448,8 @@ def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
             coordinates_selection_method="outside",
         )
 
-    ds_bathymetry = ds_bathymetry.expand_dims(
-        {"depth": 1}
-    )  # TODO: bodge whilst parcels v4 does not support 2D fields and seeks depth dim; change when parcels v4 released
-
-    # Negate bathymetry to convert from depth below geoid to negative depth (Parcels convention)
+    # give a depth dimension and make bathymetry negative
+    ds_bathymetry = ds_bathymetry.expand_dims({"depth": 1})
     ds_bathymetry[VAR] = -ds_bathymetry[VAR]
 
     ds_fset = parcels.convert.copernicusmarine_to_sgrid(
@@ -487,7 +486,9 @@ def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
     """Search for a .nc file in the given directory containing the specified variable."""
     for nc_file in data_dir.glob("*.nc"):
         try:
-            with xr.open_dataset(nc_file, chunks={}) as ds:
+            with xr.open_dataset(
+                nc_file, engine="h5netcdf"
+            ) as ds:  # h5netcdf for more robust handling
                 matched_vars = [v for v in ds.variables if var in v]
                 if matched_vars:
                     return nc_file.name, matched_vars[0]

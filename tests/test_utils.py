@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from parcels import FieldSet, JITParticle, ScipyParticle, Variable
+from parcels import FieldSet, ParticleClass, Variable
 
 import virtualship.utils
 from virtualship.instruments.sensors import SensorType
@@ -20,7 +20,6 @@ from virtualship.utils import (
     _get_bathy_data,
     _select_product_id,
     _start_end_in_product_timerange,
-    add_dummy_UV,
     build_particle_class_from_sensors,
     get_example_expedition,
 )
@@ -89,25 +88,6 @@ def test_instrument_registry_updates(dummy_instrument):
     assert utils.INSTRUMENT_CLASS_MAP["DUMMY_TYPE"] is dummy_instrument
 
 
-def test_add_dummy_UV_adds_fields():
-    fieldset = FieldSet.from_data({"T": 1}, {"lon": 0, "lat": 0}, mesh="spherical")
-    fieldset.__dict__.pop("U", None)
-    fieldset.__dict__.pop("V", None)
-
-    # should not have U or V fields initially
-    assert "U" not in fieldset.__dict__
-    assert "V" not in fieldset.__dict__
-
-    add_dummy_UV(fieldset)
-
-    # now U and V should be present
-    assert "U" in fieldset.__dict__
-    assert "V" in fieldset.__dict__
-
-    # should not raise error if U and V already present
-    add_dummy_UV(fieldset)
-
-
 @pytest.mark.usefixtures("copernicus_no_download")
 def test_select_product_id(expedition):
     """Should return the physical reanalysis product id via the timings prescribed."""
@@ -138,27 +118,31 @@ def test_start_end_in_product_timerange(expedition):
 def test_get_bathy_data_local(tmp_path):
     """Test that _get_bathy_data returns a FieldSet when given a local directory for --from-data."""
     # dummy .nc file with 'deptho' variable
-    data = np.array([[1, 2], [3, 4]])
+
+    data = np.array(
+        [[1, 2], [3, 4]]
+    )  # positive values, to mock how most bathymetry datasets are supplied
     ds = xr.Dataset(
         {
-            "deptho": (("x", "y"), data),
+            "deptho": (("lat", "lon"), data),
         },
         coords={
-            "longitude": (("x", "y"), np.array([[0, 1], [0, 1]])),
-            "latitude": (("x", "y"), np.array([[0, 0], [1, 1]])),
+            "lon": (("lon"), np.array([0, 1]), {"units": "degrees_east"}),
+            "lat": (("lat"), np.array([0, 1]), {"units": "degrees_north"}),
         },
     )
+
     nc_path = tmp_path / "bathymetry/dummy.nc"
     nc_path.parent.mkdir(parents=True, exist_ok=True)
-    ds.to_netcdf(nc_path)
+    ds.to_netcdf(nc_path, engine="h5netcdf")
 
-    # should return a FieldSet
-    fieldset = _get_bathy_data(
-        min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75, from_data=tmp_path
-    )
+    fieldset = _get_bathy_data(from_data=tmp_path)
     assert isinstance(fieldset, FieldSet)
     assert hasattr(fieldset, "bathymetry")
-    assert np.allclose(fieldset.bathymetry.data, data)
+
+    assert np.allclose(
+        fieldset.bathymetry.data.values, -ds["deptho"].values
+    )  # should be negated
 
 
 def test_get_bathy_data_copernicusmarine(monkeypatch):
@@ -172,7 +156,7 @@ def test_get_bathy_data_copernicusmarine(monkeypatch):
     )
 
     try:
-        _get_bathy_data(min_lat=0.25, max_lat=0.75, min_lon=0.25, max_lon=0.75)
+        _get_bathy_data(from_data=None)  # None means call copernicusmarine
     except RuntimeError as e:
         assert "copernicusmarine called" in str(e)
 
@@ -190,7 +174,7 @@ def test_find_nc_file_with_variable_substring(tmp_path):
         },
     )
     nc_path = tmp_path / "test.nc"
-    ds.to_netcdf(nc_path)
+    ds.to_netcdf(nc_path, engine="h5netcdf")  # h5netcdf for more robust handling
 
     # should find 'uo_glor' when searching for 'uo'
     result = _find_nc_file_with_variable(tmp_path, "uo")
@@ -220,33 +204,30 @@ def test_data_dir_and_filename_compliance():
     utils_code = utils_path.read_text(encoding="utf-8")
 
     # Check for phys and bgc in Instrument._generate_fieldset
-    assert 'self.from_data.joinpath("phys")' in base_code, (
-        "Expected 'phys' subdirectory not found in Instrument._generate_fieldset. This indicates a drift between docs and implementation."
+    assert 'self.from_data.joinpath("phys"' in base_code, (
+        "Expected 'phys' subdirectory not found in Instrument._generate_fieldset. This could indicate a drift between docs and implementation."
     )
-    assert 'self.from_data.joinpath("bgc")' in base_code, (
-        "Expected 'bgc' subdirectory not found in Instrument._generate_fieldset. This indicates a drift between docs and implementation."
+    assert 'if physical else "bgc")' in base_code, (
+        "Expected 'bgc' subdirectory not found in Instrument._generate_fieldset. This could indicate a drift between docs and implementation."
     )
 
     # Check for bathymetry in _get_bathy_data
     assert 'from_data.joinpath("bathymetry")' in utils_code, (
-        "Expected 'bathymetry' subdirectory not found in _get_bathy_data. This indicates a drift between docs and implementation."
+        "Expected 'bathymetry' subdirectory not found in _get_bathy_data. This could indicate a drift between docs and implementation."
     )
 
     # Check for date_pattern in _find_files_in_timerange
     assert 'date_pattern=r"\\d{4}_\\d{2}_\\d{2}"' in utils_code, (
-        "Expected date_pattern r'\\d{4}_\\d{2}_\\d{2}' not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
+        "Expected date_pattern r'\\d{4}_\\d{2}_\\d{2}' not found in _find_files_in_timerange. This could indicate a drift between docs and implementation."
     )
 
     # Check for P1D and P1M in t_resolution logic
     assert 'if all("P1D" in s for s in all_files):' in utils_code, (
-        "Expected check for 'P1D' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
+        "Expected check for 'P1D' in all_files not found in _find_files_in_timerange. This could indicate a drift between docs and implementation."
     )
     assert 'elif all("P1M" in s for s in all_files):' in utils_code, (
-        "Expected check for 'P1M' in all_files not found in _find_files_in_timerange. This indicates a drift between docs and implementation."
+        "Expected check for 'P1M' in all_files not found in _find_files_in_timerange. This could indicate a drift between docs and implementation."
     )
-
-
-# TODO: test for calc_sail_time
 
 
 def test_calc_sail_time(projection=PROJECTION):
@@ -366,8 +347,8 @@ def test_build_basic_particle_class():
     nonsensor = [Variable("cycle_phase", dtype=np.int32, initial=0)]
     sensors = _make_sensors(SensorType.TEMPERATURE, SensorType.SALINITY)
 
-    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
-    assert issubclass(ParticleClass, JITParticle)
+    pclass = build_particle_class_from_sensors(sensors, nonsensor)
+    assert isinstance(pclass, ParticleClass)
 
 
 def test_build_particle_class_disabled_sensors_excluded():
@@ -378,9 +359,9 @@ def test_build_particle_class_disabled_sensors_excluded():
         SensorConfig(sensor_type=SensorType.SALINITY, enabled=False),
     ]
 
-    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
-    assert hasattr(ParticleClass, "temperature")
-    assert not hasattr(ParticleClass, "salinity")
+    pclass = build_particle_class_from_sensors(sensors, nonsensor)
+    assert any(v.name == "temperature" for v in pclass.variables)
+    assert not any(v.name == "salinity" for v in pclass.variables)
 
 
 def test_build_particle_class_velocity_adds_U_V():
@@ -388,18 +369,9 @@ def test_build_particle_class_velocity_adds_U_V():
     nonsensor = []
     sensors = _make_sensors(SensorType.VELOCITY)
 
-    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, JITParticle)
-    assert hasattr(ParticleClass, "U")
-    assert hasattr(ParticleClass, "V")
-
-
-def test_build_particle_class_scipy_base():
-    """Should also work with ScipyParticle as the base class."""
-    nonsensor = []
-    sensors = _make_sensors(SensorType.TEMPERATURE)
-
-    ParticleClass = build_particle_class_from_sensors(sensors, nonsensor, ScipyParticle)
-    assert issubclass(ParticleClass, ScipyParticle)
+    pclass = build_particle_class_from_sensors(sensors, nonsensor)
+    assert any(v.name == "U" for v in pclass.variables)
+    assert any(v.name == "V" for v in pclass.variables)
 
 
 def test_allowed_sensors_matches_docs():
