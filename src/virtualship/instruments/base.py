@@ -239,7 +239,9 @@ class Instrument(abc.ABC):
 
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-            ds_fset = self._via_tmp_ds(ds_fset)
+
+            if self.from_data is None:
+                ds_fset = self._via_tmp_ds(ds_fset)
 
             fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
