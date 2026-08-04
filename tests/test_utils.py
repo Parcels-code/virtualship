@@ -134,7 +134,7 @@ def test_get_bathy_data_local(tmp_path):
 
     nc_path = tmp_path / "bathymetry/dummy.nc"
     nc_path.parent.mkdir(parents=True, exist_ok=True)
-    ds.to_netcdf(nc_path, engine="h5netcdf")
+    ds.to_netcdf(nc_path)
 
     fieldset = _get_bathy_data(from_data=tmp_path)
     assert isinstance(fieldset, FieldSet)
@@ -174,7 +174,7 @@ def test_find_nc_file_with_variable_substring(tmp_path):
         },
     )
     nc_path = tmp_path / "test.nc"
-    ds.to_netcdf(nc_path, engine="h5netcdf")  # h5netcdf for more robust handling
+    ds.to_netcdf(nc_path)
 
     # should find 'uo_glor' when searching for 'uo'
     result = _find_nc_file_with_variable(tmp_path, "uo")

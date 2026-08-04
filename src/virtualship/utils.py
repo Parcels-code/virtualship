@@ -437,9 +437,7 @@ def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
             raise RuntimeError(
                 f"\n\n❗️ Could not find bathymetry variable '{VAR}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
-        ds_bathymetry = xr.open_dataset(
-            bathy_dir.joinpath(filename), engine="h5netcdf"
-        )  # h5netcdf for more robust handling
+        ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
@@ -486,9 +484,7 @@ def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
     """Search for a .nc file in the given directory containing the specified variable."""
     for nc_file in data_dir.glob("*.nc"):
         try:
-            with xr.open_dataset(
-                nc_file, engine="h5netcdf"
-            ) as ds:  # h5netcdf for more robust handling
+            with xr.open_dataset(nc_file) as ds:
                 matched_vars = [v for v in ds.variables if var in v]
                 if matched_vars:
                     return nc_file.name, matched_vars[0]
