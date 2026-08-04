@@ -246,6 +246,17 @@ class Instrument(abc.ABC):
         # spatial bounds with buffer, if spatial constraints apply
         min_lon_wbuf, max_lon_wbuf, min_lat_wbuf, max_lat_wbuf = self.spatial_bounds
 
+        min_depth = (
+            abs(self.fetch_spec.depth_min)
+            if self.fetch_spec.depth_min is not None
+            else None
+        )
+        max_depth = (
+            abs(self.fetch_spec.depth_max)
+            if self.fetch_spec.depth_max is not None
+            else None
+        )
+
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
             minimum_longitude=min_lon_wbuf,
@@ -255,8 +266,8 @@ class Instrument(abc.ABC):
             variables=[var],
             start_datetime=self.min_time,
             end_datetime=self.max_time + timedelta(days=time_buffer),
-            minimum_depth=abs(self.fetch_spec.depth_min),
-            maximum_depth=abs(self.fetch_spec.depth_max),
+            minimum_depth=min_depth,
+            maximum_depth=max_depth,
             coordinates_selection_method="outside",
             vertical_axis="elevation",
         )
@@ -305,13 +316,15 @@ class Instrument(abc.ABC):
         return ds
 
     @staticmethod
-    def _via_tmp_ds(ds) -> xr.Dataset:
+    def _via_tmp_ds(ds: xr.Dataset) -> xr.Dataset:
         """Create and re-load a temporary local dataset."""
-        tmpdir = tempfile.TemporaryDirectory()
-        tmp_fpath = Path(tmpdir.name).joinpath("tmp.nc")
-        ds.to_netcdf(tmp_fpath)
-        del ds
-        return xr.open_dataset(tmp_fpath)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_fpath = Path(tmpdir) / "tmp.nc"
+            ds.to_netcdf(tmp_fpath)
+
+            # Open and load into memory so the file handle closes before tmpdir exits
+            with xr.open_dataset(tmp_fpath) as loaded_ds:
+                return loaded_ds.load()
 
     @staticmethod
     def _sample_initial(
