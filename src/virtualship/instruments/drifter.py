@@ -92,12 +92,8 @@ class DrifterInstrument(Instrument):
             latlon_buffer=30.0,  # TODO: generous buffer to reduce tmp file footprint, can potentially be removed in the future as/when Parcels streaming performance improves (see #358)
             time_buffer=expedition.instruments_config.drifter_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
-            depth_min=abs(
-                expedition.instruments_config.drifter_config.depth_meter
-            ),  # [meters]
-            depth_max=abs(
-                expedition.instruments_config.drifter_config.depth_meter
-            ),  # [meters]
+            depth_min=expedition.instruments_config.drifter_config.depth_meter,  # [meters]
+            depth_max=expedition.instruments_config.drifter_config.depth_meter,  # [meters]
         )
 
         super().__init__(

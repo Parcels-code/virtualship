@@ -152,7 +152,7 @@ def test_fetch_spec_applied_to_instrument():
     mock_waypoint.location.longitude = 2.0
     mock_schedule = MagicMock()
     mock_schedule.waypoints = [mock_waypoint]
-    fetch_spec = FetchSpec(latlon_buffer=5.0, depth_min=10.0)
+    fetch_spec = FetchSpec(latlon_buffer=5.0, depth_min=-10.0)
     dummy = DummyInstrument(
         expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
@@ -163,7 +163,7 @@ def test_fetch_spec_applied_to_instrument():
         from_data=None,
     )
     assert dummy.fetch_spec.latlon_buffer == 5.0
-    assert dummy.fetch_spec.depth_min == 10.0
+    assert dummy.fetch_spec.depth_min == -10.0
     # unset values use dataclass defaults
     assert dummy.fetch_spec.time_buffer == 0.0
     assert dummy.fetch_spec.depth_max is None
