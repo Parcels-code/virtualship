@@ -3,10 +3,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+import parcels
 import pyproj
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
@@ -105,8 +105,8 @@ def test_get_instruments() -> None:
 def test_verify_on_land():
     """Test that schedule verification raises error for waypoints on land (0.0 m bathymetry)."""
     # bathymetry fieldset with NaNs at specific locations
-    latitude = np.array([0, 1.0, 2.0])
-    longitude = np.array([0, 1.0, 2.0])
+    lat = np.array([0, 1.0, 2.0])
+    lon = np.array([0, 1.0, 2.0])
     bathymetry = np.array(
         [
             [100, 0.0, 100],
@@ -117,19 +117,19 @@ def test_verify_on_land():
 
     ds_bathymetry = xr.Dataset(
         {
-            "deptho": (("latitude", "longitude"), bathymetry),
+            "deptho": (("lat", "lon"), bathymetry),
         },
         coords={
-            "latitude": latitude,
-            "longitude": longitude,
+            "lon": (("lon"), lon, {"units": "degrees_east"}),
+            "lat": (("lat"), lat, {"units": "degrees_north"}),
         },
     )
 
-    bathymetry_variables = {"bathymetry": "deptho"}
-    bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-    bathymetry_fieldset = FieldSet.from_xarray_dataset(
-        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(
+        fields={"bathymetry": ds_bathymetry["deptho"]},
     )
+
+    bathymetry_fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
     # waypoints placed in NaN bathy cells
     waypoints = [
