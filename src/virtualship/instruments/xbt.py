@@ -75,7 +75,7 @@ def _xbt_cast(particles, fieldset):
     particles.dz = np.where(
         particles.z + particles.dz < particles.max_depth,
         particles.max_depth - particles.z,
-        particles.z,
+        particles.dz,
     )
 
 
@@ -162,6 +162,9 @@ class XBTInstrument(Instrument):
             max_depth=max_depths,
             min_depth=[xbt.min_depth for xbt in measurements],
             fall_speed=[xbt.fall_speed for xbt in measurements],
+            deceleration_coefficient=[
+                xbt.deceleration_coefficient for xbt in measurements
+            ],
         )
 
         # add initial conditions to sampling variables
@@ -185,7 +188,7 @@ class XBTInstrument(Instrument):
         )
 
         # there should be no particles left, as they delete themselves when they finish profiling
-        if len(xbt_particleset.particledata) != 0:
+        if len(xbt_particleset._data["x"]) != 0:
             raise ValueError(
                 "Simulation ended before XBT finished profiling. This most likely means the field time dimension did not match the simulation time span."
             )
