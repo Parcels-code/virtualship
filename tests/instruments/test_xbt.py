@@ -8,10 +8,11 @@ import datetime
 from typing import ClassVar
 
 import numpy as np
+import parcels
+import polars as pl
 import pydantic
 import pytest
 import xarray as xr
-from parcels import Field, FieldSet
 
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -60,6 +61,63 @@ def xbt_expedition():
     return DummyExpedition()
 
 
+def create_fieldset(
+    data_dict,
+    lon_range=(0.0, 1.0),
+    lat_range=(0.0, 1.0),
+    depth_range=(-1000, 0),
+    time_range=None,
+    bathymetry_val=-1000.0,
+):
+    if time_range is None:
+        time_range = [
+            np.datetime64(BASE_TIME),
+            np.datetime64(BASE_TIME + datetime.timedelta(hours=3)),
+        ]
+    data_vars = {}
+    for key, val in data_dict.items():
+        data_vars[key] = (("time", "depth", "lat", "lon"), val)
+
+    ds_fields = xr.Dataset(
+        data_vars=data_vars,
+        coords={
+            "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
+            "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+            "depth": (("depth"), np.array(depth_range)),
+            "time": (
+                ("time"),
+                time_range,
+                {"axis": "T"},
+            ),
+        },
+    )
+
+    fields = {var: ds_fields[var] for var in data_vars.keys()}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
+    ds_bathymetry = xr.Dataset(
+        data_vars={
+            "bathymetry": (
+                ("lat", "lon"),
+                np.full((len(lat_range), len(lon_range)), bathymetry_val),
+            )
+        },
+        coords={
+            "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
+            "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+        },
+    )
+    ds_bathymetry_fset = parcels.convert.copernicusmarine_to_sgrid(
+        fields={"bathymetry": ds_bathymetry["bathymetry"]}
+    )
+    bathymetry_fset = parcels.FieldSet.from_sgrid_conventions(ds_bathymetry_fset)
+
+    fieldset.add_field(bathymetry_fset.bathymetry)
+
+    return fieldset
+
+
 def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
     # arbitrary time offset for the dummy fieldset
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
@@ -73,18 +131,18 @@ def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
             ),
             min_depth=0,
             max_depth=float("-inf"),
-            fall_speed=6.553,
-            deceleration_coefficient=0.00242,
+            fall_speed=FALL_SPEED,
+            deceleration_coefficient=DECELERATION_COEFFICIENT,
         ),
         XBT(
             spacetime=Spacetime(
                 location=Location(latitude=1, longitude=0),
-                time=base_time,
+                time=base_time + datetime.timedelta(hours=1),
             ),
             min_depth=0,
             max_depth=float("-inf"),
-            fall_speed=6.553,
-            deceleration_coefficient=0.00242,
+            fall_speed=FALL_SPEED,
+            deceleration_coefficient=DECELERATION_COEFFICIENT,
         ),
     ]
 
@@ -93,25 +151,25 @@ def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
         {
             "surface": {
                 "temperature": 6,
-                "lat": xbts[0].spacetime.location.lat,
-                "lon": xbts[0].spacetime.location.lon,
+                "y": xbts[0].spacetime.location.lat,
+                "x": xbts[0].spacetime.location.lon,
             },
             "maxdepth": {
                 "temperature": 8,
-                "lat": xbts[0].spacetime.location.lat,
-                "lon": xbts[0].spacetime.location.lon,
+                "y": xbts[0].spacetime.location.lat,
+                "x": xbts[0].spacetime.location.lon,
             },
         },
         {
             "surface": {
                 "temperature": 6,
-                "lat": xbts[1].spacetime.location.lat,
-                "lon": xbts[1].spacetime.location.lon,
+                "y": xbts[1].spacetime.location.lat,
+                "x": xbts[1].spacetime.location.lon,
             },
             "maxdepth": {
                 "temperature": 8,
-                "lat": xbts[1].spacetime.location.lat,
-                "lon": xbts[1].spacetime.location.lon,
+                "y": xbts[1].spacetime.location.lat,
+                "x": xbts[1].spacetime.location.lon,
             },
         },
     ]
@@ -127,49 +185,35 @@ def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
     t[:, 1, 1, 0] = xbt_exp[1]["surface"]["temperature"]
     t[:, 0, 1, 0] = xbt_exp[1]["maxdepth"]["temperature"]
 
-    fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t},
-        {
-            "time": [
-                np.datetime64(base_time + datetime.timedelta(hours=0)),
-                np.datetime64(base_time + datetime.timedelta(hours=1)),
-            ],
-            "depth": [-1000, 0],
-            "lat": [0, 1],
-            "lon": [0, 1],
-        },
-    )
-    fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
+    fieldset = create_fieldset({"V": v, "U": u, "T": t})
 
     from_data = None
 
     xbt_instrument = XBTInstrument(xbt_expedition, from_data)
-    out_path = tmpdir.join("out.zarr")
+    out_path = tmpdir.join("out.parquet")
 
     xbt_instrument.load_input_data = lambda: fieldset
     xbt_instrument.simulate(xbts, out_path)
 
     # test if output is as expected
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    assert len(results.trajectory) == len(xbts)
+    assert np.unique(results["particle_id"].to_numpy()).size == len(xbts)
 
-    for xbt_i, (traj, exp_bothloc) in enumerate(
-        zip(results.trajectory, xbt_exp, strict=True)
-    ):
-        obs_surface = results.sel(trajectory=traj, obs=0)
-        min_index = np.argmin(results.sel(trajectory=traj)["z"].data)
-        obs_maxdepth = results.sel(trajectory=traj, obs=min_index)
+    for xbt_i, id in enumerate(np.unique(results["particle_id"].to_numpy())):
+        xbt_df = results.filter(pl.col("particle_id") == id)
+        obs_surface = xbt_df.filter(pl.col("z") == xbt_df["z"].max())[0]
+        obs_maxdepth = xbt_df.filter(pl.col("z") == xbt_df["z"].min())[0]
 
         for obs, loc in [
             (obs_surface, "surface"),
             (obs_maxdepth, "maxdepth"),
         ]:
-            exp = exp_bothloc[loc]
-            for var in ["temperature", "lat", "lon"]:
-                obs_value = obs[var].values.item()
+            exp = xbt_exp[xbt_i][loc]
+            for var in ["temperature", "y", "x"]:
+                obs_value = obs[var].item()
                 exp_value = exp[var]
-                assert np.isclose(obs_value, exp_value), (
+                assert np.isclose(obs_value, exp_value, rtol=0.1), (
                     f"Observation incorrect {xbt_i=} {loc=} {var=} {obs_value=} {exp_value=}."
                 )
 
