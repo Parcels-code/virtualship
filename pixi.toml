@@ -15,11 +15,11 @@ backend = { name = "pixi-build-python", version = "0.4.*" }
 
 [package.host-dependencies]
 python = "3.12.*"
-setuptools = "*"
-setuptools_scm = "*"
+setuptools = ">=61.0"
+setuptools_scm = ">=8.0"
 
 [package.run-dependencies] # Keep in sync with `pyproject.toml` and feedstock recipe
-python = "3.12.*"
+python = ">=3.11,<3.13"
 click = "*"
 pyproj = ">=3,<4"
 sortedcontainers = "==2.4.0"
@@ -33,12 +33,12 @@ textual = "*"
 
 [dependencies]
 virtualship = { path = "." }
-python = "3.12.*"
 # Pre-install as conda packages to avoid PyPI source builds
 netcdf4 = "*"
 numpy = ">=2.1.0"
 dask = "*"
-zarr = ">=3"
+pandas = "*"
+pyarrow = "*"
 ipdb = ">=0.13.13,<0.14"
 cmocean = ">=4.0.3,<5"
 numba = ">=0.59.0"
@@ -46,15 +46,13 @@ numba = ">=0.59.0"
 [pypi-dependencies]
 parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
 
-# Commented out whilst parcels v4 alpha only supports Python 3.11 (?)
-# [feature.py310.dependencies]
-# python = "3.10.*"
+[feature.py311.dependencies]
+python = "3.11.*"
+zarr = ">=3.0.0"
 
-# [feature.py311.dependencies]
-# python = "3.11.*"
-
-# [feature.py312.dependencies]
-# python = "3.12.*"
+[feature.py312.dependencies]
+python = "3.12.*"
+zarr = ">=3.0.0"
 
 [feature.test.dependencies]
 pytest = "*"
@@ -120,10 +118,12 @@ types-xlrd = "*"
 typing = "mypy src/virtualship --install-types"
 
 [environments]
-default = { features = ["test", "notebooks", "typing", "pre-commit", "analysis"] }
-test-latest = { features = ["test"], solve-group = "test" }
-test-notebooks = { features = ["test", "notebooks"], solve-group = "test" }
-analysis = { features = ["analysis"], solve-group = "analysis" }
-docs = { features = ["docs"], solve-group = "docs" }
-typing = { features = ["typing"], solve-group = "typing" }
+default = { features = ["py312", "test", "notebooks", "typing", "pre-commit", "analysis"] }
+test-latest = { features = ["py312", "test"], solve-group = "test-py312" }
+test-py311 = { features = ["py311", "test"], solve-group = "test-py311" }
+test-py312 = { features = ["py312", "test"], solve-group = "test-py312" }
+test-notebooks = { features = ["py312", "test", "notebooks"], solve-group = "test-py312" }
+analysis = { features = ["py312", "analysis"], solve-group = "analysis" }
+docs = { features = ["py312", "docs"], solve-group = "docs" }
+typing = { features = ["py312", "typing"], solve-group = "typing" }
 pre-commit = { features = ["pre-commit"], no-default-feature = true }

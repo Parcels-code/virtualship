@@ -8,11 +8,11 @@ description = "Code for the Virtual Ship Classroom, where Marine Scientists can 
 readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "parcels-code.org team" }]
-requires-python = ">=3.10"
-license = { file = "LICENSE" }
+requires-python = ">=3.10, <3.13"
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -41,11 +41,10 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://virtualship.parcels-code.org/"
-Repository = "https://github.com/OceanParcels/virtualship"
+Repository = "https://github.com/Parcels-code/virtualship"
 Documentation = "https://virtualship.readthedocs.io/"
-"Bug Tracker" = "https://github.com/OceanParcels/virtualship/issues"
-Changelog = "https://github.com/OceanParcels/virtualship/releases"
-
+"Bug Tracker" = "https://github.com/Parcels-code/virtualship/issues"
+Changelog = "https://github.com/Parcels-code/virtualship/releases"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -59,7 +58,6 @@ local_scheme = "no-local-version"
 
 [project.scripts]
 virtualship = "virtualship.cli.main:cli"
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -78,10 +76,11 @@ testpaths = [
   "tests",
 ]
 
+[tool.coverage.run]
+source = ["virtualship"]
 
-[tool.coverage]
-run.source = ["virtualship"]
-report.exclude_also = [
+[tool.coverage.report]
+exclude_also = [
   '\.\.\.',
   'if typing.TYPE_CHECKING:',
 ]
@@ -119,7 +118,6 @@ ignore = [
     # TODO: Remove later
     "D100", "D103"
 ]
-
 
 [tool.mypy]
 files = ['src']
