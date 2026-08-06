@@ -28,6 +28,7 @@ from virtualship.utils import (
     _get_bathy_data,
     _get_waypoint_latlons,
     _select_product_id,
+    get_clean_encoding,
     ship_spinner,
 )
 
@@ -318,11 +319,13 @@ class Instrument(abc.ABC):
     @staticmethod
     def _via_tmp_ds(ds: xr.Dataset) -> xr.Dataset:
         """Create and re-load a temporary local dataset."""
+        encoding = get_clean_encoding(ds)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_fpath = Path(tmpdir) / "tmp.nc"
-            ds.to_netcdf(tmp_fpath)
+            ds.to_netcdf(tmp_fpath, encoding=encoding)
 
-            # Open and load into memory so the file handle closes before tmpdir exits
+            # context manage to ensure file closure
             with xr.open_dataset(tmp_fpath) as loaded_ds:
                 return loaded_ds.load()
 
