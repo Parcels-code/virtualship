@@ -14,12 +14,11 @@ version = "dynamic" # dynamic versioning needs better support in pixi https://gi
 backend = { name = "pixi-build-python", version = "0.4.*" }
 
 [package.host-dependencies]
-python = "3.12.*"
-setuptools = ">=61.0"
-setuptools_scm = ">=8.0"
+setuptools = "*"
+setuptools_scm = "*"
 
-[package.run-dependencies] # Keep in sync with `pyproject.toml` and feedstock recipe
-python = ">=3.11,<3.13"
+[package.run-dependencies] # Keep in sync with `pyproject.toml` dependencies
+python = ">=3.11"
 click = "*"
 pyproj = ">=3,<4"
 sortedcontainers = "==2.4.0"
@@ -50,8 +49,8 @@ parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
 python = "3.11.*"
 zarr = ">=3.0.0"
 
-[feature.py312.dependencies]
-python = "3.12.*"
+[feature.py314.dependencies]
+python = "3.14.*"
 zarr = ">=3.0.0"
 
 [feature.test.dependencies]
@@ -118,12 +117,12 @@ types-xlrd = "*"
 typing = "mypy src/virtualship --install-types"
 
 [environments]
-default = { features = ["py312", "test", "notebooks", "typing", "pre-commit", "analysis"] }
-test-latest = { features = ["py312", "test"], solve-group = "test-py312" }
+default = { features = ["py314", "test", "notebooks", "typing", "pre-commit", "analysis"], solve-group = "main" }
+test-latest = { features = ["py314", "test"], solve-group = "test-py314" }
 test-py311 = { features = ["py311", "test"], solve-group = "test-py311" }
-test-py312 = { features = ["py312", "test"], solve-group = "test-py312" }
-test-notebooks = { features = ["py312", "test", "notebooks"], solve-group = "test-py312" }
-analysis = { features = ["py312", "analysis"], solve-group = "analysis" }
-docs = { features = ["py312", "docs"], solve-group = "docs" }
-typing = { features = ["py312", "typing"], solve-group = "typing" }
+test-py314 = { features = ["py314", "test"], solve-group = "test-py314" }
+test-notebooks = { features = ["py314", "test", "notebooks"], solve-group = "test-py314" }
+analysis = { features = ["py314", "analysis"], solve-group = "analysis" }
+docs = { features = ["py314", "docs"], solve-group = "docs" }
+typing = { features = ["py314", "typing"], solve-group = "main" }
 pre-commit = { features = ["pre-commit"], no-default-feature = true }

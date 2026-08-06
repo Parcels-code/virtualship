@@ -1,24 +1,21 @@
 [build-system]
-requires = ["setuptools >= 61.0", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61.0", "setuptools_scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "virtualship"
-description = "Code for the Virtual Ship Classroom, where Marine Scientists can combine Copernicus Marine Data with an OceanParcels ship to go on a virtual expedition."
+description = "Code for VirtualShip, where Marine Scientists can combine Copernicus Marine Data with a Parcels ship to go on a virtual expedition."
 readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "parcels-code.org team" }]
-requires-python = ">=3.10, <3.13"
-license = "MIT"
-license-files = ["LICENSE"]
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
     "Topic :: Education",
@@ -26,17 +23,15 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "parcels >=4.0.0alpha",
-    "pyproj >= 3, < 4",
-    "sortedcontainers == 2.4.0",
-    "opensimplex == 0.4.5",
-    "numpy >=2.1.0",
-    "pydantic >=2, <3",
-    "PyYAML",
-    "copernicusmarine >= 2.2.2",
+    "pyproj>=3,<4",
+    "sortedcontainers==2.4.0",
+    "opensimplex==0.4.5",
+    "numpy>=2.1.0",
+    "pydantic>=2,<3",
+    "pyyaml",
+    "copernicusmarine>=2.2.2",
     "yaspin",
     "textual",
-    "openpyxl",
 ]
 
 [project.urls]
