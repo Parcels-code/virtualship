@@ -223,7 +223,7 @@ def _format_log_metadata(ptcls_subset, mask, fieldset):
     lats = ptcls_subset.y[mask].astype(float)
     lons = ptcls_subset.x[mask].astype(float)
 
-    time_origin = fieldset.U.data.time[0].values
+    time_origin = fieldset.time_interval.left
     times = ptcls_subset.t[mask].astype("timedelta64[s]") + time_origin
 
     return times, lats, lons
