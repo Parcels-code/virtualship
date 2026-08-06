@@ -10,7 +10,11 @@ import pydantic
 import pytest
 import xarray as xr
 
-from virtualship.instruments.argo_float import ArgoFloat, ArgoFloatInstrument
+from virtualship.instruments.argo_float import (
+    ArgoFloat,
+    ArgoFloatInstrument,
+    _handle_grounding,
+)
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
@@ -296,3 +300,57 @@ def test_argo_float_instrument_type():
     argo_instrument = ArgoFloatInstrument(expedition, from_data=None)
     assert argo_instrument.instrument_type == InstrumentType.ARGO_FLOAT
     assert not argo_instrument.instrument_type.is_underway
+
+
+def test_handle_grounding():
+    """Test that _handle_grounding sets grounded status, logs warnings, adjusts dz, and updates cycle phase."""
+
+    class DummyParticles:
+        def __init__(self):
+            self.grounded = np.array([0, 0])
+            self.z = np.array([-1200.0, -1500.0])
+            self.dz = np.array([0.0, 0.0])
+            self.cycle_phase = np.array([1, 1])
+            self.t = np.array([0.0, 0.0])
+            self.y = np.array([10.0, 11.0])
+            self.x = np.array([50.0, 51.0])
+
+    ptcls = DummyParticles()
+
+    # index 0 is grounded (-1000m bathymetry vs -1200m particle depth)
+    # index 1 is safe (-2000m bathymetry vs -1500m particle depth)
+    loc_bathy = np.array([-1000.0, -2000.0])
+    bathysafe_mask = np.array([False, True])
+
+    target_phase = 2
+    fieldset = create_fieldset()
+
+    # capture print outputs
+    log_stream = io.StringIO()
+    with contextlib.redirect_stdout(log_stream):
+        _handle_grounding(
+            ptcls_subset=ptcls,
+            bathysafe_mask=bathysafe_mask,
+            loc_bathy=loc_bathy,
+            fieldset=fieldset,
+            phase_name="descent",
+            target_phase=target_phase,
+        )
+
+    output = log_stream.getvalue()
+
+    # grounding mask applied correctly
+    np.testing.assert_array_equal(ptcls.grounded, np.array([1, 0]))
+
+    # dz updated (target depth = bathy + 50m = -1000 + 50 = -950m; dz = -950 - (-1200) = 250m)
+    expected_dz = np.array([250.0, 0.0])
+    np.testing.assert_allclose(ptcls.dz, expected_dz)
+
+    # cycle phase updated
+    np.testing.assert_array_equal(ptcls.cycle_phase, np.array([target_phase, 1]))
+
+    # warning message printed
+    assert (
+        "Shallow bathymetry warning: Argo float grounded at bathymetry during descent"
+        in output
+    )
