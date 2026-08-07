@@ -24,9 +24,17 @@ ILOs.ipynb
 letter.md
 ```
 
+### Previous implementations
+
+```{warning}
+The following implementations are examples of how the VSC has been used in the past. They are provided here for reference only and may not be up to date with the latest version of the VSC and/or VirtualShip software.
+```
+
+#### Utrecht University
+
 ```{nbgallery}
 ---
-caption: UU Ocean of the Future
+caption: Ocean of the Future (BSc), 2025-26
 ---
 UU-ocean-of-future/Tutorial1.ipynb
 UU-ocean-of-future/CoordinatesExport-Transect.xlsx
@@ -37,7 +45,7 @@ UU-ocean-of-future/plot_slider.py
 
 ```{nbgallery}
 ---
-caption: UU Dynamical Oceanography
+caption: Dynamical Oceanography (MSc), 2025-26
 ---
 UU-dyoc/example_expedition.md
 UU-dyoc/file_permissions.md
