@@ -1,6 +1,15 @@
-import click
+import warnings
 
-from . import commands
+# TODO: remove this when Parcels v4 is no longer alpha and the warning is no longer issued
+warnings.filterwarnings(
+    "ignore",
+    message="This is an alpha version of Parcels v4.*",
+    category=UserWarning,
+)
+
+import click  # noqa: E402
+
+from . import commands  # noqa: E402
 
 
 @click.group()
