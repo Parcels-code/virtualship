@@ -1,5 +1,3 @@
-"""do_expedition function."""
-
 import logging
 import os
 import shutil
