@@ -1,5 +1,7 @@
 # Teacher content
 
+### Overview
+
 VirtualShip is used as part of the VirtualShip Classroom, that combines authentic tools with VR to create a virtual fieldwork experience and allows you to teach about sea-based research from your regular classroom.
 
 All VirtualShip Classroom (VSC) material is open under an MIT licence and freely available! You can use the VSC to teach anything from a 4 hour masterclass up to an open assignment of more than 40 hours. Example assignments are available below and please feel free to customize anything offline or [contribute](../../contributing/index.md) to the assignments provided here.
@@ -16,9 +18,10 @@ The VSC design focuses on creating didactically sound, authentic learning experi
 
 We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced confidence and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
 
+### Teaching materials
+
 ```{toctree}
 :maxdepth: 1
-:caption: Teaching materials
 
 ILOs.ipynb
 letter.md
