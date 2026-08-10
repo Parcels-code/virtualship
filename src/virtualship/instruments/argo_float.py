@@ -324,10 +324,8 @@ class ArgoFloatInstrument(Instrument):
             drift_days=[argo.drift_days for argo in measurements],
         )
 
-        # add initial conditions to sampling variables
-        self._sample_initial(
-            argo_float_particleset, fieldset, argo_float_config.sensors
-        )
+        # N.B. whilst some instruments need sample initial conditions (`_sample_initial`), Argo floats should not;
+        # as this would result in sampling at the initial release, which is not authentic. The sampling should occur during the ascent phase of the cycles.
 
         # define output file for the simulation
         out_file = ParticleFile(
