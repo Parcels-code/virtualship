@@ -19,7 +19,6 @@ maxdepth: 1
 caption: SURF Research Cloud set up
 ---
 surf_research_cloud_setup.ipynb
-surf_collaborative_setup.ipynb
 ```
 
 ```{nbgallery}
