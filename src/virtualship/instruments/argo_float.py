@@ -113,6 +113,7 @@ def _argo_float_vertical_movement(particles, fieldset):
 
     # Phase 3: Rising with vertical_speed until at surface
     ptcls3.dz -= particles.vertical_speed * ptcls3.dt
+    ptcls3.cycle_age += ptcls3.dt  # solve issue of not updating cycle_age during ascent
     next_phase = ptcls3.z + ptcls3.dz >= particles.min_depth
     ptcls3.cycle_phase[next_phase] = 4
     ptcls3.dz[next_phase] = particles.min_depth - ptcls3.z[next_phase]  # noqa:avoid overshoot
