@@ -11,6 +11,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TextIO
 
+import click
 import copernicusmarine
 import numpy as np
 import parcels
@@ -181,35 +182,56 @@ def _generic_load_yaml(data: str, model: BaseModel) -> BaseModel:
     return model.model_validate(yaml.safe_load(data))
 
 
-def load_coordinates(file_path):
-    """Loads coordinates from a file based on its extension."""
+def validate_start_date(ctx, param, value):
+    """Callback to enforce and validate --start-date when --from-mfp is used."""
+    if ctx.params.get("from_mfp"):
+        if not value:
+            raise click.BadParameter(
+                "The '--start-date' option is required when using '--from-mfp'."
+                "\n\nExpected format: 'YYYY-MM-DD HH:MM:SS' (with quotes, e.g., '2023-10-20 01:00:00'). If only the date is provided, the time will default to 00:00:00."
+            )
+    return value
+
+
+def _load_mfpexport(file_path):
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    ext = os.path.splitext(file_path)[-1].lower()
-
     try:
-        if ext in [".xls", ".xlsx"]:
-            return pd.read_excel(file_path)
-
-        if ext == ".csv":
-            return pd.read_csv(file_path)
-
-        raise ValueError(f"Unsupported file extension {ext}.")
+        df = pd.read_excel(file_path)
+        return df.dropna(how="all", axis=1)  # drop empty columns
 
     except Exception as e:
         raise RuntimeError(
             "Could not read coordinates data from the provided file. "
-            "Ensure it is either a csv or excel file."
+            "Ensure it is an exported .xlsx file from MFP."
         ) from e
 
 
-def validate_coordinates(coordinates_data):
-    # Expected column headers
-    expected_columns = {"Station Type", "Name", "Latitude", "Longitude"}
+def _validate_mfpdata(file_path):
+    """Load and validate MFP CruiseData export."""
+    mfp_data = _load_mfpexport(file_path)
 
-    # Check if the headers match the expected ones
-    actual_columns = set(coordinates_data.columns)
+    # clean up column names
+    mfp_data.columns = mfp_data.columns.astype(str).str.strip()
+    mfp_data = mfp_data.loc[
+        :, ~mfp_data.columns.str.startswith("Unnamed") & (mfp_data.columns != "")
+    ]
+
+    expected_columns = {
+        "Station",
+        "Type",
+        "Latitude",
+        "Longitude",
+        "Sea Depth",
+        "Time at Station",
+        "Travel Time to Next",
+        "Distance to Next (NM)",
+        "Ship Speed (kn)",
+        "EEZ",
+    }
+
+    actual_columns = set(mfp_data.columns)
 
     missing_columns = expected_columns - actual_columns
     if missing_columns:
@@ -228,42 +250,39 @@ def validate_coordinates(coordinates_data):
             stacklevel=2,
         )
 
-    # Drop unexpected columns (optional, only if you want to ensure strict conformity)
-    coordinates_data = coordinates_data[list(expected_columns)]
-
-    # Continue with the rest of the function after validation...
-    coordinates_data = coordinates_data.dropna()
+    # Drop unexpected columns
+    mfp_data = mfp_data[list(expected_columns)]
 
     # Convert latitude and longitude to floats, replacing commas with dots
     # Handles case when the latitude and longitude have decimals with commas
-    if coordinates_data["Latitude"].dtype in ["object", "string"]:
-        coordinates_data["Latitude"] = coordinates_data["Latitude"].apply(
+    if mfp_data["Latitude"].dtype in ["object", "string"]:
+        mfp_data["Latitude"] = mfp_data["Latitude"].apply(
             lambda x: float(x.replace(",", "."))
         )
 
-    if coordinates_data["Longitude"].dtype in ["object", "string"]:
-        coordinates_data["Longitude"] = coordinates_data["Longitude"].apply(
+    if mfp_data["Longitude"].dtype in ["object", "string"]:
+        mfp_data["Longitude"] = mfp_data["Longitude"].apply(
             lambda x: float(x.replace(",", "."))
         )
 
-    return coordinates_data
+    # convert 'Travel Time to Next' and 'Time at Station' to timedelta
+    mfp_data["Travel Time to Next"] = mfp_data["Travel Time to Next"].apply(
+        lambda x: _mfp_string_to_timedelta(x)
+    )
+    mfp_data["Time at Station"] = mfp_data["Time at Station"].apply(
+        lambda x: _mfp_string_to_timedelta(x)
+    )
+
+    # combine 'Travel Time to Next' and 'Time at Station' into a single 'Total Time' column
+    mfp_data["Total Time"] = (
+        mfp_data["Travel Time to Next"] + mfp_data["Time at Station"]
+    )
+
+    return mfp_data
 
 
-def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
-    """
-    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version.
-
-    Parameters
-    ----------
-    - excel_file_path (str): Path to the Excel file containing coordinate and instrument data.
-
-    The function:
-    1. Reads instrument and location data from the Excel file.
-    2. Determines the maximum depth and buffer based on the instruments present.
-    3. Ensures longitude and latitude values remain valid after applying buffer adjustments.
-    4. returns the yaml information.
-
-    """
+def mfp_to_yaml(file_path: str, start_date: str, output_path: str):
+    """Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version."""
     # avoid circular imports
     from virtualship.models import (
         Expedition,
@@ -274,19 +293,24 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     )
 
     # Read data from file
-    coordinates_data = load_coordinates(coordinates_file_path)
-
-    coordinates_data = validate_coordinates(coordinates_data)
+    mfp_data = _validate_mfpdata(file_path)
 
     # Generate waypoints
     waypoints = []
-    for _, row in coordinates_data.iterrows():
+    current_time, previous_timedelta = start_date, None
+    for i, row in mfp_data.iterrows():
+        if i > 0:
+            current_time += previous_timedelta
         waypoints.append(
             Waypoint(
-                instrument=None,  # instruments blank, to be built by user using `virtualship plan` UI or by interacting directly with YAML files
+                instrument=None,
                 location=Location(latitude=row["Latitude"], longitude=row["Longitude"]),
+                time=current_time,
             )
         )
+        previous_timedelta = row[
+            "Total Time"
+        ]  # store total timedelta for next iteration
 
     # Create Schedule object
     schedule = Schedule(
@@ -309,7 +333,17 @@ def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D41
     )
 
     # Save to YAML file
-    expedition.to_yaml(yaml_output_path)
+    expedition.to_yaml(output_path)
+
+
+def _mfp_string_to_timedelta(value: str) -> timedelta:
+    """Handle MFP export string format (e.g., "0d 13h 13m")."""
+    if pd.isna(value):  # last waypoint has no travel time to next, so will be NaN
+        return timedelta(0)
+
+    value = value.replace("d", ":").replace("h", ":").replace("m", "")
+    days, hours, minutes = map(int, value.split(":"))
+    return timedelta(days=days, hours=hours, minutes=minutes)
 
 
 def _validate_numeric_to_timedelta(
