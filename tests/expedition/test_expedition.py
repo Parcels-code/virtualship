@@ -7,6 +7,7 @@ import parcels
 import pyproj
 import pytest
 import xarray as xr
+import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
@@ -371,3 +372,40 @@ def test_all_instrument_configs_use_mixin(expedition):
         assert iconfig.__class__._instrument_type == iconfig._instrument_type, (
             f"{iconfig.__class__.__name__}._instrument_type does not match its registered InstrumentType"
         )
+
+
+def test_waypoint_yaml_line() -> None:
+    """Each waypoint entry in the raw YAML dump should start with '- instrument:'."""
+    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+    schedule = Schedule(
+        waypoints=[
+            Waypoint(location=Location(0, 0), time=base_time, instrument=None),
+            Waypoint(
+                location=Location(1, 1),
+                time=base_time + timedelta(hours=1),
+                instrument=None,
+            ),
+            Waypoint(
+                location=Location(2, 2),
+                time=base_time + timedelta(hours=2),
+                instrument=["CTD"],
+            ),
+        ]
+    )
+    raw = yaml.dump(
+        {
+            "schedule": {
+                "waypoints": [wp.model_dump(by_alias=True) for wp in schedule.waypoints]
+            }
+        },
+        default_flow_style=False,
+    )
+
+    lines = [
+        line for line in raw.splitlines() if line.lstrip().startswith("- instrument:")
+    ]
+    assert len(lines) == len(schedule.waypoints), (
+        f"Expected {len(schedule.waypoints)} lines starting with '- instrument:' in the YAML dump, "
+        f"got {len(lines)}. The Waypoint field order or teminology may have changed. "
+        "Note this can have implications for the placement of waypoint number comments in Expedition.to_yaml()."
+    )

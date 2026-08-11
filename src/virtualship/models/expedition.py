@@ -45,9 +45,7 @@ class Expedition(pydantic.BaseModel):
         annotated = []
         waypoint_number = 0
         for line in lines:
-            if line.lstrip().startswith(
-                "- instrument:"
-            ):  # TODO: unit test that this is how each waypoint is identified in the yaml dump
+            if line.lstrip().startswith("- instrument:"):
                 waypoint_number += 1
                 indent = " " * (len(line) - len(line.lstrip()))
                 annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
