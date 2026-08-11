@@ -1,5 +1,7 @@
 # Teacher content
 
+### Overview
+
 VirtualShip is used as part of the VirtualShip Classroom, that combines authentic tools with VR to create a virtual fieldwork experience and allows you to teach about sea-based research from your regular classroom.
 
 All VirtualShip Classroom (VSC) material is open under an MIT licence and freely available! You can use the VSC to teach anything from a 4 hour masterclass up to an open assignment of more than 40 hours. Example assignments are available below and please feel free to customize anything offline or [contribute](../../contributing/index.md) to the assignments provided here.
@@ -16,17 +18,26 @@ The VSC design focuses on creating didactically sound, authentic learning experi
 
 We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced confidence and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
 
+### Teaching materials
+
 ```{toctree}
 :maxdepth: 1
-:caption: Teaching materials
 
 ILOs.ipynb
 letter.md
 ```
 
+### Previous implementations
+
+```{warning}
+The following implementations are examples of how the VSC has been used in the past. They are provided here for reference only and may not be up to date with the latest version of the VSC and/or VirtualShip software.
+```
+
+#### Utrecht University
+
 ```{nbgallery}
 ---
-caption: UU Ocean of the Future
+caption: Ocean of the Future (BSc), 2025-26
 ---
 UU-ocean-of-future/Tutorial1.ipynb
 UU-ocean-of-future/CoordinatesExport-Transect.xlsx
@@ -37,7 +48,7 @@ UU-ocean-of-future/plot_slider.py
 
 ```{nbgallery}
 ---
-caption: UU Dynamical Oceanography
+caption: Dynamical Oceanography (MSc), 2025-26
 ---
 UU-dyoc/example_expedition.md
 UU-dyoc/file_permissions.md
