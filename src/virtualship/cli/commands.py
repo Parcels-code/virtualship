@@ -56,14 +56,16 @@ def init(path, from_mfp, start_date):
         # Generate expedition.yaml from the MPF file
         click.echo(f"Generating schedule from {mfp_file}...")
         mfp_to_yaml(mfp_file, start_date, expedition)
-        # TODO: this print needs to be updated
         # TODO: how to handle the ports?! Should be conditional on this kind of 'waypoint' being present in the MFP file.
+        # TODO: the schedule object should be able to take a special 'port' waypoint type, which is the same as a regular waypoint (to ensure compatibility) but without 'instruments'
+        # TODO: need to check this interacts as expected with the 'problems' module
+        # TODO: and new components need to be added to the 'plan' module to allow users to add ports and instruments to the schedule (keep in waypoints section but without instruments)
+        # TODO: but add and remove waypoint buttons should ignore ports
         click.echo(
-            "\n⚠️  The generated schedule does not contain TIME values or INSTRUMENT selections.  ⚠️"
-            "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the schedule configuration, "
-            "\nOR edit 'expedition.yaml' and manually add the necessary time values and instrument selections under the 'schedule' heading."
+            "\n⚠️  The generated schedule does not contain INSTRUMENT selections.  ⚠️"
+            "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the configuration, "
+            "\nOR edit 'expedition.yaml' and manually add the instrument selections under the 'schedule' heading."
             "\n\nIf editing 'expedition.yaml' manually:"
-            "\n\n🕒  Expected time format: 'YYYY-MM-DD HH:MM:SS' (e.g., '2023-10-20 01:00:00')."
             "\n\n🌡️   Expected instrument(s) format: one line per instrument e.g."
             f"\n\n{' ' * 15}waypoints:\n{' ' * 15}- instrument:\n{' ' * 19}- CTD\n{' ' * 19}- ARGO_FLOAT\n"
         )
