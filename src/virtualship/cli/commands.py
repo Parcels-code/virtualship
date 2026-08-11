@@ -10,6 +10,7 @@ from virtualship.utils import (
     EXPEDITION,
     get_example_expedition,
     mfp_to_yaml,
+    validate_start_date,
 )
 
 
@@ -26,7 +27,15 @@ from virtualship.utils import (
     'Marine Facilities Planning tool (specifically the "Export Coordinates > DD" option). '
     "User edits are required after initialisation.",
 )
-def init(path, from_mfp):
+@click.option(
+    "--start-date",
+    type=click.DateTime(formats=["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]),
+    default=None,
+    callback=validate_start_date,
+    help="The departure/start date of the expedition (required when using --from-mfp). "
+    "Expected format: 'YYYY-MM-DD HH:MM:SS' (with quotes, e.g., '2023-10-20 01:00:00'). If only the date is provided, the time will default to 00:00:00.",
+)
+def init(path, from_mfp, start_date):
     """
     Initialize a directory for a new expedition, with an expedition.yaml file.
 
@@ -46,7 +55,9 @@ def init(path, from_mfp):
         mfp_file = Path(from_mfp)
         # Generate expedition.yaml from the MPF file
         click.echo(f"Generating schedule from {mfp_file}...")
-        mfp_to_yaml(mfp_file, expedition)
+        mfp_to_yaml(mfp_file, start_date, expedition)
+        # TODO: this print needs to be updated
+        # TODO: how to handle the ports?! Should be conditional on this kind of 'waypoint' being present in the MFP file.
         click.echo(
             "\n⚠️  The generated schedule does not contain TIME values or INSTRUMENT selections.  ⚠️"
             "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the schedule configuration, "
