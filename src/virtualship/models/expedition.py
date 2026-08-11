@@ -37,9 +37,24 @@ class Expedition(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="forbid")
 
     def to_yaml(self, file_path: str) -> None:
-        """Write exepedition object to yaml file."""
+        """Write expedition object to yaml file, with waypoint number comments."""
+        raw = yaml.dump(self.model_dump(by_alias=True), default_flow_style=False)
+
+        breakpoint()
+        lines = raw.splitlines(keepends=True)
+        annotated = []
+        waypoint_number = 0
+        for line in lines:
+            if line.lstrip().startswith(
+                "- instrument:"
+            ):  # TODO: unit test that this is how each waypoint is identified in the yaml dump
+                waypoint_number += 1
+                indent = " " * (len(line) - len(line.lstrip()))
+                annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
+            annotated.append(line)
+
         with open(file_path, "w") as file:
-            yaml.dump(self.model_dump(by_alias=True), file)
+            file.writelines(annotated)
 
     @classmethod
     def from_yaml(cls, file_path: str) -> Expedition:

@@ -1,36 +1,5 @@
 # see https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/working_with_expedition_yaml.html for more details on how to edit this file
 #
-schedule:
-  waypoints:
-    - instrument:
-        - CTD
-      location:
-        latitude: 0
-        longitude: 0
-      time: 1998-01-01 00:00:00
-    - instrument:
-        - DRIFTER
-        - CTD
-      location:
-        latitude: 0.01
-        longitude: 0.01
-      time: 1998-01-02 01:00:00
-    - instrument:
-        - ARGO_FLOAT
-      location:
-        latitude: 0.02
-        longitude: 0.02
-      time: 1998-01-03 02:00:00
-    - instrument:
-        - XBT
-      location:
-        latitude: 0.03
-        longitude: 0.03
-      time: 1998-01-04 03:00:00
-    - location:
-        latitude: 0.03
-        longitude: 0.03
-      time: 1998-01-05 03:00:00
 instruments_config:
   adcp_config:
     num_bins: 40
@@ -82,5 +51,41 @@ instruments_config:
     sensors:
       - TEMPERATURE
       - SALINITY
+schedule:
+  waypoints:
+    # Waypoint 1
+    - instrument:
+        - CTD
+      location:
+        latitude: 0
+        longitude: 0
+      time: 1998-01-01 00:00:00
+    # Waypoint 2
+    - instrument:
+        - DRIFTER
+        - CTD
+      location:
+        latitude: 0.01
+        longitude: 0.01
+      time: 1998-01-02 01:00:00
+    # Waypoint 3
+    - instrument:
+        - ARGO_FLOAT
+      location:
+        latitude: 0.02
+        longitude: 0.02
+      time: 1998-01-03 02:00:00
+    # Waypoint 4
+    - instrument:
+        - XBT
+      location:
+        latitude: 0.03
+        longitude: 0.03
+      time: 1998-01-04 03:00:00
+    # Waypoint 5
+    - location:
+        latitude: 0.03
+        longitude: 0.03
+      time: 1998-01-05 03:00:00
 ship_config:
   ship_speed_knots: 10.0
