@@ -7,11 +7,12 @@ Fields are kept static over time and time component of CTD measurements is not t
 import datetime
 
 import numpy as np
+import parcels
+import polars as pl
 import pydantic
 import pytest
 import xarray as xr
 
-from parcels import Field, FieldSet
 from virtualship.instruments.ctd import CTD, CTDInstrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -23,18 +24,101 @@ from virtualship.models.expedition import (
     Waypoint,
 )
 
+BASE_TIME = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
+MIN_DEPTH = -11
+MAX_DEPTH = -2000
+STATIONKEEPING_TIME = 50
+
+
+def create_dummy_expedition(
+    sensors, lifetime=datetime.timedelta(days=1), location=(1, 2)
+):
+    """Create a DummyExpedition class with specified sensors and parameters."""
+
+    class DummyExpedition:
+        class schedule:
+            waypoints: list[Waypoint] = [  # noqa: RUF012
+                Waypoint(location=Location(*location), time=BASE_TIME)
+            ]
+
+        instruments_config = InstrumentsConfig(
+            ctd_config=CTDConfig(
+                stationkeeping_time_minutes=STATIONKEEPING_TIME,
+                min_depth_meter=MIN_DEPTH,
+                max_depth_meter=MAX_DEPTH,
+                sensors=sensors,
+            )
+        )
+
+    return DummyExpedition()
+
+
+def create_fieldset(
+    data_dict,
+    lon_range=(0.0, 1.0),
+    lat_range=(0.0, 1.0),
+    depth_range=(-1000, 0),
+    time_range=None,
+    bathymetry_val=-1000.0,
+):
+    if time_range is None:
+        time_range = [
+            np.datetime64(BASE_TIME),
+            np.datetime64(BASE_TIME + datetime.timedelta(hours=1)),
+        ]
+
+    data_vars = {}
+    for key, val in data_dict.items():
+        data_vars[key] = (("time", "depth", "lat", "lon"), val)
+
+    ds_fields = xr.Dataset(
+        data_vars=data_vars,
+        coords={
+            "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
+            "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+            "depth": (("depth"), np.array(depth_range)),
+            "time": (
+                ("time"),
+                time_range,
+                {"axis": "T"},
+            ),
+        },
+    )
+
+    fields = {var: ds_fields[var] for var in data_vars.keys()}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
+    ds_bathymetry = xr.Dataset(
+        data_vars={
+            "bathymetry": (
+                ("lat", "lon"),
+                np.full((len(lat_range), len(lon_range)), bathymetry_val),
+            )
+        },
+        coords={
+            "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
+            "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+        },
+    )
+    ds_bathymetry_fset = parcels.convert.copernicusmarine_to_sgrid(
+        fields={"bathymetry": ds_bathymetry["bathymetry"]}
+    )
+    bathymetry_fset = parcels.FieldSet.from_sgrid_conventions(ds_bathymetry_fset)
+
+    fieldset.add_field(bathymetry_fset.bathymetry)
+
+    return fieldset
+
 
 def test_simulate_ctds(tmpdir) -> None:
     """Test that CTDInstrument simulates measurements correctly, incuding sampling physical and bgc variables."""
-    # arbitrary time offset for the dummy fieldset
-    base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
-
     # where to cast CTDs
     ctds = [
         CTD(
             spacetime=Spacetime(
                 location=Location(latitude=0, longitude=1),
-                time=base_time + datetime.timedelta(hours=0),
+                time=BASE_TIME + datetime.timedelta(hours=0),
             ),
             min_depth=0,
             max_depth=float("-inf"),
@@ -42,7 +126,7 @@ def test_simulate_ctds(tmpdir) -> None:
         CTD(
             spacetime=Spacetime(
                 location=Location(latitude=1, longitude=0),
-                time=base_time,
+                time=BASE_TIME,
             ),
             min_depth=0,
             max_depth=float("-inf"),
@@ -58,8 +142,8 @@ def test_simulate_ctds(tmpdir) -> None:
                 "o2": 10.0,
                 "chl": 20.0,
                 "no3": 30.0,
-                "lat": ctds[0].spacetime.location.lat,
-                "lon": ctds[0].spacetime.location.lon,
+                "y": ctds[0].spacetime.location.lat,
+                "x": ctds[0].spacetime.location.lon,
             },
             "maxdepth": {
                 "salinity": 7,
@@ -67,8 +151,8 @@ def test_simulate_ctds(tmpdir) -> None:
                 "o2": 11.0,
                 "chl": 21.0,
                 "no3": 31.0,
-                "lat": ctds[0].spacetime.location.lat,
-                "lon": ctds[0].spacetime.location.lon,
+                "y": ctds[0].spacetime.location.lat,
+                "x": ctds[0].spacetime.location.lon,
             },
         },
         {
@@ -78,8 +162,8 @@ def test_simulate_ctds(tmpdir) -> None:
                 "o2": 12.0,
                 "chl": 22.0,
                 "no3": 32.0,
-                "lat": ctds[1].spacetime.location.lat,
-                "lon": ctds[1].spacetime.location.lon,
+                "y": ctds[1].spacetime.location.lat,
+                "x": ctds[1].spacetime.location.lon,
             },
             "maxdepth": {
                 "salinity": 7,
@@ -87,8 +171,8 @@ def test_simulate_ctds(tmpdir) -> None:
                 "o2": 13.0,
                 "chl": 23.0,
                 "no3": 33.0,
-                "lat": ctds[1].spacetime.location.lat,
-                "lon": ctds[1].spacetime.location.lon,
+                "y": ctds[1].spacetime.location.lat,
+                "x": ctds[1].spacetime.location.lon,
             },
         },
     ]
@@ -128,74 +212,51 @@ def test_simulate_ctds(tmpdir) -> None:
     no3[:, 1, 1, 0] = ctd_exp[1]["surface"]["no3"]
     no3[:, 0, 1, 0] = ctd_exp[1]["maxdepth"]["no3"]
 
-    fieldset = FieldSet.from_data(
+    fieldset = create_fieldset(
         {"V": v, "U": u, "T": t, "S": s, "o2": o2, "chl": chl, "no3": no3},
-        {
-            "time": [
-                np.datetime64(base_time + datetime.timedelta(hours=0)),
-                np.datetime64(base_time + datetime.timedelta(hours=1)),
-            ],
-            "depth": [-1000, 0],
-            "lat": [0, 1],
-            "lon": [0, 1],
-        },
+        time_range=[
+            np.datetime64(BASE_TIME + datetime.timedelta(hours=0)),
+            np.datetime64(BASE_TIME + datetime.timedelta(hours=1)),
+        ],
     )
-    fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    # dummy expedition for CTDInstrument
-    class DummyExpedition:
-        class schedule:
-            # ruff: noqa
-            waypoints = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=base_time,
-                ),
-            ]
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+        SensorConfig(sensor_type=SensorType.OXYGEN),
+        SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
+        SensorConfig(sensor_type=SensorType.NITRATE),
+    ]
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE),
-                    SensorConfig(sensor_type=SensorType.SALINITY),
-                    SensorConfig(sensor_type=SensorType.OXYGEN),
-                    SensorConfig(sensor_type=SensorType.CHLOROPHYLL),
-                    SensorConfig(sensor_type=SensorType.NITRATE),
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     from_data = None
 
     ctd_instrument = CTDInstrument(expedition, from_data)
-    out_path = tmpdir.join("out.zarr")
+    out_path = tmpdir.join("out.parquet")
 
     ctd_instrument.load_input_data = lambda: fieldset
     ctd_instrument.simulate(ctds, out_path)
 
     # test if output is as expected
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    assert len(results.trajectory) == len(ctds)
+    assert np.unique(results["particle_id"].to_numpy()).size == len(ctds)
 
-    for ctd_i, (traj, exp_bothloc) in enumerate(
-        zip(results.trajectory, ctd_exp, strict=True)
-    ):
-        obs_surface = results.sel(trajectory=traj, obs=0)
-        min_index = np.argmin(results.sel(trajectory=traj)["z"].data)
-        obs_maxdepth = results.sel(trajectory=traj, obs=min_index)
+    for ctd_i, id in enumerate(np.unique(results["particle_id"].to_numpy())):
+        ctd_df = results.filter(pl.col("particle_id") == id)
+        ctd_surface = ctd_df.filter(pl.col("z") == ctd_df["z"].max())[
+            0
+        ]  # one row (there are two given ctd ascends back to surface)
+        ctd_maxdepth = ctd_df.filter(pl.col("z") == ctd_df["z"].min())
 
         for obs, loc in [
-            (obs_surface, "surface"),
-            (obs_maxdepth, "maxdepth"),
+            (ctd_surface, "surface"),
+            (ctd_maxdepth, "maxdepth"),
         ]:
-            exp = exp_bothloc[loc]
-            for var in ["salinity", "temperature", "o2", "chl", "no3", "lat", "lon"]:
-                obs_value = obs[var].values.item()
+            exp = ctd_exp[ctd_i][loc]
+
+            for var in ["salinity", "temperature", "o2", "chl", "no3", "y", "x"]:
+                obs_value = obs[var].item()
                 exp_value = exp[var]
 
                 assert np.isclose(obs_value, exp_value), (
@@ -249,7 +310,7 @@ def test_ctd_sensor_config_yaml() -> None:
 
 
 def test_ctd_disabled_sensor_absent(tmpdir) -> None:
-    """Variables for disabled sensors must not appear in the zarr output."""
+    """Variables for disabled sensors must not appear in the output."""
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
     ctds = [
@@ -264,42 +325,28 @@ def test_ctd_disabled_sensor_absent(tmpdir) -> None:
     ]
 
     # Only temperature field, no salinty
-    t = np.full((2, 2, 2), 5.0)
-    fieldset = FieldSet.from_data(
+    t = np.full((2, 2, 2, 2), 5.0)
+    fieldset = create_fieldset(
         {"T": t},
-        {
-            "lon": np.array([0.0, 1.0]),
-            "lat": np.array([0.0, 1.0]),
-            "time": [
-                np.datetime64(base_time + datetime.timedelta(seconds=0)),
-                np.datetime64(base_time + datetime.timedelta(hours=4)),
-            ],
-        },
+        time_range=[
+            np.datetime64(base_time + datetime.timedelta(seconds=0)),
+            np.datetime64(base_time + datetime.timedelta(hours=4)),
+        ],
+        lat_range=np.array([0.0, 1.0]),
+        lon_range=np.array([0.0, 1.0]),
     )
-    fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    class DummyExpedition:
-        class schedule:
-            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE)
+    ]  # SALINITY omitted = disabled
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.TEMPERATURE)
-                ],  # SALINITY omitted = disabled
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     ctd_instrument = CTDInstrument(expedition, None)
-    out_path = tmpdir.join("out_disabled.zarr")
+    out_path = tmpdir.join("out_disabled.parquet")
     ctd_instrument.load_input_data = lambda: fieldset
     ctd_instrument.simulate(ctds, out_path)
 
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
     assert "temperature" in results, "Enabled sensor variable must be present"
     assert "salinity" not in results, (
         "Disabled sensor variable must be absent from output"
@@ -359,7 +406,7 @@ def test_ctd_config_unsupported_sensor_rejected():
 
 
 def test_sensor_absent(tmpdir) -> None:
-    """A (BGC) sensor that is disabled must not appear in the zarr output."""
+    """A (BGC) sensor that is disabled must not appear in the output."""
     base_time = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 
     ctds = [
@@ -373,42 +420,38 @@ def test_sensor_absent(tmpdir) -> None:
         ),
     ]
 
-    o2_data = np.full((2, 2, 2), 5.0)
-    fieldset = FieldSet.from_data(
+    o2_data = np.full((2, 2, 2, 2), 5.0)
+    fieldset = create_fieldset(
         {"o2": o2_data},
-        {
-            "lon": np.array([0.0, 1.0]),
-            "lat": np.array([0.0, 1.0]),
-            "time": [
-                np.datetime64(base_time + datetime.timedelta(seconds=0)),
-                np.datetime64(base_time + datetime.timedelta(hours=4)),
-            ],
-        },
+        time_range=[
+            np.datetime64(base_time + datetime.timedelta(seconds=0)),
+            np.datetime64(base_time + datetime.timedelta(hours=4)),
+        ],
+        lat_range=np.array([0.0, 1.0]),
+        lon_range=np.array([0.0, 1.0]),
     )
-    fieldset.add_field(Field("bathymetry", [-1000], lon=0, lat=0))
 
-    class DummyExpedition:
-        class schedule:
-            waypoints = [Waypoint(location=Location(1, 2), time=base_time)]
+    sensors = [
+        SensorConfig(sensor_type=SensorType.OXYGEN)
+        # CHLOROPHYLL omitted = disabled
+    ]
 
-        instruments_config = InstrumentsConfig(
-            ctd_config=CTDConfig(
-                stationkeeping_time_minutes=50,
-                min_depth_meter=-11.0,
-                max_depth_meter=-2000.0,
-                sensors=[
-                    SensorConfig(sensor_type=SensorType.OXYGEN),
-                    # CHLOROPHYLL omitted = disabled
-                ],
-            )
-        )
-
-    expedition = DummyExpedition()
+    expedition = create_dummy_expedition(sensors)
     ctd_instrument = CTDInstrument(expedition, None)
-    out_path = tmpdir.join("out_bgc_disabled.zarr")
+    out_path = tmpdir.join("out_bgc_disabled.parquet")
     ctd_instrument.load_input_data = lambda: fieldset
     ctd_instrument.simulate(ctds, out_path)
 
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
     assert "o2" in results, "Enabled BGC sensor variable must be present"
     assert "chl" not in results, "Disabled sensor variable must be absent from output"
+
+
+def test_ctd_instrument_type():
+    """CTDInstrument returns the correct InstrumentType and if is underway instrument."""
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]  # only need one
+    expedition = create_dummy_expedition(sensors)
+
+    ctd_instrument = CTDInstrument(expedition, from_data=None)
+    assert ctd_instrument.instrument_type == InstrumentType.CTD
+    assert not ctd_instrument.instrument_type.is_underway

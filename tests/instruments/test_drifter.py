@@ -1,16 +1,17 @@
 """Test the simulation of drifters."""
 
 import datetime
-from typing import ClassVar
 
 import numpy as np
+import parcels
+import polars as pl
 import pydantic
 import pytest
 import xarray as xr
-from parcels import FieldSet
 
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
     DrifterConfig,
@@ -21,34 +22,73 @@ from virtualship.models.expedition import (
 
 BASE_TIME = datetime.datetime.strptime("1950-01-01", "%Y-%m-%d")
 LIFETIME = datetime.timedelta(days=1)
+DEPLOY_DEPTH = -1.0
 
-DEPLOY_DEPTH = -1.0  # default
 
-
-def create_dummy_expedition():
-    # arbitrary time offset for the dummy fieldset
+def create_dummy_expedition(
+    sensors=None,
+    lifetime=LIFETIME,
+    depth=DEPLOY_DEPTH,
+    location=(1, 2),
+):
+    if sensors is None:
+        sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
 
     class DummyExpedition:
         class schedule:
-            waypoints: ClassVar = [
-                Waypoint(
-                    location=Location(
-                        1, 2
-                    ),  # any location is fine for dummy, actual drifter deployment locations are defined in the test functions
-                    time=BASE_TIME,
-                ),
+            waypoints: list[Waypoint] = [  # noqa: RUF012
+                Waypoint(location=Location(*location), time=BASE_TIME)
             ]
 
         instruments_config = InstrumentsConfig(
             drifter_config=DrifterConfig(
-                lifetime=LIFETIME,
-                depth_meter=DEPLOY_DEPTH,
+                lifetime=lifetime,
+                depth_meter=depth,
                 stationkeeping_time_minutes=10,
-                sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
+                sensors=sensors,
             )
         )
 
     return DummyExpedition()
+
+
+def create_fieldset(
+    data_dict,
+    lon_range=(0.0, 10.0),
+    lat_range=(0.0, 10.0),
+    depth_range=None,
+    time_range=None,
+):
+    if time_range is None:
+        time_range = [
+            np.datetime64(BASE_TIME),
+            np.datetime64(BASE_TIME + datetime.timedelta(days=3)),
+        ]
+
+    data_vars = {}
+    is_3d = depth_range is not None
+
+    for key, val in data_dict.items():
+        if is_3d:
+            data_vars[key] = (("time", "depth", "lat", "lon"), val)
+        else:
+            data_vars[key] = (("time", "lat", "lon"), val)
+
+    coords = {
+        "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
+        "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+        "time": (("time"), time_range, {"axis": "T"}),
+    }
+    if is_3d:
+        coords["depth"] = (("depth"), np.array(depth_range))
+
+    ds_fields = xr.Dataset(data_vars=data_vars, coords=coords)
+
+    fields = {var: ds_fields[var] for var in data_vars.keys()}
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
+    return fieldset
 
 
 def test_simulate_drifters(tmpdir) -> None:
@@ -58,19 +98,8 @@ def test_simulate_drifters(tmpdir) -> None:
     u = np.full((2, 2, 2), 1.0)
     t = np.full((2, 2, 2), CONST_TEMPERATURE)
 
-    fieldset = FieldSet.from_data(
-        {"V": v, "U": u, "T": t},
-        {
-            "lon": np.array([0.0, 10.0]),
-            "lat": np.array([0.0, 10.0]),
-            "time": [
-                np.datetime64(BASE_TIME + datetime.timedelta(seconds=0)),
-                np.datetime64(BASE_TIME + datetime.timedelta(days=3)),
-            ],
-        },
-    )
+    fieldset = create_fieldset({"V": v, "U": u, "T": t})
 
-    # drifters to deploy
     drifters = [
         Drifter(
             spacetime=Spacetime(
@@ -94,28 +123,29 @@ def test_simulate_drifters(tmpdir) -> None:
     from_data = None
 
     drifter_instrument = DrifterInstrument(expedition, from_data)
-    out_path = tmpdir.join("out.zarr")
+    out_path = tmpdir.join("out.parquet")
 
     drifter_instrument.load_input_data = lambda: fieldset
     drifter_instrument.simulate(drifters, out_path)
 
-    # test if output is as expected
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    assert len(results.trajectory) == len(drifters)
+    assert np.unique(results["particle_id"].to_numpy()).size == len(drifters)
 
-    for drifter_i, traj in enumerate(results.trajectory):
-        # Check if drifters are moving
-        # lat, lon, should be increasing values (with the above positive VU fieldset)
-        dlat = np.diff(results.sel(trajectory=traj)["lat"].values)
+    for drifter_i, traj_id in enumerate(np.unique(results["particle_id"].to_numpy())):
+        traj_df = results.filter(pl.col("particle_id") == traj_id)
+
+        dlat = np.diff(traj_df["y"].to_numpy())
         assert np.all(dlat[np.isfinite(dlat)] > 0), (
             f"Drifter is not moving over y {drifter_i=}"
         )
-        dlon = np.diff(results.sel(trajectory=traj)["lon"].values)
+
+        dlon = np.diff(traj_df["x"].to_numpy())
         assert np.all(dlon[np.isfinite(dlon)] > 0), (
             f"Drifter is not moving over x {drifter_i=}"
         )
-        temp = results.sel(trajectory=traj)["temperature"].values
+
+        temp = traj_df["temperature"].to_numpy()
         assert np.all(temp[np.isfinite(temp)] == CONST_TEMPERATURE), (
             f"measured temperature does not match {drifter_i=}"
         )
@@ -129,25 +159,15 @@ def test_drifter_depths(tmpdir) -> None:
     u = np.full((2, 2, 2, 2), 1.0)
     t = np.full((2, 2, 2, 2), CONST_TEMPERATURE)
 
-    # different values at depth (random)
     v[:, -1, :, :] = 1.0 * DEPTH_FACTOR
     u[:, -1, :, :] = 1.0 * DEPTH_FACTOR
     t[:, -1, :, :] = CONST_TEMPERATURE * DEPTH_FACTOR
 
-    fieldset = FieldSet.from_data(
+    fieldset = create_fieldset(
         {"V": v, "U": u, "T": t},
-        {
-            "time": [
-                np.datetime64(BASE_TIME + datetime.timedelta(seconds=0)),
-                np.datetime64(BASE_TIME + datetime.timedelta(days=3)),
-            ],
-            "depth": np.array([-10, 0]),
-            "lat": np.array([0.0, 10.0]),
-            "lon": np.array([0.0, 10.0]),
-        },
+        depth_range=(-10, 0),
     )
 
-    # drifters to deploy (same time and location, but different depths)
     drifters = [
         Drifter(
             spacetime=Spacetime(
@@ -162,7 +182,7 @@ def test_drifter_depths(tmpdir) -> None:
                 location=Location(latitude=5.0, longitude=5.0),
                 time=BASE_TIME + datetime.timedelta(days=0),
             ),
-            depth=DEPLOY_DEPTH - 5.0,  # different drogue depth
+            depth=DEPLOY_DEPTH - 5.0,
             lifetime=datetime.timedelta(hours=12),
         ),
     ]
@@ -171,25 +191,25 @@ def test_drifter_depths(tmpdir) -> None:
     from_data = None
 
     drifter_instrument = DrifterInstrument(expedition, from_data)
-    out_path = tmpdir.join("out.zarr")
+    out_path = tmpdir.join("out.parquet")
 
     drifter_instrument.load_input_data = lambda: fieldset
     drifter_instrument.simulate(drifters, out_path)
 
-    # test if output is as expected
-    results = xr.open_zarr(out_path)
+    results = parcels.read_particlefile(out_path)
 
-    assert len(results.trajectory) == len(drifters)
+    pids = np.unique(results["particle_id"].to_numpy())
+    assert pids.size == len(drifters)
 
-    drifter_surface = results.isel(trajectory=0)
-    drifter_depth = results.isel(trajectory=1)
+    drifter_surface = results.filter(pl.col("particle_id") == pids[0])
+    drifter_depth = results.filter(pl.col("particle_id") == pids[1])
 
-    assert drifter_surface.z[0] > drifter_depth.z[0], (
+    assert drifter_surface["z"][0] > drifter_depth["z"][0], (
         "Surface drifter should be at shallower depth than deeper drifter"
     )
 
-    surface_depths = drifter_surface.z.values
-    depth_depths = drifter_depth.z.values
+    surface_depths = drifter_surface["z"].to_numpy()
+    depth_depths = drifter_depth["z"].to_numpy()
     assert np.all(surface_depths[~np.isnan(surface_depths)] == surface_depths[0]), (
         "Surface drifter depth should be constant"
     )
@@ -197,7 +217,7 @@ def test_drifter_depths(tmpdir) -> None:
         "Depth drifter depth should be constant"
     )
 
-    assert drifter_surface.temperature[0] != drifter_depth.temperature[0], (
+    assert drifter_surface["temperature"][0] != drifter_depth["temperature"][0], (
         "Surface and deeper drifter should have different temperature measurements"
     )
 
@@ -232,3 +252,12 @@ def test_drifter_config_unsupported_sensor_rejected():
             stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
         )
+
+
+def test_drifter_instrument_type():
+    """DrifterInstrument returns the correct InstrumentType and if is underway instrument."""
+    expedition = create_dummy_expedition()
+
+    drifter_instrument = DrifterInstrument(expedition, from_data=None)
+    assert drifter_instrument.instrument_type == InstrumentType.DRIFTER
+    assert not drifter_instrument.instrument_type.is_underway
