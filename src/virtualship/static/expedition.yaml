@@ -53,39 +53,50 @@ instruments_config:
       - SALINITY
 schedule:
   waypoints:
+    # Port of Departure
+    - location:
+        latitude: 0
+        longitude: 0
+      time: 1998-01-01 00:00:00
     # Waypoint 1
     - instrument:
         - CTD
       location:
-        latitude: 0
-        longitude: 0
-      time: 1998-01-01 00:00:00
+        latitude: 0.01
+        longitude: 0.01
+      time: 1998-01-02 00:00:00
     # Waypoint 2
     - instrument:
         - DRIFTER
         - CTD
       location:
-        latitude: 0.01
-        longitude: 0.01
-      time: 1998-01-02 01:00:00
+        latitude: 0.02
+        longitude: 0.02
+      time: 1998-01-03 01:00:00
     # Waypoint 3
     - instrument:
         - ARGO_FLOAT
       location:
-        latitude: 0.02
-        longitude: 0.02
-      time: 1998-01-03 02:00:00
+        latitude: 0.03
+        longitude: 0.03
+      time: 1998-01-04 02:00:00
     # Waypoint 4
     - instrument:
         - XBT
       location:
-        latitude: 0.03
-        longitude: 0.03
-      time: 1998-01-04 03:00:00
-    # Waypoint 5
-    - location:
-        latitude: 0.03
-        longitude: 0.03
+        latitude: 0.04
+        longitude: 0.04
       time: 1998-01-05 03:00:00
+    # Waypoint 5
+    - instrument: []
+      location:
+        latitude: 0.05
+        longitude: 0.05
+      time: 1998-01-05 03:00:00
+    # Port of Arrival
+    - location:
+        latitude: 0.06
+        longitude: 0.06
+      time: 1998-01-06 03:00:00
 ship_config:
   ship_speed_knots: 10.0
