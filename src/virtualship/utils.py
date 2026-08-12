@@ -208,8 +208,18 @@ def _load_mfpexport(file_path):
         ) from e
 
 
+def _create_port_row(columns, port_type):
+    """Generate a single placeholder row for missing departure/arrival ports."""
+    row = {col: None for col in columns}
+    row["Station"] = port_type
+    row["Type"] = port_type
+    return pd.DataFrame([row])
+
+
 def _validate_mfpdata(file_path):
     """Load and validate MFP CruiseData export."""
+    errmsg_supplement = "If the MFP export format has changed, please submit an issue at: https://github.com/Parcels-code/virtualship/issues."
+
     mfp_data = _load_mfpexport(file_path)
 
     # clean up column names
@@ -237,33 +247,57 @@ def _validate_mfpdata(file_path):
     if missing_columns:
         raise ValueError(
             f"Error: Found columns {list(actual_columns)}, but expected columns {list(expected_columns)}. "
-            "Are you sure that you're using the correct export from MFP?"
+            "Are you sure that you're using the correct export from MFP?\n\n"
+            + errmsg_supplement
         )
 
     extra_columns = actual_columns - expected_columns
     if extra_columns:
+        # TODO: as mentioned below, propagate this warning to the user via the click.echo() output in the `virtualship init` command?
         warnings.warn(
             f"Found additional unexpected columns {list(extra_columns)}. "
-            "Manually added columns have no effect. "
-            "If the MFP export format changed, please submit an issue: "
-            "https://github.com/OceanParcels/virtualship/issues.",
+            "Manually added columns have no effect. " + errmsg_supplement,
             stacklevel=2,
         )
 
+    # Convert latitude and longitude to floats, handling commas and missing values safely
+    for coord in ["Latitude", "Longitude"]:
+        if mfp_data[coord].dtype in ["object", "string"]:
+            mfp_data[coord] = pd.to_numeric(
+                mfp_data[coord].astype(str).str.replace(",", "."), errors="coerce"
+            )
+
+    # check for missing departure/arrival ports and add placeholders if necessary
+    # check against both 'Station' and 'Type' columns; variations can occur when importing to MFP before re-exporting
+    has_departure = (
+        "Departure Port" in mfp_data["Station"].values
+        or "Departure Port" in mfp_data["Type"].values
+    )
+    has_arrival = (
+        "Arrival Port" in mfp_data["Station"].values
+        or "Arrival Port" in mfp_data["Type"].values
+    )
+    if not has_departure or not has_arrival:
+        # TODO: propagate the warning to to the user via the click.echo() output in the `virtualship init` command, so that the user sees clearly it in the terminal. Perhaps a warnings section at the bottom.
+        warnings.warn(
+            "The MFP export is missing either a 'Departure Port' or 'Arrival Port', or both. "
+            "Any missing port will be replaced with a placeholder in `expedition.yaml` but will be ignored in the simulation. "
+            "The prescribed date will be used for Waypoint #1 instead. "
+            "If you believe this warning is wrong (i.e. you have selected departure/arrival ports), and "
+            + errmsg_supplement.replace("If ", ""),
+            stacklevel=2,
+        )
+
+        if not has_departure:
+            dept_row = _create_port_row(expected_columns, "Departure Port")
+            mfp_data = pd.concat([dept_row, mfp_data], ignore_index=True)  # first row
+
+        if not has_arrival:
+            arr_row = _create_port_row(expected_columns, "Arrival Port")
+            mfp_data = pd.concat([mfp_data, arr_row], ignore_index=True)  # last row
+
     # Drop unexpected columns
     mfp_data = mfp_data[list(expected_columns)]
-
-    # Convert latitude and longitude to floats, replacing commas with dots
-    # Handles case when the latitude and longitude have decimals with commas
-    if mfp_data["Latitude"].dtype in ["object", "string"]:
-        mfp_data["Latitude"] = mfp_data["Latitude"].apply(
-            lambda x: float(x.replace(",", "."))
-        )
-
-    if mfp_data["Longitude"].dtype in ["object", "string"]:
-        mfp_data["Longitude"] = mfp_data["Longitude"].apply(
-            lambda x: float(x.replace(",", "."))
-        )
 
     # convert 'Travel Time to Next' and 'Time at Station' to timedelta
     mfp_data["Travel Time to Next"] = mfp_data["Travel Time to Next"].apply(
@@ -274,9 +308,10 @@ def _validate_mfpdata(file_path):
     )
 
     # combine 'Travel Time to Next' and 'Time at Station' into a single 'Total Time' column
-    mfp_data["Total Time"] = (
-        mfp_data["Travel Time to Next"] + mfp_data["Time at Station"]
-    )
+    # add 0 when Time at Station is NaN, to avoid NaT in Total Time, but not to Travel Time to keep NaT at the arrival port
+    mfp_data["Total Time"] = mfp_data["Travel Time to Next"] + mfp_data[
+        "Time at Station"
+    ].fillna(pd.Timedelta(0))
 
     return mfp_data
 
@@ -288,6 +323,7 @@ def mfp_to_yaml(file_path: str, start_date: str, output_path: str):
         Expedition,
         InstrumentsConfig,
         Location,
+        Port,
         Schedule,
         Waypoint,
     )
@@ -295,22 +331,42 @@ def mfp_to_yaml(file_path: str, start_date: str, output_path: str):
     # Read data from file
     mfp_data = _validate_mfpdata(file_path)
 
-    # Generate waypoints
+    # Generate ports/waypoints
     waypoints = []
     current_time, previous_timedelta = start_date, None
     for i, row in mfp_data.iterrows():
         if i > 0:
             current_time += previous_timedelta
-        waypoints.append(
-            Waypoint(
-                instrument=None,
-                location=Location(latitude=row["Latitude"], longitude=row["Longitude"]),
-                time=current_time,
+        is_port = "Port" in row["Station"] or "Port" in row["Type"]
+
+        if is_port:
+            has_latlon = not pd.isna(row["Latitude"]) and not pd.isna(
+                row["Longitude"]
+            )  # indicates that the port has been set in MFP / is not a placeholder
+
+            waypoints.append(
+                Port(
+                    location=Location(
+                        latitude=row["Latitude"], longitude=row["Longitude"]
+                    ),
+                    time=current_time if has_latlon else None,
+                )
             )
+        else:
+            waypoints.append(
+                Waypoint(
+                    instrument=None,
+                    location=Location(
+                        latitude=row["Latitude"], longitude=row["Longitude"]
+                    ),
+                    time=current_time,
+                )
+            )
+
+        # store total timedelta for next iteration
+        previous_timedelta = (
+            row["Total Time"] if row["Total Time"] is not pd.NaT else timedelta(0)
         )
-        previous_timedelta = row[
-            "Total Time"
-        ]  # store total timedelta for next iteration
 
     # Create Schedule object
     schedule = Schedule(
@@ -338,8 +394,8 @@ def mfp_to_yaml(file_path: str, start_date: str, output_path: str):
 
 def _mfp_string_to_timedelta(value: str) -> timedelta:
     """Handle MFP export string format (e.g., "0d 13h 13m")."""
-    if pd.isna(value):  # last waypoint has no travel time to next, so will be NaN
-        return timedelta(0)
+    if pd.isna(value):  # last waypoint/missing ports have NaN/None travel time
+        return value  # return None
 
     value = value.replace("d", ":").replace("h", ":").replace("m", "")
     days, hours, minutes = map(int, value.split(":"))
@@ -653,7 +709,7 @@ def _calc_sail_time(
 
 
 def _calc_wp_stationkeeping_time(
-    wp_instrument_types: list,
+    wp_instrument_types: list | None,
     instruments_config: InstrumentsConfig,
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
