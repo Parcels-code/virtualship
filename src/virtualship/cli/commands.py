@@ -2,15 +2,12 @@ from pathlib import Path
 
 import click
 
+from virtualship.cli._initialise import _initialise, _validate_start_date
 from virtualship.cli._plan import _plan
 from virtualship.cli._run import _run
 from virtualship.utils import (
     COPERNICUSMARINE_BGC_VARIABLES,
     COPERNICUSMARINE_PHYS_VARIABLES,
-    EXPEDITION,
-    get_example_expedition,
-    mfp_to_yaml,
-    validate_start_date,
 )
 
 
@@ -31,7 +28,7 @@ from virtualship.utils import (
     "--start-date",
     type=click.DateTime(formats=["%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]),
     default=None,
-    callback=validate_start_date,
+    callback=_validate_start_date,
     help="The departure/start date of the expedition (required when using --from-mfp). "
     "Expected format: 'YYYY-MM-DD HH:MM:SS' (with quotes, e.g., '2023-10-20 01:00:00'). If only the date is provided, the time will default to 00:00:00.",
 )
@@ -41,39 +38,7 @@ def init(path, from_mfp, start_date):
 
     If --mfp-file is provided, it will generate the expedition.yaml from the MPF file instead.
     """
-    path = Path(path)
-    path.mkdir(exist_ok=True)
-
-    expedition = path / EXPEDITION
-
-    if expedition.exists():
-        raise FileExistsError(
-            f"File '{expedition}' already exist. Please remove it or choose another directory."
-        )
-
-    if from_mfp:
-        mfp_file = Path(from_mfp)
-        # Generate expedition.yaml from the MPF file
-        click.echo(f"Generating schedule from {mfp_file}...")
-        mfp_to_yaml(mfp_file, start_date, expedition)
-        # TODO: how to handle the ports?! Should be conditional on this kind of 'waypoint' being present in the MFP file.
-        # TODO: the schedule object should be able to take a special 'port' waypoint type, which is the same as a regular waypoint (to ensure compatibility) but without 'instruments'
-        # TODO: need to check this interacts as expected with the 'problems' module
-        # TODO: and new components need to be added to the 'plan' module to allow users to add ports and instruments to the schedule (keep in waypoints section but without instruments)
-        # TODO: but add and remove waypoint buttons should ignore ports
-        click.echo(
-            "\n⚠️  The generated schedule does not contain INSTRUMENT selections.  ⚠️"
-            "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the configuration, "
-            "\nOR edit 'expedition.yaml' and manually add the instrument selections under the 'schedule' heading."
-            "\n\nIf editing 'expedition.yaml' manually:"
-            "\n\n🌡️   Expected instrument(s) format: one line per instrument e.g."
-            f"\n\n{' ' * 15}waypoints:\n{' ' * 15}- instrument:\n{' ' * 19}- CTD\n{' ' * 19}- ARGO_FLOAT\n"
-        )
-    else:
-        # Create a default example expedition YAML
-        expedition.write_text(get_example_expedition())
-
-    click.echo(f"Created '{expedition.name}' at {path}.")
+    _initialise(Path(path), from_mfp, start_date)
 
 
 @click.command()
