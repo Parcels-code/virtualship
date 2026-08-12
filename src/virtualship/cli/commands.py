@@ -36,7 +36,7 @@ def init(path, from_mfp, start_date):
     """
     Initialize a directory for a new expedition, with an expedition.yaml file.
 
-    If --mfp-file is provided, it will generate the expedition.yaml from the MPF file instead.
+    If --mfp-file is provided (and --start-date is also provided), it will generate the expedition.yaml from the MPF file instead.
     """
     _initialise(Path(path), from_mfp, start_date)
 
