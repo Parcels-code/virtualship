@@ -1,4 +1,5 @@
 import os
+import re
 import warnings
 from datetime import timedelta
 from functools import lru_cache
@@ -9,9 +10,17 @@ import click
 import pandas as pd
 import yaml
 
-from virtualship.utils import (
-    EXPEDITION,
+from virtualship.models import (
+    Expedition,
+    InstrumentsConfig,
+    Location,
+    Port,
+    Schedule,
+    Waypoint,
 )
+from virtualship.utils import EXPEDITION
+
+ERR_SUPPLEMENT = "If the MFP export format has changed, please submit an issue at: https://github.com/Parcels-code/virtualship/issues."
 
 
 def _initialise(
@@ -24,126 +33,98 @@ def _initialise(
 
     if expedition.exists():
         raise FileExistsError(
-            f"File '{expedition}' already exist. Please remove it or choose another directory."
+            f"File '{expedition}' already exists. Please remove it or choose another directory."
         )
 
     if from_mfp:
         mfp_file = Path(from_mfp)
-        # Generate expedition.yaml from the MPF file
         click.echo(f"Generating schedule from {mfp_file}...")
-        _mfp_to_yaml(mfp_file, start_date, expedition)
-        # TODO: need to check this interacts as expected with the 'problems' module
-        # TODO: and new components need to be added to the 'plan' module to allow users to add ports and instruments to the schedule (keep in waypoints section but without instruments)
-        # TODO: but add and remove waypoint buttons should ignore ports
-        # TODO: update relevant docs
-        #! TODO: `virtualship init` methods are becoming long and complex. Consider refactoring into a separate module for clarity and maintainability (in `virtualship/cli/_init.py`).
-        # though, consider confusion of having both `_init.py` and `init.py` in the same directory. Maybe `_init.py` should be renamed to `_init_command.py` or similar.
-        # TODO: add a check to see if any instruments are added to a port waypoint (shouldn't be possible via MFP export but in case someone manually edits the expedition.yaml to add instruments to a port waypoint). If so, raise an error and ask user to remove them.
-        #! TODO: see utils.py: propagate the warnings to to the user via the click.echo() output in the `virtualship init` command, so that the user sees clearly it in the terminal. Perhaps a warnings section at the bottom.
 
+        # catch warnings raised to propagate them via click.echo
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            _mfp_to_yaml(mfp_file, start_date, expedition)
+
+        indent = " " * 4
         click.echo(
             "\n⚠️  The generated schedule does not contain INSTRUMENT selections.  ⚠️"
             "\n\nNow please either use the `\033[4mvirtualship plan\033[0m` app to complete the configuration, "
             "\nOR edit 'expedition.yaml' and manually add the instrument selections under the 'schedule' heading."
             "\n\nIf editing 'expedition.yaml' manually:"
-            "\n\n🌡️   Expected instrument(s) format: one line per instrument e.g."
-            f"\n\n{' ' * 15}waypoints:\n{' ' * 15}- instrument:\n{' ' * 19}- CTD\n{' ' * 19}- ARGO_FLOAT\n"
+            "\n\n🌡️  Expected instrument(s) format: one line per instrument e.g."
+            f"\n\n{indent * 4}waypoints:\n{indent * 4}- instrument:\n{indent * 5}- CTD\n{indent * 5}- ARGO_FLOAT\n"
         )
+
+        # output captured warnings to the terminal
+        if captured_warnings:
+            click.echo("\n❗️ WARNINGS:")
+            for w in captured_warnings:
+                click.echo(f"{indent}• {w.message}")
+            click.echo(
+                f"\n{indent}If you believe any of these warnings are incorrect (e.g. you have selected departure/arrival ports), and {ERR_SUPPLEMENT.replace('If ', '')}\n"
+            )
     else:
-        # Create a default example expedition YAML
         expedition.write_text(_get_example_expedition())
 
     click.echo(f"Created '{expedition.name}' at {path}.")
 
 
-def _mfp_to_yaml(file_path: str, start_date: str, output_path: str):
-    """Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version."""
-    # avoid circular imports
-    from virtualship.models import (
-        Expedition,
-        InstrumentsConfig,
-        Location,
-        Port,
-        Schedule,
-        Waypoint,
-    )
-
-    # Read data from file
+def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
+    """Generates an expedition.yaml file from MFP Excel export."""
     mfp_data = _validate_mfp_data(file_path)
 
-    # Generate ports/waypoints
+    # convert start_date string to datetime object if needed
+    if isinstance(start_date, str):
+        current_time = pd.to_datetime(start_date)
+    else:
+        current_time = start_date
+
     waypoints = []
-    current_time, previous_timedelta = start_date, None
+    previous_timedelta = None
+
     for i, row in mfp_data.iterrows():
         if i > 0:
             current_time += previous_timedelta
-        is_port = "Port" in row["Station"] or "Port" in row["Type"]
+
+        is_port = "Port" in str(row["Station"]) or "Port" in str(row["Type"])
+        lat = None if pd.isna(row["Latitude"]) else float(row["Latitude"])
+        lon = None if pd.isna(row["Longitude"]) else float(row["Longitude"])
+        loc = Location(latitude=lat, longitude=lon)
 
         if is_port:
-            has_latlon = not pd.isna(row["Latitude"]) and not pd.isna(
-                row["Longitude"]
-            )  # indicates that the port has been set in MFP / is not a placeholder
-
+            has_latlon = lat is not None and lon is not None
             waypoints.append(
-                Port(
-                    location=Location(
-                        latitude=row["Latitude"], longitude=row["Longitude"]
-                    ),
-                    time=current_time if has_latlon else None,
-                )
+                Port(location=loc, time=current_time if has_latlon else None)
             )
         else:
-            waypoints.append(
-                Waypoint(
-                    instrument=None,
-                    location=Location(
-                        latitude=row["Latitude"], longitude=row["Longitude"]
-                    ),
-                    time=current_time,
-                )
-            )
+            waypoints.append(Waypoint(instrument=None, location=loc, time=current_time))
 
-        # store total timedelta for next iteration
         previous_timedelta = (
-            row["Total Time"] if row["Total Time"] is not pd.NaT else timedelta(0)
+            row["Total Time"] if pd.notna(row["Total Time"]) else timedelta(0)
         )
 
-    # Create Schedule object
-    schedule = Schedule(
-        waypoints=waypoints,
-    )
-
-    # extract instruments config from static
-    instruments_config = InstrumentsConfig.model_validate(
-        yaml.safe_load(_get_example_expedition()).get("instruments_config")
-    )
-
-    # extract ship config from static
-    ship_config = yaml.safe_load(_get_example_expedition()).get("ship_config")
-    # combine to Expedition object
+    # build and dump expedition YAML
+    static_yaml = yaml.safe_load(_get_example_expedition())
     expedition = Expedition(
-        schedule=schedule,
-        instruments_config=instruments_config,
-        ship_config=ship_config,
+        schedule=Schedule(waypoints=waypoints),
+        instruments_config=InstrumentsConfig.model_validate(
+            static_yaml.get("instruments_config")
+        ),
+        ship_config=static_yaml.get("ship_config"),
     )
-
-    # Save to YAML file
     expedition.to_yaml(output_path)
 
 
-def _validate_mfp_data(file_path):
+def _validate_mfp_data(file_path: Path) -> pd.DataFrame:
     """Load and validate MFP CruiseData export."""
-    errmsg_supplement = "If the MFP export format has changed, please submit an issue at: https://github.com/Parcels-code/virtualship/issues."
-
     mfp_data = _load_mfp_export(file_path)
 
     # clean up column names
     mfp_data.columns = mfp_data.columns.astype(str).str.strip()
-    mfp_data = mfp_data.loc[
-        :, ~mfp_data.columns.str.startswith("Unnamed") & (mfp_data.columns != "")
-    ]
+    junk_col_pattern = r"^(Unnamed:.*||\.\d+)$"
+    mfp_data = mfp_data.loc[:, ~mfp_data.columns.str.match(junk_col_pattern)]
 
-    expected_columns = {
+    expected_columns = [
         "Station",
         "Type",
         "Latitude",
@@ -154,28 +135,25 @@ def _validate_mfp_data(file_path):
         "Distance to Next (NM)",
         "Ship Speed (kn)",
         "EEZ",
-    }
+    ]
+    expected_set = set(expected_columns)
+    actual_set = set(mfp_data.columns)
 
-    actual_columns = set(mfp_data.columns)
-
-    missing_columns = expected_columns - actual_columns
+    missing_columns = expected_set - actual_set
     if missing_columns:
         raise ValueError(
-            f"Error: Found columns {list(actual_columns)}, but expected columns {list(expected_columns)}. "
-            "Are you sure that you're using the correct export from MFP?\n\n"
-            + errmsg_supplement
+            f"Error: Found columns {list(actual_set)}, but expected columns {list(expected_columns)}. "
+            f"Are you sure that you're using the correct export from MFP?\n\n{ERR_SUPPLEMENT}"
         )
 
-    extra_columns = actual_columns - expected_columns
+    extra_columns = actual_set - expected_set
     if extra_columns:
-        # TODO: as mentioned below, propagate this warning to the user via the click.echo() output in the `virtualship init` command?
         warnings.warn(
-            f"Found additional unexpected columns {list(extra_columns)}. "
-            "Manually added columns have no effect. " + errmsg_supplement,
+            f"Found additional unexpected columns {list(extra_columns)}. Manually added columns have no effect.",
             stacklevel=2,
         )
 
-    # Convert latitude and longitude to floats, handling commas and missing values safely
+    # safe float conversion for lat/lon
     for coord in ["Latitude", "Longitude"]:
         if mfp_data[coord].dtype in ["object", "string"]:
             mfp_data[coord] = pd.to_numeric(
@@ -192,14 +170,12 @@ def _validate_mfp_data(file_path):
         "Arrival Port" in mfp_data["Station"].values
         or "Arrival Port" in mfp_data["Type"].values
     )
+
     if not has_departure or not has_arrival:
-        # TODO: propagate the warning to to the user via the click.echo() output in the `virtualship init` command, so that the user sees clearly it in the terminal. Perhaps a warnings section at the bottom.
         warnings.warn(
             "The MFP export is missing either a 'Departure Port' or 'Arrival Port', or both. "
-            "Any missing port will be replaced with a placeholder in `expedition.yaml` but will be ignored in the simulation. "
-            "The prescribed date will be used for Waypoint #1 instead. "
-            "If you believe this warning is wrong (i.e. you have selected departure/arrival ports), and "
-            + errmsg_supplement.replace("If ", ""),
+            "Any missing port will be replaced with an empty placeholder in `expedition.yaml` but will be ignored in the simulation. "
+            "If missing the 'Departure Port', the prescribed start date will be used for Waypoint #1 instead. ",
             stacklevel=2,
         )
 
@@ -216,10 +192,10 @@ def _validate_mfp_data(file_path):
 
     # convert 'Travel Time to Next' and 'Time at Station' to timedelta
     mfp_data["Travel Time to Next"] = mfp_data["Travel Time to Next"].apply(
-        lambda x: _mfp_string_to_timedelta(x)
+        _mfp_string_to_timedelta
     )
     mfp_data["Time at Station"] = mfp_data["Time at Station"].apply(
-        lambda x: _mfp_string_to_timedelta(x)
+        _mfp_string_to_timedelta
     )
 
     # combine 'Travel Time to Next' and 'Time at Station' into a single 'Total Time' column
@@ -231,14 +207,12 @@ def _validate_mfp_data(file_path):
     return mfp_data
 
 
-def _load_mfp_export(file_path):
+def _load_mfp_export(file_path: Path) -> pd.DataFrame:
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
     try:
-        df = pd.read_excel(file_path)
-        return df.dropna(how="all", axis=1)  # drop empty columns
-
+        return pd.read_excel(file_path).dropna(how="all", axis=1)  # drop empty columns
     except Exception as e:
         raise RuntimeError(
             "Could not read coordinates data from the provided file. "
@@ -246,7 +220,7 @@ def _load_mfp_export(file_path):
         ) from e
 
 
-def _create_port_row(columns, port_type):
+def _create_port_row(columns, port_type: str) -> pd.DataFrame:
     """Generate a single placeholder row for missing departure/arrival ports."""
     row = {col: None for col in columns}
     row["Station"] = port_type
@@ -254,14 +228,20 @@ def _create_port_row(columns, port_type):
     return pd.DataFrame([row])
 
 
-def _mfp_string_to_timedelta(value: str) -> timedelta:
-    """Handle MFP export string format (e.g., "0d 13h 13m")."""
-    if pd.isna(value):  # last waypoint/missing ports have NaN/None travel time
-        return value  # return None
+def _mfp_string_to_timedelta(value: str | None) -> timedelta | None:
+    """Parse MFP duration string (e.g., '0d 13h 13m') to timedelta."""
+    if pd.isna(value):
+        return None
 
-    value = value.replace("d", ":").replace("h", ":").replace("m", "")
-    days, hours, minutes = map(int, value.split(":"))
-    return timedelta(days=days, hours=hours, minutes=minutes)
+    match = re.search(r"(\d+)d\s*(\d+)h\s*(\d+)m", str(value))
+    if match:
+        days, hours, minutes = map(int, match.groups())
+        return timedelta(days=days, hours=hours, minutes=minutes)
+
+    else:
+        raise ValueError(
+            f"Invalid MFP duration format: '{value}'. Expected format: 'Xd Yh Zm' (e.g., '0d 13h 13m'). {ERR_SUPPLEMENT}"
+        )
 
 
 def _load_static_file(name: str) -> str:
@@ -269,8 +249,7 @@ def _load_static_file(name: str) -> str:
     return files("virtualship.static").joinpath(name).read_text(encoding="utf-8")
 
 
-@lru_cache(None)
-@lru_cache(None)
+@lru_cache(maxsize=1)
 def _get_example_expedition() -> str:
     """Get the example unified expedition configuration file."""
     return _load_static_file(EXPEDITION)
