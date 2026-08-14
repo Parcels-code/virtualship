@@ -23,6 +23,7 @@ from virtualship.make_realistic.problems.scenarios import (
     InstrumentProblem,
 )
 from virtualship.models.checkpoint import Checkpoint
+from virtualship.models.expedition import Port
 from virtualship.utils import (
     CACHE,
     EXPEDITION,
@@ -74,6 +75,8 @@ class ProblemSimulator:
 
         Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
         """
+        waypoints = self.expedition.schedule.waypoints
+
         valid_instrument_problems = [
             problem
             for problem in INSTRUMENT_PROBLEMS
@@ -86,12 +89,9 @@ class ProblemSimulator:
             if isinstance(p, GeneralProblem) and p.pre_departure
         ]
 
-        num_waypoints = len(self.expedition.schedule.waypoints)
+        num_waypoints = len(waypoints)
         num_instruments = len(instruments_in_expedition)
-        expedition_duration_days = (
-            self.expedition.schedule.waypoints[-1].time
-            - self.expedition.schedule.waypoints[0].time
-        ).days
+        expedition_duration_days = (waypoints[-1].time - waypoints[0].time).days
 
         # if only one waypoint, return just a pre-departure problem
         if num_waypoints < 2:
@@ -166,13 +166,12 @@ class ProblemSimulator:
                 random.shuffle(available_replacements)
                 selected_problems.extend(available_replacements[:num_to_replace])
 
-            # map each problem to a [random] waypoint (or None if pre-departure)
+            # map each problem to a [random, non-port waypoint] (or None if pre-departure)
             # limited to one per waypoint, else complicates scheduling and contingency checking
             waypoint_idxs = []
             unassigned_problems = []
-            available_idxs = list(
-                range(len(self.expedition.schedule.waypoints) - 1)
-            )  # exclude last waypoint (problem there would have no impact on scheduling)
+            is_port = [isinstance(wp, Port) for wp in waypoints]
+            available_idxs = [i for i, port in enumerate(is_port) if not port]
 
             # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
             for problem in selected_problems:
@@ -181,13 +180,21 @@ class ProblemSimulator:
                 else:
                     if available_idxs:
                         wp_select = random.choice(available_idxs)
+                        wp_instruments = waypoints[wp_select].instrument
+                        wp_instruments = wp_instruments if wp_instruments else []  # noqa; handle when waypoint instruments set to "null" in expedition.yaml
 
-                        # fmt: off
                         # check waypoint actually deploys the instrument associated with the problem...if not, replace it with a general (non-instrument related) problem
                         # rather than a different waypoint, because it's possible no applicable waypoint is still available
-                        wp_instruments = self.expedition.schedule.waypoints[wp_select].instrument
-                        if isinstance(problem, InstrumentProblem) and problem.instrument_type not in wp_instruments:
-                            available_general = [p for p in GENERAL_PROBLEMS if not p.pre_departure and p not in selected_problems]
+                        needs_replacement = (
+                            isinstance(problem, InstrumentProblem)
+                            and problem.instrument_type not in wp_instruments
+                        )
+                        if needs_replacement:
+                            available_general = [
+                                p
+                                for p in GENERAL_PROBLEMS
+                                if not p.pre_departure and p not in selected_problems
+                            ]
 
                             if not available_general:
                                 unassigned_problems.append(problem)
@@ -196,15 +203,12 @@ class ProblemSimulator:
                             replacement = random.choice(available_general)
                             problem_idx = selected_problems.index(problem)
                             selected_problems[problem_idx] = replacement
-                        # fmt: on
 
                         waypoint_idxs.append(wp_select)
                         available_idxs.remove(wp_select)  # each waypoint only used once
 
                     else:
-                        unassigned_problems.append(
-                            problem
-                        )  # if run out of available waypoints, remove problem from selection
+                        unassigned_problems.append(problem)  # noqa; if run out of available waypoints, remove problem from selection
 
             # remove any problems that couldn't be assigned a waypoint (i.e. if more problems than available waypoints)
             if unassigned_problems:
