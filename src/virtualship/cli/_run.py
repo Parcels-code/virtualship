@@ -97,6 +97,7 @@ def _run(
         checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
     # verify that schedule and checkpoint match, and that problems have been resolved
+    # TODO: problems related verifcation should probably be refactored out of the Checkpoint class (which is Pydantic model) and into the ProblemSimulator class (which is more appropriate for handling problems)
     checkpoint.verify(expedition, problems_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
@@ -121,7 +122,7 @@ def _run(
         _save_checkpoint(
             Checkpoint(
                 past_schedule=expedition.schedule,
-                failed_waypoint_i=schedule_results.failed_waypoint_i,
+                failed_wp=schedule_results.failed_wp,
             ),
             expedition_dir,
         )

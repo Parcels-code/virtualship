@@ -37,7 +37,7 @@ class Checkpoint(pydantic.BaseModel):
     """
 
     past_schedule: Schedule
-    failed_waypoint_i: int | None = None
+    failed_wp: int | None = None
 
     def to_yaml(self, file_path: str | Path) -> None:
         """
@@ -69,14 +69,14 @@ class Checkpoint(pydantic.BaseModel):
         new_schedule = expedition.schedule
 
         # 1) check that past waypoints have not been changed, unless is a pre-departure problem
-        if self.failed_waypoint_i is None:
+        if self.failed_wp is None:
             pass
         elif (
-            not new_schedule.waypoints[: int(self.failed_waypoint_i)]
-            == self.past_schedule.waypoints[: int(self.failed_waypoint_i)]
+            not new_schedule.waypoints[: int(self.failed_wp)]
+            == self.past_schedule.waypoints[: int(self.failed_wp)]
         ):
             raise CheckpointError(
-                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(self.failed_waypoint_i) + 1} onwards)."
+                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(self.failed_wp) + 1} onwards)."
             )
 
         # 2) check that problems have been resolved in the new schedule
@@ -98,12 +98,12 @@ class Checkpoint(pydantic.BaseModel):
 
                     problem_waypoint = (
                         new_schedule.waypoints[0]
-                        if problem["problem_waypoint_i"] is None
-                        else new_schedule.waypoints[problem["problem_waypoint_i"]]
+                        if problem["problem_wp_i"] is None
+                        else new_schedule.waypoints[problem["problem_wp_i"]]
                     )
 
                     # pre-departure problem: check that whole delay duration has been added to first waypoint time (by testing against past schedule)
-                    if problem["problem_waypoint_i"] is None:
+                    if problem["problem_wp_i"] is None:
                         time_diff = (
                             problem_waypoint.time - self.past_schedule.waypoints[0].time
                         )
@@ -111,7 +111,7 @@ class Checkpoint(pydantic.BaseModel):
 
                     # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
                     else:
-                        failed_waypoint = new_schedule.waypoints[self.failed_waypoint_i]
+                        failed_waypoint = new_schedule.waypoints[self.failed_wp]
 
                         scheduled_time = failed_waypoint.time - problem_waypoint.time
 
@@ -149,27 +149,27 @@ class Checkpoint(pydantic.BaseModel):
                     else:
                         problem_wp_str = (
                             "in-port"
-                            if problem["problem_waypoint_i"] is None
-                            else f"at waypoint {problem['problem_waypoint_i'] + 1}"
+                            if problem["problem_wp_i"] is None
+                            else f"at waypoint {problem['problem_wp_i'] + 1}"
                         )
                         affected_wp_str = (
                             "1"
-                            if problem["problem_waypoint_i"] is None
-                            else f"{problem['problem_waypoint_i'] + 2}"
+                            if problem["problem_wp_i"] is None
+                            else f"{problem['problem_wp_i'] + 2}"
                         )
                         time_elapsed = (
                             (sail_time + delay_duration + stationkeeping_time)
-                            if problem["problem_waypoint_i"] is not None
+                            if problem["problem_wp_i"] is not None
                             else delay_duration
                         )
                         failed_waypoint_time = (
                             failed_waypoint.time
-                            if problem["problem_waypoint_i"] is not None
+                            if problem["problem_wp_i"] is not None
                             else new_schedule.waypoints[0].time
                         )
                         current_time = (
                             problem_waypoint.time + time_elapsed
-                            if problem["problem_waypoint_i"] is not None
+                            if problem["problem_wp_i"] is not None
                             else self.past_schedule.waypoints[0].time + time_elapsed
                         )
 
@@ -179,7 +179,7 @@ class Checkpoint(pydantic.BaseModel):
                             f"Currently, the ship would reach waypoint {affected_wp_str} at {current_time}, but the scheduled time is {failed_waypoint_time}."
                             + (
                                 f"\n\nHint: don't forget to factor in the time required to deploy the instruments {problem_wp_str} when rescheduling waypoint {affected_wp_str}."
-                                if problem["problem_waypoint_i"] is not None
+                                if problem["problem_wp_i"] is not None
                                 else ""
                             )
                         )
