@@ -17,6 +17,7 @@ from virtualship.utils import (
     PROJECTION,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
+    _get_public_wp,
 )
 
 
@@ -37,7 +38,7 @@ class Checkpoint(pydantic.BaseModel):
     """
 
     past_schedule: Schedule
-    failed_wp: int | None = None
+    failed_wp_i: int | None = None
 
     def to_yaml(self, file_path: str | Path) -> None:
         """
@@ -68,15 +69,20 @@ class Checkpoint(pydantic.BaseModel):
         """
         new_schedule = expedition.schedule
 
+        # get the public waypoint number of the failed waypoint (if any), for use in error messages
+        public_failed_wp = _get_public_wp(
+            self.failed_wp_i + 1, self.past_schedule.waypoints
+        )
+
         # 1) check that past waypoints have not been changed, unless is a pre-departure problem
-        if self.failed_wp is None:
+        if self.failed_wp_i is None:
             pass
         elif (
-            not new_schedule.waypoints[: int(self.failed_wp)]
-            == self.past_schedule.waypoints[: int(self.failed_wp)]
+            not new_schedule.waypoints[: int(self.failed_wp_i + 1)]
+            == self.past_schedule.waypoints[: int(self.failed_wp_i + 1)]
         ):
             raise CheckpointError(
-                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(self.failed_wp) + 1} onwards)."
+                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(public_failed_wp) + 1} onwards)."  # +1 because it's the waypoint after the failed waypoint
             )
 
         # 2) check that problems have been resolved in the new schedule
@@ -103,6 +109,8 @@ class Checkpoint(pydantic.BaseModel):
                     )
 
                     # pre-departure problem: check that whole delay duration has been added to first waypoint time (by testing against past schedule)
+                    # TODO: just taking the 0th waypoint doesn't work anymore given expedition has Port information now!
+                    #! TODO: could combine into one single check that applies to all waypoints now that Ports have locations, rather than hypothetical?
                     if problem["problem_wp_i"] is None:
                         time_diff = (
                             problem_waypoint.time - self.past_schedule.waypoints[0].time
@@ -111,7 +119,7 @@ class Checkpoint(pydantic.BaseModel):
 
                     # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
                     else:
-                        failed_waypoint = new_schedule.waypoints[self.failed_wp]
+                        failed_waypoint = new_schedule.waypoints[self.failed_wp_i + 1]
 
                         scheduled_time = failed_waypoint.time - problem_waypoint.time
 
