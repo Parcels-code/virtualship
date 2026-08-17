@@ -11,7 +11,7 @@ import yaml
 
 from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition, Schedule
+from virtualship.models.expedition import Expedition, Port, Schedule
 from virtualship.utils import (
     EXPEDITION,
     PROJECTION,
@@ -38,7 +38,7 @@ class Checkpoint(pydantic.BaseModel):
     """
 
     past_schedule: Schedule
-    failed_wp_i: int | None = None
+    problem_wp_i: int | None = None
 
     def to_yaml(self, file_path: str | Path) -> None:
         """
@@ -69,20 +69,25 @@ class Checkpoint(pydantic.BaseModel):
         """
         new_schedule = expedition.schedule
 
-        # get the public waypoint number of the failed waypoint (if any), for use in error messages
-        public_failed_wp = _get_public_wp(
-            self.failed_wp_i + 1, self.past_schedule.waypoints
-        )
+        # TODO: problems related verifcation should probably be refactored out of the Checkpoint class (which is Pydantic model) and into the ProblemSimulator class (which is more appropriate for handling problems)
+        #! Do some re-thinking to move all the problems related logic over into the Problems (simulator).
 
-        # 1) check that past waypoints have not been changed, unless is a pre-departure problem
-        if self.failed_wp_i is None:
-            pass
-        elif (
-            not new_schedule.waypoints[: int(self.failed_wp_i + 1)]
-            == self.past_schedule.waypoints[: int(self.failed_wp_i + 1)]
+        # failed waypoint is the waypoint immediately *after* the problem waypoint (i.e. the one that will not be reached in time)
+        failed_wp_i = self.problem_wp_i + 1
+
+        # public waypoint number of problem and failed waypoints, for use in error messages
+        public_problem_wp = _get_public_wp(
+            self.problem_wp_i, self.past_schedule.waypoints
+        )
+        public_failed_wp = _get_public_wp(failed_wp_i, self.past_schedule.waypoints)
+
+        # 1) check that past waypoints have not been changed (up to but not including failed_wp)
+        if (
+            not new_schedule.waypoints[: int(failed_wp_i)]
+            == self.past_schedule.waypoints[: int(failed_wp_i)]
         ):
             raise CheckpointError(
-                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(public_failed_wp) + 1} onwards)."  # +1 because it's the waypoint after the failed waypoint
+                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(public_failed_wp)} onwards)."
             )
 
         # 2) check that problems have been resolved in the new schedule
@@ -94,54 +99,38 @@ class Checkpoint(pydantic.BaseModel):
             for file in hash_fpaths:
                 with open(file, encoding="utf-8") as f:
                     problem = json.load(f)
+
+                # continue if problem is already resolved, else perform checks to see if delay is accounted for
                 if problem["resolved"]:
                     continue
-                elif not problem["resolved"]:
-                    # check if delay has been accounted for in the new schedule (at waypoint immediately after problem waypoint; or first waypoint if pre-departure problem)
+                else:
                     delay_duration = timedelta(
                         hours=float(problem["delay_duration_hours"])
                     )
 
-                    problem_waypoint = (
-                        new_schedule.waypoints[0]
-                        if problem["problem_wp_i"] is None
-                        else new_schedule.waypoints[problem["problem_wp_i"]]
-                    )
+                    problem_waypoint = new_schedule.waypoints[self.problem_wp_i]
+                    failed_waypoint = new_schedule.waypoints[failed_wp_i]
+                    scheduled_time_diff = failed_waypoint.time - problem_waypoint.time
 
-                    # pre-departure problem: check that whole delay duration has been added to first waypoint time (by testing against past schedule)
-                    # TODO: just taking the 0th waypoint doesn't work anymore given expedition has Port information now!
-                    #! TODO: could combine into one single check that applies to all waypoints now that Ports have locations, rather than hypothetical?
-                    if problem["problem_wp_i"] is None:
-                        time_diff = (
-                            problem_waypoint.time - self.past_schedule.waypoints[0].time
-                        )
-                        resolved = time_diff >= delay_duration
-
-                    # problem at a later waypoint: check new scheduled time exceeds sail time + delay duration + instrument deployment time (rather whole delay duration add-on, as there may be _some_ contingency time already scheduled)
-                    else:
-                        failed_waypoint = new_schedule.waypoints[self.failed_wp_i + 1]
-
-                        scheduled_time = failed_waypoint.time - problem_waypoint.time
-
-                        stationkeeping_time = _calc_wp_stationkeeping_time(
+                    stationkeeping_time = (
+                        _calc_wp_stationkeeping_time(
                             problem_waypoint.instrument,
                             expedition,
-                        )  # total time required to deploy instruments at problem waypoint
-
-                        sail_time = _calc_sail_time(
-                            problem_waypoint.location,
-                            failed_waypoint.location,
-                            ship_speed_knots=expedition.ship_config.ship_speed_knots,
-                            projection=PROJECTION,
-                        )[0]
-
-                        min_time_required = (
-                            sail_time + delay_duration + stationkeeping_time
                         )
+                        if not isinstance(problem_waypoint, Port)
+                        else timedelta(0)
+                    )
 
-                        resolved = scheduled_time >= min_time_required
+                    sail_time = _calc_sail_time(
+                        problem_waypoint.location,
+                        failed_waypoint.location,
+                        ship_speed_knots=expedition.ship_config.ship_speed_knots,
+                        projection=PROJECTION,
+                    )[0]
 
-                    if resolved:
+                    min_time_required = sail_time + delay_duration + stationkeeping_time
+
+                    if scheduled_time_diff >= min_time_required:
                         print(
                             "\n\n🎉 Previous problem has been resolved in the schedule.\n"
                         )
@@ -157,37 +146,18 @@ class Checkpoint(pydantic.BaseModel):
                     else:
                         problem_wp_str = (
                             "in-port"
-                            if problem["problem_wp_i"] is None
-                            else f"at waypoint {problem['problem_wp_i'] + 1}"
+                            if problem["problem_wp_i"] == 0  # i.e. pre-departure
+                            else f"at waypoint {public_problem_wp}"
                         )
-                        affected_wp_str = (
-                            "1"
-                            if problem["problem_wp_i"] is None
-                            else f"{problem['problem_wp_i'] + 2}"
-                        )
-                        time_elapsed = (
-                            (sail_time + delay_duration + stationkeeping_time)
-                            if problem["problem_wp_i"] is not None
-                            else delay_duration
-                        )
-                        failed_waypoint_time = (
-                            failed_waypoint.time
-                            if problem["problem_wp_i"] is not None
-                            else new_schedule.waypoints[0].time
-                        )
-                        current_time = (
-                            problem_waypoint.time + time_elapsed
-                            if problem["problem_wp_i"] is not None
-                            else self.past_schedule.waypoints[0].time + time_elapsed
-                        )
+                        time_elapsed = sail_time + delay_duration + stationkeeping_time
 
                         raise CheckpointError(
                             f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n\n"
-                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp_str} (meaning waypoint {affected_wp_str} could not be reached in time). "
-                            f"Currently, the ship would reach waypoint {affected_wp_str} at {current_time}, but the scheduled time is {failed_waypoint_time}."
+                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp_str} (meaning waypoint {public_failed_wp} could not be reached in time). "
+                            f"Currently, the ship would reach waypoint {public_failed_wp} at {problem_waypoint.time + time_elapsed}, but the scheduled time is {failed_waypoint.time}."
                             + (
-                                f"\n\nHint: don't forget to factor in the time required to deploy the instruments {problem_wp_str} when rescheduling waypoint {affected_wp_str}."
-                                if problem["problem_wp_i"] is not None
+                                f"\n\nHint: don't forget to factor in the time required to deploy the instruments {problem_wp_str} when rescheduling waypoint {public_failed_wp}."
+                                if problem["problem_wp_i"] != 0
                                 else ""
                             )
                         )

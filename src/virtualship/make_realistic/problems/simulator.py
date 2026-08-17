@@ -4,6 +4,7 @@ import json
 import random
 import sys
 import time
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -70,6 +71,14 @@ class ProblemSimulator:
         self.expedition = expedition
         self.expedition_dir = Path(expedition_dir)
 
+        self.waypoints = expedition.schedule.waypoints
+
+    def __post_init__(self):
+        """Ensure first and last waypoints are Ports. Allows the problem selection to work properly."""
+        assert isinstance(self.waypoints[0], Port) & isinstance(
+            self.waypoints[-1], Port
+        ), "First and last waypoints must be Port types."
+
     def select_problems(
         self,
         instruments_in_expedition: set[InstrumentType],
@@ -80,16 +89,14 @@ class ProblemSimulator:
 
         If only one waypoint, return just a pre-departure problem.
 
-        Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
+        Map each selected problem to a random waypoint (or 0th [i.e. departure port] if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
         """
-        waypoints = self.expedition.schedule.waypoints
-
         # handle early-exit single waypoint case (pre-departure only)
-        if len(waypoints) < 2:
+        if len(self.waypoints) < 2:
             pre_departure = [p for p in GENERAL_PROBLEMS if p.pre_departure]
             return {
                 "problem_class": [random.choice(pre_departure)],
-                "waypoint_i": [None],
+                "waypoint_i": [0],  # noqa; pre-departure problem is always associated with the departure port (index 0)
             }
 
         valid_instruments = [
@@ -99,8 +106,8 @@ class ProblemSimulator:
         ]
         num_problems = self._calculate_problem_count(
             difficulty_level=difficulty_level,
-            expedition_days=(waypoints[-1].time - waypoints[0].time).days,
-            num_waypoints=len(waypoints),
+            expedition_days=(self.waypoints[-1].time - self.waypoints[0].time).days,
+            num_waypoints=len(self.waypoints),
             num_instruments=len(instruments_in_expedition),
             max_available=len(GENERAL_PROBLEMS) + len(valid_instruments),
         )
@@ -152,9 +159,7 @@ class ProblemSimulator:
         bias = min(0.7, num_instruments / (num_instruments + 2))
         n_inst = round(num_problems * bias)
         n_gen = min(len(general_pool), num_problems - n_inst)
-        n_inst = (
-            num_problems - n_gen
-        )  # recalc in case n_gen was capped to len(GENERAL_PROBLEMS)
+        n_inst = num_problems - n_gen  # noqa; recalc in case n_gen was capped to len(GENERAL_PROBLEMS)
 
         return general_pool[:n_gen] + instrument_pool[:n_inst]
 
@@ -189,11 +194,15 @@ class ProblemSimulator:
         self, selected: list[ProblemType]
     ) -> SelectedProblemsDict | None:
         """Assign sampled problems to valid, non-port waypoint indices."""
-        waypoints = self.expedition.schedule.waypoints
+        waypoints = self.waypoints
         avail_indices = [
             i for i, wp in enumerate(waypoints) if not isinstance(wp, Port)
         ]
         random.shuffle(avail_indices)
+
+        assert 0 not in avail_indices, (
+            "Index 0 (departure port) should not be in available waypoint indices for non-pre-departure problems."
+        )
 
         assigned_problems: list[ProblemType] = []
         assigned_indices: list[int | None] = []
@@ -201,7 +210,7 @@ class ProblemSimulator:
         for problem in selected:
             if getattr(problem, "pre_departure", False):
                 assigned_problems.append(problem)
-                assigned_indices.append(None)
+                assigned_indices.append(0)  # noqa; pre-departure problem is always associated with the departure port (index 0)
                 continue
 
             if not avail_indices:
@@ -238,10 +247,10 @@ class ProblemSimulator:
         if not assigned_problems:
             return None
 
-        # sort chronologically (pre-departure/None first, then waypoint index order)
+        # sort chronologically (waypoint 0 first, then remaining waypoint index order)
         paired = sorted(
             zip(assigned_problems, assigned_indices, strict=True),
-            key=lambda x: -1 if x[1] is None else x[1],
+            key=lambda x: 0 if x[1] == 0 else x[1],
         )
         return {
             "problem_class": [p for p, _ in paired],
@@ -288,7 +297,7 @@ class ProblemSimulator:
         Use problem_wp_i for internal logic, but user-facing messages (below) should use public_wp (non indexed version).
         problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
         """
-        waypoints = self.expedition.schedule.waypoints
+        waypoints = self.waypoints
         public_wp = _get_public_wp(problem_wp_i, waypoints)
 
         alert_msg = (
@@ -314,8 +323,7 @@ class ProblemSimulator:
             data["resolved"] = True
             self._write_json(hash_fpath, data)
         else:
-            breakpoint()
-            affected = "in-port" if problem_wp_i is None else f"at waypoint {public_wp}"
+            affected = "in-port" if public_wp is None else f"at waypoint {public_wp}"
             impact_str = (
                 f"Not enough contingency time scheduled to mitigate delay of {delay_hrs} "
                 f"hours occurring {affected} (future waypoint(s) would be reached too late).\n"
@@ -329,7 +337,7 @@ class ProblemSimulator:
         # update and save checkpoints
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
-            failed_wp_i=problem_wp_i if problem_wp_i is not None else 0,
+            problem_wp_i=problem_wp_i,
         )
         _save_checkpoint(checkpoint, self.expedition_dir)
         self.expedition.to_yaml(self.expedition_dir / CACHE / EXPEDITION_LATEST)
@@ -346,17 +354,15 @@ class ProblemSimulator:
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
         """Check whether scheduled contingency covers expected delay duration."""
-        if problem_wp_i is None:
-            return False
-
-        waypoints = self.expedition.schedule.waypoints
         curr_wp, next_wp = (
-            waypoints[problem_wp_i],
-            waypoints[problem_wp_i + 1],
+            self.waypoints[problem_wp_i],
+            self.waypoints[problem_wp_i + 1],
         )
 
-        stationkeeping = _calc_wp_stationkeeping_time(
-            curr_wp.instrument, self.expedition
+        stationkeeping = (
+            _calc_wp_stationkeeping_time(curr_wp.instrument, self.expedition)
+            if not isinstance(curr_wp, Port)
+            else timedelta(0)
         )
         sail_time = _calc_sail_time(
             curr_wp.location,

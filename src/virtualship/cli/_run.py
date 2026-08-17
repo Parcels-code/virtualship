@@ -14,7 +14,7 @@ from virtualship.expedition.simulate_schedule import (
     simulate_schedule,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models import Checkpoint, Schedule
+from virtualship.models import Checkpoint
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     CACHE,
@@ -93,12 +93,10 @@ def _run(
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
-    if checkpoint is None:
-        checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
-    # verify that schedule and checkpoint match, and that problems have been resolved
-    # TODO: problems related verifcation should probably be refactored out of the Checkpoint class (which is Pydantic model) and into the ProblemSimulator class (which is more appropriate for handling problems)
-    checkpoint.verify(expedition, problems_dir)
+    # verify that schedule and checkpoint match, and that problems have been resolved (if checkpoint exists)
+    if checkpoint is not None:
+        checkpoint.verify(expedition, problems_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
