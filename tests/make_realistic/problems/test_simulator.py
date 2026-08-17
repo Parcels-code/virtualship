@@ -235,8 +235,8 @@ def test_has_contingency_during_expedition(tmp_path):
     )
 
     # short distance expedition should have contingency, long distance should not (given time between waypoints and ship speed is constant)
-    assert short_simulator._has_contingency(problem_cls, problem_waypoint_i=0) is True
-    assert long_simulator._has_contingency(problem_cls, problem_waypoint_i=0) is False
+    assert short_simulator._has_contingency(problem_cls, problem_wp_i=0) is True
+    assert long_simulator._has_contingency(problem_cls, problem_wp_i=0) is False
 
 
 def test_post_expedition_report(tmp_path):

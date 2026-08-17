@@ -237,7 +237,7 @@ class ProblemSimulator:
         if not assigned_problems:
             return None
 
-        # Sort chronologically (pre-departure/None first, then waypoint index order)
+        # sort chronologically (pre-departure/None first, then waypoint index order)
         paired = sorted(
             zip(assigned_problems, assigned_indices, strict=True),
             key=lambda x: -1 if x[1] is None else x[1],
@@ -269,37 +269,43 @@ class ProblemSimulator:
             if hash_fpath.exists():
                 continue
 
-            alert_msg = (
-                LOG_MESSAGING["pre_departure"]
-                if isinstance(problem, GeneralProblem) and problem.pre_departure
-                else LOG_MESSAGING["during_expedition"].format(waypoint=wp_i + 1)
-            )
-
-            self._log_problem(
-                problem, wp_i, alert_msg, problem_hash, hash_fpath, log_delay
-            )
+            self._log_problem(problem, wp_i, problem_hash, hash_fpath, log_delay)
             self._cache_original_expedition(self.expedition)
 
     def _log_problem(
         self,
         problem: ProblemType,
-        problem_waypoint_i: int | None,
-        alert_msg: str,
+        problem_wp_i: int | None,
         problem_hash: str,
         hash_fpath: Path,
         log_delay: float,
     ) -> None:
-        """Handle execution sequence, logging, checkpoint saving, and user presentation."""
-        # TODO: the affected waypoint messaging is wrong considering the addition of Ports
-        #! under the hood, waypoint_i is the index of the waypoint in the expedition schedule, but the user-facing message should be based on the index of the waypoint in the list of non-port waypoints
+        """
+        Handle execution sequence, logging, checkpoint saving, and user presentation.
+
+        Note, problem_wp_i is the index of the waypoint in the expedition schedule, but the user-facing message should be based on the index of the waypoint in the list of non-port waypoints.
+        Use problem_wp_i for internal logic, but user-facing messages (below) should use public_wp (non indexed version).
+        problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
+        """
+        waypoints = self.expedition.schedule.waypoints
+        non_port_wps = [i for i, wp in enumerate(waypoints) if not isinstance(wp, Port)]
+        public_wp = (
+            non_port_wps.index(problem_wp_i) + 1 if problem_wp_i is not None else None
+        )
+
+        alert_msg = (
+            LOG_MESSAGING["pre_departure"]
+            if isinstance(problem, GeneralProblem) and problem.pre_departure
+            else LOG_MESSAGING["during_expedition"].format(waypoint=public_wp)
+        )
 
         time.sleep(3.0)
         with yaspin(text=alert_msg) as spinner:
             time.sleep(log_delay)
             spinner.ok("💥 ")
 
-        self._hash_to_json(problem, problem_hash, problem_waypoint_i, hash_fpath)
-        has_contingency = self._has_contingency(problem, problem_waypoint_i)
+        self._hash_to_json(problem, problem_hash, problem_wp_i, hash_fpath)
+        has_contingency = self._has_contingency(problem, problem_wp_i)
         delay_hrs = problem.delay_duration.total_seconds() / 3600.0
 
         if has_contingency:
@@ -310,11 +316,8 @@ class ProblemSimulator:
             data["resolved"] = True
             self._write_json(hash_fpath, data)
         else:
-            affected = (
-                "in-port"
-                if problem_waypoint_i is None
-                else f"at waypoint {problem_waypoint_i + 1}"
-            )
+            breakpoint()
+            affected = "in-port" if problem_wp_i is None else f"at waypoint {public_wp}"
             impact_str = (
                 f"Not enough contingency time scheduled to mitigate delay of {delay_hrs} "
                 f"hours occurring {affected} (future waypoint(s) would be reached too late).\n"
@@ -328,8 +331,9 @@ class ProblemSimulator:
         # update and save checkpoints
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
-            failed_waypoint_i=problem_waypoint_i + 1
-            if problem_waypoint_i is not None
+            failed_wp=problem_wp_i
+            + 1  # TODO: should this use user_facing_wp_i instead of problem_wp_i?
+            if problem_wp_i is not None
             else 0,
         )
         _save_checkpoint(checkpoint, self.expedition_dir)
@@ -345,17 +349,15 @@ class ProblemSimulator:
         if not has_contingency:
             sys.exit(0)
 
-    def _has_contingency(
-        self, problem: ProblemType, problem_waypoint_i: int | None
-    ) -> bool:
+    def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
         """Check whether scheduled contingency covers expected delay duration."""
-        if problem_waypoint_i is None:
+        if problem_wp_i is None:
             return False
 
         waypoints = self.expedition.schedule.waypoints
         curr_wp, next_wp = (
-            waypoints[problem_waypoint_i],
-            waypoints[problem_waypoint_i + 1],
+            waypoints[problem_wp_i],
+            waypoints[problem_wp_i + 1],
         )
 
         stationkeeping = _calc_wp_stationkeeping_time(
@@ -442,14 +444,14 @@ class ProblemSimulator:
     def _hash_to_json(
         problem: ProblemType,
         problem_hash: str,
-        problem_waypoint_i: int | None,
+        problem_wp_i: int | None,
         hash_path: Path,
     ) -> None:
         """Serialize runtime problem detail to JSON."""
         hash_data = {
             "problem_hash": problem_hash,
             "message": problem.message,
-            "problem_waypoint_i": problem_waypoint_i,
+            "problem_wp_i": problem_wp_i,
             "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
