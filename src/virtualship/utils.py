@@ -15,6 +15,7 @@ import xarray as xr
 from parcels import FieldSet, Particle, Variable
 
 from virtualship.errors import CopernicusCatalogueError
+from virtualship.models.expedition import Port
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
@@ -525,7 +526,7 @@ def build_particle_class_from_sensors(
     return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
-def get_clean_encoding(ds):
+def _get_clean_encoding(ds):
     """
     Clean existing encodings and supply explicit native endianness to prevent netCDF4 UserWarnings.
 
@@ -537,6 +538,12 @@ def get_clean_encoding(ds):
         encoding[var_name] = {"endian": "native"}
 
     return encoding
+
+
+def _get_public_wp(raw_wp_i: int | None, waypoints: list) -> int | None:
+    """Get the public waypoint index for a given waypoint (accounting for Port waypoints)."""
+    non_port_wps = [i for i, wp in enumerate(waypoints) if not isinstance(wp, Port)]
+    return non_port_wps.index(raw_wp_i) + 1 if raw_wp_i is not None else None
 
 
 # =====================================================

@@ -31,6 +31,7 @@ from virtualship.utils import (
     PROJECTION,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
+    _get_public_wp,
     _make_hash,
     _save_checkpoint,
 )
@@ -288,10 +289,7 @@ class ProblemSimulator:
         problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
         """
         waypoints = self.expedition.schedule.waypoints
-        non_port_wps = [i for i, wp in enumerate(waypoints) if not isinstance(wp, Port)]
-        public_wp = (
-            non_port_wps.index(problem_wp_i) + 1 if problem_wp_i is not None else None
-        )
+        public_wp = _get_public_wp(problem_wp_i, waypoints)
 
         alert_msg = (
             LOG_MESSAGING["pre_departure"]
@@ -331,10 +329,7 @@ class ProblemSimulator:
         # update and save checkpoints
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
-            failed_wp=problem_wp_i
-            + 1  # TODO: should this use user_facing_wp_i instead of problem_wp_i?
-            if problem_wp_i is not None
-            else 0,
+            failed_wp_i=problem_wp_i if problem_wp_i is not None else 0,
         )
         _save_checkpoint(checkpoint, self.expedition_dir)
         self.expedition.to_yaml(self.expedition_dir / CACHE / EXPEDITION_LATEST)
