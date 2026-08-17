@@ -15,7 +15,6 @@ import xarray as xr
 from parcels import FieldSet, Particle, Variable
 
 from virtualship.errors import CopernicusCatalogueError
-from virtualship.models.expedition import Port
 
 if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
@@ -541,9 +540,22 @@ def _get_clean_encoding(ds):
 
 
 def _get_public_wp(raw_wp_i: int | None, waypoints: list) -> int | None:
-    """Get the public waypoint index for a given waypoint (accounting for Port waypoints)."""
-    non_port_wps = [i for i, wp in enumerate(waypoints) if not isinstance(wp, Port)]
-    return non_port_wps.index(raw_wp_i) + 1 if raw_wp_i is not None else None
+    """
+    Get the public waypoint number for a given raw waypoint index (accounting for Port waypoints).
+
+    Note, the returned number is not an index, rather it corresponds to Waypoint numbers ignoring Ports (which are not waypoints from the user's perspective).
+    """
+    from virtualship.models.expedition import Port  # avoid circular import
+
+    port_wps = [i for i, wp in enumerate(waypoints) if isinstance(wp, Port)]
+    non_port_wps = [i for i in range(len(waypoints)) if i not in port_wps]
+
+    if raw_wp_i in port_wps:
+        public_wp = None  # Port waypoints do not have public waypoint numbers
+    else:
+        public_wp = non_port_wps.index(raw_wp_i) + 1
+
+    return public_wp
 
 
 # =====================================================
