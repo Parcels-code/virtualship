@@ -28,9 +28,12 @@ from virtualship.models.expedition import Port
 from virtualship.utils import (
     CACHE,
     EXPEDITION,
+    EXPEDITION_IDENTIFIER,
     EXPEDITION_LATEST,
     EXPEDITION_ORIGINAL,
+    PROBLEMS_ENCOUNTERED,
     PROJECTION,
+    SELECTED_PROBLEMS,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_public_wp,
@@ -61,7 +64,7 @@ PROBLEM_WEIGHTS = {
 }
 
 ProblemType = GeneralProblem | InstrumentProblem
-SelectedProblemsDict = dict[str, list[ProblemType | None]]
+SelectedProblemsDict = dict[str, Any]
 
 
 class ProblemSimulator:
@@ -71,8 +74,15 @@ class ProblemSimulator:
         """Initialise ProblemSimulator with a schedule and probability level."""
         self.expedition = expedition
         self.expedition_dir = Path(expedition_dir)
-
         self.waypoints = expedition.schedule.waypoints
+
+    @property
+    def expedition_id(self) -> str:
+        """Retrieve the current expedition unique identifier from cache."""
+        id_path = self.expedition_dir.joinpath(CACHE, EXPEDITION_IDENTIFIER)
+        if id_path.exists():
+            return id_path.read_text().strip()
+        return ""
 
     def __post_init__(self):
         """Ensure first and last waypoints are Ports. Allows the problem selection to work properly."""
@@ -256,6 +266,7 @@ class ProblemSimulator:
         return {
             "problem_class": [p for p, _ in paired],
             "waypoint_i": [w for _, w in paired],
+            "resolved": False,
         }
 
     def execute(
@@ -266,9 +277,15 @@ class ProblemSimulator:
         log_delay: float = 4.0,
     ) -> None:
         """Execute simulation problems and apply delay/schedule impacts."""
+        if not problems or problems.get("resolved", False):
+            return
+
         for problem, wp_i in zip(
             problems["problem_class"], problems["waypoint_i"], strict=True
         ):
+            if getattr(problem, "resolved", False):
+                continue
+
             if (
                 isinstance(problem, InstrumentProblem)
                 and problem.instrument_type is not instrument_type_validation
@@ -316,6 +333,22 @@ class ProblemSimulator:
             print("\n\n🎉 Previous problem has been resolved in the schedule.\n")
             active_problem.resolved = True
             _save_checkpoint(checkpoint, self.expedition_dir)
+
+            # persist resolved status to selected_problems.json cache
+            problems_path = self.expedition_dir.joinpath(
+                CACHE,
+                PROBLEMS_ENCOUNTERED.format(expedition_id=self.expedition_id),
+                SELECTED_PROBLEMS,
+            )
+            if problems_path.exists():
+                problems = self.load_selected_problems(problems_path)
+                if isinstance(problems, dict):
+                    problems["resolved"] = True
+                    for p in problems.get("problem_class", []):
+                        if getattr(p, "message", None) == active_problem.message:
+                            p.resolved = True
+                self.cache_selected_problems(problems, problems_path)
+
         else:
             public_problem_wp = _get_public_wp(
                 checkpoint.problem_wp_i, checkpoint.past_schedule.waypoints
@@ -399,7 +432,6 @@ class ProblemSimulator:
         # update and save checkpoint with active problem information
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
-            problem_wp_i=problem_wp_i,
             active_problem=active_problem,
         )
         _save_checkpoint(checkpoint, self.expedition_dir)
@@ -457,6 +489,7 @@ class ProblemSimulator:
         payload = {
             "problem_class": [p.short_name for p in problems["problem_class"]],
             "waypoint_i": problems["waypoint_i"],
+            "resolved": problems.get("resolved", False),
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         }
         ProblemSimulator._write_json(fpath, payload)
@@ -485,7 +518,11 @@ class ProblemSimulator:
                 )
             waypoint_indices.append(wp_idx)
 
-        return {"problem_class": selected_classes, "waypoint_i": waypoint_indices}
+        return {
+            "problem_class": selected_classes,
+            "waypoint_i": waypoint_indices,
+            "resolved": data.get("resolved", False),
+        }
 
     @staticmethod
     def post_expedition_report(
@@ -505,24 +542,6 @@ class ProblemSimulator:
                 )
 
     @staticmethod
-    def _hash_to_json(
-        problem: ProblemType,
-        problem_hash: str,
-        problem_wp_i: int | None,
-        hash_path: Path,
-    ) -> None:
-        """Serialize runtime problem detail to JSON."""
-        hash_data = {
-            "problem_hash": problem_hash,
-            "message": problem.message,
-            "problem_wp_i": problem_wp_i,
-            "delay_duration_hours": problem.delay_duration.total_seconds() / 3600.0,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            "resolved": False,
-        }
-        ProblemSimulator._write_json(hash_path, hash_data)
-
-    @staticmethod
     def _read_json(path: Path) -> dict[str, Any]:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
@@ -536,7 +555,11 @@ class ProblemSimulator:
     def _tabular_outputter(
         problem_str: str, impact_str: str, result_str: str, has_contingency: bool
     ) -> None:
-        """Display the problem, impact, and result in a live-updating table. Sleep times are included to increase readability and engagement for user."""
+        """
+        Display the problem, impact, and result in a live-updating table.
+
+        Sleep times are included to increase readability and engagement for user.
+        """
         console = Console()
         console.print()  # line break before table
 
