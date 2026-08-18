@@ -323,6 +323,9 @@ class ProblemSimulator:
             public_failed_wp = _get_public_wp(
                 failed_wp_i, checkpoint.past_schedule.waypoints
             )
+            if public_failed_wp is None:
+                public_failed_wp = "\b/Port of Arrival"
+
             problem_wp_str = (
                 "in-port"
                 if checkpoint.problem_wp_i == 0
