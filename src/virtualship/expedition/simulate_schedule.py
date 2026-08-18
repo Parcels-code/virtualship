@@ -36,7 +36,7 @@ class ScheduleProblem:
     """Result of schedule that could not be fully completed."""
 
     time: datetime
-    failed_waypoint_i: int
+    failed_wp: int
 
 
 @dataclass

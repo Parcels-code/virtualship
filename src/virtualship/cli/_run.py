@@ -14,7 +14,7 @@ from virtualship.expedition.simulate_schedule import (
     simulate_schedule,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models import Checkpoint, Schedule
+from virtualship.models import Checkpoint
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     CACHE,
@@ -42,11 +42,7 @@ logging.getLogger("copernicusmarine").setLevel("ERROR")
 def _run(
     expedition_dir: str | Path, difficulty_level: str, from_data: Path | None = None
 ) -> None:
-    """
-    Perform an expedition, providing terminal feedback and file output.
-
-    :param expedition_dir: The base directory for the expedition.
-    """
+    """Perform an expedition, providing terminal feedback and file output."""
     # start timing
     start_time = time.time()
     print("[TIMER] Expedition started...")
@@ -79,9 +75,9 @@ def _run(
 
     expedition = _get_expedition(expedition_dir)
 
-    # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
+    # unique id to determine if an expedition has 'changed' since last run
     cache_dir = expedition_dir.joinpath(CACHE)
-    expedition_id = _unique_id(expedition, cache_dir)
+    expedition_id = _unique_id(expedition, cache_dir, expedition_dir)
 
     # dedicated problems directory for this expedition
     problems_dir = expedition_dir.joinpath(
@@ -91,13 +87,18 @@ def _run(
     # verify instruments_config file is consistent with schedule
     expedition.instruments_config.verify(expedition)
 
-    # load last checkpoint
-    checkpoint = _load_checkpoint(expedition_dir)
-    if checkpoint is None:
-        checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
+    # initialise problem simulator
+    problem_simulator = ProblemSimulator(expedition, expedition_dir)
 
-    # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, problems_dir)
+    # load last checkpoint if present
+    checkpoint = _load_checkpoint(expedition_dir)
+
+    if checkpoint is not None:
+        # 1) core structural check: verify past waypoints have not changed
+        checkpoint.verify_past_schedule(expedition.schedule)
+
+        # 2) problems-specific check: verify active problem delay is resolved in new schedule
+        problem_simulator.verify_problem_resolution(checkpoint)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -121,19 +122,21 @@ def _run(
         _save_checkpoint(
             Checkpoint(
                 past_schedule=expedition.schedule,
-                failed_waypoint_i=schedule_results.failed_waypoint_i,
+                failed_wp_i=schedule_results.failed_wp,
             ),
             expedition_dir,
         )
         return
 
-    # delete and create results directory
+    # warn about existing results on fresh runs (when no active checkpoint exists)
     results_dir = expedition_dir.joinpath(RESULTS)
-    _warn_overwrite_results_dir(results_dir)
+    if checkpoint is None:
+        _warn_overwrite_results_dir(results_dir)
 
-    if os.path.exists(results_dir):
+    # re-initialize/clean results directory
+    if os.path.exists(results_dir) and checkpoint is None:
         shutil.rmtree(results_dir)
-    os.makedirs(results_dir)
+    os.makedirs(results_dir, exist_ok=True)
 
     print("\n----- EXPEDITION SUMMARY ------")
 
@@ -145,10 +148,7 @@ def _run(
     # identify instruments in expedition
     instruments_in_expedition = expedition.get_instruments()
 
-    # initialise problem simulator
-    problem_simulator = ProblemSimulator(expedition, expedition_dir)
-
-    # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
+    # re-load previously encountered problems if they exist, else select new problems and cache them
     if os.path.exists(problems_dir.joinpath(SELECTED_PROBLEMS)):
         problems = problem_simulator.load_selected_problems(
             problems_dir.joinpath(SELECTED_PROBLEMS)
@@ -157,20 +157,16 @@ def _run(
         problems = problem_simulator.select_problems(
             instruments_in_expedition, difficulty_level
         )
-        problem_simulator.cache_selected_problems(
-            problems, problems_dir.joinpath(SELECTED_PROBLEMS)
-        ) if problems else None
+        if problems:
+            problem_simulator.cache_selected_problems(
+                problems, problems_dir.joinpath(SELECTED_PROBLEMS)
+            )
 
     # simulate instrument measurements
     print("\nSimulating measurements. This may take a while...\n")
 
     for itype in instruments_in_expedition:
         try:
-            # get instrument class
-            instrument_class = get_instrument_class(itype)
-            if instrument_class is None:
-                raise RuntimeError(f"No instrument class found for type {itype}.")
-
             # execute problem simulations for this instrument type
             if problems:
                 if (
@@ -186,6 +182,11 @@ def _run(
                     instrument_type_validation=itype,
                     log_dir=problems_dir,
                 )
+
+            # get instrument class
+            instrument_class = get_instrument_class(itype)
+            if instrument_class is None:
+                raise RuntimeError(f"No instrument class found for type {itype}.")
 
             # get measurements to simulate
             attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
@@ -249,7 +250,7 @@ def _run(
     print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
 
 
-def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
+def _unique_id(expedition: Expedition, cache_dir: Path, expedition_dir: Path) -> str:
     """
     Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
 
@@ -260,6 +261,7 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
 
     id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
     last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
+    checkpoint_path = expedition_dir.joinpath(CHECKPOINT)
     new_id = datetime.now().strftime("%Y%m%d%H%M%S")
 
     if not id_path.exists():
@@ -268,10 +270,13 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
 
     previous_id = id_path.read_text().strip()
 
+    # if an active checkpoint exists, retain the existing expedition id to preserve problem state
+    if checkpoint_path.exists():
+        return previous_id
+
     try:
         last_expedition = Expedition.from_yaml(last_expedition_path)
     except FileNotFoundError:
-        # cache is not useful in this case as it implies the previous run was interrupted and is incomplete; update passively
         id_path.write_text(new_id)
         return new_id
 
@@ -279,7 +284,7 @@ def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
         last_expedition.get_instruments()
     )
     if not added_instruments:
-        return previous_id  # if no additions, keep previous id to allow re-use of previously encountered problems
+        return previous_id
 
     id_path.write_text(new_id)
     return new_id

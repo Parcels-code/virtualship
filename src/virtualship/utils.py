@@ -525,7 +525,7 @@ def build_particle_class_from_sensors(
     return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
-def get_clean_encoding(ds):
+def _get_clean_encoding(ds):
     """
     Clean existing encodings and supply explicit native endianness to prevent netCDF4 UserWarnings.
 
@@ -537,6 +537,25 @@ def get_clean_encoding(ds):
         encoding[var_name] = {"endian": "native"}
 
     return encoding
+
+
+def _get_public_wp(raw_wp_i: int | None, waypoints: list) -> int | None:
+    """
+    Get the public waypoint number for a given raw waypoint index (accounting for Port waypoints).
+
+    Note, the returned number is not an index, rather it corresponds to Waypoint numbers ignoring Ports (which are not waypoints from the user's perspective).
+    """
+    from virtualship.models.expedition import Port  # avoid circular import
+
+    port_wps = [i for i, wp in enumerate(waypoints) if isinstance(wp, Port)]
+    non_port_wps = [i for i in range(len(waypoints)) if i not in port_wps]
+
+    if raw_wp_i in port_wps:
+        public_wp = None  # Port waypoints do not have public waypoint numbers
+    else:
+        public_wp = non_port_wps.index(raw_wp_i) + 1
+
+    return public_wp
 
 
 # =====================================================
