@@ -26,7 +26,7 @@ class ActiveProblem(pydantic.BaseModel):
     """Runtime state of a problem halting simulation."""
 
     message: str
-    problem_wp_i: int | None
+    problem_wp_i: int | None  # noqa; index of the waypoint that caused a problem (if any)
     delay_duration_hours: float
     resolved: bool = False
 
@@ -35,13 +35,13 @@ class Checkpoint(pydantic.BaseModel):
     """A checkpoint of the schedule simulation storing past schedule state and any active problem that halted execution."""
 
     past_schedule: Schedule
-    problem_wp_i: int | None = (
-        None  # index of the waypoint that caused a problem (if any)
-    )
-    failed_wp_i: int | None = (
-        None  # index of the waypoint that could not be reached in time (either because of problem or incompatible user scheduling)
-    )
+    failed_wp_i: int | None = None  # noqa; index of the waypoint that could not be reached in time
     active_problem: ActiveProblem | None = None
+
+    @property
+    def problem_wp_i(self) -> int | None:
+        """Delegate to active_problem to avoid duplication."""
+        return self.active_problem.problem_wp_i if self.active_problem else None
 
     def get_effective_failed_wp_i(self) -> int | None:
         """Return the index of the waypoint that failed or could not be reached."""
