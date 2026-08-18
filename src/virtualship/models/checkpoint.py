@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from datetime import timedelta
 from pathlib import Path
 
 import pydantic
@@ -11,14 +9,8 @@ import yaml
 
 from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition, Port, Schedule
-from virtualship.utils import (
-    EXPEDITION,
-    PROJECTION,
-    _calc_sail_time,
-    _calc_wp_stationkeeping_time,
-    _get_public_wp,
-)
+from virtualship.models.expedition import Schedule
+from virtualship.utils import _get_public_wp
 
 
 class _YamlDumper(yaml.SafeDumper):
@@ -30,134 +22,60 @@ _YamlDumper.add_representer(
 )
 
 
-class Checkpoint(pydantic.BaseModel):
-    """
-    A checkpoint of schedule simulation.
+class ActiveProblem(pydantic.BaseModel):
+    """Runtime state of a problem halting simulation."""
 
-    Copy of the schedule until where the simulation proceeded without troubles.
-    """
+    message: str
+    problem_wp_i: int | None
+    delay_duration_hours: float
+    resolved: bool = False
+
+
+class Checkpoint(pydantic.BaseModel):
+    """A checkpoint of the schedule simulation storing past schedule state and any active problem that halted execution."""
 
     past_schedule: Schedule
-    problem_wp_i: int | None = None
+    problem_wp_i: int | None = (
+        None  # index of the waypoint that caused a problem (if any)
+    )
+    failed_wp_i: int | None = (
+        None  # index of the waypoint that could not be reached in time (either because of problem or incompatible user scheduling)
+    )
+    active_problem: ActiveProblem | None = None
+
+    def get_effective_failed_wp_i(self) -> int | None:
+        """Return the index of the waypoint that failed or could not be reached."""
+        if self.failed_wp_i is not None:
+            return self.failed_wp_i
+        if self.problem_wp_i is not None:
+            return self.problem_wp_i + 1
+        return None
+
+    def verify_past_schedule(self, new_schedule: Schedule) -> None:
+        """Core structural check: ensure past history hasn't been edited."""
+        failed_wp_i = self.get_effective_failed_wp_i()
+        if failed_wp_i is None:
+            return
+
+        public_failed_wp = _get_public_wp(failed_wp_i, self.past_schedule.waypoints)
+
+        if (
+            new_schedule.waypoints[: int(failed_wp_i)]
+            != self.past_schedule.waypoints[: int(failed_wp_i)]
+        ):
+            raise CheckpointError(
+                f"Past waypoints in schedule have been changed! Restore past schedule "
+                f"and only change future waypoints (waypoint {int(public_failed_wp)} onwards)."
+            )
 
     def to_yaml(self, file_path: str | Path) -> None:
-        """
-        Write checkpoint to yaml file.
-
-        :param file_path: Path to the file to write to.
-        """
-        with open(file_path, "w") as file:
+        """Write checkpoint to YAML file."""
+        with open(file_path, "w", encoding="utf-8") as file:
             yaml.dump(self.model_dump(by_alias=True), file, Dumper=_YamlDumper)
 
     @classmethod
     def from_yaml(cls, file_path: str | Path) -> Checkpoint:
-        """
-        Load checkpoint from yaml file.
-
-        :param file_path: Path to the file to load from.
-        :returns: The checkpoint.
-        """
-        with open(file_path) as file:
+        """Load checkpoint from YAML file."""
+        with open(file_path, encoding="utf-8") as file:
             data = yaml.safe_load(file)
         return Checkpoint(**data)
-
-    def verify(self, expedition: Expedition, problems_dir: Path) -> None:
-        """
-        Verify that the given schedule matches the checkpoint's past schedule , and/or that any problem has been resolved.
-
-        Addresses changes made by the user in response to both i) scheduling issues arising for not enough time for the ship to travel between waypoints, and ii) problems encountered during simulation.
-        """
-        new_schedule = expedition.schedule
-
-        # TODO: problems related verifcation should probably be refactored out of the Checkpoint class (which is Pydantic model) and into the ProblemSimulator class (which is more appropriate for handling problems)
-        #! Do some re-thinking to move all the problems related logic over into the Problems (simulator).
-
-        # failed waypoint is the waypoint immediately *after* the problem waypoint (i.e. the one that will not be reached in time)
-        failed_wp_i = self.problem_wp_i + 1
-
-        # public waypoint number of problem and failed waypoints, for use in error messages
-        public_problem_wp = _get_public_wp(
-            self.problem_wp_i, self.past_schedule.waypoints
-        )
-        public_failed_wp = _get_public_wp(failed_wp_i, self.past_schedule.waypoints)
-
-        # 1) check that past waypoints have not been changed (up to but not including failed_wp)
-        if (
-            not new_schedule.waypoints[: int(failed_wp_i)]
-            == self.past_schedule.waypoints[: int(failed_wp_i)]
-        ):
-            raise CheckpointError(
-                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(public_failed_wp)} onwards)."
-            )
-
-        # 2) check that problems have been resolved in the new schedule
-        hash_fpaths = [
-            str(path.resolve()) for path in problems_dir.glob("problem_*.json")
-        ]
-
-        if len(hash_fpaths) > 0:
-            for file in hash_fpaths:
-                with open(file, encoding="utf-8") as f:
-                    problem = json.load(f)
-
-                # continue if problem is already resolved, else perform checks to see if delay is accounted for
-                if problem["resolved"]:
-                    continue
-                else:
-                    delay_duration = timedelta(
-                        hours=float(problem["delay_duration_hours"])
-                    )
-
-                    problem_waypoint = new_schedule.waypoints[self.problem_wp_i]
-                    failed_waypoint = new_schedule.waypoints[failed_wp_i]
-                    scheduled_time_diff = failed_waypoint.time - problem_waypoint.time
-
-                    stationkeeping_time = (
-                        _calc_wp_stationkeeping_time(
-                            problem_waypoint.instrument,
-                            expedition,
-                        )
-                        if not isinstance(problem_waypoint, Port)
-                        else timedelta(0)
-                    )
-
-                    sail_time = _calc_sail_time(
-                        problem_waypoint.location,
-                        failed_waypoint.location,
-                        ship_speed_knots=expedition.ship_config.ship_speed_knots,
-                        projection=PROJECTION,
-                    )[0]
-
-                    min_time_required = sail_time + delay_duration + stationkeeping_time
-
-                    if scheduled_time_diff >= min_time_required:
-                        print(
-                            "\n\n🎉 Previous problem has been resolved in the schedule.\n"
-                        )
-
-                        # save back to json file changing the resolved status to True
-                        problem["resolved"] = True
-                        with open(file, "w", encoding="utf-8") as f_out:
-                            json.dump(problem, f_out, indent=4)
-
-                        # only handle the first unresolved problem found; others will be handled in subsequent runs but are not yet known to the user
-                        break
-
-                    else:
-                        problem_wp_str = (
-                            "in-port"
-                            if problem["problem_wp_i"] == 0  # i.e. pre-departure
-                            else f"at waypoint {public_problem_wp}"
-                        )
-                        time_elapsed = sail_time + delay_duration + stationkeeping_time
-
-                        raise CheckpointError(
-                            f"The problem encountered in previous simulation has not been resolved in the schedule! Please adjust the schedule to account for delays caused by the problem (by using `virtualship plan` or directly editing the {EXPEDITION} file).\n\n"
-                            f"The problem was associated with a delay duration of {problem['delay_duration_hours']} hours {problem_wp_str} (meaning waypoint {public_failed_wp} could not be reached in time). "
-                            f"Currently, the ship would reach waypoint {public_failed_wp} at {problem_waypoint.time + time_elapsed}, but the scheduled time is {failed_waypoint.time}."
-                            + (
-                                f"\n\nHint: don't forget to factor in the time required to deploy the instruments {problem_wp_str} when rescheduling waypoint {public_failed_wp}."
-                                if problem["problem_wp_i"] != 0
-                                else ""
-                            )
-                        )
