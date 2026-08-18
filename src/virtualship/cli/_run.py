@@ -42,11 +42,7 @@ logging.getLogger("copernicusmarine").setLevel("ERROR")
 def _run(
     expedition_dir: str | Path, difficulty_level: str, from_data: Path | None = None
 ) -> None:
-    """
-    Perform an expedition, providing terminal feedback and file output.
-
-    :param expedition_dir: The base directory for the expedition.
-    """
+    """Perform an expedition, providing terminal feedback and file output."""
     # start timing
     start_time = time.time()
     print("[TIMER] Expedition started...")
@@ -91,12 +87,18 @@ def _run(
     # verify instruments_config file is consistent with schedule
     expedition.instruments_config.verify(expedition)
 
-    # load last checkpoint
+    # initialise problem simulator
+    problem_simulator = ProblemSimulator(expedition, expedition_dir)
+
+    # load last checkpoint if present
     checkpoint = _load_checkpoint(expedition_dir)
 
-    # verify that schedule and checkpoint match, and that problems have been resolved (if checkpoint exists)
     if checkpoint is not None:
-        checkpoint.verify(expedition, problems_dir)
+        # 1) core structural check: verify past waypoints have not changed
+        checkpoint.verify_past_schedule(expedition.schedule)
+
+        # 2) problems-specific check: verify active problem delay is resolved in new schedule
+        problem_simulator.verify_problem_resolution(checkpoint)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
@@ -120,7 +122,7 @@ def _run(
         _save_checkpoint(
             Checkpoint(
                 past_schedule=expedition.schedule,
-                failed_wp=schedule_results.failed_wp,
+                failed_wp_i=schedule_results.failed_wp,
             ),
             expedition_dir,
         )
@@ -143,9 +145,6 @@ def _run(
 
     # identify instruments in expedition
     instruments_in_expedition = expedition.get_instruments()
-
-    # initialise problem simulator
-    problem_simulator = ProblemSimulator(expedition, expedition_dir)
 
     # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
     if os.path.exists(problems_dir.joinpath(SELECTED_PROBLEMS)):

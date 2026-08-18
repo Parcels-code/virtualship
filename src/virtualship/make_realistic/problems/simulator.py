@@ -15,6 +15,7 @@ from rich.spinner import Spinner
 from rich.table import Table
 from yaspin import yaspin
 
+from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
     GENERAL_PROBLEMS,
@@ -22,7 +23,7 @@ from virtualship.make_realistic.problems.scenarios import (
     GeneralProblem,
     InstrumentProblem,
 )
-from virtualship.models.checkpoint import Checkpoint
+from virtualship.models.checkpoint import ActiveProblem, Checkpoint
 from virtualship.models.expedition import Port
 from virtualship.utils import (
     CACHE,
@@ -282,6 +283,61 @@ class ProblemSimulator:
             self._log_problem(problem, wp_i, problem_hash, hash_fpath, log_delay)
             self._cache_original_expedition(self.expedition)
 
+    def verify_problem_resolution(self, checkpoint: Checkpoint) -> None:
+        """Verify active problem delay is resolved in new schedule."""
+        active_problem = checkpoint.active_problem
+        if active_problem is None or active_problem.resolved:
+            return
+
+        failed_wp_i = checkpoint.get_effective_failed_wp_i()
+        new_schedule = self.expedition.schedule
+
+        # problem-specific delay calculation & resolution check
+        delay_duration = timedelta(hours=active_problem.delay_duration_hours)
+        problem_waypoint = new_schedule.waypoints[checkpoint.problem_wp_i]
+        failed_waypoint = new_schedule.waypoints[failed_wp_i]
+
+        scheduled_time_diff = failed_waypoint.time - problem_waypoint.time
+        stationkeeping_time = (
+            _calc_wp_stationkeeping_time(problem_waypoint.instrument, self.expedition)
+            if not isinstance(problem_waypoint, Port)
+            else timedelta(0)
+        )
+        sail_time = _calc_sail_time(
+            problem_waypoint.location,
+            failed_waypoint.location,
+            ship_speed_knots=self.expedition.ship_config.ship_speed_knots,
+            projection=PROJECTION,
+        )[0]
+
+        min_time_required = sail_time + delay_duration + stationkeeping_time
+
+        if scheduled_time_diff >= min_time_required:
+            print("\n\n🎉 Previous problem has been resolved in the schedule.\n")
+            active_problem.resolved = True
+            _save_checkpoint(checkpoint, self.expedition_dir)
+        else:
+            public_problem_wp = _get_public_wp(
+                checkpoint.problem_wp_i, checkpoint.past_schedule.waypoints
+            )
+            public_failed_wp = _get_public_wp(
+                failed_wp_i, checkpoint.past_schedule.waypoints
+            )
+            problem_wp_str = (
+                "in-port"
+                if checkpoint.problem_wp_i == 0
+                else f"at waypoint {public_problem_wp}"
+            )
+            time_elapsed = sail_time + delay_duration + stationkeeping_time
+
+            raise CheckpointError(
+                f"The problem encountered in previous simulation has not been resolved in the schedule! "
+                f"Please adjust the schedule to account for delays caused by the problem...\n\n"
+                f"The problem was associated with a delay duration of {active_problem.delay_duration_hours} hours {problem_wp_str} "
+                f"(meaning waypoint {public_failed_wp} could not be reached in time). "
+                f"Currently, the ship would reach waypoint {public_failed_wp} at {problem_waypoint.time + time_elapsed}, but the scheduled time is {failed_waypoint.time}."
+            )
+
     def _log_problem(
         self,
         problem: ProblemType,
@@ -293,9 +349,10 @@ class ProblemSimulator:
         """
         Handle execution sequence, logging, checkpoint saving, and user presentation.
 
-        Note, problem_wp_i is the index of the waypoint in the expedition schedule, but the user-facing message should be based on the index of the waypoint in the list of non-port waypoints.
-        Use problem_wp_i for internal logic, but user-facing messages (below) should use public_wp (non indexed version).
-        problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
+        Note, problem_wp_i is the index of the waypoint in the expedition schedule, but the user-facing message
+        should be based on the index of the waypoint in the list of non-port waypoints.
+        Use problem_wp_i for internal logic, but user-facing messages should use public_wp.
+        Incidentally, problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
         """
         waypoints = self.waypoints
         public_wp = _get_public_wp(problem_wp_i, waypoints)
@@ -311,17 +368,13 @@ class ProblemSimulator:
             time.sleep(log_delay)
             spinner.ok("💥 ")
 
-        self._hash_to_json(problem, problem_hash, problem_wp_i, hash_fpath)
         has_contingency = self._has_contingency(problem, problem_wp_i)
         delay_hrs = problem.delay_duration.total_seconds() / 3600.0
 
         if has_contingency:
             impact_str = LOG_MESSAGING["problem_avoided"]
             result_str = "The expedition will carry on shortly as planned."
-            # update problem JSON state to resolved
-            data = self._read_json(hash_fpath)
-            data["resolved"] = True
-            self._write_json(hash_fpath, data)
+            active_problem = None
         else:
             affected = "in-port" if public_wp is None else f"at waypoint {public_wp}"
             impact_str = (
@@ -333,11 +386,18 @@ class ProblemSimulator:
                 problem_wp=affected,
                 expedition_yaml=EXPEDITION,
             )
+            active_problem = ActiveProblem(
+                message=problem.message,
+                problem_wp_i=problem_wp_i,
+                delay_duration_hours=delay_hrs,
+                resolved=False,
+            )
 
-        # update and save checkpoints
+        # update and save checkpoint with active problem information
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
             problem_wp_i=problem_wp_i,
+            active_problem=active_problem,
         )
         _save_checkpoint(checkpoint, self.expedition_dir)
         self.expedition.to_yaml(self.expedition_dir / CACHE / EXPEDITION_LATEST)
