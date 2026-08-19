@@ -43,7 +43,6 @@ from virtualship.utils import (
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_public_wp,
-    _make_hash,
     _save_checkpoint,
 )
 
@@ -168,12 +167,7 @@ class ProblemSimulator:
             ):
                 continue
 
-            problem_hash = _make_hash(problem.message + str(wp_i), 8)
-            hash_fpath = log_dir / f"problem_{problem_hash}.json"
-            if hash_fpath.exists():
-                continue
-
-            self._log_problem(problem, wp_i, problem_hash, hash_fpath, log_delay)
+            self._log_problem(problem, wp_i, log_delay)
             self._cache_original_expedition(self.expedition)
 
     def select_problems(
@@ -429,6 +423,7 @@ class ProblemSimulator:
 
         for idx in avail_indices:
             wp_instruments = self.waypoints[idx].instrument or []
+            # discount problem if it's an instrument problem and the instrument isn't present at this waypoint
             if (
                 isinstance(problem, InstrumentProblem)
                 and problem.instrument_type not in wp_instruments
@@ -438,7 +433,7 @@ class ProblemSimulator:
             avail_indices.remove(idx)
             return ScheduledProblem(problem=problem, waypoint_index=idx)
 
-        used_problems = {item.problem for item in already_assigned}
+        used_problems = [item.problem for item in already_assigned]
         avail_general = [
             p
             for p in GENERAL_PROBLEMS
@@ -456,8 +451,6 @@ class ProblemSimulator:
         self,
         problem: ProblemType,
         problem_wp_i: int | None,
-        problem_hash: str,
-        hash_fpath: Path,
         log_delay: float,
     ) -> None:
         """
@@ -577,9 +570,7 @@ class ProblemSimulator:
             id_path.write_text(new_id)
             return new_id
 
-        from virtualship.models.expedition import Expedition as ExpeditionModel
-
-        last_expedition = ExpeditionModel.from_yaml(last_expedition_path)
+        last_expedition = Expedition.from_yaml(last_expedition_path)
         added_instruments = set(self.expedition.get_instruments()) - set(
             last_expedition.get_instruments()
         )

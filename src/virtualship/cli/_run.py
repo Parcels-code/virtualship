@@ -3,7 +3,6 @@ import os
 import shutil
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 
 import copernicusmarine
@@ -22,8 +21,6 @@ from virtualship.utils import (
     CACHE,
     CHECKPOINT,
     EXPEDITION,
-    EXPEDITION_IDENTIFIER,
-    EXPEDITION_LATEST,
     PROBLEMS_ENCOUNTERED,
     PROJECTION,
     RESULTS,
@@ -58,11 +55,10 @@ def _run(
     cache_dir = expedition_dir / CACHE
     results_dir = expedition_dir / RESULTS
 
-    expedition_id = _unique_id(expedition, cache_dir, expedition_dir)
-    problems_dir = cache_dir / PROBLEMS_ENCOUNTERED.format(expedition_id=expedition_id)
-
-    expedition.instruments_config.verify(expedition)
     problem_simulator = ProblemSimulator(expedition, expedition_dir, difficulty_level)
+    problems_dir = cache_dir / PROBLEMS_ENCOUNTERED.format(
+        expedition_id=problem_simulator.expedition_id
+    )
 
     checkpoint = _load_checkpoint(expedition_dir)
     if checkpoint is not None:
@@ -76,6 +72,8 @@ def _run(
         from_data=data_path,
     )
 
+    expedition.instruments_config.verify(expedition)
+
     schedule_results = simulate_schedule(
         projection=PROJECTION,
         expedition=expedition,
@@ -85,7 +83,7 @@ def _run(
         _handle_schedule_failure(schedule_results, expedition, expedition_dir)
         return
 
-    _prepare_results_directory(results_dir, is_new_run=(checkpoint is None))
+    _prepare_results_directory(results_dir, is_new_run=checkpoint is None)
 
     print("\n----- EXPEDITION SUMMARY ------")
     _write_expedition_cost(expedition, schedule_results, expedition_dir)
@@ -97,6 +95,7 @@ def _run(
     try:
         _simulate_measurements(
             expedition=expedition,
+            expedition_dir=expedition_dir,
             schedule_results=schedule_results,
             instruments=instruments_in_expedition,
             problem_simulator=problem_simulator,
@@ -145,38 +144,6 @@ def _ensure_copernicus_auth() -> None:
         copernicusmarine.login()
 
 
-def _unique_id(expedition: Expedition, cache_dir: Path, expedition_dir: Path) -> str:
-    cache_dir.mkdir(exist_ok=True)
-    id_path = cache_dir / EXPEDITION_IDENTIFIER
-    last_expedition_path = cache_dir / EXPEDITION_LATEST
-    checkpoint_path = expedition_dir / CHECKPOINT
-    new_id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    if not id_path.exists():
-        id_path.write_text(new_id)
-        return new_id
-
-    previous_id = id_path.read_text().strip()
-
-    if checkpoint_path.exists():
-        return previous_id
-
-    if not last_expedition_path.exists():
-        id_path.write_text(new_id)
-        return new_id
-
-    last_expedition = Expedition.from_yaml(last_expedition_path)
-    added_instruments = set(expedition.get_instruments()) - set(
-        last_expedition.get_instruments()
-    )
-
-    if added_instruments:
-        id_path.write_text(new_id)
-        return new_id
-
-    return previous_id
-
-
 def _handle_schedule_failure(
     schedule_results: ScheduleProblem, expedition: Expedition, expedition_dir: Path
 ) -> None:
@@ -203,6 +170,7 @@ def _prepare_results_directory(results_dir: Path, is_new_run: bool) -> None:
 
 def _simulate_measurements(
     expedition: Expedition,
+    expedition_dir: Path,
     schedule_results: ScheduleOk | ScheduleProblem,
     instruments: set[InstrumentType],
     problem_simulator: ProblemSimulator,
@@ -220,9 +188,7 @@ def _simulate_measurements(
         instrument = instrument_class(expedition=expedition, from_data=data_path)
         instrument.execute(
             measurements=measurements,
-            out_path=expedition.expedition_dir
-            / RESULTS
-            / f"{itype.name.lower()}.parquet",
+            out_path=expedition_dir / RESULTS / f"{itype.name.lower()}.parquet",
         )
 
 
