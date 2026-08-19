@@ -75,7 +75,7 @@ class ScheduledProblem:
     """Represents a single problem paired with its assigned waypoint index."""
 
     problem: ProblemType
-    waypoint_index: int | None
+    waypoint_index: int
     resolved: bool = False
 
 
@@ -159,7 +159,6 @@ class ProblemSimulator:
                 continue
 
             problem = item.problem
-            wp_i = item.waypoint_index
 
             if (
                 isinstance(problem, InstrumentProblem)
@@ -167,7 +166,7 @@ class ProblemSimulator:
             ):
                 continue
 
-            self._log_problem(problem, wp_i, log_delay)
+            self._log_problem(item, log_delay)
             self._cache_original_expedition(self.expedition)
 
     def select_problems(
@@ -189,7 +188,7 @@ class ProblemSimulator:
                 items=[
                     ScheduledProblem(
                         problem=random.choice(pre_departure),
-                        waypoint_index=0,  # noqa; pre-departure problem is always associated with the departure port (index 0)
+                        waypoint_index=0,  # pre-departure problem is always associated with the departure port (index 0)
                     )
                 ]
             )
@@ -287,7 +286,7 @@ class ProblemSimulator:
             return
 
         report_path = self.expedition_dir / RESULTS / REPORT
-        self.post_expedition_report(self.problems, report_path)
+        self.post_expedition_report(self.problems, report_path, self.waypoints)
 
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
         print(
@@ -449,8 +448,7 @@ class ProblemSimulator:
 
     def _log_problem(
         self,
-        problem: ProblemType,
-        problem_wp_i: int | None,
+        item: ScheduledProblem,
         log_delay: float,
     ) -> None:
         """
@@ -459,8 +457,9 @@ class ProblemSimulator:
         Note, problem_wp_i is the index of the waypoint in the expedition schedule, but the user-facing message
         should be based on the index of the waypoint in the list of non-port waypoints.
         Use problem_wp_i for internal logic, but user-facing messages should use public_wp.
-        Incidentally, problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
         """
+        problem = item.problem
+        problem_wp_i = item.waypoint_index
         public_wp = _get_public_wp(problem_wp_i, self.waypoints)
 
         alert_msg = (
@@ -481,6 +480,13 @@ class ProblemSimulator:
             impact_str = LOG_MESSAGING["problem_avoided"]
             result_str = "The expedition will carry on shortly as planned."
             active_problem = None
+
+            # mark problem as resolved
+            item.resolved = True
+            if self.problems:
+                self.cache_selected_problems(
+                    self.problems, self.problems_dir / SELECTED_PROBLEMS
+                )
         else:
             affected = "in-port" if public_wp is None else f"at waypoint {public_wp}"
             impact_str = (
@@ -518,10 +524,8 @@ class ProblemSimulator:
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
         """Check whether scheduled contingency covers expected delay duration."""
-        curr_wp, next_wp = (
-            self.waypoints[problem_wp_i],
-            self.waypoints[problem_wp_i + 1],
-        )
+        curr_wp = self.waypoints[problem_wp_i]
+        next_wp = self.waypoints[problem_wp_i + 1]
 
         stationkeeping = (
             _calc_wp_stationkeeping_time(curr_wp.instrument, self.expedition)
@@ -631,16 +635,22 @@ class ProblemSimulator:
 
     @staticmethod
     def post_expedition_report(
-        problems: SelectedProblems, report_fpath: str | Path
+        problems: SelectedProblems,
+        report_fpath: str | Path,
+        waypoints: list | None = None,
     ) -> None:
         """Append human-readable report summary of all occurring problems."""
         with open(report_fpath, "a", encoding="utf-8") as f:
             for item in problems:
-                affected = (
-                    "in-port"
-                    if item.waypoint_index in (0, None)
-                    else f"{item.waypoint_index + 1}"
-                )
+                if waypoints is not None:
+                    public_wp = _get_public_wp(item.waypoint_index, waypoints)
+                    affected = "in-port" if public_wp is None else f"{public_wp}"
+                else:
+                    affected = (
+                        "in-port"
+                        if item.waypoint_index == 0
+                        else f"{item.waypoint_index + 1}"
+                    )
                 delay_hrs = item.problem.delay_duration.total_seconds() / 3600.0
                 f.write(
                     f"---\nWaypoint: {affected}\n"
