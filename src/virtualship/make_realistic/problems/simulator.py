@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import datetime
 import json
 import random
 import sys
 import time
-from datetime import timedelta
+from datetime import datetime as dt
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -27,12 +28,15 @@ from virtualship.models.checkpoint import ActiveProblem, Checkpoint
 from virtualship.models.expedition import Port
 from virtualship.utils import (
     CACHE,
+    CHECKPOINT,
     EXPEDITION,
     EXPEDITION_IDENTIFIER,
     EXPEDITION_LATEST,
     EXPEDITION_ORIGINAL,
     PROBLEMS_ENCOUNTERED,
     PROJECTION,
+    REPORT,
+    RESULTS,
     SELECTED_PROBLEMS,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
@@ -56,7 +60,6 @@ LOG_MESSAGING = {
     "problem_avoided": "Phew! You had enough contingency time scheduled to avoid delays from this problem.\n",
 }
 
-# default problem weights for problems simulator (e.g., +1 problem every N days/waypoints/instruments)
 PROBLEM_WEIGHTS = {
     "every_ndays": 7,
     "every_nwaypoints": 6,
@@ -70,25 +73,49 @@ SelectedProblemsDict = dict[str, Any]
 class ProblemSimulator:
     """Handle problem simulation during an expedition."""
 
-    def __init__(self, expedition: Expedition, expedition_dir: str | Path):
-        """Initialise ProblemSimulator with a schedule and probability level."""
+    def __init__(
+        self, expedition: Expedition, expedition_dir: str | Path, difficulty_level: str
+    ):
+        """Initialise ProblemSimulator with a schedule, dir and difficulty level."""
         self.expedition = expedition
         self.expedition_dir = Path(expedition_dir)
-        self.waypoints = expedition.schedule.waypoints
+        self.expedition_id = self._unique_id()
+        self.problems_dir = (
+            self.expedition_dir
+            / CACHE
+            / PROBLEMS_ENCOUNTERED.format(expedition_id=self.expedition_id)
+        )
+        self.problems = self._load_or_select_problems(difficulty_level)
 
     @property
-    def expedition_id(self) -> str:
-        """Retrieve the current expedition unique identifier from cache."""
-        id_path = self.expedition_dir.joinpath(CACHE, EXPEDITION_IDENTIFIER)
-        if id_path.exists():
-            return id_path.read_text().strip()
-        return ""
+    def waypoints(self) -> list:
+        """Convenience accessor for expedition schedule waypoints."""
+        return self.expedition.schedule.waypoints
 
-    def __post_init__(self):
-        """Ensure first and last waypoints are Ports. Allows the problem selection to work properly."""
-        assert isinstance(self.waypoints[0], Port) & isinstance(
-            self.waypoints[-1], Port
-        ), "First and last waypoints must be Port types."
+    def execute_for_instrument(self, instrument_type: InstrumentType) -> None:
+        """Execute problems for a specific instrument type."""
+        if not self.problems:
+            return
+
+        self.execute(
+            self.problems,
+            instrument_type_validation=instrument_type,
+            log_dir=self.problems_dir,
+        )
+
+    def _load_or_select_problems(
+        self, difficulty_level: str
+    ) -> SelectedProblemsDict | None:
+        """Load problems from JSON cache if available, otherwise select and cache new ones."""
+        selected_problems_path = self.problems_dir / SELECTED_PROBLEMS
+        if selected_problems_path.exists():
+            return self.load_selected_problems(selected_problems_path)
+
+        instruments = self.expedition.get_instruments()
+        problems = self.select_problems(instruments, difficulty_level)
+        if problems:
+            self.cache_selected_problems(problems, selected_problems_path)
+        return problems
 
     def select_problems(
         self,
@@ -211,10 +238,6 @@ class ProblemSimulator:
         ]
         random.shuffle(avail_indices)
 
-        assert 0 not in avail_indices, (
-            "Index 0 (departure port) should not be in available waypoint indices for non-pre-departure problems."
-        )
-
         assigned_problems: list[ProblemType] = []
         assigned_indices: list[int | None] = []
 
@@ -309,8 +332,7 @@ class ProblemSimulator:
         failed_wp_i = checkpoint.get_effective_failed_wp_i()
         new_schedule = self.expedition.schedule
 
-        # problem-specific delay calculation & resolution check
-        delay_duration = timedelta(hours=active_problem.delay_duration_hours)
+        delay_duration = datetime.timedelta(hours=active_problem.delay_duration_hours)
         problem_waypoint = new_schedule.waypoints[checkpoint.problem_wp_i]
         failed_waypoint = new_schedule.waypoints[failed_wp_i]
 
@@ -318,7 +340,7 @@ class ProblemSimulator:
         stationkeeping_time = (
             _calc_wp_stationkeeping_time(problem_waypoint.instrument, self.expedition)
             if not isinstance(problem_waypoint, Port)
-            else timedelta(0)
+            else datetime.timedelta(0)
         )
         sail_time = _calc_sail_time(
             problem_waypoint.location,
@@ -334,12 +356,7 @@ class ProblemSimulator:
             active_problem.resolved = True
             _save_checkpoint(checkpoint, self.expedition_dir)
 
-            # persist resolved status to selected_problems.json cache
-            problems_path = self.expedition_dir.joinpath(
-                CACHE,
-                PROBLEMS_ENCOUNTERED.format(expedition_id=self.expedition_id),
-                SELECTED_PROBLEMS,
-            )
+            problems_path = self.problems_dir / SELECTED_PROBLEMS
             if problems_path.exists():
                 problems = self.load_selected_problems(problems_path)
                 if isinstance(problems, dict):
@@ -429,7 +446,6 @@ class ProblemSimulator:
                 resolved=False,
             )
 
-        # update and save checkpoint with active problem information
         checkpoint = Checkpoint(
             past_schedule=self.expedition.schedule,
             active_problem=active_problem,
@@ -457,7 +473,7 @@ class ProblemSimulator:
         stationkeeping = (
             _calc_wp_stationkeeping_time(curr_wp.instrument, self.expedition)
             if not isinstance(curr_wp, Port)
-            else timedelta(0)
+            else datetime.timedelta(0)
         )
         sail_time = _calc_sail_time(
             curr_wp.location,
@@ -477,6 +493,55 @@ class ProblemSimulator:
         if not path.exists():
             expedition.to_yaml(path)
             print(f"\nOriginal expedition.yaml cached to {path}.\n")
+
+    def _unique_id(self) -> str:
+        """Resolve or generate the unique identifier for this expedition run."""
+        cache_dir = self.expedition_dir / CACHE
+        cache_dir.mkdir(exist_ok=True)
+
+        id_path = cache_dir / EXPEDITION_IDENTIFIER
+        last_expedition_path = cache_dir / EXPEDITION_LATEST
+        checkpoint_path = self.expedition_dir / CHECKPOINT
+        new_id = dt.now().strftime("%Y%m%d%H%M%S")
+
+        if not id_path.exists():
+            id_path.write_text(new_id)
+            return new_id
+
+        previous_id = id_path.read_text().strip()
+
+        if checkpoint_path.exists():
+            return previous_id
+
+        if not last_expedition_path.exists():
+            id_path.write_text(new_id)
+            return new_id
+
+        from virtualship.models.expedition import Expedition as ExpeditionModel
+
+        last_expedition = ExpeditionModel.from_yaml(last_expedition_path)
+        added_instruments = set(self.expedition.get_instruments()) - set(
+            last_expedition.get_instruments()
+        )
+
+        if added_instruments:
+            id_path.write_text(new_id)
+            return new_id
+
+        return previous_id
+
+    def create_post_expedition_report(self) -> None:
+        """Generate post-expedition report if any problems were selected."""
+        if not self.problems:
+            return
+
+        report_path = self.expedition_dir / RESULTS / REPORT
+        self.post_expedition_report(self.problems, report_path)
+
+        print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
+        print(
+            f"\nA post-expedition report of problems encountered is saved in: {report_path}"
+        )
 
     @staticmethod
     def cache_selected_problems(
