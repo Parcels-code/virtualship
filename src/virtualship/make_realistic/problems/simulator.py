@@ -147,7 +147,6 @@ class ProblemSimulator:
         self,
         problems: SelectedProblems,
         instrument_type_validation: InstrumentType | None,
-        log_dir: Path,
         log_delay: float = 4.0,
     ) -> None:
         """Execute simulation problems and apply delay/schedule impacts."""
