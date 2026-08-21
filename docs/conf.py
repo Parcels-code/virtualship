@@ -84,6 +84,7 @@ nbsphinx_thumbnails = {
     "user-guide/tutorials/working_with_expedition_yaml": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/teacher-content/UU-dyoc/example_expedition": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/teacher-content/UU-dyoc/file_permissions": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/teacher-content/train-the-teacher/surf_set_up": "user-guide/_images/AnnaWeber.jpeg",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
