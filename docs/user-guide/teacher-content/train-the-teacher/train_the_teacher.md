@@ -129,9 +129,38 @@ file_permissions.md
 
 ## Sailing the ship
 
-### Information on MFP
+Now that the technical set up is complete, we are ready to start getting students going with using the `VirtualShip` software! 🚢 🥳
+
+The Quickstart guide below provides a minimal overview of the basic commands and workflow to get started with the software... perhaps useful for you as the course convenor to get a quick overview of the software.
+
+However, for teaching applications we recommend distributing the student-focused **"Sail the ship"** guide below, which is designed to be more accessible and includes additional context and narrative elements for students. Many of the narrative elements won't actually be enacted, of course, but they are included to help students immerse themselves!
+
+```{nbgallery}
+
+../../quickstart.md
+../../assignments/sail_the_ship.md
+
+```
+
+### Reviewing Expedition proposals
+
+The "Sail the ship" guide is designed to be used in conjunction with a lesson plan similar to that presented in the [example lesson plans](lesson_plans.md) documentation. It relies on students having already chosen a research question, submitting a proposal and having it approved by their instructor/you.
+
+Reviewing and approving the proposals is a good time to check that students have a realistic plan for their expedition, and we find it is beneficial to provide a maximum ship time limit (e.g. 3 weeks) to ensure that students are thinking about the practicalities of their research question and sampling strategy.
+
+### Additional resources used in the VirtualShip workflow
+
+You will notice in the "Quickstart" and "Sail the Ship" guides that there are a number of additional resources used in the VirtualShip workflow. These include:
+
+- [Copernicus Marine Data Store](https://data.marine.copernicus.eu/) - the source of the oceanographic data used in VirtualShip
+- [NIOZ Marine Facilities Planning (MFP) tool](https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#) - used to plan the expedition route and generate the coordinates for the VirtualShip protocol
+
+<!-- TODO: info on that Copernicus requires a credentials set up (so factor this into teaching time) -->
+<!-- MFP is free and no sign up required but students may need some time to get familiar with it -->
 
 ### Simulating Real Life Challenges
+
+<!-- TODO: you will also notice references to the Real Life Challenges... etc. -->
 
 <!-- TODO -->
 
@@ -139,6 +168,11 @@ file_permissions.md
 <!-- and then link to the instructions on getting touch with the VS team to update the software if this does not suit your teaching -->
 <!-- and a tip that you can always override the problems module by using --difficulty-level easy -->
 <!-- and that students may discover that you can override them once they explore the docs... if you need to ensure that they do encounter problems then we suggest making it a requirement in any assignment to discuss how they dealt with unexpected challenges -->
+
+### VirtualShip output
+
+<!-- TODO: the tutorials page is dedicated to providing sample code for directly (simply) analysing the VirtualShip output -->
+<!-- BUT, sometimes it's also helpful to upload the notebooks to the shared-storage space for the students ahead of time, just to save them the step of having to copy (wget etc) the notebook code themselves -->
 
 ## ❗️ End-of-course survey
 

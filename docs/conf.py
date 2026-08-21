@@ -70,11 +70,12 @@ nitpick_ignore = [
 always_document_param_types = True
 
 nbsphinx_thumbnails = {
+    "user-guide/quickstart": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/Research_proposal_intro": "user-guide/_images/MFPtimeline.jpg",
     "user-guide/assignments/Research_Proposal_only": "user-guide/_images/MFP.jpg",
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/sciencecommunication_assignment": "user-guide/_images/marine_ss.jpg",
-    "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
+    "user-guide/assignments/sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
     "user-guide/teacher-content/UU-ocean-of-future/Tutorial1": "user-guide/_images/freepik_assignment.png",

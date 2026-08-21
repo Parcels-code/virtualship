@@ -1,4 +1,4 @@
-# Set up the SURF Research Cloud (RC)
+# Educator guide: Set up the SURF Research Cloud (RC)
 
 ```{note}
 For this guide, we will assume that you are the course convenor, already have access to the SURF Research Cloud and have credits available.
