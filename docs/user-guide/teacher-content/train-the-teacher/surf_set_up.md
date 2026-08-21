@@ -1,23 +1,25 @@
 # Set up the SURF Research Cloud (RC)
 
 ```{note}
-For this guide, we will assume that you already have access to the SURF Research Cloud and have credits available.
+For this guide, we will assume that you are the course convenor, already have access to the SURF Research Cloud and have credits available.
 ```
 
 ```{tip}
 For general information on how to use the SURF Research Cloud, please refer to their [documentation](https://servicedesk.surf.nl/wiki/spaces/WIKI/pages/9798172/SURF+Research+Cloud).
 ```
 
+In this documentation, we will primarily be working from the SURF Research Cloud dashboard (or "portal") which is available at: [https://portal.live.surfresearchcloud.nl/dashboard/workspaces](https://portal.live.surfresearchcloud.nl/dashboard/workspaces). You can log in to the dashboard using your institutional credentials.
+
+## The VirtualShip Catalog item
+
 The VirtualShip Team has created a pre-configured "Catalog item" on the SURF Research Cloud that contains all the necessary software and dependencies for running VirtualShip. This includes a JupyterLab environment, the VirtualShip software itself, and a selection of useful post-processing packages (`xarray`, `matplotlib`, `cartopy`, `plotly` etc.).
 
 This means you can deploy VirtualShip on a SURF Research Cloud workspace 'out of the box'. This guide will go through the steps you'll need to take to get access to this pre-configured environment and to set up a workspace for your students.
 
-## The VirtualShip Catalogue item
-
 First please log in to the SURF Research Cloud [dashboard/portal](https://portal.live.surfresearchcloud.nl/dashboard/workspaces) and navigate to the "Catalog" heading (Figure 1).
 
 ![](_images/catalog.png)
-_Figure 1. Navigating to the Catalogue (screenshot)._
+_Figure 1. Navigating to the Catalogue via the SURF Research Cloud dashboard (screenshot)._
 
 You should see a wide selection of available catalogue items. You can search for the VirtualShip catalogue item by typing "VirtualShip" in the search bar (Figure 2). When you find the VirtualShip catalogue item, click on it to view more details and to **request access**. The VirtualShip Team will then review your request and grant accesss.
 
@@ -30,7 +32,7 @@ _Figure 2. The pre-configured VirtualShip Catalogue item (screenshot)._
 The persistent storage space is different from the `home` directory of the workspace, which you first enter when launching the workspace. `home` is not persistent and its contents will be lost when the workspace is stopped!
 ```
 
-It is important to have a persistent storage space associated with your workspace. This is where students should base their work and save any expedition, configuration or output files. You can request a persistent storage space via the SURF Research Cloud dashboard (Figure 3).
+It is important to have persistent `storage` associated with your workspace. This is where students should base their work and save any expedition, configuration or output files. You can request a persistent storage space via the SURF Research Cloud dashboard (Figure 3).
 
 ![](_images/surf_storage.png)
 _Figure 3. Creating persistent storage space via the SURF Research Cloud dashboard (screenshot)._
@@ -50,7 +52,7 @@ _Figure 4. Creating a new workspace via the SURF Research Cloud dashboard (scree
 
 From here, you can run through the steps to create a new workspace. You will be prompted to select a catalogue item, and you should select the VirtualShip catalogue item that you requested access to in the previous step. You will probably have to use the search bar again and it should be visible once you have been granted access.
 
-You should also attach the storage space you created in the previous step. This ensures persistent storage for students across sessions. You can also select the size of the workspace (CPU, RAM, storage) and the duration for which it will be available.
+You should also attach the `storage` you created in the previous step. This ensures persistent storage for students across sessions. You can also select the size of the workspace (CPU, RAM, storage) and the duration for which it will be available.
 
 ```{tip}
 When it comes to selecting a "Cloud Provider" (and if you have multiple choices), we recommend simply sticking to the SURF HPC Cloud for reduced credit consumption.
@@ -64,7 +66,7 @@ You can always "pause" a workspace when it is not in use, which will reduce cred
 
 Once your workspace is set up, you can invite students to join it. This is facilitated through the separate [SURF Research Access Management (SRAM)](https://sram.surf.nl/collaborations-overview) platform.
 
-From here select to your collaboration and, as an admin, you should be able to navigate to the "Members" tab and invite new members to the collaboration (Figure 5).
+After logging in, select to your collaboration and, as an admin, you should be able to navigate to the "Members" tab and invite new members to the collaboration (Figure 5).
 
 ![](_images/surf_invite.png)
 _Figure 5. Inviting students to the collaboration via SRAM (screenshot)._
@@ -75,9 +77,9 @@ You will need to provide the email addresses of your students and they will rece
 
 The VirtualShip Team will be responsible for maintaining and keeping the catalogue item up to date. However, if you ever come across a problem with the software (e.g. suspected bugs) or you would like to request a new feature which should be added to the version in the catalogue item, please get in touch with the Team via our [GitHub issue tracker](https://github.com/Parcels-code/virtualship/issues) or by email: [virtualship@uu.nl](mailto:virtualship@uu.nl). We are open to requests and will try to accommodate them as quickly as possible!
 
-If/when the software has been updated in the catalogue item, you will need to update your own version in the workspace to use the new version.
+If the software has been updated when your workspace is already active, you will need to update your own version in the workspace to use the new version.
 
-You can do so by running the following commands in the Terminal in your workspace (see the Note block below, as you will need to replace `{branch-name}` with the name of the branch you want to install):
+You can do so by running the following commands in the Terminal in your launched workspace (see the Note block below though as you will need to replace `{branch-name}` with the name of the branch you want to install):
 
 ```bash
 # activiate the VirtualShip environment
@@ -87,6 +89,12 @@ conda activate virtualship
 sudo /etc/miniconda/envs/virtualship/bin/pip install --upgrade git+https://github.com/Parcels-code/virtualship@{branch-name}
 ```
 
+After a successful update, you should restart the workspace to ensure that the new version is being used. Students should then also have access to the updated version of VirtualShip.
+
 ```{note}
 The specific branch name to use (`{branch-name}`) will depend on the version of VirtualShip you want to install. For example, if we have coordinated to add a new feature which is not yet in the `main` branch, we may ask you to install from a specific branch. If you are unsure which branch to use, please contact the VirtualShip Team.
+```
+
+```{important}
+This instruction involves the use of `sudo` to install the updated version of VirtualShip, so this should only be done by the course convenor (or someone with admin privileges).
 ```
