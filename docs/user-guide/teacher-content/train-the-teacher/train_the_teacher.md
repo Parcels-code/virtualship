@@ -2,7 +2,7 @@
 
 We're pleased that you've chosen to use VirtualShip in your teaching!
 
-This guide is designed to help you get started with the platform and make the most of its features in your classroom. It is currently tailored primarily for educators at partner instutions, as part of the [VirtualShip NKO Scale Up project](https://virtualship.parcels-code.org/blog/scaleup-grant). However, we welcome all educators to explore the guide and adapt it to their own teaching contexts.
+This guide is designed to help you get started with the platform and make the most of its features in your classroom. It is currently tailored primarily for educators at partner instutions, as part of the [VirtualShip NKO Scale Up project](https://virtualship.parcels-code.org/blog/scaleup-grant). However, we welcome all educators to explore the guide and adapt it to their own teaching contexts. For more tailored support, please see the [Feedback & support](#feedback-support) section at the end of this guide!
 
 Here, we will assume that you're familiar with the purpose and motivations for using VirtualShip. We will be going through all the practical steps to get you up and running.
 
@@ -23,7 +23,7 @@ There are broadly two ways to set up VirtualShip for teaching:
 1. Each student uses a local installation of the software (on their own device), installed via a package manager such as `pip`, `conda` or `pixi`.
 2. A software environment is pre-configured on a cloud-based platform.
 
-Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is generally important for reproducibility and fairness.
+Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
 In previous implementations at Utrecht University (where VirtualShip originated), we have primarily used Option 2) on the [SURF Research Cloud](https://www.surf.nl/en/services/compute/surf-research-cloud)).
 
@@ -54,6 +54,11 @@ surf_set_up.md
 
 <!-- TODO -->
 
+<!-- TODO: make a new branch which is dedicated to being the scale-up distributed one; with e.g. problems set to 'medium' as default -->
+<!-- and then link to the instructions on getting touch with the VS team to update the software if this does not suit your teaching -->
+<!-- and a tip that you can always override the problems module by using --difficulty-level easy -->
+<!-- and that students may discover that you can override them once they explore the docs... if you need to ensure that they do encounter problems then we suggest making it a requirement in any assignment to discuss how they dealt with unexpected challenges -->
+
 ## ❗️ End-of-course survey
 
 ```{important}
@@ -62,6 +67,8 @@ We would be really grateful for your help in collecting feedback from your stude
 Please distribute the following survey link to your students at the end of the course: _____
 ```
 
-## Feedback
+## Feedback & support
 
-If you have any feedback on this guide, or if you have suggestions for improvements, please reach out to us via our [GitHub issue tracker](https://github.com/Parcels-code/virtualship/issues) or by email: [virtualship@uu.nl](mailto:virtualship@uu.nl).
+If you have any feedback on this guide, would like additional support or if you have suggestions for improvements, please reach out to us via our [GitHub issue tracker](https://github.com/Parcels-code/virtualship/issues) or by email: [virtualship@uu.nl](mailto:virtualship@uu.nl).
+
+We are always happy to hear from educators and will do our best to support you in your teaching with VirtualShip!
