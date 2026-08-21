@@ -40,7 +40,7 @@ _Figure 3. Creating persistent storage space via the SURF Research Cloud dashboa
 As a rough rule of thumb, a 50GB storage space should be sufficient for a classroom activity, as the VirtualShip output files are generally not very large.
 
 ```{tip}
-Once attached to the workspace you create (see the next section), the storage space should be available under the `/data` directory in the workspace. Typical VirtualShip workflows will then get (groups of) students to make their own subdirectory in `/data` for their expeditions.
+Once attached to the workspace you create (see the next section), the storage space (with the name you chose during set up) should be available under the `/data` directory in the workspace. Typical VirtualShip workflows will then get (groups of) students to make their own subdirectory in `/data/{storage_name}` for their expeditions.
 ```
 
 ## Creating a new workspace
@@ -72,6 +72,12 @@ After logging in, select to your collaboration and, as an admin, you should be a
 _Figure 5. Inviting students to the collaboration via SRAM (screenshot)._
 
 You will need to provide the email addresses of your students and they will receive an invitation to join the collaboration. Once they have accepted the invitation, they should be able to log in to the SURF Research Cloud via their institutional credentials and see/access the workspace you created before.
+
+## Collaboration amongst students
+
+We often recommend that students work in small groups (e.g. 2-3 students) for their VirtualShip projects. Each student should have their own account/access to the workspace and they can work from the same sub-directory in the `/data` storage space.
+
+Unfortunately, though, the SURF Research Cloud does not currently support smooth, simultaneous collaboration on the same files in the workspace. This means that students will need to coordinate amongst themselves to ensure that they are not overwriting each other's work. You can refer the students to the [File permissions tutorial](file_permissions.md) for more information on how to arrange access to each other's files and directories in the workspace.
 
 ## Updating the workspace
 
