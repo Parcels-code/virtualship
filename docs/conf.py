@@ -15,6 +15,7 @@ extensions = [
     "sphinx.ext.napoleon",
     # "sphinx_autodoc_typehints",# https://github.com/Parcels-code/virtualship/pull/125#issuecomment-2668766302
     "sphinx_copybutton",
+    "sphinx_design",
 ]
 
 source_suffix = [".rst", ".md"]
@@ -44,6 +45,7 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
+    "announcement": "<strong>Warning</strong>: this is a pre-release version of the VirtualShip documentation (V1 to be released in September/October 2026). The contents are subject to change and may not be complete.",
 }
 html_context = {
     "github_user": "Parcels-code",
