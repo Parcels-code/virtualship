@@ -2,7 +2,7 @@
 
 The `VirtualShip` software is used as part of the VirtualShip Classroom, which combines authentic tools with VR to create a virtual fieldwork experience and allows you to teach about sea-based research from your regular classroom. All VirtualShip Classroom (VSC) material is open under an MIT licence and freely available! You can use the VSC to teach anything from a four-hour masterclass up to an open assignment of more than 40 hours.
 
-Our core learning outcome is for students to appreciate the difficulty of measuring the ocean, making the VSC a valuable tool for students that will go into fieldwork, modelling or anything else. Additional [Intended Learning Outcomes (ILOs)](ILOs.ipynb) were formulated in collaboration with ocean scientists from the Royal Netherlands Institute for Sea Research [(NIOZ)](https://www.nioz.nl/en) and Utrecht University [(UU)](https://www.uu.nl/en).
+Our core learning outcome is for students to appreciate the difficulty of measuring the ocean, making the VSC a valuable tool for students that will go into fieldwork, modelling or anything else. Additional [**Intended Learning Outcomes (ILOs)**](ILOs.ipynb) were formulated in collaboration with ocean scientists from the Royal Netherlands Institute for Sea Research [(NIOZ)](https://www.nioz.nl/en) and Utrecht University [(UU)](https://www.uu.nl/en).
 
 ```{note}
 The VirtualShip Classroom is focused on creating didactically sound, authentic learning experiences grounded in established learning theories in science education, such as constructivism ([Piaget 1954](https://www.taylorfrancis.com/books/mono/10.4324/9781315009650/construction-reality-child-jean-piaget)) and constructionism ([Papert 1980](https://worrydream.com/refs/Papert_1980_-_Mindstorms,_1st_ed.pdf)). By integrating realistic tasks and a gamified narrative approach, students learn within a digital replica of the real world, constructing knowledge through ‘learning by doing’ and ‘trial and error’ as they explore oceanography concepts, research methods, and analysis tools.
@@ -43,8 +43,34 @@ Train the Teacher
 
 ::::
 
-## Assignments
+## Assignments & Teaching Materials
 
-In addition to the "Train the Teacher" guide, we provide a set of assignments which you could use in your teaching. Some of these are mentioned in the "Train the Teacher" guide, but you can also explore them separately. The assignments are designed to be flexible and adaptable to different teaching contexts.
+We also provide a set of assignments and teaching materials, which you might find useful. Some of these are referred to in the "Train the Teacher" guide, but you can also explore them separately here.
 
-- []
+```{nbgallery}
+---
+maxdepth: 1
+---
+letter.ipynb
+../assignments/Research_proposal_intro.ipynb
+../assignments/Research_proposal_only.ipynb
+../assignments/Virtualship_research_proposal.ipynb
+../assignments/sciencecommunication_assignment.ipynb
+../assignments/Code_of_conduct.ipynb
+```
+
+## Post-processing Tutorials
+
+As mentioned in the "Train the Teacher" guide, we provide a set of tutorials for analysing **output** from `VirtualShip` expeditions, which students can use as a starting point for their post-expedition analysis.
+
+```{nbgallery}
+---
+maxdepth: 1
+---
+../tutorials/Drifter_data_tutorial.ipynb
+../tutorials/Argo_data_tutorial.ipynb
+../tutorials/CTD_transects.ipynb
+../tutorials/ADCP_transects.ipynb
+../tutorials/xbt_plotting.ipynb
+../tutorials/Ship_underwater_ST_plotting.ipynb
+```

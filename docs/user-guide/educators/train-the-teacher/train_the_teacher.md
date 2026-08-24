@@ -1,14 +1,10 @@
 # Train the teacher
 
-We're pleased that you've chosen to use VirtualShip in your teaching! This guide is designed to help you get started with the platform and make the most of its features in your classroom.
+We're pleased that you've chosen to use VirtualShip in your teaching! This guide is designed to help you get started with the platform and make the most of its features in your classroom. It binds different parts of the documentation together as a central blueprint for implementing the VirtualShip Classroom in your teaching.
 
 The instructions are currently tailored primarily for educators at partner instutions, as part of the [VirtualShip NKO Scale Up project](https://virtualship.parcels-code.org/blog/scaleup-grant). However, we welcome all educators to explore the guide and adapt it to their own teaching contexts. For more tailored support, please see the [Feedback & support](#feedback-support) section at the end of this guide!
 
 For this guide, we will assume that you're familiar with the purpose and motivations for using VirtualShip. We will be going through all the practical steps to get you up and running.
-
-```{tip}
-This is a long guide, intended as a blueprint for setting up your teaching... use the table of contents (on the right) to navigate to the sections that are most relevant to you!
-```
 
 ```{important}
 No matter how you choose to implement the VirtualShip Classroom, we ask that you please ask your students to complete the end-of-course survey (see [below](#end-of-course-survey)) so that we can collect feedback on their experience with the VirtualShip Classroom.
@@ -48,6 +44,10 @@ The 'core' implementation of the VirtualShip Classroom has traditionally followe
 ```{tip}
 No matter how you choose to implement the VirtualShip Classroom, it may be useful to check out some case study [examples](../../assignments/case_studies_virtualship.ipynb) of research questions and expeditions that students could undertake.
 ```
+
+### Code of conduct
+
+If students are to work in groups, we recommend that you ask students to read, complete and sign the [Code of Conduct](../../assignments/Code_of_conduct.ipynb) before starting their VirtualShip expeditions. This is to ensure that students are aware of the expectations for their behaviour and conduct during the course, and to promote a positive and respectful learning environment.
 
 ### Adding the VR / 360° videos component
 
