@@ -1,6 +1,6 @@
 # Example lesson plans
 
-## Using the `VirtualShip` software
+## 1) Using the `VirtualShip` software
 
 This example lesson plan is suitable for students with programming knowledge. Students hand in a short research proposal and expedition plan for feedback. They use the `VirtualShip` software to conduct their virtual expedition and analyse the results. They show their results in a presentation that can be assessed. This assignment is recommended to be undertaken in groups, because collaborative learning is beneficial. Suggested learning goals are that students can:
 
@@ -34,10 +34,10 @@ Because data are taken from the Copernicus Marine Data Store (see [here](../../d
 An interesting addition can be to let students use the [MyOcean Pro viewer](https://data.marine.copernicus.eu/viewer/) to, for example, track an eddy using sea surface height and deploy their instruments therein.
 ```
 
-| Tutorial 2                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| _4 hours in class_                                                                                                                                                                                     |
-| Students begin their expedition simulations. Please refer back to the main train-the-teacher [documentation](train_the_teacher.md/#sailing-the-ship) for further instructions on running the software. |
+| Tutorial 2                                                                                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _4 hours in class_                                                                                                                                                                                                      |
+| Students begin their expedition simulations. Please refer back to the main train-the-teacher [documentation](train_the_teacher.md/#sailing-the-ship) for further instructions on running the software in the classroom. |
 
 | VR component                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,7 +53,7 @@ An interesting addition can be to let students use the [MyOcean Pro viewer](http
 | _Number of hours in class will depend on the number of groups that present, we suggest at least 10-15 minutes for each group including questions_                                                                 |
 | Students present their results. An example presentation rubric is available on [Edusources](https://edusources.nl/materials/44ff66eb-537d-4ab9-a844-0fba9bd8d240/rubric-to-grade-advanced-student-presentations). |
 
-## _Not_ using the software
+## 2) _Not_ using the software
 
 It is also possible to skip using the `VirtuaShip` software entirely and instead use the Open Education Resources (and potentially the VR component) to teach about oceanography and research methods. This is a good option if you want to focus on the learning outcomes without the technical overhead of using the software.
 

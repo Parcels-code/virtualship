@@ -96,7 +96,7 @@ sudo /etc/miniconda/envs/virtualship/bin/pip install --upgrade git+https://githu
 After a successful update, you should restart the workspace to ensure that the new version is being used. Students should then also have access to the updated version of VirtualShip.
 
 ```{note}
-The specific branch name to use (`{branch-name}`) will depend on the version of VirtualShip you want to install. For example, if we have coordinated to add a new feature which is not yet in the `main` branch, we may ask you to install from a specific branch. If you are unsure which branch to use, please contact the VirtualShip Team.
+The specific branch name to use (`{branch-name}`) will depend on the version of VirtualShip you want to install. For example, if we have coordinated to add a new feature which is not yet in the `main` branch, we may ask you to install from a specific branch. If you are unsure which branch to use, please [contact](train_the_teacher.md/#feedback-support) the VirtualShip Team.
 ```
 
 ```{important}

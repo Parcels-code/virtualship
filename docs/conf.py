@@ -71,6 +71,7 @@ always_document_param_types = True
 
 nbsphinx_thumbnails = {
     "user-guide/quickstart": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/index": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/Research_proposal_intro": "user-guide/_images/MFPtimeline.jpg",
     "user-guide/assignments/Research_Proposal_only": "user-guide/_images/MFP.jpg",
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",

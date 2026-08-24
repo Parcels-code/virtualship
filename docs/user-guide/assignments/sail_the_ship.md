@@ -56,6 +56,10 @@ The first step is to plan the expedition route for your chosen research question
 
 Your route can be created with the online [NIOZ MFP tool](https://nioz.marinefacilitiesplanning.com/cruiselocationplanning#). Documentation on how to use the website can be found [here](https://surfdrive.surf.nl/files/index.php/s/84TFmsAAzcSD56F). Alternatively, you can watch this [video](https://www.youtube.com/watch?v=yIpYX2xCvsM&list=PLE-LzO7kk1gLM74U4PLDh8RywYXmZcloz&ab_channel=VirtualShipClassroom), which runs through how to use the MFP tool.
 
+```{note}
+The MFP tool is used by professional oceanographers to plan research expeditions, so this is a great opportunity to get a feel for how real-world oceanographic research is planned!
+```
+
 ### Export the coordinates from MFP
 
 Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an .xlsx (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.\

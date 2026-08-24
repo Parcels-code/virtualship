@@ -1,4 +1,4 @@
-# Student guide: Accessing the SURF Research Cloud
+# Learner guide: Accessing the SURF Research Cloud
 
 ## Accepting SURF Research Cloud invite
 
@@ -9,7 +9,7 @@ In your student email you will have an invite from SURF Research Access Manageme
 Navigate to the [SURF Research Cloud Dashboard](https://portal.live.surfresearchcloud.nl/), or click on the link in the email, and click "access" on the shared workspace.
 
 ```{important}
-A known issue is that you may hit a server error when accessing the workspace. If this happens, keep on trying (refresh), as the server spin-up can be a bit overloaded at times, but should get through eventually.
+A known issue is that you may hit a "server error" when accessing the workspace. If this happens, keep on trying (refresh), as the server spin-up can be a bit overloaded at times, but should get through eventually.
 
 Unfortunately this is out of our control. Clearing your browser cache and cookies, and/or trying via an incognito/private window may also help. We find that with persistence, the workspace will eventually load.
 ```
@@ -41,9 +41,7 @@ In the Jupyter launcher, you can open a Terminal session by clicking on "Termina
 `VirtualShip` is a command line interface (CLI) based tool. We will be working predominantly via the command line in Terminal (typing out commands instead of pointing and clicking). If you are unfamiliar with what a CLI is, see [here](https://www.w3schools.com/whatis/whatis_cli.asp) for more information. In our case, the Terminal is just a way to access the CLI on the SURF Research Cloud virtual machine.
 ```
 
-The `data/virtualship-storage` folder is your persistent storage. Here you can make a folder (e.g., by running `mkdir data/virtualship-storage/{your-group-name}` as a command in the Terminal, replacing `{your-group-name}` with your group name) to house your work for the unit.
-
-This folder will be visible to anyone using the workspace, but only you will be able to make edits to it. This is the primary place you should store your `virtualship` configs and content relevant to this unit.
+The `data/virtualship-storage` folder is your persistent storage. Here you can make a folder (e.g., by running `mkdir data/virtualship-storage/{your-group-name}` as a command in the Terminal, replacing `{your-group-name}` with your group name) to house your work for the unit. It is important to save all your work in this folder, so that it is still there the next time you log onto the remote workspace. This folder will be visible to anyone using the workspace, but only you will be able to make edits to it.
 
 ## Initialize conda
 
@@ -71,12 +69,12 @@ base                 * /etc/miniconda
 virtualship            /etc/miniconda/envs/virtualship`
 ```
 
-Here you can do `conda activate virtualship` to activate the environment called "virtualship". This environment is a shared environment among all workspace users that can be centrally updated. If you want, you can create and manage your own environments by running the relevant conda commands.
+Here you can do `conda activate virtualship` to activate the environment called "virtualship". This environment is a shared environment among all workspace users that can be centrally updated.
 
 With the `virtualship` environment, you now have access to the `virtualship` command in your Terminal, which can be confirmed by running `virtualship --help`.
 
-From here you can `cd` ('change directory') into `data/virtualship-storage/{your-group-name}` and run `virtualship` commands as you would on your local machine (see the VirtualShip [quickstart guide](https://virtualship.readthedocs.io/en/latest/user-guide/quickstart.html)).
+From here you can `cd` ('change directory') into `data/virtualship-storage/{your-group-name}` and run `virtualship` commands. You can now return to your course materials and follow the instructions to run the VirtualShip software.
 
 ## Extra tip: Working in Jupyter _Notebooks_
 
-Finally, when you're working in Jupyter _Notebooks_ (`*.ipynb` files), you are able to access the Conda environment with `virtualship` and related dependencies by switching the Kernel in the top right of the UI.
+Finally, when you're working in Jupyter _Notebooks_ (`*.ipynb` files), you are able to access the conda environment with `virtualship` and related dependencies by switching the Kernel in the top right of the UI.
