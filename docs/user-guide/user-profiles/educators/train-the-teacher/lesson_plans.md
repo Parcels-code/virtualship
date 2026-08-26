@@ -16,18 +16,18 @@ This example lesson plan is suitable for students with programming knowledge. St
 | _1-2 hours depending on the amount of detail, can also be viewed by student before class as preparation_                                                                                                                                                                                                                                        |
 | Presentation about observing and measuring the ocean, covering different types of observations and instruments followed by steps to conduct ocean research. Sample presentation sides are available on [Edusources](https://edusources.nl/materials/90a4df16-427b-4f95-b2c2-b7bc9b2c6b81/presentation-about-observing-and-measuring-the-ocean). |
 
-| Prep work / homework                                                                                               |
-| ------------------------------------------------------------------------------------------------------------------ |
-| _1 hour of homework_                                                                                               |
-| Introduction to VirtualShip research proposals, available [here](../../assignments/Research_proposal_intro.ipynb). |
+| Prep work / homework                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------- |
+| _1 hour of homework_                                                                                                  |
+| Introduction to VirtualShip research proposals, available [here](../../../assignments/Research_proposal_intro.ipynb). |
 
-| Tutorial 1                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| _2 hours in class, 4 hours of homework_                                                                                                                                                                                                                                                                                        |
-| Students hand in a short VirtualShip [research proposal](../../assignments/Virtualship_research_proposal.ipynb) for the lecturer (or an expert colleague) to provide feedback. We recommend ensuring that the research questions are focused enough to be researchable in the granted ship time (typically up to three weeks). |
+| Tutorial 1                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _2 hours in class, 4 hours of homework_                                                                                                                                                                                                                                                                                           |
+| Students hand in a short VirtualShip [research proposal](../../../assignments/Virtualship_research_proposal.ipynb) for the lecturer (or an expert colleague) to provide feedback. We recommend ensuring that the research questions are focused enough to be researchable in the granted ship time (typically up to three weeks). |
 
 ```{note}
-Because data are taken from the Copernicus Marine Data Store (see [here](../../documentation/copernicus_products.md) for more technical details), expeditions can take place from 1993 to present (up to 2 weeks into the future).
+Because data are taken from the Copernicus Marine Data Store (see [here](../../../documentation/copernicus_products.md) for more technical details), expeditions can take place from 1993 to present (up to 2 weeks into the future).
 ```
 
 ```{tip}
@@ -43,10 +43,10 @@ An interesting addition can be to let students use the [MyOcean Pro viewer](http
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A range of 360° videos are available on [YouTube](https://www.youtube.com/@VirtualShipClassroom). If time allows, let students watch one or more of the ship tours and a-day-at-sea videos. |
 
-| Tutorial 3                                                                                                                                                                                                                   |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| _2-4 hours in class, 10 hours of homework_                                                                                                                                                                                   |
-| Encourage the students to analyze their own data using the [example tutorials](../../tutorials/index.md). For more advanced courses, students can be asked to produce further, derived quantities as part of their analysis. |
+| Tutorial 3                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _2-4 hours in class, 10 hours of homework_                                                                                                                                                                                      |
+| Encourage the students to analyze their own data using the [example tutorials](../../../tutorials/index.md). For more advanced courses, students can be asked to produce further, derived quantities as part of their analysis. |
 
 | Presentations                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -28,7 +28,7 @@ Below is a screenshot of a North Sea expedition. This example expedition departs
 
 Feel free to design your expedition as you wish! There is no need to copy these sampling sites in your own expeditions.
 
-![MFP North Sea cruise plan screenshot](image-1.png)
+![MFP North Sea cruise plan screenshot](_images/mfp_route.png)
 
 ### Export the coordinates
 
@@ -70,7 +70,7 @@ virtualship plan EXPEDITION_NAME
 
 The planning tool should look something like this and offers an intuitive way to make your selections:
 
-![example_plan_app](example_plan_app.gif)
+![example_plan_app](_images/example_plan_app.gif)
 
 ### Ship speed
 
@@ -152,7 +152,7 @@ If this is your first time running VirtualShip, you will be prompted to enter yo
 
 Your command line output should look something like this...
 
-![GIF of example VirtualShip log output](example_log_instruments.gif)
+![GIF of example VirtualShip log output](_images/example_log_instruments.gif)
 
 Small simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 

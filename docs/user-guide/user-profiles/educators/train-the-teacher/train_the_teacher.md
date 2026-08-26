@@ -18,11 +18,11 @@ This is really important for us to continue to research, evaluate and improve th
 
 As a reminder, where we refer to the VirtualShip Classroom, we refer to the combination of three core pillars: the `VirtualShip` software, VR / 360° videos and the Open Education Resources. The VirtualShip Classroom is designed to be flexible, the different components interchangable and can be used in a variety of ways, from highly structured to more open-ended activities.
 
-We discuss some example lesson plans [below](#lesson-plan-approaches), but we encourage you to adapt these to your own teaching context and learning objectives. We don't intend for the guidance to be rigid and we encourage you to think about the intended learning outcomes (ILOs) for your students and adapt the activities accoridingly.
+We discuss some example lesson plans [below](#lesson-plans), but we encourage you to adapt these to your own teaching context and learning objectives. We don't intend for the guidance to be rigid and we encourage you to think about the intended learning outcomes (ILOs) for your students and adapt the activities accoridingly.
 
 ### Our advice
 
-In our experience, the most successful implementations of VirtualShip are those where the activities have a strong **narrative** ("You have been granted _ weeks of ship time!") and where students are given ample **freedom**, for example to choose their own research question, location and timing (perhaps from a selection of [case studies](../../assignments/case_studies_virtualship.ipynb)).
+In our experience, the most successful implementations of VirtualShip are those where the activities have a strong **narrative** ("You have been granted _ weeks of ship time!") and where students are given ample **freedom**, for example to choose their own research question, location and timing (perhaps from a selection of [case studies](../../../assignments/case_studies_virtualship.ipynb)).
 
 ```{note}
 Check out evaluations of the VirtualShip Classroom in published paper(s) [here](https://virtualship.parcels-code.org/publications), for more information on the pedagogical approach!
@@ -39,15 +39,36 @@ The 'core' implementation of the VirtualShip Classroom has traditionally followe
 3. In-class tutorials and exercises
 4. Assignment hand-in (presentation or article) and feedback.
 
-**More detail on all of these components (including links to lecture slides etc.) can be found in the [example lesson plans](lesson_plans.md) documentation.**
+::::{grid} 1
+:gutter: 4
+:padding: 2 2 0 0
+:class-container: sd-text-center
+
+````{grid-item-card} Lesson plans 📖
+:shadow: md
+
+Click here for more detail on all of these components and some example lesson plans (including links to lecture slides and more).
+
++++
+
+```{button-ref} lesson_plans
+:ref-type: doc
+:color: secondary
+:expand:
+
+Lesson plans
+```
+````
+
+::::
 
 ```{tip}
-No matter how you choose to implement the VirtualShip Classroom, it may be useful to check out some case study [examples](../../assignments/case_studies_virtualship.ipynb) of research questions and expeditions that students could undertake.
+No matter how you choose to implement the VirtualShip Classroom, it may be useful to check out some case study [examples](../../../assignments/case_studies_virtualship.ipynb) of research questions and expeditions that students could undertake.
 ```
 
 ### Code of conduct
 
-If students are to work in groups, we recommend that you ask students to read, complete and sign the [Code of Conduct](../../assignments/Code_of_conduct.ipynb) before starting their VirtualShip expeditions. This is to ensure that students are aware of the expectations for their behaviour and conduct during the course, and to promote a positive and respectful learning environment.
+If students are to work in groups, we recommend that you ask students to read, complete and sign the [Code of Conduct](../../../assignments/Code_of_conduct.ipynb) before starting their VirtualShip expeditions. This is to ensure that students are aware of the expectations for their behaviour and conduct during the course, and to promote a positive and respectful learning environment.
 
 ### Adding the VR / 360° videos component
 
@@ -60,7 +81,7 @@ All the videos, available on [YouTube](https://www.youtube.com/@VirtualShipClass
 ## Setting up a programming environment
 
 ```{tip}
-As mentioned in the [Lesson plans section](#lesson-plans), it is not necessary to use the `VirtualShip` software component as part of the VirtualShip Classroom. If this is the case, you can skip the next sections, and refer to the Open Education Resources mentioned in the relevant [example lesson plan](./lesson_plans.md/#not-using-the-software).
+As mentioned in the [Lesson plans section](#lesson-plans), it is not necessary to use the `VirtualShip` software component as part of the VirtualShip Classroom. If this is the case, you can skip the next sections, and refer to the Open Education Resources mentioned in the relevant [example lesson plan](lesson_plans.md/#not-using-the-software).
 
 ❗️ Please do still ask students to complete the end-of-course survey (see [below](#end-of-course-survey)) though so that we can collect feedback on their experience with the VirtualShip Classroom.
 ```
@@ -100,12 +121,28 @@ This documentation focuses on a set up specifically on the [SURF Research Cloud]
 Note, the SURF Research Cloud is only available to Dutch institutions. Other cloud-based platforms (e.g. Google Colab, Binder, etc.) could be used as well but we have not extensively tested these platforms.
 ```
 
-For detailed instructions on how to set up the pre-configured VirtualShip environment on the SURF Research Cloud, please refer to the set up guide below:
+::::{grid} 1
+:gutter: 4
+:padding: 2 2 0 0
+:class-container: sd-text-center
 
-```{nbgallery}
+````{grid-item-card} Set up the SURF Research Cloud
+:shadow: md
 
-surf_set_up.md
+Click here for detailed instructions on how to set up the pre-configured VirtualShip environment on the SURF Research Cloud.
+
++++
+
+```{button-ref} surf_set_up
+:ref-type: doc
+:color: secondary
+:expand:
+
+Eductor Guide: Set up the SURF Research Cloud
 ```
+````
+
+::::
 
 #### Student access to the workspace
 
@@ -149,8 +186,8 @@ However, for teaching applications we recommend distributing the student-focused
 
 ```{nbgallery}
 
-../../quickstart.md
-../../assignments/sail_the_ship.md
+../../../quickstart.md
+../../../assignments/sail_the_ship.md
 
 ```
 
@@ -189,7 +226,7 @@ The RLCs can be configured by setting the difficulty level (`--difficulty-level`
 For maximum authenticity, you can set `--difficulty-level hard`, which will scale the number of problems encountered by the complexity of the expedition (longer duration, more waypoints, more instruments will lead to more problems). `--difficulty-level medium` will limit the number of problems to a maximum of 2, regardless of the expedition complexity.
 
 ```{tip}
-We can arrange that the default difficulty level is set to `medium` for your course, if you would like to use the RLCs in your teaching without having to ask students to add the `--difficulty-level` parameter themselves on each run. This can enhance immersivity as the RLCs appear more unexpected from the students' perspective. Please [get in touch](train_the_teacher.md/#feedback-support) if this is something you would like to do.
+We can arrange that the default difficulty level is set to `medium` for your course, if you would like to use the RLCs in your teaching without having to ask students to add the `--difficulty-level` parameter themselves on each run. This can enhance immersivity as the RLCs appear more unexpected from the students' perspective. Please [get in touch](#feedback-support) if this is something you would like to do.
 ```
 
 ```{note}

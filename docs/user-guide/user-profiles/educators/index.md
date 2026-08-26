@@ -34,7 +34,7 @@ Implement the VirtualShip Classroom in your teaching with our step-by-step guide
 
 ```{button-ref} train-the-teacher/train_the_teacher
 :ref-type: doc
-:color: primary
+:color: secondary
 :expand:
 
 Train the Teacher
@@ -52,11 +52,12 @@ We also provide a set of assignments and teaching materials, which you might fin
 maxdepth: 1
 ---
 letter.ipynb
-../assignments/Research_proposal_intro.ipynb
-../assignments/Research_proposal_only.ipynb
-../assignments/Virtualship_research_proposal.ipynb
-../assignments/sciencecommunication_assignment.ipynb
-../assignments/Code_of_conduct.ipynb
+../../assignments/case_studies_virtualship.ipynb
+../../assignments/Research_proposal_intro.ipynb
+../../assignments/Research_proposal_only.ipynb
+../../assignments/Virtualship_research_proposal.ipynb
+../../assignments/sciencecommunication_assignment.ipynb
+../../assignments/Code_of_conduct.ipynb
 ```
 
 ## Post-processing Tutorials
@@ -67,10 +68,10 @@ As mentioned in the "Train the Teacher" guide, we provide a set of tutorials for
 ---
 maxdepth: 1
 ---
-../tutorials/Drifter_data_tutorial.ipynb
-../tutorials/Argo_data_tutorial.ipynb
-../tutorials/CTD_transects.ipynb
-../tutorials/ADCP_transects.ipynb
-../tutorials/xbt_plotting.ipynb
-../tutorials/Ship_underwater_ST_plotting.ipynb
+../../tutorials/Drifter_data_tutorial.ipynb
+../../tutorials/Argo_data_tutorial.ipynb
+../../tutorials/CTD_transects.ipynb
+../../tutorials/ADCP_transects.ipynb
+../../tutorials/xbt_plotting.ipynb
+../../tutorials/Ship_underwater_ST_plotting.ipynb
 ```

@@ -37,7 +37,7 @@ Design an expedition and sail the VirtualShip to collect data and complete assig
 
 +++
 
-```{button-ref} learners/index
+```{button-ref} user-profiles/learners/index
 :ref-type: doc
 :color: secondary
 :expand:
@@ -53,7 +53,7 @@ Find teaching content and materials for setting up VirtualShip in your classroom
 
 +++
 
-```{button-ref} educators/index
+```{button-ref} user-profiles/educators/index
 :ref-type: doc
 :color: secondary
 :expand:
@@ -69,7 +69,7 @@ Leverage VirtualShip to design, test, and optimise oceanographic sampling strate
 
 +++
 
-```{button-ref} researchers/index
+```{button-ref} user-profiles/researchers/index
 :ref-type: doc
 :color: secondary
 :expand:
@@ -84,7 +84,7 @@ Researcher guide
 Contribute to the development of VirtualShip... as a programmer, oceanographer, education expert and more!
 +++
 
-```{button-ref} developers/index
+```{button-ref} user-profiles/developers/index
 :ref-type: doc
 :color: secondary
 :expand:
