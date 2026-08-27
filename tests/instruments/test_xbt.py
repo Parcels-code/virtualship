@@ -113,9 +113,7 @@ def create_fieldset(
     )
     bathymetry_fset = parcels.FieldSet.from_sgrid_conventions(ds_bathymetry_fset)
 
-    fieldset.add_field(bathymetry_fset.bathymetry)
-
-    return fieldset
+    return fieldset + bathymetry_fset
 
 
 def test_simulate_xbts(tmpdir, xbt_expedition) -> None:

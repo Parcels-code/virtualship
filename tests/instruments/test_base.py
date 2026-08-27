@@ -221,7 +221,7 @@ def test_generate_fieldset_combines_fields():
     ):
         dummy._generate_fieldset()
 
-    fs_A.add_field.assert_called_once_with(fs_B.B)
+    fs_A.__add__.assert_called_once_with(fs_B)
 
 
 def test_load_input_data_error(monkeypatch):

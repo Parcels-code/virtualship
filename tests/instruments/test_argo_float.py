@@ -102,9 +102,7 @@ def create_fieldset(
     )
     bathymetry_fset = parcels.FieldSet.from_sgrid_conventions(ds_bathymetry_fset)
 
-    fieldset.add_field(bathymetry_fset.bathymetry)
-
-    return fieldset
+    return fieldset + bathymetry_fset
 
 
 def create_argo_float(waypoint):
