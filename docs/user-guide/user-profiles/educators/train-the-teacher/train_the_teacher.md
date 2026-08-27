@@ -89,11 +89,17 @@ As mentioned in the [Lesson plans section](#lesson-plans), it is not necessary t
 There are broadly two ways to set up the `VirtualShip` software for teaching:
 
 1. Each student uses a local installation of the software (on their own device), installed via a package manager such as `pip`, `conda` or `pixi`.
-2. A software environment is pre-configured on a cloud-based platform.
+2. A software environment is pre-configured on a cloud-based platform/virtual machine.
 
 Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
-In previous implementations at Utrecht University (where the VirtualShip Classroom originated), we have primarily used Option 2) on the [SURF Research Cloud](https://www.surf.nl/en/services/compute/surf-research-cloud).
+```{important}
+At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions (and [Binder](https://mybinder.org/) for a distributable post-processing space). This is a central, free solution that we can support and maintain, but it also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, 60 hours of usage (per student/GitHub account).
+
+This will be sufficient for _most_ courses, but could be insufficient if your planned teaching activities are longer or more intensive. We continually monitor the optimum solution for distributing the VirtualShip software to whole classrooms in the most accessible way possible, and we are open to [feedback/advice](#feedback-support) on this.
+
+**See the [Pre-configured environment (cloud based)](#pre-configured-environment-cloud-based) section below for more information on this option.**
+```
 
 ### Local installation
 
@@ -115,65 +121,30 @@ If you have access to a computer lab, you may also consider installing the softw
 
 ### Pre-configured environment (cloud based)
 
-This documentation focuses on a set up specifically on the [SURF Research Cloud](https://www.surf.nl/en/services/compute/surf-research-cloud)). The concepts are similar for other cloud-based platforms, but you may need to adapt them to your own context.
+We provide a a pre-configured VirtualShip environment via GitHub Codespaces. Here, students will have access to the `VirtualShip` software and all its dependencies, without having to install anything on their own devices. This is a cloud-based solution, so students will need an internet connection and a GitHub account.
 
-```{important}
-Note, the SURF Research Cloud is only available to Dutch institutions. Other cloud-based platforms (e.g. Google Colab, Binder, etc.) could be used as well but we have not extensively tested these platforms.
-```
-
-::::{grid} 1
-:gutter: 4
-:padding: 2 2 0 0
-:class-container: sd-text-center
-
-````{grid-item-card} Set up the SURF Research Cloud
-:shadow: md
-
-Click here for detailed instructions on how to set up the pre-configured VirtualShip environment on the SURF Research Cloud.
-
-+++
-
-```{button-ref} surf_set_up
-:ref-type: doc
-:color: secondary
-:expand:
-
-Eductor Guide: Set up the SURF Research Cloud
-```
-````
-
-::::
-
-#### Student access to the workspace
-
-When students log in to the SURF Research Cloud and click to access the workspace, they will be taken to a JupyterLab environment. This is where they can run the VirtualShip software and work on their expeditions.
-
-```{important}
-A known issue is that students may hit a "server error" when accessing the workspace. If this happens, keep on trying (refresh), as the server spin-up can be a bit overloaded at times, but should get through eventually.
-
-Unfortunately this is out of our control. Clearing your browser cache and cookies, and/or trying via an incognito/private window may also help. We find that with persistence, the workspace will eventually load for all users.
-```
-
-We recommend distributing the following instructions sheet to your students once you have invited them to the workspace and ahead of first using the `VirtualShip` software, which outlines how to access the workspace and initialise the pre-configured environment in their respective account spaces:
+Below we provide a set of instructions which can be distributed to students, for them to get set up on the VirtualShip Workspace.
 
 ```{nbgallery}
 
-surf_student_access.md
+../../../tutorials/codespaces_guide.md
+
 ```
 
-```{note}
-If you, as the course convenor/workspace owner, would also like to use the `VirtualShip` software, you will also need to carry out the steps in the instructions sheet above to initialise the environment in your own account space, as a one-time set up step.
+```{tip}
+Please don't hesitate to [get in touch](#feedback-support) if you have any problems with this approach or require additional support.
 ```
 
-#### Collaboration within groups
+##### Collaboration within groups
 
-We often recommend that students work in small groups (e.g. 2-3 students) for their VirtualShip projects. Each student should have their own account/access to the workspace and they can work from the same sub-directory in the `/data/{storage-name}` storage space.
+_[This section is under development]_
 
-Unfortunately, though, the SURF Research Cloud does not currently support smooth, simultaneous collaboration on the same files in the workspace. This means that students will need to coordinate amongst themselves to ensure that they are not overwriting each other's work. You can refer the students to the file permissions tutorial below for more information on how to arrange access to each other's files and directories in the workspace:
+<!-- TODO: populate this area when have explored how to facilitate collaboration within groups on Codespaces -->
+<!-- TODO: note it is also referred to in the codespaces_guide.md so may not be 100% necessarily to separately distribute it -->
 
 ```{nbgallery}
 
-file_permissions.md
+collaboration.md
 ```
 
 ## Sailing the ship
@@ -230,7 +201,7 @@ We can arrange that the default difficulty level is set to `medium` for your cou
 ```
 
 ```{note}
-It's possible that students will explore this VirtualShip documentation site and understand that they can disable the RLCs by setting `--difficulty-level easy`. If you would like to ensure that students must encounter the RLCs, we suggest making a discussion of how they dealt with these issues part of their assignment. Similar to the ship time limit mentioned previously.
+It's possible that students will explore this VirtualShip documentation site and understand that they can disable the RLCs by setting `--difficulty-level easy`. If you would like to ensure that students must encounter the RLCs, we suggest making a discussion of how they dealt with these issues part of their assignment. Similar to the ship time limit mentioned [previously](#reviewing-expedition-proposals).
 ```
 
 ### VirtualShip output
@@ -241,20 +212,34 @@ Once the simulations have run, the VirtualShip output files will be available in
 `VirtualShip` depends heavily on `Parcels` under-the-hood for simulating the instrument behaviours. As such, the VirtualShip output is built on `Parcels` output formats. See the `Parcels` [documentation](https://docs.oceanparcels.org/en/main/user_guide/getting_started/tutorial_output.html) for more information on how to work with the `.parquet` files.
 ```
 
-VirtualShip does not provide explicit tooling for analysis, as this will be dependent on the specific learning objectives and research questions of the students. However, we have provided a number of **example tutorials** (see below), which provide sample code for simple first analysis of the VirtualShip output, for each instrument type.
+VirtualShip does not provide explicit tooling for analysis, as this will be dependent on the specific learning objectives and research questions of the students. However, we provide a number of **example tutorials**, which provide sample code for simple first analysis of the VirtualShip output, for each instrument type:
 
 ```{nbgallery}
 
-../../tutorials/index.md
+../../../tutorials/index.md
 
 ```
 
-We suggest that you encourage students to explore these tutorials and use them as a starting point for their own analysis. You might consider uploading copies of these notebooks to the shared storage space if you are using a cloud-based environment, so that students can access them without having to copy them from the documentation site. The easiest way to do so is to 'wget' the raw notebooks from the codebase, for example:
+#### Pre-configured post-processing workspace
 
-```bash
+We also host a VirtualShip post-processing environment via [Binder](https://mybinder.org/), which is a cloud-based Jupyter Notebook environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the post-processing tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
 
-# copy the drifter data tutorial to the current directory
-wget http://raw.githubusercontent.com/Parcels-code/virtualship/refs/heads/main/docs/user-guide/tutorials/Drifter_data_tutorial.ipynb
+This is of course optional, but is offered as a means to make the post-processing analysis more accessible to students with less time spent setting up their local environment.
+
+```{note}
+This Binder environment is a separate workspace protocol to the GitHub Codespaces environment used for running the VirtualShip Simulations, and described [above](#pre-configured-environment-cloud-based). We made the decision to separate these two environments to minimise the amount of compute time on the Codespaces environment, which has a monthly limit per user.
+
+The Binder environment does not have monthly quotas, but is not suitable for running the VirtualShip simulations themselves (low RAM and non-persistent storage). Hence the need (for now 🤞) to have these as two separate environments.
+```
+
+See the "Post-processing Workspace" guide below for more information on how to use this environment, and can also be distributed to students as part of your course.
+
+<!-- TODO: this documentation needs to be written! -->
+
+```{nbgallery}
+
+../../../tutorials/binder_guide.md
+
 ```
 
 ## ❗️ End-of-course survey

@@ -11,7 +11,7 @@ This tutorial describes an alternative means to using the `virtualship plan` com
 The `expedition.yaml` file can be opened and edited using any text editor that supports YAML format. Make your changes and save the file to write the changes to your expedition directory.
 
 ```{tip}
-The `expedition.yaml` file can also be opened and edited in Jupyter Lab environments using the built-in text editor. Simply navigate to the file in the file browser and (double) click to open it in a new tab.
+The `expedition.yaml` file can also be opened and edited in GitHub Codespaces instances in the Editor panel. Simply navigate to the file in the File Explorer panel and (double) click to open it, or open it by using the `code` command in the Terminal, e.g. `code path/to/expedition.yaml`.
 ```
 
 ```{important}

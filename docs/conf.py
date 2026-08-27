@@ -86,9 +86,8 @@ nbsphinx_thumbnails = {
     "user-guide/tutorials/surf_collaborative_setup": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/tutorials/surf_research_cloud_setup": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/tutorials/working_with_expedition_yaml": "user-guide/_images/AnnaWeber.jpeg",
-    "user-guide/user-profiles/educators/train-the-teacher/surf_set_up": "user-guide/_images/AnnaWeber.jpeg",
-    "user-guide/user-profiles/educators/train-the-teacher/file_permissions": "user-guide/_images/AnnaWeber.jpeg",
-    "user-guide/user-profiles/educators/train-the-teacher/surf_student_access": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/codespaces_guide": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/binder_guide": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/user-profiles/educators/letter": "user-guide/_images/freepik_research_vessel.jpg",
 }
 

@@ -46,7 +46,7 @@ You will need to register for **Copernicus Marine Service** account (see [here](
 
 ## 2) Set up your virtual machine
 
-You will be informed by your teacher if you will be using a cloud-based, pre-configured environment for VirtualShip (e.g., SURF Research Cloud) or if you should set up a local installation of the software. Please follow the instructions provided by your teacher to set up your virtual machine accordingly.
+You will be informed by your teacher if you will be using a cloud-based, pre-configured environment for VirtualShip (e.g., GitHub Codespaces) or if you should set up a local installation of the software. Please follow the instructions provided by your teacher to access your virtual machine accordingly.
 
 ## 3) Expedition route planning
 
@@ -62,32 +62,28 @@ The MFP tool is used by professional oceanographers to plan research expeditions
 
 ### Export the coordinates from MFP
 
-Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an .xlsx (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.\
+Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an `.xlsx` (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
 
-### _If using the SURF Research Cloud_... upload the coordinates to your virtual machine
+### _If using a cloud-based workspace_... upload the coordinates to your virtual machine
 
-```{important}
-If you have not done so already, make sure you create a folder for your group's expedition data in the persistent storage space. You can do so by running e.g. `mkdir /data/virtualship-storage/{your-group-name}` in Terminal, replacing `{your-group-name}` with your actual group name, or by using the "New Folder" button in the JupyterLab file explorer panel.
+```{tip}
+We suggest practicing good file management and creating a dedicated folder for your group's expedition data in the workspace. You can do so running `mkdir {your-group-name}` in the Terminal (replacing `{your-group-name}` with your actual group name) or via the File Explore panel in the Codespaces interface.
 ```
 
-Back in the JupyterLab interface, use the **file explorer** on the left hand side to navigate to the directory where your group will be running your expedition (e.g. `data/virtualship-storage/{your-group-name}`).
-
-Then upload the exported `.xlsx` file (it will be called something like `Coordinates-20251125T1403.xlsx`) by either dragging and dropping it from your laptop's Downloads into the file explorer, or by using the "Upload Files" button (the icon with an upward arrow) at the top of the file explorer panel.
+Navigate to the directory where your group will be running your expedition (e.g. `{your-group-name}`). Then upload the exported `.xlsx` file (it will be called something like `CruiseDataExport-20260812T1506.xlsx`) by right clicking in the File Explorer panel (ideally in the directory you created for your group's expedition data) and selecting the "Upload" option. From here you will be able to select your MFP export file.
 
 ## 4) Expedition initialisation
 
-Open a Terminal window if you do not already have one open. Remember, this can be done from the Launcher tab by clicking on "Terminal" button under the "Other" section, or by going to the "File" menu --> "New" --> "Terminal".
-
 ```{important}
-Once in Terminal, navigate to where you would like your expedition to be run on your (virtual) machine. You can do so by `cd /data/virtualship-storage/{your-group-name}`, replacing `{your-group-name}` with your actual group name. This is where you will be working from for the rest of the session.
+When working in the Terminal, navigate to where you would like your expedition to be run on your (virtual) machine. You can do so by `cd {your-group-name}`, replacing `{your-group-name}` with your actual group name. This is where you will be working from for the rest of the session.
 ```
 
 Now enter the following command in the Terminal (changing `EXPEDITION_NAME` to something more meaningful for your group's expedition):
 
-`virtualship init EXPEDITION_NAME --from-mfp {CoordinatesExport}.xlsx`
+`virtualship init EXPEDITION_NAME --from-mfp {CruiseDataExport}.xlsx`
 
 ```{tip}
-The `{CoordinatesExport}.xlsx` in the command above refers to the `.xlsx` file exported from MFP and uploaded to your virtual machine earlier. Replace the filename with the name of your own file.
+The `{CruiseDataExport}.xlsx` in the command above refers to the `.xlsx` file exported from MFP and uploaded to your virtual machine earlier. Replace the filename with the name of your own file.
 ```
 
 This will create a folder/directory called `EXPEDITION_NAME` (or what you have changed this to) with a single file: `expedition.yaml`. This file contains details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates should be used.
@@ -196,9 +192,9 @@ Upon successfully completing the simulation, results from the expedition will be
 
 From here you can carry on your analysis. In general, we encourage you to use [Parcels](https://Parcels-code.org/) (i.e. `parcels.read_particlefile()`) to read in VirtualShip output files, and tools such as [Polars](https://www.pola.rs/) and/or [Pandas](https://pandas.pydata.org/) for further data analysis. We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments. Use these to help you get started!
 
-If you are using VirtualShip in class, the same tutorial notebooks may be uploaded in your SURF Research Cloud environment for you to use and interact directly with the code (ask your teacher!). If so, these should be available in e.g. the `data/virtualship-storage/tutorials/` directory. You will notice that there is a notebook file dedicated to visualising each of the different instruments available in VirtualShip.
-
-To run these notebooks with your own data, you will need to copy the them over to your expedition working directory (i.e. `data/storage/{your-group-name}`). This can be done by either 1) using the file explorer panel in JupyterLab to copy the relevant files or the via the command line in Terminal. In the terminal, running `cp -r /data/storage/tutorials/* /data/storage/{your-group-name}/` would copy **all** the tutorial notebooks to your group's directory, so if you only want to copy specific ones, make sure to adjust the command accordingly.
+```{tip}
+We also host a [Binder](https://mybinder.org/) environment (note this is separate to the GitHub Codespaces workspace you may be using) with all the necessary post-processing tools pre-installed and all the tutorials ready to use. This might be useful as a means to explore your data at first. See [here](../tutorials/binder_workspace.md) for more detail or await further instruction from your instructor.
+```
 
 ## Reporting
 
