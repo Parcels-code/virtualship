@@ -124,8 +124,8 @@ class Instrument(abc.ABC):
 
         # bathymetry data
         if self.add_bathymetry:
-            bathymetry_field = _get_bathy_data(from_data=self.from_data).bathymetry
-            fieldset.add_field(bathymetry_field)
+            bathymetry_fs = _get_bathy_data(from_data=self.from_data)
+            fieldset = fieldset + bathymetry_fs
 
         return fieldset
 
@@ -142,15 +142,22 @@ class Instrument(abc.ABC):
         """Run instrument simulation."""
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
-        if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {instrument_name} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
-                self.simulate(measurements, out_path)
-                spinner.ok("✅\n")
+        TMP = True
 
+        if TMP:
+            if not self.verbose_progress:
+                with yaspin(
+                    text=f"Simulating {instrument_name} measurements... ",
+                    side="right",
+                    spinner=ship_spinner,
+                ) as spinner:
+                    self.simulate(measurements, out_path)
+                    spinner.ok("✅\n")
+
+            else:
+                print(f"Simulating {instrument_name} measurements... ")
+                self.simulate(measurements, out_path)
+                print("\n")
         else:
             print(f"Simulating {instrument_name} measurements... ")
             self.simulate(measurements, out_path)
@@ -213,22 +220,24 @@ class Instrument(abc.ABC):
 
             fieldsets_list.append(fs)
 
-        base_fieldset = fieldsets_list[0]
-        for fs, key in zip(fieldsets_list[1:], keys[1:], strict=False):
-            base_fieldset.add_field(getattr(fs, key))
+        combined_fieldset = fieldsets_list[0]
+        for fs in fieldsets_list[1:]:
+            combined_fieldset = combined_fieldset + fs
 
         # some instruments use AdvectionRKn kernels which require a combined UV vector field
-        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time, therefore build combined VectorField here in FieldSet
+        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time
         if "U" in keys and "V" in keys:
             uv = parcels.VectorField(
                 "UV",
-                base_fieldset.U,
-                base_fieldset.V,
+                combined_fieldset.U,
+                combined_fieldset.V,
                 interp_method=parcels.interpolators.XLinear_Velocity(),
             )
-            base_fieldset.add_field(uv)
+            # add vector field to internal fieldset dictionary and attach as attribute
+            combined_fieldset.fields["UV"] = uv
+            combined_fieldset.UV = uv
 
-        return base_fieldset
+        return combined_fieldset
 
     def _get_copernicus_ds(
         self,
