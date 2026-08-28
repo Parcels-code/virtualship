@@ -61,7 +61,7 @@ jobs:
         run: pixi run docs
 
       - name: Deploy PR Preview to GitHub Pages
-        uses: rossjrw/pr-preview-action@1821033bc68ef26be4326f6345ec46a51d8db026 # v1.6.0
+        uses: rossjrw/pr-preview-action@6b124108e79e9703b62e36741be77b55c3032a57 # v1.4.8
         with:
           source-dir: docs/_build/html
           preview-branch: gh-pages
