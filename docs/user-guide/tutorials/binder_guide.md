@@ -36,7 +36,7 @@ We suggest also making a new folder (called e.g. `data`) in the workspace to sto
 ## Running the example tutorials
 
 ```{important}
-The example tutorials are near-ready to be run 'out of the box' with your uploaded VirtualShip output files. However, you will have to adjust the file paths in the tutorials to point to your own data. As standard they have a place holder path.
+The example tutorials are near-ready to be run 'out of the box'. However, you will have to adjust the file paths in the tutorial notebooks to point to your own data (e.g. in the `data` directory you may have created). As standard they have only have a place holder path, which will cause the code to fail.
 ```
 
 There is a pre-uploaded folder called `tutorials` in the workspace (see in the file explorer, or you can navigate there in the Terminal with `cd tutorials`), which contains the example notebooks. These are mirrors of the tutorials in the [VirtualShip User Guide](../tutorials/index.md), and are provided here so that they can be run straight away with your data. There is one notebook dedicated to each of the instruments currently supported in VirtualShip.
