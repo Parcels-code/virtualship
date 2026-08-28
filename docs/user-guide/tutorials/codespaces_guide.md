@@ -2,8 +2,6 @@
 
 For your classroom activities, we have provided a pre-configured cloud-based environment for the `VirtualShip` software. We host this facility on [GitHub](https://github.com/), for which you will need to create a free account. Please follow the steps below to access the VirtualShip Workspace and get started with your VirtualShip simulations.
 
-**Read through the instructions below and then return to the rest of the course material to continue with your VirtualShip simulations.**
-
 ## 1) Create a GitHub account
 
 If you do not already have a GitHub account, please sign up for a free account here: [https://github.com/signup](https://github.com/signup)
