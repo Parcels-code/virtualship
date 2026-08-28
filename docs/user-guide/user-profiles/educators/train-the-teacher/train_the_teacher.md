@@ -94,14 +94,18 @@ There are broadly two ways to set up the `VirtualShip` software for teaching:
 Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
 ```{important}
-At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions (and [Binder](https://mybinder.org/) for a distributable post-processing space). This is a central, free solution that we can support and maintain, but it also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, 60 hours of usage (per student/GitHub account).
+At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, 60 hours of usage (per student/GitHub account).
 
 This will be sufficient for _most_ courses, but could be insufficient if your planned teaching activities are longer or more intensive. We continually monitor the optimum solution for distributing the VirtualShip software to whole classrooms in the most accessible way possible, and we are open to [feedback/advice](#feedback-support) on this.
 
-**See the [Pre-configured environment (cloud based)](#pre-configured-environment-cloud-based) section below for more information on this option.**
+**See the [Pre-configured environment (cloud based)](#option-2-pre-configured-environment-cloud-based) section below for more information on this option.**
 ```
 
-### Local installation
+```{note}
+We also offer a [Binder](https://mybinder.org/) workspace for post-processing VirtualShip output files, which is a separate solution to the VirtualShip simulation workspace (GitHub Codespaces). See the [post-processing workspace section](#pre-configured-post-processing-workspace) later in this document for more information and why these are two separate solutions.
+```
+
+### Option 1) Local installation
 
 Students can install the `VirtualShip` software on their own devices using `conda` from the command line:
 
@@ -119,9 +123,9 @@ This creates an environment named `virtualship` with the latest version of the `
 If you have access to a computer lab, you may also consider installing the software on the those machines. This is similar to a local installation but can bring similar benefits to a cloud-based environment (i.e. the environment is prepared ahead of the lesson, each student has the same resources), but with less flexibility for students to work from home or on their own devices.
 ```
 
-### Pre-configured environment (cloud based)
+### Option 2) Pre-configured environment (cloud based)
 
-We provide a a pre-configured VirtualShip environment via GitHub Codespaces. Here, students will have access to the `VirtualShip` software and all its dependencies, without having to install anything on their own devices. This is a cloud-based solution, so students will need an internet connection and a GitHub account.
+We provide a a pre-configured VirtualShip simulation environment via GitHub Codespaces. Here, students will have access to the `VirtualShip` software and all its dependencies, without having to install anything on their own devices. This is a cloud-based solution, so students will need an internet connection and a GitHub account.
 
 Below we provide a set of instructions which can be distributed to students, for them to get set up on the VirtualShip Workspace.
 
@@ -222,17 +226,17 @@ VirtualShip does not provide explicit tooling for analysis, as this will be depe
 
 #### Pre-configured post-processing workspace
 
-We also host a VirtualShip post-processing environment via [Binder](https://mybinder.org/), which is a cloud-based Jupyter Notebook environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the post-processing tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
+We also host a VirtualShip post-processing environment via [Binder](https://mybinder.org/), which is a cloud-based Jupyter Notebook environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the example tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
 
 This is of course optional, but is offered as a means to make the post-processing analysis more accessible to students with less time spent setting up their local environment.
 
 ```{note}
-This Binder environment is a separate workspace protocol to the GitHub Codespaces environment used for running the VirtualShip Simulations, and described [above](#pre-configured-environment-cloud-based). We made the decision to separate these two environments to minimise the amount of compute time on the Codespaces environment, which has a monthly limit per user.
+This Binder workspace is a separate protocol to the GitHub Codespaces workspace used for running the VirtualShip simulations, and described [above](#option-2-pre-configured-environment-cloud-based). We made the decision to separate these two environments to minimise the amount of compute time on the Codespaces environment, which has a monthly limit per user.
 
-The Binder environment does not have monthly quotas, but is not suitable for running the VirtualShip simulations themselves (low RAM and non-persistent storage). Hence the need (for now 🤞) to have these as two separate environments.
+The Binder environment does not have monthly quotas, but is not suitable for running the VirtualShip simulations themselves (low, inconsistent RAM allocation and non-persistent storage). Hence the need (for now at least 🤞) to have these as two separate environments.
 ```
 
-See the "Post-processing Workspace" guide below for more information on how to use this environment, and can also be distributed to students as part of your course.
+See the "Post-processing Workspace" guide below for more information on how to use this environment. This can also be distributed to students as part of your course.
 
 <!-- TODO: this documentation needs to be written! -->
 
@@ -244,10 +248,12 @@ See the "Post-processing Workspace" guide below for more information on how to u
 
 ## ❗️ End-of-course survey
 
+We hope the VirtualShip Classroom has been a valuable addition to your teaching and that you and your students have enjoyed the experience!
+
 ```{important}
 We would be really grateful for your help in collecting feedback from your students on their experience with VirtualShip. This will help us to improve the platform, research its impact and to better understand how it is being used in different contexts.
 
-Please distribute the following survey link to your students at the end of the course: https://survey.uu.nl/jfe/form/SV_0OLu4lKYPyLhAxM
+Please distribute the following survey link to your students at the end of the course: [https://survey.uu.nl/jfe/form/SV_0OLu4lKYPyLhAxM](https://survey.uu.nl/jfe/form/SV_0OLu4lKYPyLhAxM).
 ```
 
 ## Feedback & support
