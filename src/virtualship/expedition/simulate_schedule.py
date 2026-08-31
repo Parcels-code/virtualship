@@ -20,7 +20,7 @@ from virtualship.models import (
     Spacetime,
     Waypoint,
 )
-from virtualship.utils import _calc_sail_time
+from virtualship.utils import _calc_sail_time, _get_public_wp
 
 
 @dataclass
@@ -103,7 +103,7 @@ class _ScheduleSimulator:
         self._expedition = expedition
 
         assert self._expedition.schedule.waypoints[0].time is not None, (
-            "First waypoint must have a time. This should have been verified before calling this function."
+            "Departure port must have a time."
         )
         self._time = expedition.schedule.waypoints[0].time
         self._location = expedition.schedule.waypoints[0].location
@@ -123,8 +123,9 @@ class _ScheduleSimulator:
             # check if waypoint was reached in time
             # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
             if waypoint.time is not None and self._time > waypoint.time:
+                public_wp = _get_public_wp(wp_i, self._expedition.schedule.waypoints)
                 print(
-                    f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
+                    f"\nWaypoint {public_wp} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
                     "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
                 )
                 return ScheduleProblem(self._time, wp_i)
