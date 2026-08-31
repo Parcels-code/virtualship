@@ -122,6 +122,8 @@ class _ScheduleSimulator:
 
             # check if waypoint was reached in time
             # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
+            #! TODO: however, schedule.verify() does not account for stationkeeping time, so move that to schedule.verify() as well
+            #! TODO: then can also address #249 properly with a depth/bathymetry lookup and enhanced messaging explaining that the schedule is infeasible due to stationkeeping time, not sailing time
             if waypoint.time is not None and self._time > waypoint.time:
                 public_wp = _get_public_wp(wp_i, self._expedition.schedule.waypoints)
                 print(
