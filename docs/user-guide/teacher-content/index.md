@@ -18,7 +18,20 @@ The VSC design focuses on creating didactically sound, authentic learning experi
 
 We evaluated in several (under)graduate courses and find that the VirtualShip Classroom is highly engaging, and students report on enhanced confidence and knowledge [(Daniels et al. 2025)](https://current-journal.com/articles/10.5334/cjme.121).
 
-### Teaching materials
+### Train the teacher
+
+This section provides a step-by-step guide for teachers to get started with the VirtualShip Classroom. It includes instructions on how to set up the software, navigate the tooling, and use the teaching materials effectively.
+
+```{toctree}
+:maxdepth: 2
+
+train-the-teacher/train_the_teacher.md
+
+```
+
+### Further teaching materials
+
+<!-- TODO: this section (along with the rest of the docs) needs more context/guidance -->
 
 ```{toctree}
 :maxdepth: 1
