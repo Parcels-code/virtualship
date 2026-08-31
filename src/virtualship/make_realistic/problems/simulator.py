@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime as dt
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rich import box
 from rich.console import Console
@@ -27,7 +27,7 @@ from virtualship.make_realistic.problems.scenarios import (
     InstrumentProblem,
 )
 from virtualship.models.checkpoint import ActiveProblem, Checkpoint
-from virtualship.models.expedition import Port
+from virtualship.models.expedition import Expedition, Port
 from virtualship.utils import (
     CACHE,
     CHECKPOINT,
@@ -45,9 +45,6 @@ from virtualship.utils import (
     _get_public_wp,
     _save_checkpoint,
 )
-
-if TYPE_CHECKING:
-    from virtualship.models.expedition import Expedition
 
 LOG_MESSAGING = {
     "pre_departure": "Hang on! There could be a pre-departure problem in-port...",
