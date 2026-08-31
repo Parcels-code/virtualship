@@ -245,9 +245,8 @@ class ProblemSimulator:
 
             problems_path = self.problems_dir / SELECTED_PROBLEMS
             if problems_path.exists():
-                problems = self.load_selected_problems(problems_path)
-                problems.mark_resolved(active_problem.message)
-                self.cache_selected_problems(problems, problems_path)
+                self.problems.mark_resolved(active_problem.message)
+                self.cache_selected_problems(self.problems, problems_path)
 
         else:
             public_problem_wp = _get_public_wp(
