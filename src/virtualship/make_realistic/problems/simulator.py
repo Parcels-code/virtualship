@@ -137,14 +137,12 @@ class ProblemSimulator:
         self.execute(
             self.problems,
             instrument_type_validation=instrument_type,
-            log_dir=self.problems_dir,
         )
 
     def execute(
         self,
         problems: SelectedProblems,
         instrument_type_validation: InstrumentType | None,
-        log_dir: Path,
         log_delay: float = 4.0,
     ) -> None:
         """Execute simulation problems and apply delay/schedule impacts."""
@@ -164,7 +162,6 @@ class ProblemSimulator:
                 continue
 
             self._log_problem(item, log_delay)
-            self._cache_original_expedition(self.expedition)
 
     def select_problems(
         self,
@@ -517,6 +514,7 @@ class ProblemSimulator:
         )
 
         if not has_contingency:
+            self._cache_original_expedition(self.expedition)
             sys.exit(0)
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
