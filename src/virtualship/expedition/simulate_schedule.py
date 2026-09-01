@@ -16,6 +16,7 @@ from virtualship.instruments.xbt import XBT
 from virtualship.models import (
     Expedition,
     Location,
+    Port,
     Spacetime,
     Waypoint,
 )
@@ -133,7 +134,7 @@ class _ScheduleSimulator:
                 )  # wait at the waypoint until ship is scheduled to be there
 
             # note measurements made at waypoint
-            time_passed = self._make_measurements(waypoint)
+            time_passed = self._get_instrument_timescosts(waypoint)
 
             # wait while measurements are being done
             self._progress_time_stationary(time_passed)
@@ -247,9 +248,13 @@ class _ScheduleSimulator:
             for i in range(1, int(npts) + 1)
         ]
 
-    def _make_measurements(self, waypoint: Waypoint) -> timedelta:
-        # if there are no instruments, there is no time cost
-        if waypoint.instrument is None:
+    def _get_instrument_timescosts(self, waypoint: Waypoint | Port) -> timedelta:
+        # port stops have no instruments; if there are no instruments, there is no time cost
+        if isinstance(waypoint, Port):
+            return timedelta()
+
+        # if proper waypoint but there are no instruments, there is no time cost
+        if isinstance(waypoint, Waypoint) and waypoint.instrument is None:
             return timedelta()
 
         # make instruments a list even if it's only a single one
