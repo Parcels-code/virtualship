@@ -17,6 +17,7 @@ from virtualship.utils import (
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
+    _get_public_wp,
     _validate_numeric_to_timedelta,
     get_supported_sensors,
     register_instrument_config,
@@ -130,24 +131,16 @@ class Schedule(pydantic.BaseModel):
         *,
         from_data: Path | None = None,
     ) -> None:
-        """
-        Verify the feasibility and correctness of the schedule's waypoints.
-
-        This method checks various conditions to ensure the schedule is valid:
-        1. At least one waypoint is provided.
-        2. The first waypoint has a specified time.
-        3. Waypoint times are in ascending order.
-        4. All waypoints are in water (not on land).
-        5. The ship can arrive on time at each waypoint given its speed.
-        """
+        """Verify the feasibility and correctness of the schedule's waypoints."""
         print("\nVerifying route... ")
 
-        if len(self.waypoints) == 0:
-            raise ScheduleError("At least one waypoint must be provided.")
+        # has at least one non-port waypoint
+        if not any(isinstance(wp, Waypoint) for wp in self.waypoints):
+            raise ScheduleError("At least one non-port waypoint must be provided.")
 
-        # check first waypoint has a time
+        # check departure port has a time
         if self.waypoints[0].time is None:
-            raise ScheduleError("First waypoint must have a specified time.")
+            raise ScheduleError("Departure port must have a specified time.")
 
         # check waypoint times are in ascending order
         timed_waypoints = [wp for wp in self.waypoints if wp.time is not None]
@@ -156,11 +149,12 @@ class Schedule(pydantic.BaseModel):
         ]
         if not all(checks):
             invalid_i = [i for i, c in enumerate(checks) if c]
+            public_wps = [_get_public_wp(i, self.waypoints) for i in invalid_i]
             raise ScheduleError(
-                f"Waypoint(s) {', '.join(f'#{i + 1}' for i in invalid_i)}: each waypoint should be timed after all previous waypoints",
+                f"Waypoint(s) {', '.join(f'#{i}' for i in public_wps)}: each waypoint should be timed after all previous waypoints",
             )
 
-        # check if all waypoints are in water using bathymetry data
+        # check if all non-port waypoints are in water using bathymetry data
         land_waypoints = []
         if not ignore_land_test:
             try:
@@ -173,6 +167,7 @@ class Schedule(pydantic.BaseModel):
             for wp_i, wp in enumerate(self.waypoints):
                 if isinstance(wp, Port):
                     continue  # ports are in harbour; skip bathymetry land check
+                public_wp = _get_public_wp(wp_i, self.waypoints)
                 try:
                     value = bathymetry_field.eval(
                         np.float64(0.0),  # time
@@ -181,15 +176,15 @@ class Schedule(pydantic.BaseModel):
                         wp.location.lon,
                     )
                     if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
-                        land_waypoints.append((wp_i, wp))
+                        land_waypoints.append((public_wp, wp))
                 except Exception as e:
                     raise ScheduleError(
-                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
+                        f"Waypoint #{public_wp} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
                     ) from e
 
             if len(land_waypoints) > 0:
                 raise ScheduleError(
-                    f"The following waypoint(s) throw(s) error(s): {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
+                    f"The following waypoint(s) throw(s) error(s): {['#' + str(public_wp) + ' ' + str(wp) for (public_wp, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
@@ -214,8 +209,13 @@ class Schedule(pydantic.BaseModel):
             if wp_next.time is None:
                 time = arrival_time
             elif arrival_time > wp_next.time:
+                affected = (
+                    f"waypoint {_get_public_wp(wp_i + 1, self.waypoints)}"  # +1 to get next
+                    if not isinstance(wp_next, Port)
+                    else "the final port of arrival"
+                )
                 raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at waypoint {wp_i + 2}. "
+                    f"Waypoint planning is not valid: would arrive too late at {affected}. "
                     f"Location: {wp_next.location} Time: {wp_next.time}. "
                     f"Currently projected to arrive at: {arrival_time}."
                 )

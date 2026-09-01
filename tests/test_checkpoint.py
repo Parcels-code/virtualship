@@ -17,7 +17,7 @@ def expedition(tmp_file):
     return Expedition.from_yaml(tmp_file)
 
 
-def make_dummy_checkpoint(failed_waypoint_i=None):
+def make_dummy_checkpoint(failed_wp=None):
     wp1 = Waypoint(
         location=Location(latitude=0.0, longitude=0.0),
         time=datetime(2024, 2, 1, 10, 0, 0),
@@ -30,7 +30,7 @@ def make_dummy_checkpoint(failed_waypoint_i=None):
     )
 
     schedule = Schedule(waypoints=[wp1, wp2])
-    return Checkpoint(past_schedule=schedule, failed_waypoint_i=failed_waypoint_i)
+    return Checkpoint(past_schedule=schedule, failed_wp=failed_wp)
 
 
 def test_to_and_from_yaml(tmp_path):
@@ -44,12 +44,12 @@ def test_to_and_from_yaml(tmp_path):
 
 
 def test_verify_no_failed_waypoint(expedition):
-    cp = make_dummy_checkpoint(failed_waypoint_i=None)
+    cp = make_dummy_checkpoint(failed_wp=None)
     cp.verify(expedition, Path("/tmp/empty"))  # should not raise errors
 
 
 def test_verify_past_waypoints_changed(expedition):
-    cp = make_dummy_checkpoint(failed_waypoint_i=1)
+    cp = make_dummy_checkpoint(failed_wp=1)
 
     # change past waypoints
     new_wp1 = Waypoint(
@@ -94,7 +94,7 @@ def test_verify_problem_resolution(
         instrument=[],
     )
     past_schedule = Schedule(waypoints=[wp1, wp2])
-    cp = Checkpoint(past_schedule=past_schedule, failed_waypoint_i=1)
+    cp = Checkpoint(past_schedule=past_schedule, failed_wp=1)
 
     # new schedule
     new_wp1 = wp1
@@ -110,7 +110,7 @@ def test_verify_problem_resolution(
     problem = {
         "resolved": False,
         "delay_duration_hours": delay_duration_hours,
-        "problem_waypoint_i": 0,
+        "problem_wp_i": 0,
     }
     problem_file = tmp_path / "problem_1.json"
     with open(problem_file, "w") as f:

@@ -3,318 +3,255 @@ import os
 import shutil
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 
 import copernicusmarine
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
+    ScheduleOk,
     ScheduleProblem,
     simulate_schedule,
 )
+from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models import Checkpoint, Schedule
+from virtualship.models import Checkpoint
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     CACHE,
     CHECKPOINT,
     EXPEDITION,
-    EXPEDITION_IDENTIFIER,
-    EXPEDITION_LATEST,
     PROBLEMS_ENCOUNTERED,
     PROJECTION,
-    REPORT,
     RESULTS,
-    SELECTED_PROBLEMS,
     _get_expedition,
     _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
 
-# suppress INFO messages from copernicusmarine and parcels loggers; prevent log flooding
-parcels_logger = logging.getLogger("parcels._logger")
-parcels_logger.setLevel(logging.WARNING)
-logging.getLogger("copernicusmarine").setLevel("ERROR")
+# Suppress INFO messages from copernicusmarine and parcels loggers; prevent log flooding
+logging.getLogger("parcels._logger").setLevel(logging.WARNING)
+logging.getLogger("copernicusmarine").setLevel(logging.ERROR)
 
 
 def _run(
-    expedition_dir: str | Path, difficulty_level: str, from_data: Path | None = None
+    expedition_dir: str | Path,
+    difficulty_level: str,
+    from_data: str | Path | None = None,
 ) -> None:
-    """
-    Perform an expedition, providing terminal feedback and file output.
-
-    :param expedition_dir: The base directory for the expedition.
-    """
-    # start timing
+    """Perform an expedition, providing terminal feedback and file output."""
     start_time = time.time()
+    expedition_dir = Path(expedition_dir)
+    data_path = Path(from_data) if from_data else None
+
     print("[TIMER] Expedition started...")
+    _print_banner()
 
-    print("\n╔═════════════════════════════════════════════════╗")
-    print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
-    print("╚═════════════════════════════════════════════════╝")
-
-    if from_data is None:
-        # TODO: caution, if collaborative environments (or the same machine), this will mean that multiple users share the same copernicusmarine credentials file
-        # TODO: deal with this for if/when using collaborative environments (same machine) and streaming data from Copernicus Marine Service?
-        COPERNICUS_CREDS_FILE = os.path.expandvars(
-            "$HOME/.copernicusmarine/.copernicusmarine-credentials"
-        )
-
-        if (
-            os.path.isfile(COPERNICUS_CREDS_FILE)
-            and os.path.getsize(COPERNICUS_CREDS_FILE) > 0
-        ):
-            pass
-        else:
-            print(
-                "\nPlease enter your log in details for the Copernicus Marine Service (only necessary the first time you run VirtualShip). \n\nIf you have not registered yet, please do so at https://marine.copernicus.eu/.\n\n"
-                "If you did not expect to see this message, and intended to use pre-downloaded data instead of streaming via Copernicus Marine, please use the '--from-data' option to specify the path to the data.\n"
-            )
-            copernicusmarine.login()
-
-    if isinstance(expedition_dir, str):
-        expedition_dir = Path(expedition_dir)
+    if not data_path:
+        _ensure_copernicus_auth()
 
     expedition = _get_expedition(expedition_dir)
+    cache_dir = expedition_dir / CACHE
+    results_dir = expedition_dir / RESULTS
 
-    # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
-    cache_dir = expedition_dir.joinpath(CACHE)
-    expedition_id = _unique_id(expedition, cache_dir)
-
-    # dedicated problems directory for this expedition
-    problems_dir = expedition_dir.joinpath(
-        CACHE, PROBLEMS_ENCOUNTERED.format(expedition_id=expedition_id)
+    problem_simulator = ProblemSimulator(expedition, expedition_dir, difficulty_level)
+    problems_dir = cache_dir / PROBLEMS_ENCOUNTERED.format(
+        expedition_id=problem_simulator.expedition_id
     )
 
-    # verify instruments_config file is consistent with schedule
-    expedition.instruments_config.verify(expedition)
-
-    # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
-    if checkpoint is None:
-        checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
-
-    # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, problems_dir)
+    if checkpoint is not None:
+        checkpoint.verify_past_schedule(expedition.schedule)
+        problem_simulator.verify_problem_resolution(checkpoint)
 
     print("\n---- WAYPOINT VERIFICATION ----")
-
     expedition.schedule.verify(
         expedition.ship_config.ship_speed_knots,
         expedition.instruments_config,
-        from_data=Path(from_data) if from_data else None,
+        from_data=data_path,
     )
 
-    # simulate the schedule
+    expedition.instruments_config.verify(expedition)
+
     schedule_results = simulate_schedule(
         projection=PROJECTION,
         expedition=expedition,
     )
 
-    # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
     if isinstance(schedule_results, ScheduleProblem):
-        print(
-            f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
-        )
-        _save_checkpoint(
-            Checkpoint(
-                past_schedule=expedition.schedule,
-                failed_waypoint_i=schedule_results.failed_waypoint_i,
-            ),
-            expedition_dir,
-        )
+        _handle_schedule_failure(schedule_results, expedition, expedition_dir)
         return
 
-    # delete and create results directory
-    results_dir = expedition_dir.joinpath(RESULTS)
-    _warn_overwrite_results_dir(results_dir)
-
-    if os.path.exists(results_dir):
-        shutil.rmtree(results_dir)
-    os.makedirs(results_dir)
+    _prepare_results_directory(results_dir, is_new_run=checkpoint is None)
 
     print("\n----- EXPEDITION SUMMARY ------")
-
-    # expedition cost in US$
     _write_expedition_cost(expedition, schedule_results, expedition_dir)
 
     print("\n--- MEASUREMENT SIMULATIONS ---")
-
-    # identify instruments in expedition
     instruments_in_expedition = expedition.get_instruments()
 
-    # initialise problem simulator
-    problem_simulator = ProblemSimulator(expedition, expedition_dir)
-
-    # re-load previously encountered (same expedition as previously) problems if they exist, else select new problems and cache them
-    if os.path.exists(problems_dir.joinpath(SELECTED_PROBLEMS)):
-        problems = problem_simulator.load_selected_problems(
-            problems_dir.joinpath(SELECTED_PROBLEMS)
-        )
-    else:
-        problems = problem_simulator.select_problems(
-            instruments_in_expedition, difficulty_level
-        )
-        problem_simulator.cache_selected_problems(
-            problems, problems_dir.joinpath(SELECTED_PROBLEMS)
-        ) if problems else None
-
-    # simulate instrument measurements
     print("\nSimulating measurements. This may take a while...\n")
-
-    for itype in instruments_in_expedition:
-        try:
-            # get instrument class
-            instrument_class = get_instrument_class(itype)
-            if instrument_class is None:
-                raise RuntimeError(f"No instrument class found for type {itype}.")
-
-            # execute problem simulations for this instrument type
-            if problems:
-                if (
-                    hasattr(problems["problem_class"][0], "pre_departure")
-                    and problems["problem_class"][0].pre_departure
-                ):
-                    pass
-                else:
-                    print(f"\033[4mUp next\033[0m: {itype.name} measurements...\n")
-
-                problem_simulator.execute(
-                    problems,
-                    instrument_type_validation=itype,
-                    log_dir=problems_dir,
-                )
-
-            # get measurements to simulate
-            attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
-            measurements = getattr(schedule_results.measurements_to_simulate, attr)
-
-            # initialise instrument
-            instrument = instrument_class(
-                expedition=expedition,
-                from_data=Path(from_data) if from_data is not None else None,
-            )
-
-            # execute simulation
-            instrument.execute(
-                measurements=measurements,
-                out_path=expedition_dir.joinpath(
-                    RESULTS, f"{itype.name.lower()}.parquet"
-                ),
-            )
-        except Exception as e:
-            # clean up if unexpected error occurs
-            if os.path.exists(problems_dir):
-                shutil.rmtree(problems_dir)
-            if expedition_dir.joinpath(CHECKPOINT).exists():
-                os.remove(expedition_dir.joinpath(CHECKPOINT))
-
-            raise RuntimeError(
-                f"An unexpected error occurred while simulating measurements: {e}. Please report this issue, with a description and the traceback, "
-                "to the VirtualShip issue tracker at: https://github.com/OceanParcels/virtualship/issues"
-            ) from e
+    try:
+        _simulate_measurements(
+            expedition=expedition,
+            expedition_dir=expedition_dir,
+            schedule_results=schedule_results,
+            instruments=instruments_in_expedition,
+            problem_simulator=problem_simulator,
+            data_path=data_path,
+        )
+    except Exception as e:
+        _cleanup_on_failure(problems_dir, expedition_dir)
+        raise RuntimeError(
+            f"An unexpected error occurred while simulating measurements: {e}. "
+            "Please report this issue to the VirtualShip issue tracker at: "
+            "https://github.com/OceanParcels/virtualship/issues"
+        ) from e
 
     print("\nAll measurement simulations are complete.")
 
+    problem_simulator.create_post_expedition_report()
+    _conclude_expedition(expedition_dir, difficulty_level)
+
+    elapsed = time.time() - start_time
+    print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
+
+
+# =====================================================
+# SECTION: helpers
+# =====================================================
+
+
+def _print_banner() -> None:
+    print("\n╔═════════════════════════════════════════════════╗")
+    print("║          VIRTUALSHIP EXPEDITION STATUS          ║")
+    print("╚═════════════════════════════════════════════════╝")
+
+
+def _ensure_copernicus_auth() -> None:
+    creds_file = Path(
+        os.path.expandvars("$HOME/.copernicusmarine/.copernicusmarine-credentials")
+    )
+    if not (creds_file.is_file() and creds_file.stat().st_size > 0):
+        print(
+            "\nPlease enter your log in details for the Copernicus Marine Service "
+            "(only necessary the first time you run VirtualShip).\n\n"
+            "If you have not registered yet, please do so at https://marine.copernicus.eu/.\n\n"
+            "If you did not expect to see this message, and intended to use pre-downloaded "
+            "data instead of streaming via Copernicus Marine, please use the '--from-data' option.\n"
+        )
+        copernicusmarine.login()
+
+
+def _handle_schedule_failure(
+    schedule_results: ScheduleProblem, expedition: Expedition, expedition_dir: Path
+) -> None:
+    print(
+        f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) "
+        "and continue the expedition by executing the `virtualship run` command again.\n"
+        f"Checkpoint has been saved to {expedition_dir / CHECKPOINT}."
+    )
+    _save_checkpoint(
+        Checkpoint(
+            past_schedule=expedition.schedule,
+            failed_wp_i=schedule_results.failed_wp,
+        ),
+        expedition_dir,
+    )
+
+
+def _prepare_results_directory(results_dir: Path, is_new_run: bool) -> None:
+    if is_new_run and results_dir.exists():
+        _warn_overwrite_results_dir(results_dir)
+        shutil.rmtree(results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _simulate_measurements(
+    expedition: Expedition,
+    expedition_dir: Path,
+    schedule_results: ScheduleOk | ScheduleProblem,
+    instruments: set[InstrumentType],
+    problem_simulator: ProblemSimulator,
+    data_path: Path | None,
+) -> None:
+    for itype in instruments:
+        problem_simulator.execute_for_instrument(itype)
+
+        instrument_class = get_instrument_class(itype)
+        measurements = getattr(
+            schedule_results.measurements_to_simulate,
+            MeasurementsToSimulate.get_attr_for_instrumenttype(itype),
+        )
+
+        instrument = instrument_class(expedition=expedition, from_data=data_path)
+        instrument.execute(
+            measurements=measurements,
+            out_path=expedition_dir / RESULTS / f"{itype.name.lower()}.parquet",
+        )
+
+
+def _cleanup_on_failure(problems_dir: Path, expedition_dir: Path) -> None:
+    if problems_dir.exists():
+        shutil.rmtree(problems_dir)
+    checkpoint_file = expedition_dir / CHECKPOINT
+    if checkpoint_file.exists():
+        checkpoint_file.unlink()
+
+
+def _conclude_expedition(
+    expedition_dir: Path,
+    difficulty_level: str,
+) -> None:
     print("\n----- EXPEDITION RESULTS ------")
     print("\nYour expedition has concluded successfully!")
     print(
-        f"Your measurements can be found in the '{expedition_dir}/results' directory."
+        f"Your measurements can be found in the '{expedition_dir / RESULTS}' directory."
     )
 
-    if problems:
-        ProblemSimulator.post_expedition_report(
-            problems, expedition_dir.joinpath(RESULTS, REPORT)
-        )
-        print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
-        print(
-            f"\nA post-expedition report of problems encountered during the expedition is saved in: {expedition_dir.joinpath(RESULTS, REPORT)}"
-        )
+    checkpoint_path = expedition_dir / CHECKPOINT
+    if checkpoint_path.exists():
+        checkpoint_path.unlink()
 
-    # delete checkpoint file (in case it interferes with any future re-runs)
-    if os.path.exists(expedition_dir.joinpath(CHECKPOINT)):
-        os.remove(expedition_dir.joinpath(CHECKPOINT))
-
-    # delete cache dir if when --difficulty-level is 'easy' (no useful information to cache in this case, and can interfere with re-runs)
-    if difficulty_level == "easy" and os.path.exists(cache_dir):
+    cache_dir = expedition_dir / CACHE
+    if difficulty_level == "easy" and cache_dir.exists():
         shutil.rmtree(cache_dir)
 
     print("\n------------- END -------------\n")
 
-    # end timing
-    end_time = time.time()
-    elapsed = end_time - start_time
-    print(f"[TIMER] Expedition completed in {elapsed / 60.0:.2f} minutes.")
-
-
-def _unique_id(expedition: Expedition, cache_dir: Path) -> str:
-    """
-    Return a unique id for the expedition (marked by datetime), which can be used to determine whether the expedition has 'changed' since the last run.
-
-    Returns the previous id if no instruments have been added since the last run, allowing re-use of previously encountered problems.
-    Otherwise generates and persists a new id.
-    """
-    cache_dir.mkdir(exist_ok=True)
-
-    id_path = cache_dir.joinpath(EXPEDITION_IDENTIFIER)
-    last_expedition_path = cache_dir.joinpath(EXPEDITION_LATEST)
-    new_id = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    if not id_path.exists():
-        id_path.write_text(new_id)
-        return new_id
-
-    previous_id = id_path.read_text().strip()
-
-    try:
-        last_expedition = Expedition.from_yaml(last_expedition_path)
-    except FileNotFoundError:
-        # cache is not useful in this case as it implies the previous run was interrupted and is incomplete; update passively
-        id_path.write_text(new_id)
-        return new_id
-
-    added_instruments = set(expedition.get_instruments()) - set(
-        last_expedition.get_instruments()
-    )
-    if not added_instruments:
-        return previous_id  # if no additions, keep previous id to allow re-use of previously encountered problems
-
-    id_path.write_text(new_id)
-    return new_id
-
 
 def _warn_overwrite_results_dir(results_dir: Path) -> None:
-    if os.path.exists(results_dir):
-        print(
-            f"\nWARNING: The '{results_dir}' directory already exists and will be overwritten. If you want to keep the previous results, please move or rename the '{results_dir}' directory before re-running the expedition.\n"
-        )
-        decision = input(
-            "Do you want to continue the expedition run and thereby overwrite the existing results? (y/n): "
-        )
-        if decision.lower() != "y":
-            print("Expedition run cancelled by user.")
-            sys.exit(0)
-        if decision.lower() == "y":
-            print("Continuing with expedition run and overwriting existing results...")
+    print(
+        f"\nWARNING: The '{results_dir}' directory already exists and will be overwritten. "
+        "If you want to keep previous results, move or rename the directory before re-running.\n"
+    )
+    decision = input("Overwrite existing results? (y/n): ")
+    if decision.lower() != "y":
+        print("Expedition run cancelled by user.")
+        sys.exit(0)
+    print("Continuing with expedition run and overwriting existing results...")
 
 
 def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
-    file_path = expedition_dir.joinpath(CHECKPOINT)
     try:
-        return Checkpoint.from_yaml(file_path)
+        return Checkpoint.from_yaml(expedition_dir / CHECKPOINT)
     except FileNotFoundError:
         return None
 
 
-def _write_expedition_cost(expedition, schedule_results, expedition_dir):
-    """Calculate the expedition cost, write it to a file, and print summary."""
-    assert expedition.schedule.waypoints[0].time is not None, (
-        "First waypoint has no time. This should not be possible as it should have been verified before."
-    )
-    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
+def _write_expedition_cost(
+    expedition: Expedition,
+    schedule_results: ScheduleOk | ScheduleProblem,
+    expedition_dir: Path,
+) -> None:
+    first_wp = expedition.schedule.waypoints[0]
+    assert first_wp.time is not None, "First waypoint has no time."
+
+    time_past = schedule_results.time - first_wp.time
     cost = expedition_cost(schedule_results, time_past)
-    with open(expedition_dir.joinpath(RESULTS, "cost.txt"), "w") as file:
-        file.writelines(f"cost: {cost} US$")
+
+    cost_file = expedition_dir / RESULTS / "cost.txt"
+    cost_file.write_text(f"cost: {cost} US$")
+
     print(f"\nExpedition duration: {time_past}\nExpedition cost: US$ {cost:,.0f}.")

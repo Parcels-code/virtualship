@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import glob
-import hashlib
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -506,13 +505,6 @@ def _calc_wp_stationkeeping_time(
     return cumulative_stationkeeping_time
 
 
-def _make_hash(s: str, length: int) -> str:
-    """Make unique hash for problem occurrence."""
-    assert length % 2 == 0, "Length must be even."
-    half_length = length // 2
-    return hashlib.shake_128(s.encode("utf-8")).hexdigest(half_length)
-
-
 def build_particle_class_from_sensors(
     sensors: list[SensorConfig],
     nonsensor_variables: list[Variable],
@@ -525,7 +517,7 @@ def build_particle_class_from_sensors(
     return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
-def get_clean_encoding(ds):
+def _get_clean_encoding(ds):
     """
     Clean existing encodings and supply explicit native endianness to prevent netCDF4 UserWarnings.
 
@@ -537,6 +529,25 @@ def get_clean_encoding(ds):
         encoding[var_name] = {"endian": "native"}
 
     return encoding
+
+
+def _get_public_wp(raw_wp_i: int | None, waypoints: list) -> int | None:
+    """
+    Get the public waypoint number for a given raw waypoint index (accounting for Port waypoints).
+
+    Note, the returned number is not an index, rather it corresponds to Waypoint numbers ignoring Ports (which are not waypoints from the user's perspective).
+    """
+    from virtualship.models.expedition import Port  # avoid circular import
+
+    port_wps = [i for i, wp in enumerate(waypoints) if isinstance(wp, Port)]
+    non_port_wps = [i for i in range(len(waypoints)) if i not in port_wps]
+
+    if raw_wp_i in port_wps:
+        public_wp = None  # Port waypoints do not have public waypoint numbers
+    else:
+        public_wp = non_port_wps.index(raw_wp_i) + 1
+
+    return public_wp
 
 
 # =====================================================

@@ -26,9 +26,9 @@ from virtualship.utils import (
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
+    _get_clean_encoding,
     _get_waypoint_latlons,
     _select_product_id,
-    get_clean_encoding,
     ship_spinner,
 )
 
@@ -321,7 +321,7 @@ class Instrument(abc.ABC):
     @staticmethod
     def _via_tmp_ds(ds: xr.Dataset) -> xr.Dataset:
         """Create and re-load a temporary local dataset."""
-        encoding = get_clean_encoding(ds)
+        encoding = _get_clean_encoding(ds)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_fpath = Path(tmpdir) / "tmp.nc"
