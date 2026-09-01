@@ -178,6 +178,8 @@ See the relevant [documentation](https://virtualship.readthedocs.io/en/latest/us
 
 ## 5) Results
 
-Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written as [Zarr](https://zarr.dev/) files.
+Upon successfully completing the simulation, results from the expedition will be stored in the `EXPEDITION_NAME/results` directory, written in `.parquet` [format](https://parquet.apache.org/).
 
-From here you can carry on your analysis (offline). We encourage you to explore and analyse these data using [Xarray](https://docs.xarray.dev/en/stable/). We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments.
+From here you can carry on your analysis (offline). We encourage you to use [Parcels](https://Parcels-code.org/) (i.e. `parcels.read_particlefile()`) to read in VirtualShip output files, and tools such as [Polars](https://www.pola.rs/) and/or [Pandas](https://pandas.pydata.org/) for further data analysis.
+
+We also provide various [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) with further examples of how to visualise data recorded by the VirtualShip instruments.

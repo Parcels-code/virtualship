@@ -4,9 +4,11 @@ from datetime import timedelta
 from typing import ClassVar
 
 import numpy as np
-from parcels import AdvectionRK4, JITParticle, ParticleSet, Variable
+from parcels import ParticleFile, ParticleSet, Variable
+from parcels._core.statuscodes import StatusCode
+from parcels.kernels import AdvectionRK2
 
-from virtualship.instruments.base import Instrument
+from virtualship.instruments.base import FetchSpec, Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.spacetime import Spacetime
@@ -46,15 +48,21 @@ _DRIFTER_NONSENSOR_VARIABLES = [
 # =====================================================
 
 
-def _sample_temperature(particle, fieldset, time):
-    particle.temperature = fieldset.T[time, particle.depth, particle.lat, particle.lon]
+def _sample_temperature(particles, fieldset):
+    particles.temperature = fieldset.T[
+        particles.t, particles.z, particles.y, particles.x
+    ]
 
 
-def _check_lifetime(particle, fieldset, time):
-    if particle.has_lifetime == 1:
-        particle.age += particle.dt
-        if particle.age >= particle.lifetime:
-            particle.delete()
+def _check_lifetime(particles, fieldset):
+    particles_wlifetime = particles[particles.has_lifetime == 1]
+
+    particles_wlifetime.age += particles_wlifetime.dt
+    particles_wlifetime.state = np.where(
+        particles_wlifetime.age >= particles_wlifetime.lifetime,
+        StatusCode.Delete,
+        particles_wlifetime.state,
+    )
 
 
 # =====================================================
@@ -80,20 +88,13 @@ class DrifterInstrument(Instrument):
             "V": "vo",
             **sensor_variables,
         }  # advection variables (U and V) are always required for drifter simulation; sensor variables come from config
-        spacetime_buffer_size = {
-            "latlon": None,
-            "time": expedition.instruments_config.drifter_config.lifetime.total_seconds()
+        fetch_spec = FetchSpec(
+            latlon_buffer=30.0,  # TODO: generous buffer to reduce tmp file footprint, can potentially be removed in the future as/when Parcels streaming performance improves (see #358)
+            time_buffer=expedition.instruments_config.drifter_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
-        }
-        limit_spec = {
-            "spatial": False,  # no spatial limits; generate global fieldset
-            "depth_min": abs(
-                expedition.instruments_config.drifter_config.depth_meter
-            ),  # [meters]
-            "depth_max": abs(
-                expedition.instruments_config.drifter_config.depth_meter
-            ),  # [meters]
-        }
+            depth_min=expedition.instruments_config.drifter_config.depth_meter,  # [meters]
+            depth_max=expedition.instruments_config.drifter_config.depth_meter,  # [meters]
+        )
 
         super().__init__(
             expedition,
@@ -101,8 +102,7 @@ class DrifterInstrument(Instrument):
             add_bathymetry=False,
             allow_time_extrapolation=False,
             verbose_progress=True,
-            spacetime_buffer_size=spacetime_buffer_size,
-            limit_spec=limit_spec,
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 
@@ -123,7 +123,7 @@ class DrifterInstrument(Instrument):
         # build dynamic particle class from the active sensors
         drifter_config = self.expedition.instruments_config.drifter_config
         _DrifterParticle = build_particle_class_from_sensors(
-            drifter_config.sensors, _DRIFTER_NONSENSOR_VARIABLES, JITParticle
+            drifter_config.sensors, _DRIFTER_NONSENSOR_VARIABLES
         )
 
         # define parcel particles
@@ -137,10 +137,10 @@ class DrifterInstrument(Instrument):
         drifter_particleset = ParticleSet(
             fieldset=fieldset,
             pclass=_DrifterParticle,
-            lat=lat_release,
-            lon=lon_release,
-            depth=[drifter.depth for drifter in measurements],
-            time=[drifter.spacetime.time for drifter in measurements],
+            y=lat_release,
+            x=lon_release,
+            z=[drifter.depth for drifter in measurements],
+            t=[np.datetime64(drifter.spacetime.time) for drifter in measurements],
             has_lifetime=[
                 1 if drifter.lifetime is not None else 0 for drifter in measurements
             ],
@@ -150,15 +150,17 @@ class DrifterInstrument(Instrument):
             ],
         )
 
+        # add initial conditions to sampling variables
+        self._sample_initial(drifter_particleset, fieldset, drifter_config.sensors)
+
         # define output file for the simulation
-        out_file = drifter_particleset.ParticleFile(
-            name=out_path,
+        out_file = ParticleFile(
+            path=out_path,
             outputdt=OUTPUT_DT,
-            chunks=[len(drifter_particleset), 100],
         )
 
         # determine end time for simulation, from fieldset (which itself is controlled by drifter lifetimes)
-        endtime = fieldset.time_origin.fulltime(fieldset.U.grid.time_full[-1])
+        endtime = fieldset.U.data.time.isel(time=-1).values
 
         # build kernel list from active sensors only
         sampling_kernels = [
@@ -169,7 +171,7 @@ class DrifterInstrument(Instrument):
 
         # execute simulation
         drifter_particleset.execute(
-            [AdvectionRK4, *sampling_kernels, _check_lifetime],
+            [AdvectionRK2, *sampling_kernels, _check_lifetime],
             endtime=endtime,
             dt=DT,
             output_file=out_file,

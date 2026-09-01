@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
@@ -9,7 +9,7 @@ import numpy as np
 from parcels import Variable
 
 
-class SensorType(str, Enum):
+class SensorType(StrEnum):
     """Sensors available. Different intstruments mix and match these sensors as needed."""
 
     TEMPERATURE = "TEMPERATURE"
