@@ -127,6 +127,19 @@ class Instrument(abc.ABC):
             bathymetry_fs = _get_bathy_data(from_data=self.from_data)
             fieldset = fieldset + bathymetry_fs
 
+        # some instruments use AdvectionRKn kernels which require a combined UV vector field
+        # fieldsets are created per variable (in _generate_fieldset) and thus are not seen by from_sgrid_conventions at that time
+        if hasattr(fieldset, "U") and hasattr(fieldset, "V"):
+            uv = parcels.VectorField(
+                "UV",
+                fieldset.U,
+                fieldset.V,
+                interp_method=parcels.interpolators.XLinear_Velocity(),
+            )
+            # add vector field to internal fieldset dictionary and attach as attribute
+            fieldset.fields["UV"] = uv
+            fieldset.UV = uv
+
         return fieldset
 
     @abc.abstractmethod
@@ -216,19 +229,6 @@ class Instrument(abc.ABC):
         combined_fieldset = fieldsets_list[0]
         for fs in fieldsets_list[1:]:
             combined_fieldset = combined_fieldset + fs
-
-        # some instruments use AdvectionRKn kernels which require a combined UV vector field
-        # fieldsets are created per variable and thus are not seen by from_sgrid_conventions at the same time
-        if "U" in keys and "V" in keys:
-            uv = parcels.VectorField(
-                "UV",
-                combined_fieldset.U,
-                combined_fieldset.V,
-                interp_method=parcels.interpolators.XLinear_Velocity(),
-            )
-            # add vector field to internal fieldset dictionary and attach as attribute
-            combined_fieldset.fields["UV"] = uv
-            combined_fieldset.UV = uv
 
         return combined_fieldset
 
