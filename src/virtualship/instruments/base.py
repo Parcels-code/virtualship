@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import collections
 import inspect
+import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import timedelta
@@ -179,6 +180,7 @@ class Instrument(abc.ABC):
         data_dir: Path,
         measurements: list,
         out_path: str | Path,
+        spinner: yaspin.core.Yaspin | None = None,
     ) -> None:
         """Simulate instrument measurements."""
 
@@ -186,19 +188,24 @@ class Instrument(abc.ABC):
         """Run instrument simulation."""
         instrument_name = self.__class__.__name__.split("Instrument")[0]
 
-        if not self.verbose_progress:
-            with yaspin(
-                text=f"Simulating {instrument_name} measurements... ",
-                side="right",
-                spinner=ship_spinner,
-            ) as spinner:
+        with yaspin(
+            text=f"Simulating {instrument_name} measurements... ",
+            side="right",
+            spinner=ship_spinner,
+        ) as spinner:
+            if self.verbose_progress:
+                stdout_wrapper = _SpinnerStop(sys.stdout, spinner)
+                original_stdout = sys.stdout
+                sys.stdout = stdout_wrapper
+                try:
+                    self.simulate(measurements, out_path)
+                finally:
+                    sys.stdout = original_stdout
+                    spinner.stop()
+                print("\n")
+            else:
                 self.simulate(measurements, out_path)
                 spinner.ok("✅\n")
-
-        else:
-            print(f"Simulating {instrument_name} measurements... ")
-            self.simulate(measurements, out_path)
-            print("\n")
 
     def _generate_fieldset(self) -> parcels.FieldSet:
         """
@@ -421,6 +428,24 @@ class Instrument(abc.ABC):
             self.min_lat - buf,
             self.max_lat + buf,
         )
+
+
+class _SpinnerStop:
+    """Stops yaspin spinner when there's a print (e.g. Parcels progress bar)."""
+
+    def __init__(self, original_stream, spinner):
+        self._stream = original_stream
+        self._spinner = spinner
+        self._stopped = False
+
+    def write(self, s: str):
+        if s and not self._stopped:
+            self._stopped = True
+            self._spinner.stop()
+        return self._stream.write(s)
+
+    def flush(self):
+        return self._stream.flush()
 
 
 @dataclass(frozen=True)
