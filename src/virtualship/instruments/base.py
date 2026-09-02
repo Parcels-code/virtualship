@@ -356,7 +356,6 @@ class Instrument(abc.ABC):
         """Create and re-load a temporary local dataset without loading everything into RAM, using local Zarr store for improved performance and concurrent chunk writing."""
         tmp_dir = tempfile.TemporaryDirectory()
         self._tmp_dirs.append(tmp_dir)
-
         tmp_store = Path(tmp_dir.name) / f"tmp_{id(ds)}.zarr"
 
         # strip pre-existing per-variable encoding, which may interfere with zarr defaults
@@ -364,12 +363,14 @@ class Instrument(abc.ABC):
         for variable in ds_to_write.variables.values():
             variable.encoding = {}
 
+        ds_to_write = ds_to_write.chunk(
+            {dim: size for dim, size in ds_to_write.sizes.items()}
+        )
+
         ds_to_write.to_zarr(
             tmp_store,
             mode="w",
             consolidated=False,
-            safe_chunks=False,
-            write_empty_chunks=False,
         )
 
         loaded_ds = xr.open_zarr(
