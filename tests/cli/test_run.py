@@ -26,6 +26,14 @@ class DummyInstrument:
         self.expedition = expedition
         self.from_data = from_data
 
+    def __enter__(self):
+        """Dummy context manager enter method."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Dummy context manager exit method."""
+        pass
+
     def execute(self, measurements, out_path):
         """Mock execute method."""
         out_path = Path(out_path)
