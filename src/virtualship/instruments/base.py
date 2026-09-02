@@ -90,6 +90,7 @@ class Instrument(abc.ABC):
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
         self.fetch_spec = fetch_spec or FetchSpec()
+        self._tmp_dir = tempfile.TemporaryDirectory()
 
         wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
         wp_times = [
@@ -177,6 +178,9 @@ class Instrument(abc.ABC):
 
         Includes an intermediate step of writing to tmp files, as per https://github.com/Parcels-code/parcels-benchmarks/pull/49
         TODO: the need for this step may be removed as Parcels x copernicusmarine integration improves, tracked in https://github.com/Parcels-code/Parcels/issues/2756 and xref'd in VirtualShip #357 (https://github.com/Parcels-code/virtualship/issues/357)
+
+        # TODO: N.B. adding (+) fields to fieldsets might not be intended behaviour for using Parcels (?)
+        #! However, at present it's still needed to build the fieldset one-by-one to avoid large file dumps/memory when using tmp files and streaming data
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -318,18 +322,15 @@ class Instrument(abc.ABC):
 
         return ds
 
-    @staticmethod
-    def _via_tmp_ds(ds: xr.Dataset) -> xr.Dataset:
-        """Create and re-load a temporary local dataset."""
+    def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
+        """Create and re-load a temporary local dataset without loading everything into RAM."""
         encoding = get_clean_encoding(ds)
+        tmp_fpath = Path(self._tmp_dir.name) / f"tmp_{id(ds)}.nc"
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_fpath = Path(tmpdir) / "tmp.nc"
-            ds.to_netcdf(tmp_fpath, encoding=encoding)
+        ds.to_netcdf(tmp_fpath, encoding=encoding, engine="netcdf4")
+        loaded_ds = xr.open_dataset(tmp_fpath)
 
-            # context manage to ensure file closure
-            with xr.open_dataset(tmp_fpath) as loaded_ds:
-                return loaded_ds.load()
+        return loaded_ds
 
     @staticmethod
     def _sample_initial(
