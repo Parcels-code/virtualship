@@ -90,7 +90,7 @@ class Instrument(abc.ABC):
         self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
         self.fetch_spec = fetch_spec or FetchSpec()
-        self._tmp_dir = tempfile.TemporaryDirectory()
+        self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
         wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
         wp_times = [
@@ -107,6 +107,33 @@ class Instrument(abc.ABC):
         )  # avoid edge issues
         self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
+
+    def close(self):
+        """Explicitly cleanup all tmp dirs/resources."""
+        tmp_dirs = getattr(self, "_tmp_dirs", None)
+        if not tmp_dirs:
+            return
+        for tmp_dir in tmp_dirs:
+            try:
+                tmp_dir.cleanup()
+            except Exception:
+                pass  # i.e. best effort clean up
+        self._tmp_dirs = []
+
+    def __del__(self):
+        """Safety net: ensure temporary directories are cleaned up even if close()/context manager usage was skipped."""
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def __enter__(self):
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager, ensuring resource cleanup."""
+        self.close()
 
     def load_input_data(self) -> parcels.FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
@@ -323,9 +350,13 @@ class Instrument(abc.ABC):
         return ds
 
     def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
-        """Create and re-load a temporary local dataset without loading everything into RAM."""
+        """Create and re-load a temporary local dataset (without heavy RAM spikes)."""
         encoding = get_clean_encoding(ds)
-        tmp_fpath = Path(self._tmp_dir.name) / f"tmp_{id(ds)}.nc"
+
+        tmp_dir = tempfile.TemporaryDirectory()
+        self._tmp_dirs.append(tmp_dir)
+
+        tmp_fpath = Path(tmp_dir.name) / f"tmp_{id(ds)}.nc"
 
         ds.to_netcdf(tmp_fpath, encoding=encoding, engine="netcdf4")
         loaded_ds = xr.open_dataset(tmp_fpath)

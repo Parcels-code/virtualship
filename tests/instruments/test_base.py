@@ -117,6 +117,10 @@ def test_load_input_data():
     mock_fieldset = MagicMock()
     mock_fieldset.to_windowed_arrays.return_value = mock_fieldset
 
+    shared_interval = MagicMock()
+    mock_fieldset.U = MagicMock(time_interval=shared_interval)
+    mock_fieldset.V = MagicMock(time_interval=shared_interval)
+
     with (
         patch(
             "virtualship.instruments.base._select_product_id",
@@ -180,17 +184,59 @@ def test_fetch_spec_applied_to_instrument():
 
 def test_via_tmp_ds_roundtrip():
     """_via_tmp_ds writes to a tmp file and re-opens it."""
-    ds = xr.Dataset(
-        {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-        coords={"x": [0, 1], "y": [10, 20]},
-    )
-    result = Instrument._via_tmp_ds(ds)
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
 
-    assert isinstance(result, xr.Dataset)
-    assert "temperature" in result
-    assert (
-        result is not ds
-    )  # result is new object loaded from tmp file, not the original
+    with DummyInstrument(
+        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        from_data=None,
+    ) as dummy:
+        ds = xr.Dataset(
+            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
+            coords={"x": [0, 1], "y": [10, 20]},
+        )
+        result = dummy._via_tmp_ds(ds)
+
+        assert isinstance(result, xr.Dataset)
+        assert "temperature" in result
+        assert (
+            result is not ds
+        )  # result is new object loaded from tmp file, not the original
+
+        result.close()
+        ds.close()
+
+
+def test_instrument_context_manager():
+    """Test that context manager cleans up temporary directories upon exit."""
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+
+    with DummyInstrument(
+        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        variables={"A": "a"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        from_data=None,
+    ) as dummy:
+        ds = xr.Dataset(
+            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
+            coords={"x": [0, 1], "y": [10, 20]},
+        )
+        result = dummy._via_tmp_ds(ds)
+        assert len(dummy._tmp_dirs) == 1
+        result.close()
+        ds.close()
+
+    # outside 'with' block, tmp dirs should be cleared
+    assert len(dummy._tmp_dirs) == 0
 
 
 def test_generate_fieldset_combines_fields():
@@ -393,25 +439,27 @@ def test_to_parquet_writes_valid_file(
     assert out_path.exists()
 
     # verify parquet table, metadata, and columns
-    table = pq.read_table(out_path)
-    schema = table.schema
+    with pq.ParquetFile(out_path) as pf:
+        table = pf.read()
+        schema = table.schema
 
-    assert table.column_names == [
-        "t",
-        "z",
-        "y",
-        "x",
-        "particle_id",
-        "temp",
-        "sal",
-    ]
-    assert schema.metadata[b"feature_type"] == b"trajectory"
-    assert b"units" in schema.field("t").metadata
+        assert table.column_names == [
+            "t",
+            "z",
+            "y",
+            "x",
+            "particle_id",
+            "temp",
+            "sal",
+        ]
+        assert schema.metadata[b"feature_type"] == b"trajectory"
+        assert b"units" in schema.field("t").metadata
 
-    np.testing.assert_array_equal(
-        table["x"].to_numpy(), np.array(sample_underway_coords.lons, dtype=np.float32)
-    )
-    np.testing.assert_array_equal(table["temp"].to_numpy(), dat_arrays[0])
+        np.testing.assert_array_equal(
+            table["x"].to_numpy(),
+            np.array(sample_underway_coords.lons, dtype=np.float32),
+        )
+        np.testing.assert_array_equal(table["temp"].to_numpy(), dat_arrays[0])
 
 
 def _create_underway_parquet(
@@ -478,6 +526,9 @@ def test_underway_schema_matches_parcels(tmp_path, pset):
         dt=np.timedelta64(60, "m"),
         output_file=parcels_output,
     )
+    if hasattr(parcels_output, "close"):
+        parcels_output.close()
+
     parcels_df = parcels.read_particlefile(parcels_path)
 
     # UnderwayInstrument output
