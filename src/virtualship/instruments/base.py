@@ -3,7 +3,6 @@ from __future__ import annotations
 import abc
 import collections
 import inspect
-import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import timedelta
@@ -30,6 +29,7 @@ from virtualship.utils import (
     _get_instrument_relevant_waypoints,
     _get_waypoint_latlons,
     _select_product_id,
+    _SpinnerAutoStop,
     ship_spinner,
 )
 
@@ -194,14 +194,8 @@ class Instrument(abc.ABC):
             spinner=ship_spinner,
         ) as spinner:
             if self.verbose_progress:
-                stdout_wrapper = _SpinnerStop(sys.stdout, spinner)
-                original_stdout = sys.stdout
-                sys.stdout = stdout_wrapper
-                try:
+                with _SpinnerAutoStop(spinner):
                     self.simulate(measurements, out_path)
-                finally:
-                    sys.stdout = original_stdout
-                    spinner.stop()
                 print("\n")
             else:
                 self.simulate(measurements, out_path)
@@ -428,24 +422,6 @@ class Instrument(abc.ABC):
             self.min_lat - buf,
             self.max_lat + buf,
         )
-
-
-class _SpinnerStop:
-    """Stops yaspin spinner when there's a print (e.g. Parcels progress bar)."""
-
-    def __init__(self, original_stream, spinner):
-        self._stream = original_stream
-        self._spinner = spinner
-        self._stopped = False
-
-    def write(self, s: str):
-        if s and not self._stopped:
-            self._stopped = True
-            self._spinner.stop()
-        return self._stream.write(s)
-
-    def flush(self):
-        return self._stream.flush()
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,7 @@ import glob
 import hashlib
 import os
 import re
+import sys
 import warnings
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -712,3 +713,50 @@ ship_spinner = Spinner(
         "🚢     ",
     ],
 )
+
+
+class _SpinnerAutoStop:
+    """Wrapper and context manager that stops a yaspin spinner on first print (e.g., Parcels progress bar)."""
+
+    def __init__(self, spinner):
+        self._spinner = spinner
+        self._original_stdout = None
+        self._stopped = False
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = self
+        return self
+
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+        sys.stdout = self._original_stdout
+        self._stop_spinner()
+
+    def _stop_spinner(self):
+        if not self._stopped:
+            self._stopped = True
+            if self._spinner and self._original_stdout:
+                self._spinner.stop()
+                # persist the spinner text to the original stdout (before starting progress bar output)
+                self._original_stdout.write(f"{self._spinner.text}\n")
+                self._original_stdout.flush()
+
+    def write(self, s: str):
+        if s and not self._stopped:
+            self._stop_spinner()
+        return self._original_stdout.write(s)
+
+    def flush(self):
+        return self._original_stdout.flush()
+
+    def isatty(self) -> bool:
+        """Restore unicode block rendering (█████ instead of ###) in parcels progress bar."""
+        return getattr(self._original_stdout, "isatty", lambda: False)()
+
+    def fileno(self) -> int:
+        """Restore full terminal width detection for parcels progress bar sizing."""
+        return self._original_stdout.fileno()
+
+    @property
+    def encoding(self) -> str:
+        return getattr(self._original_stdout, "encoding", "utf-8")
