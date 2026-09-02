@@ -591,6 +591,24 @@ def _get_waypoint_latlons(waypoints):
     return wp_lats, wp_lons
 
 
+def _get_instrument_relevant_waypoints(waypoints, instrument_type) -> list:
+    """Subset of waypoints that are relevant to this `instrument_type`."""
+    if instrument_type.is_underway:
+        return list(waypoints)
+
+    relevant = []
+    for wp in waypoints:
+        wp_instruments = (
+            wp.instrument
+            if isinstance(wp.instrument, list)
+            else ([wp.instrument] if wp.instrument else [])
+        )
+        if instrument_type in wp_instruments:
+            relevant.append(wp)
+
+    return relevant or list(waypoints)
+
+
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
     file_path = expedition_dir.joinpath(CHECKPOINT)
     checkpoint.to_yaml(file_path)

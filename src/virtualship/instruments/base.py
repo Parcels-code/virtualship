@@ -26,6 +26,7 @@ from virtualship.utils import (
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
+    _get_instrument_relevant_waypoints,
     _get_waypoint_latlons,
     _select_product_id,
     get_clean_encoding,
@@ -92,10 +93,13 @@ class Instrument(abc.ABC):
         self.fetch_spec = fetch_spec or FetchSpec()
         self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
-        wp_lats, wp_lons = _get_waypoint_latlons(expedition.schedule.waypoints)
-        wp_times = [
-            wp.time for wp in expedition.schedule.waypoints if wp.time is not None
-        ]
+        # only waypoints relevant to this instrument; avoid needlessly ballooning fieldset to full expedition schedule
+        relevant_waypoints = _get_instrument_relevant_waypoints(
+            expedition.schedule.waypoints, self.instrument_type
+        )
+
+        wp_lats, wp_lons = _get_waypoint_latlons(relevant_waypoints)
+        wp_times = [wp.time for wp in relevant_waypoints if wp.time is not None]
         assert all(earlier <= later for earlier, later in pairwise(wp_times)), (
             "Waypoint times are not in ascending order"
         )
@@ -350,7 +354,7 @@ class Instrument(abc.ABC):
         return ds
 
     def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
-        """Create and re-load a temporary local dataset (without heavy RAM spikes)."""
+        """Create and re-load a temporary local dataset (without loading everything into RAM)."""
         encoding = get_clean_encoding(ds)
 
         tmp_dir = tempfile.TemporaryDirectory()
