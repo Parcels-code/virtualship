@@ -691,20 +691,6 @@ def build_particle_class_from_sensors(
     return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
-def get_clean_encoding(ds):
-    """
-    Clean existing encodings and supply explicit native endianness to prevent netCDF4 UserWarnings.
-
-    Helps avoid annoying user warnings when writing tmp files to disk.
-    """
-    encoding = {}
-    for var_name, var in ds.variables.items():
-        var.encoding.pop("endian", None)
-        encoding[var_name] = {"endian": "native"}
-
-    return encoding
-
-
 # =====================================================
 # SECTION: misc.
 # =====================================================
