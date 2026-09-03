@@ -99,6 +99,19 @@ class DummyInstrument(Instrument):
         return InstrumentType.CTD
 
 
+class _FakeFieldSet:
+    """Minimal fieldset."""
+
+    def __init__(self, **fields):
+        for name, value in fields.items():
+            setattr(self, name, value)
+        self.fields = {}
+
+    def to_windowed_arrays(self):
+        """Mimic FieldSet.to_windowed_arrays."""
+        return self
+
+
 def test_load_input_data():
     """Test Instrument.load_input_data with mocks."""
     mock_waypoint = MagicMock()
@@ -114,12 +127,12 @@ def test_load_input_data():
         from_data=None,
     )
 
-    mock_fieldset = MagicMock()
-    mock_fieldset.to_windowed_arrays.return_value = mock_fieldset
-
     shared_interval = MagicMock()
-    mock_fieldset.U = MagicMock(time_interval=shared_interval)
-    mock_fieldset.V = MagicMock(time_interval=shared_interval)
+    fake_fieldset = _FakeFieldSet(
+        A=MagicMock(),
+        U=MagicMock(time_interval=shared_interval),
+        V=MagicMock(time_interval=shared_interval),
+    )
 
     with (
         patch(
@@ -130,13 +143,50 @@ def test_load_input_data():
         patch.object(dummy, "_via_tmp_ds", side_effect=lambda ds: ds),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch(
-            "parcels.FieldSet.from_sgrid_conventions", return_value=mock_fieldset
+            "parcels.FieldSet.from_sgrid_conventions", return_value=fake_fieldset
         ) as mock_from_sgrid,
     ):
         fieldset = dummy.load_input_data()
 
     mock_from_sgrid.assert_called_once()
-    assert fieldset == mock_fieldset
+    assert fieldset == fake_fieldset
+
+
+def test_gets_uv_vectorfield_when_u_and_v_present():
+    """load_input_data creates a 'UV' VectorField when U and V fields are present."""
+    mock_waypoint = MagicMock()
+    mock_waypoint.location.latitude = 1.0
+    mock_waypoint.location.longitude = 2.0
+
+    dummy = DummyInstrument(
+        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        variables={"U": "uo", "V": "vo"},
+        add_bathymetry=False,
+        allow_time_extrapolation=False,
+        verbose_progress=False,
+        from_data=None,
+    )
+
+    fake_u = MagicMock()
+    fake_v = MagicMock()
+    fake_fieldset = _FakeFieldSet(U=fake_u, V=fake_v)
+    mock_uv = MagicMock()
+
+    with (
+        patch.object(dummy, "_generate_fieldset", return_value=fake_fieldset),
+        patch(
+            "virtualship.instruments.base.parcels.VectorField", return_value=mock_uv
+        ) as mock_vectorfield,
+    ):
+        result = dummy.load_input_data()
+
+    args, _ = mock_vectorfield.call_args
+    assert args[0] == "UV"
+    assert args[1] is fake_u
+    assert args[2] is fake_v
+
+    assert result.UV is mock_uv
+    assert result.fields["UV"] is mock_uv
 
 
 def test_execute_calls_simulate(monkeypatch):
