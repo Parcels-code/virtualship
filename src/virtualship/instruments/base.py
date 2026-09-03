@@ -364,6 +364,7 @@ class Instrument(abc.ABC):
         for variable in ds_to_write.variables.values():
             variable.encoding = {}
 
+        # TODO: potential trade off between speed and memory usage here... could remove to reduce memory footprint, but may slow down writing (?)
         ds_to_write = ds_to_write.chunk(
             {dim: size for dim, size in ds_to_write.sizes.items()}
         )
