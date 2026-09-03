@@ -14,14 +14,30 @@ Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/
 
 From here you should see a green button labelled `Code`. Click on this button and select the `Codespaces` tab. Then click on the `Create codespace on main` button to launch your cloud-based environment.
 
+```{note}
+In case you are interested, this will spin up a 2-core virtual machine with 8 GB of RAM. Not loads, but enough (in most cases, see **tip** below) to run VirtualShip simulations for your course!
+```
+
+```{tip}
+If you plan to deploy **Argo Floats** in your VirtualShip simulations, we recommend that a slightly different procedure, which will enable enough resources to run these more intensive simulations. Please see the relevant sub-section [below](#spinning-up-a-more-powerful-codespace) for further instruction.
+```
+
 It will take a few minutes for the Codespace to be created and launched. Once it is ready, you will see a web-based interface that looks similar to the [Visual Studio Code](https://code.visualstudio.com/) editor (if you are familiar with that).
 
 ```{important}
 The spin-up time for the Codespace can take a few minutes. There are various stages, the last of which is a "Post Create Command" that will install the `VirtualShip` software and its dependencies. Please be patient and wait for this to complete before proceeding. Otherwise you may encounter errors and distruptions in your Codespace.
 ```
 
-```{note}
-In case you are interested, this will spin up a 2-core virtual machine with 8 GB of RAM. Not loads, but enough to run VirtualShip simulations for your course!
+### Spinning up a more powerful Codespace
+
+In some cases, it will be necessary to use a more powerful Codespace to run your VirtualShip simulations. This is particularly the case if you plan to deploy **Argo Floats** in your simulations, which are more computationally intensive than other instrument types.
+
+To do so, when you click on the green 'Code' button in the VirtualShip Workspace repository, click on the three dots (`...`) and then `+ New with options`. From here, you should be brought to a new page where you can select the `Machine type`. From the drop-down on the right, select the `4 cores, 16 GB RAM` option. Then click `Create codespace`.
+
+```{warning}
+Because this more powerful machine has 4 cores (rather than 2 in the standard build), this will effectively halve your monthly free tier allowance of 60 compute hours to 30 hours. This should be sufficient for your course, but please be aware of this limitation and plan your usage accordingly (see [below](#compute-usage-restrictions) for more details).
+
+At the moment, this is a necessary trade-off in order to be able to run Argo Float simulations in the Codespace.
 ```
 
 ## 3) Using the VirtualShip simulation workspace
@@ -54,7 +70,9 @@ Deleting is not the same as stopping the Codespace. You can stop the Codespace w
 ### Compute usage restrictions
 
 ```{important}
-The amount of time you can use the Codespace is limited to approximately **60 hours per month** (per free GitHub account). This should be sufficient for your course, but it's good to be aware so that you can limit unnecessary usage. See also the GitHub docs for more information on [Codespaces usage limits](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces).
+The amount of time you can use the Codespace is limited to approximately **60 hours per month** (per free GitHub account), or 30 hours if using the more powerful machine (see [above](#spinning-up-a-more-powerful-codespace)). This should be sufficient for your course, but it's good to be aware so that you can limit unnecessary usage.
+
+See also the GitHub docs for more information on [Codespaces usage limits](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces).
 
 ```
 

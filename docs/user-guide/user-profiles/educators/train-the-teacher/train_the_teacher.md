@@ -94,7 +94,7 @@ There are broadly two ways to set up the `VirtualShip` software for teaching:
 Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
 ```{important}
-At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, 60 hours of usage (per student/GitHub account).
+At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, up to 60 hours of usage (per student/GitHub account).
 
 This will be sufficient for _most_ courses, but could be insufficient if your planned teaching activities are longer or more intensive. We continually monitor the optimum solution for distributing the VirtualShip software to whole classrooms in the most accessible way possible, and we are open to [feedback/advice](#feedback-support) on this.
 
@@ -133,6 +133,12 @@ Below we provide a set of instructions which can be distributed to students, for
 
 ../../../tutorials/codespaces_guide.md
 
+```
+
+```{important}
+**Argo Float** deployments in VirtualShip are the most computationally intensive of the instrument types. They move and sample in full lat/lon/depth space across time, thus requiring large datasets from Copernicus Marine to be streamed and processed. This is to the point that we have observed that Codespaces can run of RAM and crash when run on the standard Codespaces configuration (2 cores, 8GB RAM). Therefore, in the Simulation Workspace Guide above, we have recommended that _if students plan to deploy Argo Floats_, they should select an environment with 4 cores and 16GB RAM when creating their Codespace.
+
+This requires using a 4-core machine which will halve the monthly free tier allowance of 60 compute hours to 30 hours, but this should be sufficient for most courses. This is a compromise we feel we have to make for now in order to be able to deploy to the Codespaces, but hope that in the future we can offer a more performant solution for running Argo Floats in VirtualShip in lower resource environments.
 ```
 
 ```{tip}
