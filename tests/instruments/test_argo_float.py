@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import parcels
+import polars as pl
 import pydantic
 import pytest
 import xarray as xr
@@ -351,4 +352,34 @@ def test_handle_grounding():
     assert (
         "Shallow bathymetry warning: Argo float grounded at bathymetry during descent"
         in output
+    )
+
+
+def test_argo_no_initial_sampling(tmpdir):
+    """Test that ArgoFloat does not sample at initial deployment (on purpose for realism)."""
+    fieldset = create_fieldset()
+
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+    ]
+    expedition = create_dummy_expedition(sensors)
+
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+    argo_floats = [create_argo_float(wp) for wp in expedition.schedule.waypoints]
+    out_path = tmpdir.join("out_no_initial.parquet")
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
+
+    results = parcels.read_particlefile(out_path)
+
+    # check no sampling occured at initial deployment
+    deploy_time = fieldset.time_interval.left
+    initial = results.filter(pl.col("t") == deploy_time)
+    assert len(initial) == 1, "Should only be one entry for initial deployment time"
+    assert initial["temperature"].is_nan().all(), (
+        "ArgoFloat should not sample temperature at initial deployment"
+    )
+    assert initial["salinity"].is_nan().all(), (
+        "ArgoFloat should not sample salinity at initial deployment"
     )
