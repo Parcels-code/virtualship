@@ -255,7 +255,7 @@ class ArgoFloatInstrument(Instrument):
             **sensor_variables,
         }  # advection variables (U and V) are always required for argo float simulation; sensor variables come from config
         fetch_spec = FetchSpec(
-            latlon_buffer=12.5,  # [degrees]
+            latlon_buffer=9.0,  # [degrees]
             time_buffer=expedition.instruments_config.argo_float_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
         )
