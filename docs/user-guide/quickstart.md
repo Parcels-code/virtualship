@@ -134,7 +134,7 @@ You can make instrument selections for each waypoint in the same sub-panels as t
 Depending on the power of the machine that you are running VirtualShip on, this may cause the simulation to run out of RAM and crash. Therefore we recommend the following points:
 
 - Deploying Argo Floats at waypoints which are far apart in space and/or time will require more RAM than deploying them at waypoints which are closer together. **Consider deploying only from one waypoint or multiple which are reasonably close together**.
-- As a rule of thumb, we find that an Argo Float simulation with the default lifetime (3 months) and sensor configuration (i.e. `TEMPERATURE`, `SALINITY`) will require at least 8GB of available RAM to run successfully. Scaling these factors up or down will increase or decrease the RAM requirements accordingly.
+- As a rule of thumb, we find that an Argo Float simulation with the default lifetime (63 days) and sensor configuration (i.e. `TEMPERATURE`, `SALINITY`) will require at least 8GB of available RAM to run successfully. Scaling these factors up or down will increase or decrease the RAM requirements accordingly.
 
 This is a performance bottle-neck which we hope to address in future versions of VirtualShip, but for now it is likely necessary to adhere to these points if you wish to run Argo Floats.
 ```
