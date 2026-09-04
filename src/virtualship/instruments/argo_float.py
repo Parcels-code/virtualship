@@ -263,7 +263,6 @@ class ArgoFloatInstrument(Instrument):
             expedition,
             variables,
             add_bathymetry=True,
-            allow_time_extrapolation=False,
             verbose_progress=True,
             fetch_spec=fetch_spec,
             from_data=from_data,

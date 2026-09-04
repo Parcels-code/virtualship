@@ -100,7 +100,6 @@ class DrifterInstrument(Instrument):
             expedition,
             variables,
             add_bathymetry=False,
-            allow_time_extrapolation=False,
             verbose_progress=True,
             fetch_spec=fetch_spec,
             from_data=from_data,

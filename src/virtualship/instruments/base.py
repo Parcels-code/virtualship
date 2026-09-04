@@ -71,7 +71,6 @@ class Instrument(abc.ABC):
         expedition: Expedition,
         variables: dict,
         add_bathymetry: bool,
-        allow_time_extrapolation: bool,
         verbose_progress: bool,
         from_data: Path | None,
         fetch_spec: FetchSpec | None = None,
@@ -81,14 +80,7 @@ class Instrument(abc.ABC):
         self.from_data = from_data
 
         self.variables = collections.OrderedDict(variables)
-        self.dimensions = {
-            "lon": "longitude",
-            "lat": "latitude",
-            "time": "time",
-            "depth": "depth",
-        }  # same dimensions for all instruments
         self.add_bathymetry = add_bathymetry
-        self.allow_time_extrapolation = allow_time_extrapolation
         self.verbose_progress = verbose_progress
         self.fetch_spec = fetch_spec or FetchSpec()
         self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
@@ -113,7 +105,7 @@ class Instrument(abc.ABC):
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
 
     def close(self):
-        """Explicitly cleanup all tmp dirs/resources."""
+        """Explicitly cleanup all tmp dirs."""
         tmp_dirs = getattr(self, "_tmp_dirs", None)
         if not tmp_dirs:
             return
@@ -123,13 +115,6 @@ class Instrument(abc.ABC):
             except Exception:
                 pass  # i.e. best effort clean up
         self._tmp_dirs = []
-
-    def __del__(self):
-        """Safety net: ensure temporary directories are cleaned up even if close()/context manager usage was skipped."""
-        try:
-            self.close()
-        except Exception:
-            pass
 
     def __enter__(self):
         """Enter the context manager."""
@@ -177,10 +162,8 @@ class Instrument(abc.ABC):
     @abc.abstractmethod
     def simulate(
         self,
-        data_dir: Path,
         measurements: list,
         out_path: str | Path,
-        spinner: yaspin.core.Yaspin | None = None,
     ) -> None:
         """Simulate instrument measurements."""
 
@@ -209,9 +192,6 @@ class Instrument(abc.ABC):
 
         Includes an intermediate step of writing to tmp files, as per https://github.com/Parcels-code/parcels-benchmarks/pull/49
         TODO: the need for this step may be removed as Parcels x copernicusmarine integration improves, tracked in https://github.com/Parcels-code/Parcels/issues/2756 and xref'd in VirtualShip #357 (https://github.com/Parcels-code/virtualship/issues/357)
-
-        # TODO: N.B. adding (+) fields to fieldsets might not be intended behaviour for using Parcels (?)
-        #! However, at present it's still needed to build the fieldset one-by-one to avoid large file dumps/memory when using tmp files and streaming data
         """
         fieldsets_list = []
         keys = list(self.variables.keys())
@@ -321,8 +301,6 @@ class Instrument(abc.ABC):
                 ds["depth"] = -ds["depth"]
                 ds = ds.reindex(depth=ds["depth"][::-1])
                 ds["depth"].attrs["positive"] = "up"
-            elif ds["depth"].attrs.get("positive") != "up":
-                pass
 
         except Exception as e:
             raise ValueError(

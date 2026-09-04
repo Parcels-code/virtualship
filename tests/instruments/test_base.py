@@ -122,7 +122,6 @@ def test_load_input_data():
         expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )
@@ -162,7 +161,6 @@ def test_gets_uv_vectorfield_when_u_and_v_present():
         expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"U": "uo", "V": "vo"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )
@@ -199,7 +197,6 @@ def test_execute_calls_simulate(monkeypatch):
         expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=True,
         from_data=None,
     )
@@ -220,7 +217,6 @@ def test_fetch_spec_applied_to_instrument():
         expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         fetch_spec=fetch_spec,
         from_data=None,
@@ -242,7 +238,6 @@ def test_via_tmp_ds_roundtrip():
         expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     ) as dummy:
@@ -272,7 +267,6 @@ def test_instrument_context_manager():
         expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     ) as dummy:
@@ -298,7 +292,6 @@ def test_generate_fieldset_combines_fields():
         expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
         variables={"A": "a", "B": "b"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )
@@ -330,7 +323,6 @@ def test_load_input_data_error(monkeypatch):
         expedition=MagicMock(schedule=mock_schedule),
         variables={"A": "a"},
         add_bathymetry=False,
-        allow_time_extrapolation=False,
         verbose_progress=False,
         from_data=None,
     )

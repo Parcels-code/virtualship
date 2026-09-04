@@ -61,7 +61,6 @@ class Underwater_STInstrument(UnderwayInstrument):
             expedition,
             variables,
             add_bathymetry=False,
-            allow_time_extrapolation=True,
             verbose_progress=False,
             fetch_spec=FetchSpec(),
             from_data=from_data,

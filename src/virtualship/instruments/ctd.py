@@ -147,7 +147,6 @@ class CTDInstrument(Instrument):
             expedition,
             variables,
             add_bathymetry=True,
-            allow_time_extrapolation=True,
             verbose_progress=False,
             fetch_spec=FetchSpec(),
             from_data=from_data,
