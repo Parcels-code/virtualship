@@ -55,7 +55,7 @@ jobs:
         pixi-environment: ["test-latest"]
         runs-on: [ubuntu-latest, windows-latest, macos-14]
         include:
-          - pixi-environment: "test-py310"
+          - pixi-environment: "test-py311"
             runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0

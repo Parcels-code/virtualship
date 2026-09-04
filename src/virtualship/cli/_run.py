@@ -1,5 +1,3 @@
-"""do_expedition function."""
-
 import logging
 import os
 import shutil
@@ -35,11 +33,9 @@ from virtualship.utils import (
     get_instrument_class,
 )
 
-# parcels logger (suppress INFO messages to prevent log being flooded)
-external_logger = logging.getLogger("parcels.tools.loggers")
-external_logger.setLevel(logging.WARNING)
-
-# copernicusmarine logger (suppress INFO messages to prevent log being flooded)
+# suppress INFO messages from copernicusmarine and parcels loggers; prevent log flooding
+parcels_logger = logging.getLogger("parcels._logger")
+parcels_logger.setLevel(logging.WARNING)
 logging.getLogger("copernicusmarine").setLevel("ERROR")
 
 
@@ -195,17 +191,17 @@ def _run(
             attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
             measurements = getattr(schedule_results.measurements_to_simulate, attr)
 
-            # initialise instrument
-            instrument = instrument_class(
+            # initialise instrument, execute simulation within context manager
+            with instrument_class(
                 expedition=expedition,
                 from_data=Path(from_data) if from_data is not None else None,
-            )
-
-            # execute simulation
-            instrument.execute(
-                measurements=measurements,
-                out_path=expedition_dir.joinpath(RESULTS, f"{itype.name.lower()}.zarr"),
-            )
+            ) as instrument:
+                instrument.execute(
+                    measurements=measurements,
+                    out_path=expedition_dir.joinpath(
+                        RESULTS, f"{itype.name.lower()}.parquet"
+                    ),
+                )
         except Exception as e:
             # clean up if unexpected error occurs
             if os.path.exists(problems_dir):

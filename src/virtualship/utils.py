@@ -4,6 +4,7 @@ import glob
 import hashlib
 import os
 import re
+import sys
 import warnings
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -13,9 +14,10 @@ from typing import TYPE_CHECKING, Literal, TextIO
 
 import copernicusmarine
 import numpy as np
+import parcels
 import pyproj
 import xarray as xr
-from parcels import FieldSet, Variable
+from parcels import FieldSet, Particle, Variable
 
 from virtualship.errors import CopernicusCatalogueError
 
@@ -340,29 +342,6 @@ def _get_expedition(expedition_dir: Path) -> Expedition:
         ) from e
 
 
-def add_dummy_UV(fieldset: FieldSet):
-    """Add a dummy U and V field to a FieldSet to satisfy parcels FieldSet completeness checks."""
-    if "U" not in fieldset.__dict__.keys():
-        for uv_var in ["U", "V"]:
-            dummy_field = getattr(
-                FieldSet.from_data(
-                    {"U": 0, "V": 0}, {"lon": 0, "lat": 0}, mesh="spherical"
-                ),
-                uv_var,
-            )
-            fieldset.add_field(dummy_field)
-            try:
-                fieldset.time_origin = (
-                    fieldset.T.grid.time_origin
-                    if "T" in fieldset.__dict__.keys()
-                    else fieldset.o2.grid.time_origin
-                )
-            except Exception:
-                raise ValueError(
-                    "Cannot determine time_origin for dummy UV fields. Assert T or o2 exists in fieldset."
-                ) from None
-
-
 def _select_product_id(
     physical: bool,
     schedule_start,
@@ -448,42 +427,35 @@ def _start_end_in_product_timerange(
     )
 
 
-def _get_bathy_data(
-    min_lat: float,
-    max_lat: float,
-    min_lon: float,
-    max_lon: float,
-    from_data: Path | None = None,
-) -> FieldSet:
+def _get_bathy_data(from_data: Path | None = None) -> FieldSet:
     """Bathymetry data from local or 'streamed' directly from Copernicus Marine."""
+    VAR = "deptho"
     if from_data is not None:  # load from local data
-        var = "deptho"
         bathy_dir = from_data.joinpath("bathymetry")
         try:
-            filename, _ = _find_nc_file_with_variable(bathy_dir, var)
+            filename, _ = _find_nc_file_with_variable(bathy_dir, VAR)
         except Exception as e:
             raise RuntimeError(
-                f"\n\n❗️ Could not find bathymetry variable '{var}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
+                f"\n\n❗️ Could not find bathymetry variable '{VAR}' in data directory '{from_data}/bathymetry/'.\n\n❗️ Is the pre-downloaded data directory structure compliant with VirtualShip expectations?\n\n❗️ See the docs for more information on expectations: https://virtualship.readthedocs.io/en/latest/user-guide/index.html#documentation\n"
             ) from e
         ds_bathymetry = xr.open_dataset(bathy_dir.joinpath(filename))
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
-        return FieldSet.from_xarray_dataset(
-            ds_bathymetry, bathymetry_variables, bathymetry_dimensions
-        )
 
     else:  # stream via Copernicus Marine Service
         ds_bathymetry = copernicusmarine.open_dataset(
             dataset_id=BATHYMETRY_ID,
-            variables=["deptho"],
+            variables=[VAR],
             coordinates_selection_method="outside",
         )
-        bathymetry_variables = {"bathymetry": "deptho"}
-        bathymetry_dimensions = {"lon": "longitude", "lat": "latitude"}
 
-    return FieldSet.from_xarray_dataset(
-        ds_bathymetry, bathymetry_variables, bathymetry_dimensions
+    # give a depth dimension and make bathymetry negative
+    ds_bathymetry = ds_bathymetry.expand_dims({"depth": 1})
+    ds_bathymetry[VAR] = -ds_bathymetry[VAR]
+
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(
+        fields={"bathymetry": ds_bathymetry[VAR]}
     )
+
+    return FieldSet.from_sgrid_conventions(ds_fset)
 
 
 def expedition_cost(schedule_results: ScheduleOk, time_past: timedelta) -> float:
@@ -513,7 +485,7 @@ def _find_nc_file_with_variable(data_dir: Path, var: str) -> str | None:
     """Search for a .nc file in the given directory containing the specified variable."""
     for nc_file in data_dir.glob("*.nc"):
         try:
-            with xr.open_dataset(nc_file, chunks={}) as ds:
+            with xr.open_dataset(nc_file) as ds:
                 matched_vars = [v for v in ds.variables if var in v]
                 if matched_vars:
                     return nc_file.name, matched_vars[0]
@@ -589,6 +561,22 @@ def _find_files_in_timerange(
     return [fname for _, fname in files_with_dates]
 
 
+def _compute_max_depths(measurements, fieldset) -> list[float]:
+    """Compute the effective max depth for each measurement, capped by bathymetry."""
+    return [
+        max(
+            m.max_depth,
+            fieldset.bathymetry.eval(
+                z=0,
+                y=m.spacetime.location.lat,
+                x=m.spacetime.location.lon,
+                t=np.float64(0),
+            )[0],
+        )
+        for m in measurements
+    ]
+
+
 def _random_noise(scale: float = 0.05, limit: float = 0.1) -> float:
     """Generate a small random noise value for drifter seeding locations."""
     value = np.random.normal(loc=0.0, scale=scale)
@@ -602,6 +590,24 @@ def _get_waypoint_latlons(waypoints):
         strict=True,
     )
     return wp_lats, wp_lons
+
+
+def _get_instrument_relevant_waypoints(waypoints, instrument_type) -> list:
+    """Subset of waypoints that are relevant to this `instrument_type`."""
+    if instrument_type.is_underway:
+        return list(waypoints)
+
+    relevant = []
+    for wp in waypoints:
+        wp_instruments = (
+            wp.instrument
+            if isinstance(wp.instrument, list)
+            else ([wp.instrument] if wp.instrument else [])
+        )
+        if instrument_type in wp_instruments:
+            relevant.append(wp)
+
+    return relevant or list(waypoints)
 
 
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
@@ -677,14 +683,13 @@ def _make_hash(s: str, length: int) -> str:
 def build_particle_class_from_sensors(
     sensors: list[SensorConfig],
     nonsensor_variables: list[Variable],
-    particle_class: type,  # generic type annotation needed for v3 particle class behaviour # TODO: Update with Parcels v4
 ) -> type:
-    """Build a Particle class (JITParticle or ScipyParticle) from nonsensor variables and active sensors."""
+    """Build a Particle class from nonsensor variables and active sensors."""
     sensor_variables = [
         variable for sc in sensors if sc.enabled for variable in sc.meta.particle_vars
     ]
 
-    return particle_class.add_variables(nonsensor_variables + sensor_variables)
+    return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
 # =====================================================
@@ -708,3 +713,50 @@ ship_spinner = Spinner(
         "🚢     ",
     ],
 )
+
+
+class _SpinnerAutoStop:
+    """Wrapper and context manager that stops a yaspin spinner on first print (e.g., Parcels progress bar)."""
+
+    def __init__(self, spinner):
+        self._spinner = spinner
+        self._original_stdout = None
+        self._stopped = False
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = self
+        return self
+
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+        sys.stdout = self._original_stdout
+        self._stop_spinner()
+
+    def _stop_spinner(self):
+        if not self._stopped:
+            self._stopped = True
+            if self._spinner and self._original_stdout:
+                self._spinner.stop()
+                # persist the spinner text to the original stdout (before starting progress bar output)
+                self._original_stdout.write(f"{self._spinner.text}\n")
+                self._original_stdout.flush()
+
+    def write(self, s: str):
+        if s and not self._stopped:
+            self._stop_spinner()
+        return self._original_stdout.write(s)
+
+    def flush(self):
+        return self._original_stdout.flush()
+
+    def isatty(self) -> bool:
+        """Restore unicode block rendering (█████ instead of ###) in parcels progress bar."""
+        return getattr(self._original_stdout, "isatty", lambda: False)()
+
+    def fileno(self) -> int:
+        """Restore full terminal width detection for parcels progress bar sizing."""
+        return self._original_stdout.fileno()
+
+    @property
+    def encoding(self) -> str:
+        return getattr(self._original_stdout, "encoding", "utf-8")
