@@ -44,7 +44,7 @@ from virtualship.models import (
     XBTConfig,
 )
 from virtualship.models.expedition import Port
-from virtualship.utils import EXPEDITION, _get_waypoint_latlons
+from virtualship.utils import EXPEDITION
 
 UNEXPECTED_MSG_ONSAVE = (
     "Please ensure that:\n"
@@ -566,16 +566,20 @@ class ExpeditionEditor(Static):
                 int(self.query_one(f"#wp{i}_minute").value),
                 0,
             )
-            wp.instrument = []
-            for instrument in [inst for inst in InstrumentType if not inst.is_underway]:
-                switch_on = self.query_one(f"#wp{i}_{instrument.value}").value
-                if instrument.value == "DRIFTER" and switch_on:
-                    count_str = self.query_one(f"#wp{i}_drifter_count").value
-                    count = int(count_str)
-                    assert count > 0
-                    wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                elif switch_on:
-                    wp.instrument.append(instrument)
+
+            if not isinstance(wp, Port):
+                wp.instrument = []
+                for instrument in [
+                    inst for inst in InstrumentType if not inst.is_underway
+                ]:
+                    switch_on = self.query_one(f"#wp{i}_{instrument.value}").value
+                    if instrument.value == "DRIFTER" and switch_on:
+                        count_str = self.query_one(f"#wp{i}_drifter_count").value
+                        count = int(count_str)
+                        assert count > 0
+                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
+                    elif switch_on:
+                        wp.instrument.append(instrument)
 
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:
@@ -616,7 +620,6 @@ class ExpeditionEditor(Static):
     def add_waypoint(self) -> None:
         """Add a new waypoint to the schedule (N.B. ports always remain). Copies time from last waypoint if possible (Lat/lon and instruments blank)."""
         try:
-            #! TODO: add check that any schedule ingested by Plan has ports!
             wps = self.expedition.schedule.waypoints
             if wps:
                 non_port_wps = [wp for wp in wps if not isinstance(wp, Port)]
@@ -916,7 +919,7 @@ class WaypointWidget(Static):
                 )
 
                 if not isinstance(self.waypoint, Port):
-                    yield from self._yield_instrument_controls()
+                    yield from self._yield_instrument_controls(self.index)
                     yield Horizontal(
                         Button(
                             "Remove Waypoint",
@@ -1084,6 +1087,7 @@ class PlanScreen(Screen):
         """Update the waypoints models with current UI values from the live UI inputs."""
         expedition_editor = self.query_one(ExpeditionEditor)
         errors = []
+
         for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
             try:
                 wp.location = Location(
@@ -1098,24 +1102,29 @@ class PlanScreen(Screen):
                     int(expedition_editor.query_one(f"#wp{i}_minute").value),
                     0,
                 )
-                wp.instrument = []
-                for instrument in [
-                    inst for inst in InstrumentType if not inst.is_underway
-                ]:
-                    switch_on = expedition_editor.query_one(
-                        f"#wp{i}_{instrument.value}", Switch
-                    ).value
-                    if instrument.value == "DRIFTER" and switch_on:
-                        count_str = expedition_editor.query_one(
-                            f"#wp{i}_drifter_count", Input
+
+                if not isinstance(wp, Port):
+                    wp.instrument = []
+
+                    for instrument in [
+                        inst for inst in InstrumentType if not inst.is_underway
+                    ]:
+                        switch_on = expedition_editor.query_one(
+                            f"#wp{i}_{instrument.value}", Switch
                         ).value
-                        count = int(count_str)
-                        assert count > 0
-                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                    elif switch_on:
-                        wp.instrument.append(instrument)
+                        if instrument.value == "DRIFTER" and switch_on:
+                            count_str = expedition_editor.query_one(
+                                f"#wp{i}_drifter_count", Input
+                            ).value
+                            count = int(count_str)
+                            assert count > 0
+                            wp.instrument.extend([InstrumentType.DRIFTER] * count)
+                        elif switch_on:
+                            wp.instrument.append(instrument)
+
             except Exception as e:
                 errors.append(f"Waypoint {i + 1}: {e}")
+
         if errors:
             log_exception_to_file(
                 Exception("\n".join(errors)),
@@ -1142,11 +1151,6 @@ class PlanScreen(Screen):
             self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
 
             # verify schedule
-            _wp_lats, _wp_lons = (
-                _get_waypoint_latlons(  # TODO: Remove these since they aren't used?
-                    expedition_editor.expedition.schedule.waypoints
-                )
-            )
             instruments_config = expedition_editor.expedition.instruments_config
 
             expedition_editor.expedition.schedule.verify(
