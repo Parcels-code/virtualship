@@ -761,6 +761,15 @@ class ExpeditionEditor(Static):
             deep = self.query_one("#adcp_deep", Switch)
             deep.value = False
 
+    @on(Button.Pressed, "#info_button")
+    def info_pressed(self) -> None:
+        self.notify(
+            "[b]SeaSeven[/b]:\nShallow ADCP profiler capable of providing information to a depth of 150 m every 4 meters (300kHz)"
+            "\n\n[b]OceanObserver[/b]:\nLong-range ADCP profiler capable of providing ~ 1000m of depth range every 24 meters (38kHz)",
+            severity="warning",
+            timeout=20,
+        )
+
 
 class WaypointWidget(Static):
     def __init__(self, waypoint: Waypoint, index: int):
