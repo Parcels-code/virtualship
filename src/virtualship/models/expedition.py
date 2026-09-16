@@ -130,6 +130,23 @@ class Schedule(pydantic.BaseModel):
             raise ScheduleError("At least one non-port waypoint must be provided.")
         return value
 
+    @pydantic.field_validator("waypoints", mode="after")
+    @staticmethod
+    def _validate_waypoints_ports(
+        value: list[Port | Waypoint],
+    ) -> list[Port | Waypoint]:
+        """Warn if Port waypoints are half-complete: they will still be ignored."""
+        first_incomplete = isinstance(value[0], Port) and not value[0].is_in_use
+        last_incomplete = isinstance(value[-1], Port) and not value[-1].is_in_use
+
+        if first_incomplete or last_incomplete:
+            print(
+                "\nWARNING: Departure and/or arrival port is incomplete in the schedule "
+                "(missing time, location or both). The simulation will continue but the port will be ignored.\n"
+            )
+
+        return value
+
     def verify(
         self,
         ship_speed: float,
@@ -254,13 +271,13 @@ class Schedule(pydantic.BaseModel):
     def departure_port_in_use(self) -> bool:
         """Check if the departure port is in use (i.e., has a specified time and location), or is placeholder."""
         p = self.waypoints[0]
-        return all(v is not None for v in (p.time, p.location.lat, p.location.lon))
+        return isinstance(p, Port) and p.is_in_use
 
     @property
     def arrival_port_in_use(self) -> bool:
         """Check if the arrival port is in use (i.e., has a specified time and location), or is placeholder."""
         p = self.waypoints[-1]
-        return all(v is not None for v in (p.time, p.location.lat, p.location.lon))
+        return isinstance(p, Port) and p.is_in_use
 
 
 class Port(pydantic.BaseModel):
@@ -270,6 +287,16 @@ class Port(pydantic.BaseModel):
     time: datetime | None = None
 
     model_config = pydantic.ConfigDict(extra="forbid")
+
+    @property
+    def is_in_use(self) -> bool:
+        """Return True if the port has both a valid time and location (lat/lon)."""
+        return (
+            self.time is not None
+            and self.location is not None
+            and self.location.lat is not None
+            and self.location.lon is not None
+        )
 
 
 class Waypoint(pydantic.BaseModel):
