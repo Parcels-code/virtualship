@@ -102,7 +102,10 @@ BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 # =====================================================
 
 
-INCOMPLETE_PORT_MSG = "WARNING: Departure and/or arrival port is incomplete in the schedule (missing time, location or both). The simulation will continue but the ports will be ignored."
+INCOMPLETE_PORT_MSG = (
+    "WARNING: Departure and/or arrival port is/are incomplete in the schedule (missing time, location, or both). "
+    "The simulation will continue but incomplete ports will be ignored."
+)
 
 
 # =====================================================
