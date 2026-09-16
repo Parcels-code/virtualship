@@ -135,14 +135,27 @@ Below we provide a set of instructions which can be distributed to students, for
 
 ```
 
-```{important}
-**Argo Float** deployments in VirtualShip are the most computationally intensive of the instrument types. They move and sample in full lat/lon/depth space across time, thus requiring large datasets from Copernicus Marine to be streamed and processed. This is to the point that we have observed that Codespaces can run of RAM and crash when run on the standard Codespaces configuration (2 cores, 8GB RAM). Therefore, in the Simulation Workspace Guide above, we have recommended that _if students plan to deploy Argo Floats_, they should select an environment with 4 cores and 16GB RAM when creating their Codespace.
-
-This requires using a 4-core machine which will halve the monthly free tier allowance of 60 compute hours to 30 hours, but this should be sufficient for most courses. This is a compromise we feel we have to make for now in order to be able to deploy to the Codespaces, but hope that in the future we can offer a more performant solution for running Argo Floats in VirtualShip in lower resource environments.
-```
-
 ```{tip}
 Please don't hesitate to [get in touch](#feedback-support) if you have any problems with this approach or require additional support.
+```
+
+##### A note on performance
+
+```{important}
+
+**The Codespaces option is beneficial for enabling more users to access the software, but it is not without its limitations.**
+
+Being a free service, the environments are limited in terms of compute resources and monthly usage. This is particularly relevant for instruments that move and/or sample in full lat/lon/depth space across time, such as Argo Floats and CTDs. These require large datasets from Copernicus Marine to be streamed and processed, which can be computationally intensive. This is to the point that we have observed that Codespaces can run out of RAM and crash when run on the standard configuration (2 cores, 8GB RAM) with an especially intensive expedition (e.g. many waypoints and multiple Argo Float/CTD deployments spread far apart).
+
+For this reason, we highlight/recommend the following when using Codespaces for VirtualShip:
+
+- Deploying Argo Floats or CTDs at waypoints which are far apart in space and/or time will require more RAM than deploying them at waypoints which are closer together.
+  - If experiencing issues with the Codespaces environment terminating during simualtion, consider reducing the number of waypoints and/or the distance between waypoints.
+  - Note, you can likely keep less intensive instruments (e.g. Drifters, ADCP) running at more distant waypoints. The software will recognise that CTDs/Argo Floats are not being deployed at these waypoints and will not inflate the data retrieval for these instruments uncessarily in this case.
+- The fallback option is to use select an environment with 4 cores and 16GB RAM when launching the Codespace. Instructions for doing so are provided in the Simulation Workspace Guide [above](#option-2-pre-configured-environment-cloud-based).
+  - This will immediately allow more intensive simulations and should be considered if the standard configuration is insufficient.
+  - However, please note, using a 4-core machine, instead of the standard 2-core, will halve the monthly free tier allowance of 60 real-life hours to 30 hours. Nonetheless, this should be sufficient for most courses.
+
 ```
 
 ##### Collaboration within groups
