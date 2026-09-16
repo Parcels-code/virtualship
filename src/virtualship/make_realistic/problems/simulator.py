@@ -89,9 +89,12 @@ class ProblemSimulator:
 
         If only one waypoint, return just a pre-departure problem.
 
-        Map each selected problem to a random waypoint (or 0th [i.e. departure port] if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
+        Map each selected problem to a random waypoint (or 0th [i.e. departure port] if pre-departure).
         """
-        # handle early-exit single waypoint case (pre-departure only)
+        if difficulty_level == "easy":
+            return None
+
+        # # if only one waypoint, return just a pre-departure problem
         if len(self.waypoints) < 2:
             pre_departure = [p for p in GENERAL_PROBLEMS if p.pre_departure]
             return {
@@ -112,9 +115,6 @@ class ProblemSimulator:
             max_available=len(GENERAL_PROBLEMS) + len(valid_instruments),
         )
 
-        if num_problems <= 0:
-            return None
-
         selected = self._sample_problems(
             num_problems, valid_instruments, len(instruments_in_expedition)
         )
@@ -131,18 +131,20 @@ class ProblemSimulator:
         max_available: int,
     ) -> int:
         """Determine problem count based on difficulty setting."""
-        if difficulty_level == "easy":
-            return 0
+        assert difficulty_level != "easy", (
+            "Easy difficulty level should not call for a problem count."
+        )
+
         if difficulty_level == "medium":
             return random.randint(1, 2)
-        if difficulty_level == "hard":
+
+        elif difficulty_level == "hard":
             extra = (
                 (expedition_days // PROBLEM_WEIGHTS["every_ndays"])
                 + (num_waypoints // PROBLEM_WEIGHTS["every_nwaypoints"])
                 + (num_instruments // PROBLEM_WEIGHTS["every_ninstruments"])
             )
             return min(1 + extra, max_available)
-        return 0
 
     def _sample_problems(
         self,

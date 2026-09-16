@@ -2,6 +2,8 @@ import json
 import random
 from datetime import datetime, timedelta
 
+import numpy as np
+
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
     GENERAL_PROBLEMS,
@@ -84,14 +86,16 @@ def test_no_instruments_no_instruments_problems(tmp_path):
 
 
 def test_select_problems_difficulty_level_zero():
-    expedition = _make_simple_expedition(num_waypoints=2)
-    instruments_in_expedition = expedition.get_instruments()
-    simulator = ProblemSimulator(expedition, ".")
+    """Selecting difficulty level 'easy' should return None (no problems selected), no matter how many waypoints."""
+    for n_wps in np.arange(1, 5):  # for a range of waypoint counts
+        expedition = _make_simple_expedition(num_waypoints=n_wps)
+        instruments_in_expedition = expedition.get_instruments()
+        simulator = ProblemSimulator(expedition, ".")
 
-    problems = simulator.select_problems(
-        instruments_in_expedition, difficulty_level="easy"
-    )
-    assert problems is None
+        problems = simulator.select_problems(
+            instruments_in_expedition, difficulty_level="easy"
+        )
+        assert problems is None
 
 
 def test_cache_and_load_selected_problems_roundtrip(tmp_path):
