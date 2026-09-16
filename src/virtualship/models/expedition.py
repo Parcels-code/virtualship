@@ -226,10 +226,14 @@ class Schedule(pydantic.BaseModel):
                     if not isinstance(wp_next, Port)
                     else "the final port of arrival"
                 )
+
+                # TODO: add messaging of stationkeeping time to the error message, e.g. how much each instrument is taking...
                 raise ScheduleError(
                     f"Waypoint planning is not valid: would arrive too late at {affected}. "
                     f"Location: {wp_next.location} Time: {wp_next.time}. "
                     f"Currently projected to arrive at: {arrival_time}."
+                    "\n\nHint: adding instruments may increase the amount of time spent stationary at a waypoints. "
+                    "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
                 )
             else:
                 time = wp_next.time
