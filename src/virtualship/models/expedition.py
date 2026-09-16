@@ -115,8 +115,8 @@ class Schedule(pydantic.BaseModel):
     """Schedule of the virtual ship."""
 
     waypoints: list[Port | Waypoint]
-
     model_config = pydantic.ConfigDict(extra="forbid")
+    _verified: bool = False  # internal flag to indicate if the schedule has been verified, so that a schedule can be simulated safely elsewhere in codebase
 
     @pydantic.field_validator("waypoints", mode="after")
     @classmethod
@@ -194,14 +194,13 @@ class Schedule(pydantic.BaseModel):
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
+        time = (
+            self.waypoints[0].time
+            if self.departure_port_in_use
+            else self.waypoints[1].time
+        )
 
-        dp_in_use = self.departure_port_in_use
-        ap_in_use = self.arrival_port_in_use
-        time = self.waypoints[0].time if dp_in_use else self.waypoints[1].time
-
-        start_slice = 0 if dp_in_use else 1
-        end_slice = len(self.waypoints) if ap_in_use else len(self.waypoints) - 1
-        wps_in_use = self.waypoints[start_slice:end_slice]
+        wps_in_use = self._get_wps_in_use()
 
         for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
             stationkeeping_time = _calc_wp_stationkeeping_time(
@@ -238,7 +237,18 @@ class Schedule(pydantic.BaseModel):
             else:
                 time = wp_next.time
 
+        # finally, mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
+        self._verified = True
+
         print("... All good to go!")
+
+    def _get_wps_in_use(self) -> list[Port | Waypoint]:
+        """Return waypoints that are in use (i.e., have a specified time and location), i.e. excluding placeholder departure/arrival ports."""
+        start_slice = 0 if self.departure_port_in_use else 1
+        end_slice = (
+            len(self.waypoints) if self.arrival_port_in_use else len(self.waypoints) - 1
+        )
+        return self.waypoints[start_slice:end_slice]
 
     @property
     def departure_port_in_use(self) -> bool:

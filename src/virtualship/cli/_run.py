@@ -307,10 +307,10 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):
     """Calculate the expedition cost, write it to a file, and print summary."""
-    assert expedition.schedule.waypoints[0].time is not None, (
-        "First waypoint has no time. This should not be possible as it should have been verified before."
-    )
-    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
+    wps_in_use = expedition.schedule._get_wps_in_use()
+
+    assert wps_in_use[0].time is not None, "First waypoint has no time."
+    time_past = schedule_results.time - wps_in_use[0].time
     cost = expedition_cost(schedule_results, time_past)
     with open(expedition_dir.joinpath(RESULTS, "cost.txt"), "w") as file:
         file.writelines(f"cost: {cost} US$")

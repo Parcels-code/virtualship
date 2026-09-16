@@ -102,8 +102,13 @@ class _ScheduleSimulator:
         self._projection = projection
         self._expedition = expedition
 
-        self._time = expedition.schedule.waypoints[0].time
-        self._location = expedition.schedule.waypoints[0].location
+        assert self._expedition.schedule._verified, (
+            "Schedule must be verified before simulation."
+        )
+
+        self._wps_in_use = self._expedition.schedule._get_wps_in_use()  # remove any placeholder departure/arrival ports which are ignored in simulation
+        self._time = self._wps_in_use[0].time
+        self._location = self._wps_in_use[0].location
 
         self._measurements_to_simulate = MeasurementsToSimulate()
 
@@ -113,7 +118,7 @@ class _ScheduleSimulator:
     def simulate(self) -> ScheduleOk | ScheduleProblem:
         # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here (i.e. #236)...
 
-        for waypoint in self._expedition.schedule.waypoints:
+        for waypoint in self._wps_in_use:
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 

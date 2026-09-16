@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pyproj
+import pytest
 
 from virtualship.expedition.simulate_schedule import (
     ScheduleOk,
@@ -122,3 +123,25 @@ def test_ship_path_inside_domain() -> None:
     assert np.isclose(adcp_min_lat, wp1.lat, atol=0.1)
     assert np.isclose(adcp_max_lon, wp4.lon, atol=0.1)
     assert np.isclose(adcp_min_lon, wp3.lon, atol=0.1)
+
+
+def test_does_not_simulate_unverified():
+    """Test that simulating an unverified schedule raises an error."""
+    base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+
+    projection = pyproj.Geod(ellps="WGS84")
+    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition.ship_config.ship_speed_knots = 10.0
+    expedition.schedule = Schedule(
+        waypoints=[
+            Waypoint(location=Location(0, 0), time=base_time),
+            Waypoint(location=Location(0.01, 0), time=base_time + timedelta(days=1)),
+        ]
+    )
+
+    expedition.schedule._verified = False
+
+    with pytest.raises(
+        AssertionError, match=r"Schedule must be verified before simulation."
+    ):
+        simulate_schedule(projection, expedition)

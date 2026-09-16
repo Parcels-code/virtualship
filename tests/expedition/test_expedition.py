@@ -77,6 +77,10 @@ def test_verify_schedule() -> None:
 
     schedule.verify(ship_speed_knots, instruments_config, ignore_land_test=True)
 
+    assert schedule._verified, (
+        "Schedule should be marked as verified after successful verification."
+    )
+
 
 def test_get_instruments() -> None:
     get_expedition = _get_expedition(expedition_dir)
@@ -445,3 +449,25 @@ def test_waypoint_yaml_line() -> None:
         f"got {len(lines)}. The Waypoint field order or teminology may have changed. "
         "Note this can have implications for the placement of waypoint number comments in Expedition.to_yaml()."
     )
+
+
+def test_wps_in_use():
+    """Test that _get_wps_in_use() correctly returns waypoints excluding placeholder ports."""
+    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+    schedule = Schedule(
+        waypoints=[
+            Port(location=Location(None, None), time=None),
+            Waypoint(location=Location(1, 1), time=base_time + timedelta(hours=1)),
+            Waypoint(location=Location(2, 2), time=base_time + timedelta(hours=2)),
+            Port(location=Location(None, None), time=None),
+        ]
+    )
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=_get_expedition(expedition_dir).instruments_config,
+        ship_config=_get_expedition(expedition_dir).ship_config,
+    )
+
+    wps_in_use = expedition.schedule._get_wps_in_use()
+    assert len(wps_in_use) == 2  # placeholder waypoints should be removed
+    assert all(isinstance(wp, Waypoint) for wp in wps_in_use)
