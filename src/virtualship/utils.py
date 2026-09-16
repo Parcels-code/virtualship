@@ -97,6 +97,13 @@ COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv
 
 BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
+# =====================================================
+# SECTION: warnings and messages
+# =====================================================
+
+
+INCOMPLETE_PORT_MSG = "WARNING: Departure and/or arrival port is incomplete in the schedule (missing time, location or both). The simulation will continue but the ports will be ignored."
+
 
 # =====================================================
 # SECTION: decorators / dynamic registries and mapping
