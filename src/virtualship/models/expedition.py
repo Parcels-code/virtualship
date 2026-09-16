@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import numpy as np
 import pydantic
@@ -14,6 +14,7 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    INCOMPLETE_PORT_MSG,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
@@ -121,7 +122,7 @@ class Schedule(pydantic.BaseModel):
     @pydantic.field_validator("waypoints", mode="after")
     @classmethod
     def _validate_waypoints(cls, value: list[Port | Waypoint]) -> list[Port | Waypoint]:
-        """Ensure First and last waypoints are Ports, schedule contains non-port waypoints, and warn on incomplete ports."""
+        """Ensure first and last waypoints are Port objects, schedule contains non-port waypoints, and warn on incomplete ports."""
         if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
             raise ScheduleError(
                 "First and last waypoints must be Ports (of arrival/departure). "
@@ -132,12 +133,19 @@ class Schedule(pydantic.BaseModel):
             raise ScheduleError("At least one non-port waypoint must be provided.")
 
         if not value[0].is_in_use or not value[-1].is_in_use:
-            print(
-                "\nWARNING: Departure and/or arrival port is incomplete in the schedule "
-                "(missing time, location or both). The simulation will continue but the port will be ignored.\n"
-            )
+            print(f"\n{INCOMPLETE_PORT_MSG}")
 
         return value
+
+    @property
+    def departure_port(self) -> Port:
+        """Departure port (always the first waypoint)."""
+        return cast(Port, self.waypoints[0])
+
+    @property
+    def arrival_port(self) -> Port:
+        """Arrival port (always the last waypoint)."""
+        return cast(Port, self.waypoints[-1])
 
     def verify(
         self,
@@ -151,8 +159,8 @@ class Schedule(pydantic.BaseModel):
         print("\nVerifying route... ")
 
         # is the departure port in use or a placeholder (i.e. all None)?
-        check_idx = 0 if self.departure_port_in_use else 1
-        wp_str = "Departure port" if self.departure_port_in_use else "Waypoint 1"
+        check_idx = 0 if self.departure_port.is_in_use else 1
+        wp_str = "Departure port" if self.departure_port.is_in_use else "Waypoint 1"
 
         if self.waypoints[check_idx].time is None:
             raise ScheduleError(f"{wp_str} must have a specified time.")
@@ -205,7 +213,7 @@ class Schedule(pydantic.BaseModel):
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = (
             self.waypoints[0].time
-            if self.departure_port_in_use
+            if self.departure_port.is_in_use
             else self.waypoints[1].time
         )
 
@@ -253,23 +261,13 @@ class Schedule(pydantic.BaseModel):
 
     def _get_wps_in_use(self) -> list[Port | Waypoint]:
         """Return waypoints that are in use (i.e., have a specified time and location), i.e. excluding placeholder departure/arrival ports."""
-        start_slice = 0 if self.departure_port_in_use else 1
+        start_slice = 0 if self.departure_port.is_in_use else 1
         end_slice = (
-            len(self.waypoints) if self.arrival_port_in_use else len(self.waypoints) - 1
+            len(self.waypoints)
+            if self.arrival_port.is_in_use
+            else len(self.waypoints) - 1
         )
         return self.waypoints[start_slice:end_slice]
-
-    @property
-    def departure_port_in_use(self) -> bool:
-        """Check if the departure port is in use (i.e., has a specified time and location), or is placeholder."""
-        p = self.waypoints[0]
-        return isinstance(p, Port) and p.is_in_use
-
-    @property
-    def arrival_port_in_use(self) -> bool:
-        """Check if the arrival port is in use (i.e., has a specified time and location), or is placeholder."""
-        p = self.waypoints[-1]
-        return isinstance(p, Port) and p.is_in_use
 
 
 class Port(pydantic.BaseModel):
