@@ -6,7 +6,7 @@ import inspect
 import itertools
 import tempfile
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
@@ -35,7 +35,44 @@ from virtualship.utils import (
 
 if TYPE_CHECKING:
     from virtualship.instruments.sensors import SensorType
-    from virtualship.models import Expedition
+    from virtualship.models import Expedition, Waypoint
+
+
+@dataclass(frozen=True)
+class SpatialBounds:
+    """Spatio-temporal bounding box for instrument's fieldset."""
+
+    min_lat: float
+    max_lat: float
+    min_lon: float
+    max_lon: float
+    min_time: datetime
+    max_time: datetime
+
+    @classmethod
+    def from_waypoints(cls, waypoints: list[Waypoint]) -> SpatialBounds:
+        """Create a SpatialBounds instance from a list of waypoints."""
+        lats, lons = _get_waypoint_latlons(waypoints)
+        times = [wp.time for wp in waypoints if wp.time is not None]
+        return cls(
+            min_lat=min(lats),
+            max_lat=max(lats),
+            min_lon=min(lons),
+            max_lon=max(lons),
+            min_time=times[0],
+            max_time=times[-1] + timedelta(days=1),  # avoid edge issues
+        )
+
+    def with_buffer(
+        self, latlon_buffer: float = 0.0
+    ) -> tuple[float, float, float, float]:
+        """Return (min_lon, max_lon, min_lat, max_lat) including optional spatial buffer."""
+        return (
+            self.min_lon - latlon_buffer,
+            self.max_lon + latlon_buffer,
+            self.min_lat - latlon_buffer,
+            self.max_lat + latlon_buffer,
+        )
 
 
 @dataclass
@@ -56,7 +93,7 @@ class Instrument(abc.ABC):
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Ensure non-abstract subclasses (i.e. final/concrete instrument classes) define sensor_kernels as a class attribute."""
+        """Ensure concrete instrument subclasses define required class attributes."""
         super().__init_subclass__(**kwargs)
         if inspect.isabstract(cls):
             return
@@ -87,24 +124,18 @@ class Instrument(abc.ABC):
         # filter to waypoints relevant to this instrument
         wps_in_use = self.expedition.schedule._get_wps_in_use()
         relevant_waypoints = _get_instr_relevant_wps(wps_in_use, self.instrument_type)
-
         if not relevant_waypoints:
             raise ValueError(
                 f"No relevant waypoints found for instrument '{self.instrument_type}'."
             )
 
-        self.wp_times = [wp.time for wp in relevant_waypoints if wp.time is not None]
-
         # verify time ordering
-        if not all(a <= b for a, b in itertools.pairwise(self.wp_times)):
+        wp_times = [wp.time for wp in relevant_waypoints if wp.time is not None]
+        if not all(a <= b for a, b in itertools.pairwise(wp_times)):
             raise ValueError("Relevant waypoint times are not in ascending order.")
 
-        # spatio-temporal bounding box
-        wp_lats, wp_lons = _get_waypoint_latlons(relevant_waypoints)
-        self.min_time = self.wp_times[0]
-        self.max_time = self.wp_times[-1] + timedelta(days=1)  # avoid edge issues
-        self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
-        self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
+        # spatio-temporal bounding box of all relevant waypoints
+        self.bounds = SpatialBounds.from_waypoints(relevant_waypoints)
 
     def close(self):
         """Explicitly cleanup all tmp dirs."""
@@ -197,7 +228,6 @@ class Instrument(abc.ABC):
         """
         combined_fieldset = None
         keys = list(self.variables.keys())
-
         time_buffer = self.fetch_spec.time_buffer
 
         for key in keys:
@@ -209,8 +239,8 @@ class Instrument(abc.ABC):
 
                 files = _find_files_in_timerange(
                     data_dir,
-                    self.min_time,
-                    self.max_time + timedelta(days=time_buffer),
+                    self.bounds.min_time,
+                    self.bounds.max_time + timedelta(days=time_buffer),
                 )
 
                 _, field_var_name = _find_nc_file_with_variable(
@@ -254,13 +284,17 @@ class Instrument(abc.ABC):
         """Get Copernicus Marine dataset for direct ingestion."""
         product_id = _select_product_id(
             physical=physical,
-            schedule_start=self.min_time,
-            schedule_end=self.max_time,
+            schedule_start=self.bounds.min_time,
+            schedule_end=self.bounds.max_time,
             variable=var if not physical else None,
         )
 
-        # spatial bounds with buffer, if spatial constraints apply
-        min_lon_wbuf, max_lon_wbuf, min_lat_wbuf, max_lat_wbuf = self.spatial_bounds
+        buf = self.fetch_spec.latlon_buffer if self.fetch_spec.spatial else 0.0
+        min_lon, max_lon, min_lat, max_lat = (
+            self.bounds.with_buffer(buf)
+            if self.fetch_spec.spatial
+            else (None, None, None, None)
+        )
 
         min_depth = (
             abs(self.fetch_spec.depth_min)
@@ -275,13 +309,13 @@ class Instrument(abc.ABC):
 
         return copernicusmarine.open_dataset(
             dataset_id=product_id,
-            minimum_longitude=min_lon_wbuf,
-            maximum_longitude=max_lon_wbuf,
-            minimum_latitude=min_lat_wbuf,
-            maximum_latitude=max_lat_wbuf,
+            minimum_longitude=min_lon,
+            maximum_longitude=max_lon,
+            minimum_latitude=min_lat,
+            maximum_latitude=max_lat,
             variables=[var],
-            start_datetime=self.min_time,
-            end_datetime=self.max_time + timedelta(days=time_buffer),
+            start_datetime=self.bounds.min_time,
+            end_datetime=self.bounds.max_time + timedelta(days=time_buffer),
             minimum_depth=min_depth,
             maximum_depth=max_depth,
             coordinates_selection_method="outside",
@@ -305,9 +339,8 @@ class Instrument(abc.ABC):
                 f"Missing or invalid 'positive' attribute for 'depth' coordinate in {files[0].parent}. Expected 'positive: up' or 'positive: down'. Original error: {e}"
             ) from e
 
-        # sel only relevant latlon and depth subsets, to speed up simulations (avoid bringing in potentially global data)
-        # spatial bounds with buffer, if spatial constraints apply
-        min_lon_wbuf, max_lon_wbuf, min_lat_wbuf, max_lat_wbuf = self.spatial_bounds
+        buf = self.fetch_spec.latlon_buffer if self.fetch_spec.spatial else 0.0
+        min_lon, max_lon, min_lat, max_lat = self.bounds.with_buffer(buf)
 
         depth_min = self.fetch_spec.depth_min
         depth_max = self.fetch_spec.depth_max
@@ -317,20 +350,16 @@ class Instrument(abc.ABC):
             depth_sel = {
                 "depth": [depth_min],
                 "method": "nearest",
-            }  # preserve depth dim with square brackets
+            }
         else:
-            # max, min slice because depth is negative and positive: up
             depth_sel = {"depth": slice(depth_max, depth_min)}
 
         ds = ds.sel(
-            longitude=slice(min_lon_wbuf, max_lon_wbuf),
-            latitude=slice(min_lat_wbuf, max_lat_wbuf),
+            longitude=slice(min_lon, max_lon),
+            latitude=slice(min_lat, max_lat),
         )
 
-        # separate sel (from lat, lon above) for depth to allow `nearest` selection if not using slices
-        # will leave as is if both_none, as intended
         ds = ds.sel(**depth_sel)
-
         return ds
 
     def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
@@ -339,12 +368,10 @@ class Instrument(abc.ABC):
         self._tmp_dirs.append(tmp_dir)
         tmp_store = Path(tmp_dir.name) / f"tmp_{id(ds)}.zarr"
 
-        # strip pre-existing per-variable encoding, which may interfere with zarr defaults
         ds_to_write = ds.copy()
         for variable in ds_to_write.variables.values():
             variable.encoding = {}
 
-        # TODO: potential trade off between speed and memory usage here... could remove to reduce memory footprint, but may slow down writing (?)
         ds_to_write = ds_to_write.chunk(
             {dim: size for dim, size in ds_to_write.sizes.items()}
         )
@@ -387,22 +414,6 @@ class Instrument(abc.ABC):
     def instrument_type(self) -> InstrumentType:
         """Return the InstrumentType for this instrument instance."""
         return next(k for k, v in INSTRUMENT_CLASS_MAP.items() if type(self) is v)
-
-    @property
-    def spatial_bounds(
-        self,
-    ) -> tuple[float | None, float | None, float | None, float | None]:
-        """Return (min_lon, max_lon, min_lat, max_lat) bounds including buffer if spatial constraints apply."""
-        if not self.fetch_spec.spatial:
-            return None, None, None, None
-
-        buf = self.fetch_spec.latlon_buffer
-        return (
-            self.min_lon - buf,
-            self.max_lon + buf,
-            self.min_lat - buf,
-            self.max_lat + buf,
-        )
 
 
 @dataclass(frozen=True)
