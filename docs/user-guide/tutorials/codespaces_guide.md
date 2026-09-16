@@ -30,14 +30,14 @@ The spin-up time for the Codespace can take a few minutes. There are various sta
 
 ### Spinning up a more powerful Codespace
 
-In some cases, it will be necessary to use a more powerful Codespace to run your VirtualShip simulations. This is particularly the case if you plan to deploy **Argo Floats** in your simulations, which are more computationally intensive than other instrument types.
+In some cases, it will be necessary to use a more powerful Codespace to run your VirtualShip simulations. This is particularly the case if you plan a particularly intensive expedition. For example, using many Argo Floats and/or CTDs spread across waypoints spread far apart in time and space. In these cases, or if you are experiencing performance issues on the standard Codespaces configuration, we recommend that you spin up a Codespace with 4 cores and 16 GB of RAM.
 
 To do so, when you click on the green 'Code' button in the VirtualShip Workspace repository, click on the three dots (`...`) and then `+ New with options`. From here, you should be brought to a new page where you can select the `Machine type`. From the drop-down on the right, select the `4 cores, 16 GB RAM` option. Then click `Create codespace`.
 
 ```{warning}
 Because this more powerful machine has 4 cores (rather than 2 in the standard build), this will effectively halve your monthly free tier allowance of 60 compute hours to 30 hours. This should be sufficient for your course, but please be aware of this limitation and plan your usage accordingly (see [below](#compute-usage-restrictions) for more details).
 
-At the moment, this is a necessary trade-off in order to be able to run Argo Float simulations in the Codespace.
+At the moment, this is a necessary trade-off in order to be able to more intensive simulations in the Codespace.
 ```
 
 ## 3) Using the VirtualShip simulation workspace
