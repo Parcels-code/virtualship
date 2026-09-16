@@ -122,9 +122,9 @@ class Schedule(pydantic.BaseModel):
     @classmethod
     def _wp_ports(cls, value: list[Port | Waypoint]) -> None:
         """First and last waypoints are Ports, plus has at least one non-port waypoint."""
-        if not isinstance(value[0], Port) & isinstance(value[-1], Port):
+        if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
             raise ScheduleError(
-                "First and last waypoints must be Ports (of arrival/departure)."
+                "First and last waypoints must be Ports (of arrival/departure). One or the other is currently missing."
             )
         if not any(isinstance(wp, Waypoint) for wp in value):
             raise ScheduleError("At least one non-port waypoint must be provided.")
