@@ -385,6 +385,42 @@ def test_instrument_samples_initial_conditions(fieldset, pset):
     )
 
 
+def test_instrument_init_filters_out_placeholder_ports(mock_expedition, mock_waypoints):
+    """Verify Instrument init uses _get_wps_in_use to strip null ports."""
+    null_port = MagicMock()
+    null_port.location.latitude = None
+    null_port.location.longitude = None
+    null_port.time = None
+
+    # insert placeholder ports around the valid mock_waypoints
+    mock_expedition.schedule._get_wps_in_use.return_value = [
+        null_port,
+        *mock_waypoints,
+        null_port,
+    ]
+
+    with patch(
+        "virtualship.instruments.base._get_instr_relevant_wps",
+        return_value=mock_waypoints,
+    ) as mock_filter:
+        dummy = DummyInstrument(
+            expedition=mock_expedition,
+            variables={"A": "a"},
+            add_bathymetry=False,
+            verbose_progress=False,
+            from_data=None,
+        )
+
+        mock_filter.assert_called_once_with(
+            mock_expedition.schedule._get_wps_in_use(),
+            dummy.instrument_type,
+        )
+
+    assert dummy.bounds.min_lat == 10.0
+    assert dummy.bounds.max_lat == 15.0
+    assert dummy.bounds.min_time == datetime(2026, 1, 1, 12, 0)
+
+
 # =============================================================================
 # UnderwayInstrument intermediate class testing
 # =============================================================================
