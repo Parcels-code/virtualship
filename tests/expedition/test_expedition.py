@@ -220,32 +220,26 @@ def expedition_no_xbt(expedition):
     params=[
         (
             "xbt_config",
-            "XBT",
             "Expedition includes instrument 'XBT', but instruments_config does not provide configuration for it.",
         ),
         (
             "ctd_config",
-            "CTD",
             "Expedition includes instrument 'CTD', but instruments_config does not provide configuration for it.",
         ),
         (
             "argo_float_config",
-            "ARGO_FLOAT",
             "Expedition includes instrument 'ARGO_FLOAT', but instruments_config does not provide configuration for it.",
         ),
         (
             "drifter_config",
-            "DRIFTER",
             "Expedition includes instrument 'DRIFTER', but instruments_config does not provide configuration for it.",
         ),
         (
             "adcp_config",
-            "ADCP",
             r"Underway instrument config attribute\(s\) are missing from YAML\. Must be <Instrument>Config object or None\.",
         ),
         (
             "ship_underwater_st_config",
-            "UNDERWATER_ST",
             r"Underway instrument config attribute\(s\) are missing from YAML\. Must be <Instrument>Config object or None\.",
         ),
     ]
