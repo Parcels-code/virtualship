@@ -87,6 +87,14 @@ def _default_sensors(config_class) -> list:
     return sensors_field.default_factory()
 
 
+def parse_waypoint_datetime(year, month, day, hour, minute):
+    """Parses date/time values into a datetime object if all components are present."""
+    values = (year, month, day, hour, minute)
+    if all(v is not None and v != Select.NULL for v in values):
+        return datetime.datetime(*(int(v) for v in values))
+    return None
+
+
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
 DEFAULT_ADCP_CONFIG = {
@@ -554,18 +562,27 @@ class ExpeditionEditor(Static):
 
     def _update_schedule(self):
         for i, wp in enumerate(self.expedition.schedule.waypoints):
-            wp.location = Location(
-                latitude=float(self.query_one(f"#wp{i}_lat").value),
-                longitude=float(self.query_one(f"#wp{i}_lon").value),
+            wp.time = parse_waypoint_datetime(
+                self.query_one(f"#wp{i}_year", Select).value,
+                self.query_one(f"#wp{i}_month", Select).value,
+                self.query_one(f"#wp{i}_day", Select).value,
+                self.query_one(f"#wp{i}_hour", Select).value,
+                self.query_one(f"#wp{i}_minute", Select).value,
             )
-            wp.time = datetime.datetime(
-                int(self.query_one(f"#wp{i}_year").value),
-                int(self.query_one(f"#wp{i}_month").value),
-                int(self.query_one(f"#wp{i}_day").value),
-                int(self.query_one(f"#wp{i}_hour").value),
-                int(self.query_one(f"#wp{i}_minute").value),
-                0,
-            )
+
+            lat_val = self.query_one(f"#wp{i}_lat").value
+            lon_val = self.query_one(f"#wp{i}_lon").value
+
+            if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
+                wp.location = Location(
+                    latitude=float(lat_val) if lat_val != "" else None,
+                    longitude=float(lon_val) if lon_val != "" else None,
+                )
+            else:
+                wp.location = Location(
+                    latitude=float(lat_val),
+                    longitude=float(lon_val),
+                )
 
             if not isinstance(wp, Port):
                 wp.instrument = []
@@ -1099,18 +1116,27 @@ class PlanScreen(Screen):
 
         for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
             try:
-                wp.location = Location(
-                    latitude=float(expedition_editor.query_one(f"#wp{i}_lat").value),
-                    longitude=float(expedition_editor.query_one(f"#wp{i}_lon").value),
+                wp.time = parse_waypoint_datetime(
+                    self.query_one(f"#wp{i}_year", Select).value,
+                    self.query_one(f"#wp{i}_month", Select).value,
+                    self.query_one(f"#wp{i}_day", Select).value,
+                    self.query_one(f"#wp{i}_hour", Select).value,
+                    self.query_one(f"#wp{i}_minute", Select).value,
                 )
-                wp.time = datetime.datetime(
-                    int(expedition_editor.query_one(f"#wp{i}_year").value),
-                    int(expedition_editor.query_one(f"#wp{i}_month").value),
-                    int(expedition_editor.query_one(f"#wp{i}_day").value),
-                    int(expedition_editor.query_one(f"#wp{i}_hour").value),
-                    int(expedition_editor.query_one(f"#wp{i}_minute").value),
-                    0,
-                )
+
+                lat_val = expedition_editor.query_one(f"#wp{i}_lat").value
+                lon_val = expedition_editor.query_one(f"#wp{i}_lon").value
+
+                if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
+                    wp.location = Location(
+                        latitude=float(lat_val) if lat_val != "" else None,
+                        longitude=float(lon_val) if lon_val != "" else None,
+                    )
+                else:
+                    wp.location = Location(
+                        latitude=float(lat_val),
+                        longitude=float(lon_val),
+                    )
 
                 if not isinstance(wp, Port):
                     wp.instrument = []
