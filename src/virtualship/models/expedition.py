@@ -120,26 +120,18 @@ class Schedule(pydantic.BaseModel):
 
     @pydantic.field_validator("waypoints", mode="after")
     @classmethod
-    def _wp_ports(cls, value: list[Port | Waypoint]) -> None:
-        """First and last waypoints are Ports, plus has at least one non-port waypoint."""
+    def _validate_waypoints(cls, value: list[Port | Waypoint]) -> list[Port | Waypoint]:
+        """Ensure First and last waypoints are Ports, schedule contains non-port waypoints, and warn on incomplete ports."""
         if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
             raise ScheduleError(
-                "First and last waypoints must be Ports (of arrival/departure). One or the other is currently missing."
+                "First and last waypoints must be Ports (of arrival/departure). "
+                "One or the other is currently missing."
             )
+
         if not any(isinstance(wp, Waypoint) for wp in value):
             raise ScheduleError("At least one non-port waypoint must be provided.")
-        return value
 
-    @pydantic.field_validator("waypoints", mode="after")
-    @staticmethod
-    def _validate_waypoints_ports(
-        value: list[Port | Waypoint],
-    ) -> list[Port | Waypoint]:
-        """Warn if Port waypoints are half-complete: they will still be ignored."""
-        first_incomplete = isinstance(value[0], Port) and not value[0].is_in_use
-        last_incomplete = isinstance(value[-1], Port) and not value[-1].is_in_use
-
-        if first_incomplete or last_incomplete:
+        if not value[0].is_in_use or not value[-1].is_in_use:
             print(
                 "\nWARNING: Departure and/or arrival port is incomplete in the schedule "
                 "(missing time, location or both). The simulation will continue but the port will be ignored.\n"
