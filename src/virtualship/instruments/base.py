@@ -3,12 +3,12 @@ from __future__ import annotations
 import abc
 import collections
 import inspect
+import itertools
 import tempfile
 from dataclasses import dataclass
 from datetime import timedelta
-from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import copernicusmarine
 import numpy as np
@@ -26,7 +26,7 @@ from virtualship.utils import (
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
-    _get_instrument_relevant_waypoints,
+    _get_instr_relevant_wps,
     _get_waypoint_latlons,
     _select_product_id,
     _SpinnerAutoStop,
@@ -69,7 +69,7 @@ class Instrument(abc.ABC):
     def __init__(
         self,
         expedition: Expedition,
-        variables: dict,
+        variables: dict[str, Any],
         add_bathymetry: bool,
         verbose_progress: bool,
         from_data: Path | None,
@@ -78,29 +78,31 @@ class Instrument(abc.ABC):
         """Initialise instrument."""
         self.expedition = expedition
         self.from_data = from_data
-
         self.variables = collections.OrderedDict(variables)
         self.add_bathymetry = add_bathymetry
         self.verbose_progress = verbose_progress
-        self.fetch_spec = fetch_spec or FetchSpec()
+        self.fetch_spec = fetch_spec if fetch_spec is not None else FetchSpec()
         self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
-        # only waypoints relevant to this instrument; avoid needlessly ballooning fieldset to full expedition schedule
-        relevant_waypoints = _get_instrument_relevant_waypoints(
-            expedition.schedule.waypoints, self.instrument_type
-        )
+        # filter to waypoints relevant to this instrument
+        wps_in_use = self.expedition.schedule._get_wps_in_use()
+        relevant_waypoints = _get_instr_relevant_wps(wps_in_use, self.instrument_type)
 
+        if not relevant_waypoints:
+            raise ValueError(
+                f"No relevant waypoints found for instrument '{self.instrument_type}'."
+            )
+
+        self.wp_times = [wp.time for wp in relevant_waypoints if wp.time is not None]
+
+        # verify time ordering
+        if not all(a <= b for a, b in itertools.pairwise(self.wp_times)):
+            raise ValueError("Relevant waypoint times are not in ascending order.")
+
+        # spatio-temporal bounding box
         wp_lats, wp_lons = _get_waypoint_latlons(relevant_waypoints)
-        wp_times = [wp.time for wp in relevant_waypoints if wp.time is not None]
-        assert all(earlier <= later for earlier, later in pairwise(wp_times)), (
-            "Waypoint times are not in ascending order"
-        )
-        self.wp_times = wp_times
-
-        self.min_time, self.max_time = (
-            wp_times[0],
-            wp_times[-1] + timedelta(days=1),
-        )  # avoid edge issues
+        self.min_time = self.wp_times[0]
+        self.max_time = self.wp_times[-1] + timedelta(days=1)  # avoid edge issues
         self.min_lat, self.max_lat = min(wp_lats), max(wp_lats)
         self.min_lon, self.max_lon = min(wp_lons), max(wp_lons)
 

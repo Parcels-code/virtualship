@@ -457,7 +457,7 @@ def _get_waypoint_latlons(waypoints):
     return wp_lats, wp_lons
 
 
-def _get_instrument_relevant_waypoints(waypoints, instrument_type) -> list:
+def _get_instr_relevant_wps(waypoints, instrument_type) -> list:
     """Subset of waypoints that are relevant to this `instrument_type`."""
     from virtualship.models import Port  # avoid circular import problems
 
