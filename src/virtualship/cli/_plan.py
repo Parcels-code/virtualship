@@ -44,7 +44,7 @@ from virtualship.models import (
     XBTConfig,
 )
 from virtualship.models.expedition import Port
-from virtualship.utils import EXPEDITION
+from virtualship.utils import EXPEDITION, INCOMPLETE_PORT_MSG
 
 UNEXPECTED_MSG_ONSAVE = (
     "Please ensure that:\n"
@@ -1182,24 +1182,31 @@ class PlanScreen(Screen):
 
         try:
             ship_speed_value = self.get_ship_speed(expedition_editor)
-
             self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
 
-            # verify schedule
             instruments_config = expedition_editor.expedition.instruments_config
+            schedule = expedition_editor.expedition.schedule
 
-            expedition_editor.expedition.schedule.verify(
-                ship_speed_value,
-                instruments_config,
-                ignore_land_test=True,
-            )
+            schedule.verify(ship_speed_value, instruments_config, ignore_land_test=True)
 
+            # save changes
             expedition_saved = expedition_editor.save_changes()
 
             if expedition_saved:
                 self.notify(
                     "Changes saved successfully",
                     severity="information",
+                    timeout=20,
+                )
+
+            # check for incomplete ports and warn the user, but allow save to continue
+            if (
+                not schedule.departure_port.is_in_use
+                or not schedule.arrival_port.is_in_use
+            ):
+                self.notify(
+                    INCOMPLETE_PORT_MSG,
+                    severity="warning",
                     timeout=20,
                 )
 
