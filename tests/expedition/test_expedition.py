@@ -17,6 +17,7 @@ from virtualship.models import (
     Waypoint,
     _InstrumentConfigMixin,
 )
+from virtualship.models.expedition import Port
 from virtualship.utils import (
     EXPEDITION,
     _get_example_expedition,
@@ -165,23 +166,56 @@ def test_verify_on_land():
             )
 
 
+def add_ports(
+    waypoints: list[Waypoint],
+    departure_port: Port | None = None,
+    arrival_port: Port | None = None,
+    start_time: datetime | None = None,
+) -> list[Waypoint]:
+    """Add ports to the first and last in list of waypoints."""
+    if departure_port is None:
+        departure_port = Port(location=Location(0, 0), time=start_time)
+    if arrival_port is None:
+        arrival_port = Port(
+            location=Location(1, 0),
+            time=start_time + timedelta(days=1) if start_time is not None else None,
+        )
+
+    return [departure_port] + waypoints + [arrival_port]
+
+
 @pytest.mark.parametrize(
     "schedule,error,match",
     [
         pytest.param(
-            Schedule(waypoints=[]),
+            Schedule(waypoints=[Waypoint(location=Location(0, 0))]),
             ScheduleError,
-            "At least one waypoint must be provided.",
+            "First and last waypoints must be Ports (of arrival/departure).",
+            id="NoPorts",
+        ),
+        pytest.param(
+            Schedule(
+                add_ports(
+                    waypoints=[
+                        Port(location=Location(0, 0)),
+                        Port(location=Location(1, 0)),
+                    ]
+                )
+            ),
+            ScheduleError,
+            "At least one non-port waypoint must be provided.",
             id="NoWaypoints",
         ),
         pytest.param(
             Schedule(
-                waypoints=[
-                    Waypoint(location=Location(0, 0)),
-                    Waypoint(
-                        location=Location(1, 0), time=datetime(2022, 1, 1, 1, 0, 0)
-                    ),
-                ]
+                add_ports(
+                    waypoints=[
+                        Waypoint(location=Location(0, 0)),
+                        Waypoint(
+                            location=Location(1, 0), time=datetime(2022, 1, 1, 1, 0, 0)
+                        ),
+                    ]
+                )
             ),
             ScheduleError,
             "First waypoint must have a specified time.",
@@ -189,15 +223,17 @@ def test_verify_on_land():
         ),
         pytest.param(
             Schedule(
-                waypoints=[
-                    Waypoint(
-                        location=Location(0, 0), time=datetime(2022, 1, 2, 1, 0, 0)
-                    ),
-                    Waypoint(location=Location(0, 0)),
-                    Waypoint(
-                        location=Location(1, 0), time=datetime(2022, 1, 1, 1, 0, 0)
-                    ),
-                ]
+                add_ports(
+                    waypoints=[
+                        Waypoint(
+                            location=Location(0, 0), time=datetime(2022, 1, 2, 1, 0, 0)
+                        ),
+                        Waypoint(location=Location(0, 0)),
+                        Waypoint(
+                            location=Location(1, 0), time=datetime(2022, 1, 1, 1, 0, 0)
+                        ),
+                    ]
+                )
             ),
             ScheduleError,
             "Waypoint\\(s\\) : each waypoint should be timed after all previous waypoints",

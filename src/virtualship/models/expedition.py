@@ -141,9 +141,12 @@ class Schedule(pydantic.BaseModel):
         """Verify the feasibility and correctness of the schedule's waypoints."""
         print("\nVerifying route... ")
 
-        # check departure port has a time
-        if self.waypoints[0].time is None:
-            raise ScheduleError("Departure port must have a specified time.")
+        # is the departure port in use or a placeholder (i.e. all None)?
+        check_idx = 0 if self.departure_port_in_use else 1
+        wp_str = "Departure port" if self.departure_port_in_use else "Waypoint 1"
+
+        if self.waypoints[check_idx].time is None:
+            raise ScheduleError(f"{wp_str} must have a specified time.")
 
         # check waypoint times are in ascending order
         timed_waypoints = [wp for wp in self.waypoints if wp.time is not None]
@@ -191,10 +194,16 @@ class Schedule(pydantic.BaseModel):
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
-        time = self.waypoints[0].time
-        for wp_i, (wp, wp_next) in enumerate(
-            zip(self.waypoints, self.waypoints[1:], strict=False)
-        ):
+
+        dp_in_use = self.departure_port_in_use
+        ap_in_use = self.arrival_port_in_use
+        time = self.waypoints[0].time if dp_in_use else self.waypoints[1].time
+
+        start_slice = 0 if dp_in_use else 1
+        end_slice = len(self.waypoints) if ap_in_use else len(self.waypoints) - 1
+        wps_in_use = self.waypoints[start_slice:end_slice]
+
+        for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
             stationkeeping_time = _calc_wp_stationkeeping_time(
                 wp.instrument if isinstance(wp, Waypoint) else None,
                 instruments_config,
@@ -226,6 +235,18 @@ class Schedule(pydantic.BaseModel):
                 time = wp_next.time
 
         print("... All good to go!")
+
+    @property
+    def departure_port_in_use(self) -> bool:
+        """Check if the departure port is in use (i.e., has a specified time and location), or is placeholder."""
+        p = self.waypoints[0]
+        return all(v is not None for v in (p.time, p.location.lat, p.location.lon))
+
+    @property
+    def arrival_port_in_use(self) -> bool:
+        """Check if the arrival port is in use (i.e., has a specified time and location), or is placeholder."""
+        p = self.waypoints[-1]
+        return all(v is not None for v in (p.time, p.location.lat, p.location.lon))
 
 
 class Port(pydantic.BaseModel):
