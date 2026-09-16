@@ -20,7 +20,7 @@ from virtualship.models import (
     Spacetime,
     Waypoint,
 )
-from virtualship.utils import _calc_sail_time, _get_public_wp
+from virtualship.utils import _calc_sail_time
 
 
 @dataclass
@@ -102,9 +102,6 @@ class _ScheduleSimulator:
         self._projection = projection
         self._expedition = expedition
 
-        assert self._expedition.schedule.waypoints[0].time is not None, (
-            "Departure port must have a time."
-        )
         self._time = expedition.schedule.waypoints[0].time
         self._location = expedition.schedule.waypoints[0].location
 
@@ -116,23 +113,12 @@ class _ScheduleSimulator:
     def simulate(self) -> ScheduleOk | ScheduleProblem:
         # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here (i.e. #236)...
 
-        for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
+        for waypoint in self._expedition.schedule.waypoints:
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 
-            # check if waypoint was reached in time
-            # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
-            if waypoint.time is not None and self._time > waypoint.time:
-                public_wp = _get_public_wp(wp_i, self._expedition.schedule.waypoints)
-                print(
-                    f"\nWaypoint {public_wp} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
-                    "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                )
-                return ScheduleProblem(self._time, wp_i)
-            else:
-                self._time = (
-                    waypoint.time
-                )  # wait at the waypoint until ship is scheduled to be there
+            # wait at the waypoint until ship is scheduled to be there
+            self._time = waypoint.time
 
             # note measurements made at waypoint
             time_passed = self._get_instrument_timescosts(waypoint)
