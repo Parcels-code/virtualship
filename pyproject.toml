@@ -125,6 +125,7 @@ warn_unused_ignores = true
 
 exclude = [
   # Temporarily exclude files. As we improve typechecking across the codebase, remove these
+  "src/virtualship/cli/_initialise.py",
   "src/virtualship/cli/_plan.py",
   "src/virtualship/cli/_run.py",
   "src/virtualship/cli/commands.py",
