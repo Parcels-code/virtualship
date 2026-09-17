@@ -99,7 +99,7 @@ Sensor choices are only relevant for the instruments you plan to deploy as [unde
 ```
 
 ```{tip}
-See [here](../documentation/full_sensor_list.md) for more information on the sensors available for each instrument.
+See [here](./documentation/full_sensor_list.md) for more information on the sensors available for each instrument.
 ```
 
 There are other instrument configurations settings that can be adjusted in the editor as well (e.g. `max_depth` for the CTD), but these are more advanced and in most cases do not need to be changed from the default values.
