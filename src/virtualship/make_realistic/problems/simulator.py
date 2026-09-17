@@ -367,7 +367,9 @@ class ProblemSimulator:
         """Check whether scheduled contingency covers expected delay duration."""
         # special case where pretending that a pre-departure problem is at the departure port but there is no active Port in the schedule (problem_wp_i = None)
         # always returns False, as there is no way to determine whether there is enough contingency time in this case
-        is_pre_departure_no_active_port = problem.pre_departure and problem_wp_i is None
+        is_pre_departure_no_active_port = (
+            getattr(problem, "pre_departure", False) and problem_wp_i is None
+        )
         if is_pre_departure_no_active_port:
             return False
 
