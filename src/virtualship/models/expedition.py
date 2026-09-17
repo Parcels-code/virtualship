@@ -14,7 +14,6 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    INCOMPLETE_PORT_MSG,
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
@@ -122,7 +121,7 @@ class Schedule(pydantic.BaseModel):
     @pydantic.field_validator("waypoints", mode="after")
     @classmethod
     def _validate_waypoints(cls, value: list[Port | Waypoint]) -> list[Port | Waypoint]:
-        """Ensure first and last waypoints are Port objects, schedule contains non-port waypoints, and warn on incomplete ports."""
+        """Ensure first and last waypoints are Port objects and schedule contains non-port waypoints."""
         if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
             raise ScheduleError(
                 "First and last waypoints must be Ports (of arrival/departure). "
@@ -131,9 +130,6 @@ class Schedule(pydantic.BaseModel):
 
         if not any(isinstance(wp, Waypoint) for wp in value):
             raise ScheduleError("At least one non-port waypoint must be provided.")
-
-        if not value[0].is_in_use or not value[-1].is_in_use:
-            print(f"\n{INCOMPLETE_PORT_MSG}")
 
         return value
 

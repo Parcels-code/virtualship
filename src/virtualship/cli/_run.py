@@ -20,6 +20,7 @@ from virtualship.utils import (
     CHECKPOINT,
     EXPEDITION_IDENTIFIER,
     EXPEDITION_LATEST,
+    INCOMPLETE_PORT_MSG,
     PROBLEMS_ENCOUNTERED,
     PROJECTION,
     REPORT,
@@ -75,6 +76,11 @@ def _run(
         expedition_dir = Path(expedition_dir)
 
     expedition = _get_expedition(expedition_dir)
+    schedule = expedition.schedule
+
+    # warn if the departure and/or arrival port is incomplete
+    if not schedule.departure_port.is_in_use or not schedule.arrival_port.is_in_use:
+        print(f"\n{INCOMPLETE_PORT_MSG}")
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
     cache_dir = expedition_dir.joinpath(CACHE)
@@ -97,7 +103,7 @@ def _run(
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
-    expedition.schedule.verify(
+    schedule.verify(
         expedition.ship_config.ship_speed_knots,
         expedition.instruments_config,
         from_data=Path(from_data) if from_data else None,
