@@ -308,6 +308,21 @@ def test_post_expedition_report(tmp_path):
         )
 
 
+def test_post_expedition_report_pre_departure_labeled_in_port(tmp_path):
+    """A pre-departure problem against an active departure port (wp_i=0, a Port index) should be labeled 'in-port'."""
+    expedition = _make_simple_expedition(num_waypoints=2)
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+
+    problems = {"problem_class": [_get_pre_departure_problem()], "waypoint_i": [0]}
+
+    report_path = tmp_path / REPORT
+    simulator.post_expedition_report(problems, report_path)
+
+    content = report_path.read_text(encoding="utf-8")
+    assert "Waypoint: in-port" in content
+    assert "Waypoint: 1" not in content
+
+
 def test_instrument_problems_only_selected_when_instruments_present(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=3, no_instruments=True)
     instruments_in_expedition = expedition.get_instruments()
