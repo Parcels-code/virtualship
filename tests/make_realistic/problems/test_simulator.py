@@ -2,8 +2,6 @@ import json
 import random
 from datetime import datetime, timedelta
 
-import numpy as np
-
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
     GENERAL_PROBLEMS,
@@ -11,14 +9,15 @@ from virtualship.make_realistic.problems.scenarios import (
     InstrumentProblem,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models.expedition import (
+from virtualship.models import (
     Expedition,
     InstrumentsConfig,
+    Location,
+    Port,
     Schedule,
     ShipConfig,
     Waypoint,
 )
-from virtualship.models.location import Location
 from virtualship.utils import REPORT
 
 
@@ -42,6 +41,17 @@ def _make_simple_expedition(
         )
         waypoints.append(wp)
 
+    # bound waypoints list with Ports
+    waypoints.insert(
+        0, Port(location=Location(-1, -1), time=sample_datetime - timedelta(hours=12))
+    )
+    waypoints.append(
+        Port(
+            location=Location(-1, -1),
+            time=sample_datetime + timedelta(days=num_waypoints + 1),
+        )
+    )
+
     schedule = Schedule(waypoints=waypoints)
     instruments = InstrumentsConfig()
     ship = ShipConfig(ship_speed_knots=10.0)
@@ -60,7 +70,7 @@ def test_select_problems_single_waypoint_returns_pre_departure(tmp_path):
 
     assert isinstance(problems, dict)
     assert len(problems["problem_class"]) == 1
-    assert problems["waypoint_i"] == [None]
+    assert problems["waypoint_i"] == [0]  # port of departure is always 0th
 
     problem_cls = problems["problem_class"][0]
     assert isinstance(problem_cls, GeneralProblem)
@@ -87,8 +97,8 @@ def test_no_instruments_no_instruments_problems(tmp_path):
 
 def test_select_problems_difficulty_level_zero():
     """Selecting difficulty level 'easy' should return None (no problems selected), no matter how many waypoints."""
-    for n_wps in np.arange(1, 5):  # for a range of waypoint counts
-        expedition = _make_simple_expedition(num_waypoints=n_wps)
+    for n_wps in range(1, 5):  # for a range of waypoint counts
+        expedition = _make_simple_expedition(num_waypoints=int(n_wps))
         instruments_in_expedition = expedition.get_instruments()
         simulator = ProblemSimulator(expedition, ".")
 
@@ -144,6 +154,7 @@ def test_hash_to_json(tmp_path):
 
 
 def test_has_contingency_pre_departure(tmp_path):
+    """Should calculate that there is not enough contingency for a pre-departure problem (with active departure port)."""
     expedition = _make_simple_expedition(num_waypoints=2)
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
@@ -155,7 +166,32 @@ def test_has_contingency_pre_departure(tmp_path):
     )
 
     # _has_contingency should return False for pre-departure (waypoint = None)
-    assert simulator._has_contingency(pre_departure_problem, None) is False
+    assert simulator._has_contingency(pre_departure_problem, 0) is False
+
+
+def test_has_contingency_pre_departure_inactive_port(tmp_path):
+    """Should automatically return False for pre-departure problems when there is no active Port in the schedule (waypoint = None)."""
+    expedition = _make_simple_expedition(num_waypoints=2)
+
+    # make port of departure inactive
+    expedition.schedule.waypoints[0].location = None
+    expedition.schedule.waypoints[0].time = None
+
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+
+    pre_departure_problem = next(
+        gp for gp in GENERAL_PROBLEMS if getattr(gp, "pre_departure", False)
+    )
+    assert pre_departure_problem is not None, (
+        "Need at least one pre-departure problem class in the general problem registry"
+    )
+
+    problem_wp_i = (
+        None  # no active port, so no waypoint index for pre-departure problem
+    )
+
+    # _has_contingency should return False for pre-departure (waypoint = None)
+    assert simulator._has_contingency(pre_departure_problem, problem_wp_i) is False
 
 
 def test_select_problems_difficulty_levels(tmp_path):
@@ -239,8 +275,9 @@ def test_has_contingency_during_expedition(tmp_path):
     )
 
     # short distance expedition should have contingency, long distance should not (given time between waypoints and ship speed is constant)
-    assert short_simulator._has_contingency(problem_cls, problem_waypoint_i=0) is True
-    assert long_simulator._has_contingency(problem_cls, problem_waypoint_i=0) is False
+    # problem_wp_i=1 corresponds to the first waypoint after departure port (waypoint 0) when departure port is active
+    assert short_simulator._has_contingency(problem_cls, problem_wp_i=1) is True
+    assert long_simulator._has_contingency(problem_cls, problem_wp_i=1) is False
 
 
 def test_post_expedition_report(tmp_path):
@@ -294,9 +331,9 @@ def test_instrument_problems_only_selected_when_instruments_present(tmp_path):
 def test_instrument_not_present_doesnt_select_instrument_problem(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=3, no_instruments=True)
 
-    # prescribe instruments at waypoints, for this test case each should only be present at one waypoint
-    expedition.schedule.waypoints[0].instrument = [InstrumentType.CTD]
-    expedition.schedule.waypoints[1].instrument = [
+    # prescribe instruments at (non port, i.e. > 0th) waypoints, for this test case each should only be present at one waypoint
+    expedition.schedule.waypoints[1].instrument = [InstrumentType.CTD]
+    expedition.schedule.waypoints[2].instrument = [
         InstrumentType.ARGO_FLOAT,
         InstrumentType.DRIFTER,
     ]

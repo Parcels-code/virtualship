@@ -570,7 +570,7 @@ def build_particle_class_from_sensors(
     return Particle.add_variable(nonsensor_variables + sensor_variables)
 
 
-def _get_public_wp(raw_wp_i: int | None, waypoints: list) -> int | None:
+def _get_public_wp(raw_wp_i: int, waypoints: list) -> int | None:
     """
     Get the public waypoint number for a given raw waypoint index (accounting for Port waypoints).
 
