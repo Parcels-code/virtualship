@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import random
 import sys
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from rich import box
 from rich.console import Console
@@ -34,7 +33,9 @@ from virtualship.utils import (
     _calc_wp_stationkeeping_time,
     _get_public_wp,
     _make_hash,
+    _read_json,
     _save_checkpoint,
+    _write_json,
 )
 
 if TYPE_CHECKING:
@@ -91,16 +92,15 @@ class ProblemSimulator:
             return None
 
         # isolate only the non-port waypoints
-        non_port_wps = [
-            i for i, wp in enumerate(self.wps_in_use) if not isinstance(wp, Port)
-        ]
+        num_non_port_wps = sum(1 for wp in self.wps_in_use if not isinstance(wp, Port))
 
         # if only one waypoint, return just a pre-departure problem
-        if len(non_port_wps) < 2:
+        if num_non_port_wps < 2:
             pre_departure = [p for p in GENERAL_PROBLEMS if p.pre_departure]
             return {
                 "problem_class": [random.choice(pre_departure)],
-                "waypoint_i": [0],  # noqa; pre-departure problem is always associated with the departure port (index 0)
+                # pre-departure problem is always associated with the departure port (index 0)
+                "waypoint_i": [0],
             }
 
         valid_instruments = [
@@ -164,7 +164,8 @@ class ProblemSimulator:
         bias = min(0.7, num_instruments / (num_instruments + 2))
         n_inst = round(num_problems * bias)
         n_gen = min(len(general_pool), num_problems - n_inst)
-        n_inst = num_problems - n_gen  # noqa; recalc in case n_gen was capped to len(GENERAL_PROBLEMS)
+        # recalc in case n_gen was capped to len(GENERAL_PROBLEMS)
+        n_inst = num_problems - n_gen
 
         return general_pool[:n_gen] + instrument_pool[:n_inst]
 
@@ -205,14 +206,10 @@ class ProblemSimulator:
         ]
         random.shuffle(avail_indices)
 
-        assert 0 not in avail_indices, (
-            "Index 0 (departure port) should not be in available waypoint indices for non-pre-departure problems."
-        )
-
         assigned_problems: list[ProblemType] = []
         assigned_indices: list[int | None] = []
 
-        has_active_departure_port = isinstance(self.wps_in_use[0], Port)
+        has_active_departure_port = self.expedition.schedule.departure_port.is_in_use
 
         for problem in selected:
             if getattr(problem, "pre_departure", False):
@@ -333,9 +330,9 @@ class ProblemSimulator:
             impact_str = LOG_MESSAGING["problem_avoided"]
             result_str = "The expedition will carry on shortly as planned."
             # update problem JSON state to resolved
-            data = self._read_json(hash_fpath)
+            data = _read_json(hash_fpath)
             data["resolved"] = True
-            self._write_json(hash_fpath, data)
+            _write_json(hash_fpath, data)
         else:
             affected = "in-port" if public_wp is None else f"at waypoint {public_wp}"
             impact_str = (
@@ -416,14 +413,14 @@ class ProblemSimulator:
             "waypoint_i": problems["waypoint_i"],
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         }
-        ProblemSimulator._write_json(fpath, payload)
+        _write_json(fpath, payload)
 
     @staticmethod
     def load_selected_problems(
         selected_problems_fpath: str | Path,
     ) -> SelectedProblemsDict:
         """Load selected problems suite from a cached JSON file."""
-        data = ProblemSimulator._read_json(Path(selected_problems_fpath))
+        data = _read_json(Path(selected_problems_fpath))
 
         general_lookup = {cls.short_name: cls for cls in GENERAL_PROBLEMS}
         instrument_lookup = {cls.short_name: cls for cls in INSTRUMENT_PROBLEMS}
@@ -477,17 +474,7 @@ class ProblemSimulator:
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             "resolved": False,
         }
-        ProblemSimulator._write_json(hash_path, hash_data)
-
-    @staticmethod
-    def _read_json(path: Path) -> dict[str, Any]:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-
-    @staticmethod
-    def _write_json(path: Path, data: dict[str, Any]) -> None:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        _write_json(hash_path, hash_data)
 
     @staticmethod
     def _tabular_outputter(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import hashlib
+import json
 import re
 import sys
 from datetime import datetime, timedelta
@@ -491,6 +492,16 @@ def _get_instr_relevant_wps(waypoints, instrument_type) -> list:
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
     file_path = expedition_dir.joinpath(CHECKPOINT)
     checkpoint.to_yaml(file_path)
+
+
+def _read_json(path: Path) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_json(path: Path, data: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
 
 
 def _calc_sail_time(
