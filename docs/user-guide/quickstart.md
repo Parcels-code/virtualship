@@ -30,9 +30,13 @@ Feel free to design your expedition as you wish! There is no need to copy these 
 
 ![MFP North Sea cruise plan screenshot](image-1.png)
 
-### Export the coordinates
+```{tip}
+Make sure to also set a Port of Departure and Port of Arrival in your MFP route, in addition to your sampling stations. These are picked up automatically when importing into VirtualShip, and mark the start/end of your expedition.
+```
 
-Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an .xlsx (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
+### Export the cruise data
+
+Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Cruise Data". This will download your route (including timings and, if specified, your ports of departure/arrival) as an .xlsx (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
 
 ## 2) Expedition initialisation
 
@@ -43,14 +47,16 @@ VirtualShip is a command line interface (CLI) based tool. From this point on in 
 You should now navigate to where you would like your expedition to be run on your (virtual) machine (i.e. `cd path/to/expedition/dir/`). Then run the following command in your CLI:
 
 ```
-virtualship init EXPEDITION_NAME --from-mfp CoordinatesExport.xlsx
+virtualship init EXPEDITION_NAME --from-mfp CruiseDataExport.xlsx --start-date '2023-10-20 08:00:00'
 ```
 
 ```{tip}
-The `CoordinatesExport.xlsx` in the `virtualship init` command refers to the .xlsx file exported from MFP. Replace the filename with the name of your exported .xlsx file (and make sure to move it from the Downloads to the folder/directory in which you are running the expedition).
+The `CruiseDataExport.xlsx` in the `virtualship init` command refers to the .xlsx file exported from MFP. Replace the filename with the name of your exported .xlsx file (and make sure to move it from the Downloads to the folder/directory in which you are running the expedition).
+
+The `--start-date` should be set to your intended departure date/time. MFP's estimated travel and station durations are then used to automatically fill in a time for each waypoint relative to this start date.
 ```
 
-This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates will be used.
+This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates (and, if specified, ports of departure/arrival) from your MFP export. The `--from-mfp` flag indicates that the exported route will be used, and `--start-date` is required alongside it.
 
 ```{note}
 For advanced users: it is also possible to run the expedition initialisation step without an MFP .xlsx export file. In this case you should simply run `virtualship init EXPEDITION_NAME` in the CLI. This will write an example `expedition.yaml` file in the `EXPEDITION_NAME` folder/directory. This file contains example waypoints, timings, instrument selections, and ship configuration, but can be edited or propagated through the rest of the workflow unedited to run a sample expedition.
@@ -106,16 +112,16 @@ There are other instrument configurations settings that can be adjusted in the e
 VirtualShip supports simulating experiments in the years 1993 through to the present day (and up to two weeks in the future) by leveraging the suite of products available Copernicus Marine Data Store (see [Run the expedition](#run-the-expedition)). The data access is automated based on the time period selected in the schedule. Different periods will rely on different products from the Copernicus Marine catalogue (see [Documentation](documentation/copernicus_products.md)).
 ```
 
-You will need to enter dates and times for each of the sampling stations/waypoints selected in the MFP route planning stage. This can be done under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
+If you provided a `--start-date` during initialisation from an MFP export, each waypoint's time will already be pre-filled, based on MFP's estimated travel and station durations relative to your start date. You can review and adjust these under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
 
 Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
 
 ```{note}
-It is important to ensure that the timings for each station are realistic. There must be enough time for the ship to travel to each site at a realistic speed (~ 10 knots). The expedition schedule (and the ship's configuration) will be automatically verified when you press _Save Changes_ in the planning tool.
+Your Port of Departure and Port of Arrival (if set in MFP) appear as special waypoints in this list. They have no instrument selection options and cannot be added or removed.
 ```
 
-```{tip}
-The MFP route planning tool will give estimated durations of sailing between sites, usually at an assumed 10 knots sailing speed. This can be useful to refer back to when planning the expedition timings and entering these into the `virtualship plan` tool.
+```{note}
+It is important to ensure that the timings for each station are realistic. There must be enough time for the ship to travel to each site at a realistic speed (~ 10 knots). The expedition schedule (and the ship's configuration) will be automatically verified when you press _Save Changes_ in the planning tool.
 ```
 
 ### Instrument selection
