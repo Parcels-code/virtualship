@@ -55,6 +55,30 @@ def test_verify_no_problems_encountered(expedition):
     cp.verify(expedition, Path("/tmp/empty"))  # should not raise errors
 
 
+def _write_problem_and_assert_resolution(
+    tmp_path, cp, expedition, problem_wp_i, delay_duration_hours, should_resolve
+):
+    """Write an unresolved problem file, then assert whether cp.verify() resolves or rejects it."""
+    problem = {
+        "resolved": False,
+        "delay_duration_hours": delay_duration_hours,
+        "problem_wp_i": problem_wp_i,
+    }
+    problem_file = tmp_path / "problem_1.json"
+    with open(problem_file, "w") as f:
+        json.dump(problem, f)
+
+    if should_resolve:
+        cp.verify(expedition, tmp_path)
+        with open(problem_file) as f:
+            updated = json.load(f)
+        assert updated["resolved"] is True
+    else:
+        with pytest.raises(Exception) as excinfo:
+            cp.verify(expedition, tmp_path)
+        assert "has not been resolved in the schedule" in str(excinfo.value)
+
+
 def test_verify_past_waypoints_changed(expedition):
     cp = make_dummy_checkpoint(problem_wp_i=1)
     expedition.schedule = cp.past_schedule
@@ -123,26 +147,9 @@ def test_verify_problem_resolution(
     new_schedule = Schedule(waypoints=[departure_port, new_wp1, new_arrival_port])
     expedition.schedule = new_schedule
 
-    # unresolved problem file
-    problem = {
-        "resolved": False,
-        "delay_duration_hours": delay_duration_hours,
-        "problem_wp_i": 0,
-    }
-    problem_file = tmp_path / "problem_1.json"
-    with open(problem_file, "w") as f:
-        json.dump(problem, f)
-
-    # check if resolution is detected correctly
-    if should_resolve:
-        cp.verify(expedition, tmp_path)
-        with open(problem_file) as f:
-            updated = json.load(f)
-        assert updated["resolved"] is True
-    else:
-        with pytest.raises(Exception) as excinfo:
-            cp.verify(expedition, tmp_path)
-        assert "has not been resolved in the schedule" in str(excinfo.value)
+    _write_problem_and_assert_resolution(
+        tmp_path, cp, expedition, 0, delay_duration_hours, should_resolve
+    )
 
 
 @pytest.mark.parametrize(
@@ -191,21 +198,6 @@ def test_verify_problem_resolution_pre_departure_no_active_port(
     new_schedule = Schedule(waypoints=[departure_port, new_wp1, new_wp2, arrival_port])
     expedition.schedule = new_schedule
 
-    problem = {
-        "resolved": False,
-        "delay_duration_hours": delay_duration_hours,
-        "problem_wp_i": None,
-    }
-    problem_file = tmp_path / "problem_1.json"
-    with open(problem_file, "w") as f:
-        json.dump(problem, f)
-
-    if should_resolve:
-        cp.verify(expedition, tmp_path)
-        with open(problem_file) as f:
-            updated = json.load(f)
-        assert updated["resolved"] is True
-    else:
-        with pytest.raises(Exception) as excinfo:
-            cp.verify(expedition, tmp_path)
-        assert "has not been resolved in the schedule" in str(excinfo.value)
+    _write_problem_and_assert_resolution(
+        tmp_path, cp, expedition, None, delay_duration_hours, should_resolve
+    )
