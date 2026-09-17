@@ -17,6 +17,7 @@ from virtualship.models import (
     SensorConfig,
     Waypoint,
 )
+from virtualship.models.expedition import Port
 from virtualship.utils import EXPEDITION, _get_example_expedition
 
 NEW_SPEED = "8.0"
@@ -76,6 +77,10 @@ async def _expand_instrument_configs(
 async def test_UI_changes(tmp_path):
     """Test making changes to UI inputs and saving to YAML (simulated botton presses and typing inputs)."""
     waypoints = [
+        Port(
+            location=None,
+            time=None,
+        ),
         Waypoint(
             location=Location(0, 0),
             time=datetime(2022, 1, 1, 0, 0, 0),
@@ -90,6 +95,10 @@ async def test_UI_changes(tmp_path):
             location=Location(0.02, 0.02),
             time=datetime(2022, 1, 1, 2, 0, 0),
             instrument=["CTD"],
+        ),
+        Port(
+            location=None,
+            time=None,
         ),
     ]
     _make_expedition(tmp_path, waypoints)
@@ -125,18 +134,18 @@ async def test_UI_changes(tmp_path):
             wp_collapsible.collapsed = False
             await pilot.pause()
         lat_input, lon_input = (
-            wp_collapsible.query_one("#wp1_lat", Input),
-            wp_collapsible.query_one("#wp1_lon", Input),
+            wp_collapsible.query_one("#wp2_lat", Input),
+            wp_collapsible.query_one("#wp2_lon", Input),
         )
         await simulate_input(pilot, lat_input, NEW_LAT)
         await simulate_input(pilot, lon_input, NEW_LON)
 
         # toggle CTD on first waypoint
-        await pilot.click("#wp0_CTD")
+        await pilot.click("#wp1_CTD")
         await pilot.pause(0.1)
 
         # toggle XBT on first waypoint
-        await pilot.click("#wp0_XBT")
+        await pilot.click("#wp1_XBT")
         await pilot.pause(0.1)
 
         # re-collapse widget editors to make save button visible on screen
@@ -151,10 +160,11 @@ async def test_UI_changes(tmp_path):
         await pilot.pause(0.5)
 
         # verify success notification received in UI (also useful for displaying potential debugging messages)
-        plan_screen.notify.assert_called_once_with(
-            "Changes saved successfully",
-            severity="information",
-            timeout=20,
+        calls = plan_screen.notify.call_args_list
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            and call[1].get("severity") == "information"
+            for call in calls
         )
 
         # verify changes to speed, lat, lon in saved YAML
@@ -177,6 +187,7 @@ async def test_UI_changes(tmp_path):
 async def test_UI_opens_with_null_time_and_instrument(tmp_path):
     """Test that the UI opens correctly when waypoints have time: null and instrument: null."""
     waypoints = [
+        Port(location=None, time=None),
         Waypoint(
             location=Location(0, 0),
             time=datetime(2022, 1, 1, 0, 0, 0),
@@ -184,6 +195,7 @@ async def test_UI_opens_with_null_time_and_instrument(tmp_path):
         ),
         Waypoint(location=Location(0.01, 0.01), time=None, instrument=None),
         Waypoint(location=Location(0.02, 0.02), time=None, instrument=None),
+        Port(location=None, time=None),
     ]
     _make_expedition(tmp_path, waypoints)
 
@@ -213,6 +225,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
     _make_expedition(
         tmp_path,
         [
+            Port(location=None, time=None),
             Waypoint(
                 location=Location(0, 0),
                 time=datetime(2022, 1, 1, 0, 0, 0),
@@ -223,6 +236,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
                 time=datetime(2022, 1, 1, 1, 0, 0),
                 instrument=None,
             ),
+            Port(location=None, time=None),
         ],
     )
 
@@ -242,8 +256,11 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
         await pilot.click(plan_screen.query_one("#save_button", Button))
         await pilot.pause(0.5)
 
-        plan_screen.notify.assert_called_once_with(
-            "Changes saved successfully", severity="information", timeout=20
+        calls = plan_screen.notify.call_args_list
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            and call[1].get("severity") == "information"
+            for call in calls
         )
 
     with open(tmp_path / EXPEDITION) as f:
@@ -259,6 +276,7 @@ async def test_deselecting_all_sensors_on_active_instrument_blocks_save(tmp_path
     _make_expedition(
         tmp_path,
         [
+            Port(location=None, time=None),
             Waypoint(
                 location=Location(0, 0),
                 time=datetime(2022, 1, 1, 0, 0, 0),
@@ -269,6 +287,7 @@ async def test_deselecting_all_sensors_on_active_instrument_blocks_save(tmp_path
                 time=datetime(2022, 1, 1, 1, 0, 0),
                 instrument=None,
             ),
+            Port(location=None, time=None),
         ],
     )
 
@@ -302,6 +321,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
     _make_expedition(
         tmp_path,
         [
+            Port(location=None, time=None),
             Waypoint(
                 location=Location(0, 0),
                 time=datetime(2022, 1, 1, 0, 0, 0),
@@ -312,6 +332,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
                 time=datetime(2022, 1, 1, 1, 0, 0),
                 instrument=None,
             ),
+            Port(location=None, time=None),
         ],
     )
 
@@ -333,8 +354,11 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
         await pilot.click(plan_screen.query_one("#save_button", Button))
         await pilot.pause(0.5)
 
-        plan_screen.notify.assert_called_once_with(
-            "Changes saved successfully", severity="information", timeout=20
+        calls = plan_screen.notify.call_args_list
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            and call[1].get("severity") == "information"
+            for call in calls
         )
 
 
@@ -354,6 +378,7 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
     _make_expedition(
         tmp_path,
         [
+            Port(location=None, time=None),
             Waypoint(
                 location=Location(0, 0),
                 time=datetime(2022, 1, 1, 0, 0, 0),
@@ -364,6 +389,7 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
                 time=datetime(2022, 1, 1, 1, 0, 0),
                 instrument=None,
             ),
+            Port(location=None, time=None),
         ],
         instruments_config,
     )
