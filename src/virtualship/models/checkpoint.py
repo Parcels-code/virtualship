@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import timedelta
 from pathlib import Path
 
@@ -18,6 +17,8 @@ from virtualship.utils import (
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_public_wp,
+    _read_json,
+    _write_json,
 )
 
 
@@ -91,61 +92,58 @@ class Checkpoint(pydantic.BaseModel):
             == self.past_schedule.waypoints[:failed_wp_i]
         ):
             raise CheckpointError(
-                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {int(public_failed_wp)} onwards)."
+                f"Past waypoints in schedule have been changed! Restore past schedule and only change future waypoints (waypoint {public_failed_wp} onwards)."
             )
 
         # 2) check that problems have been resolved in the new schedule
+        failed_waypoint = new_schedule.waypoints[failed_wp_i]
+
+        if has_problem_location:
+            problem_waypoint = new_schedule.waypoints[problem_wp_i]
+
+            stationkeeping_time = (
+                _calc_wp_stationkeeping_time(problem_waypoint.instrument, expedition)
+                if not isinstance(problem_waypoint, Port)
+                else timedelta(0)
+            )
+
+            sail_time = _calc_sail_time(
+                problem_waypoint.location,
+                failed_waypoint.location,
+                ship_speed_knots=expedition.ship_config.ship_speed_knots,
+                projection=PROJECTION,
+            )[0]
+
+            available_time = failed_waypoint.time - problem_waypoint.time
+            base_time = problem_waypoint.time
+            fixed_delay_offset = sail_time + stationkeeping_time
+        else:
+            # no departure location/time to sail from (departure port is an inactive placeholder)
+            base_time = self.past_schedule.waypoints[failed_wp_i].time
+            available_time = failed_waypoint.time - base_time
+            fixed_delay_offset = timedelta(0)
+
         hash_fpaths = [
             str(path.resolve()) for path in problems_dir.glob("problem_*.json")
         ]
 
         for file in hash_fpaths:
-            with open(file, encoding="utf-8") as f:
-                problem = json.load(f)
+            problem = _read_json(file)
 
             # continue if problem is already resolved, else perform checks to see if delay is accounted for
             if problem["resolved"]:
                 continue
 
             delay_duration = timedelta(hours=float(problem["delay_duration_hours"]))
-            failed_waypoint = new_schedule.waypoints[failed_wp_i]
-
-            if has_problem_location:
-                problem_waypoint = new_schedule.waypoints[problem_wp_i]
-
-                stationkeeping_time = (
-                    _calc_wp_stationkeeping_time(
-                        problem_waypoint.instrument,
-                        expedition,
-                    )
-                    if not isinstance(problem_waypoint, Port)
-                    else timedelta(0)
-                )
-
-                sail_time = _calc_sail_time(
-                    problem_waypoint.location,
-                    failed_waypoint.location,
-                    ship_speed_knots=expedition.ship_config.ship_speed_knots,
-                    projection=PROJECTION,
-                )[0]
-
-                available_time = failed_waypoint.time - problem_waypoint.time
-                min_time_required = sail_time + delay_duration + stationkeeping_time
-                expected_arrival = problem_waypoint.time + min_time_required
-            else:
-                # no departure location/time to sail from (departure port is an inactive placeholder)
-                original_time = self.past_schedule.waypoints[failed_wp_i].time
-                available_time = failed_waypoint.time - original_time
-                min_time_required = delay_duration
-                expected_arrival = original_time + delay_duration
+            min_time_required = fixed_delay_offset + delay_duration
+            expected_arrival = base_time + min_time_required
 
             if available_time >= min_time_required:
                 print("\n\n🎉 Previous problem has been resolved in the schedule.\n")
 
                 # save back to json file changing the resolved status to True
                 problem["resolved"] = True
-                with open(file, "w", encoding="utf-8") as f_out:
-                    json.dump(problem, f_out, indent=4)
+                _write_json(file, problem)
 
                 # only handle the first unresolved problem found; others will be handled in subsequent runs but are not yet known to the user
                 break
