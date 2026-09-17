@@ -70,8 +70,10 @@ class ProblemSimulator:
         """Initialise ProblemSimulator with a schedule and probability level."""
         self.expedition = expedition
         self.expedition_dir = Path(expedition_dir)
-
         self.waypoints = expedition.schedule.waypoints
+
+        # version with inactive Ports (if any) filtered out
+        self.wps_in_use = self.expedition.schedule._get_wps_in_use()
 
     def select_problems(
         self,
@@ -88,11 +90,13 @@ class ProblemSimulator:
         if difficulty_level == "easy":
             return None
 
-        # filter out any inactive Ports
-        wps_in_use = self.expedition.schedule._get_wps_in_use()
+        # isolate only the non-port waypoints
+        non_port_wps = [
+            i for i, wp in enumerate(self.wps_in_use) if not isinstance(wp, Port)
+        ]
 
         # if only one waypoint, return just a pre-departure problem
-        if len(wps_in_use) < 2:
+        if len(non_port_wps) < 2:
             pre_departure = [p for p in GENERAL_PROBLEMS if p.pre_departure]
             return {
                 "problem_class": [random.choice(pre_departure)],
@@ -104,10 +108,12 @@ class ProblemSimulator:
             for p in INSTRUMENT_PROBLEMS
             if p.instrument_type in instruments_in_expedition
         ]
+
+        # use all waypoints (incl. Ports) here
         num_problems = self._calculate_problem_count(
             difficulty_level=difficulty_level,
-            expedition_days=(wps_in_use[-1].time - wps_in_use[0].time).days,
-            num_waypoints=len(wps_in_use),
+            expedition_days=(self.wps_in_use[-1].time - self.wps_in_use[0].time).days,
+            num_waypoints=len(self.wps_in_use),
             num_instruments=len(instruments_in_expedition),
             max_available=len(GENERAL_PROBLEMS) + len(valid_instruments),
         )
@@ -206,10 +212,14 @@ class ProblemSimulator:
         assigned_problems: list[ProblemType] = []
         assigned_indices: list[int | None] = []
 
+        has_active_departure_port = isinstance(self.wps_in_use[0], Port)
+
         for problem in selected:
             if getattr(problem, "pre_departure", False):
                 assigned_problems.append(problem)
-                assigned_indices.append(0)  # noqa; pre-departure problem is always associated with the departure port (index 0)
+
+                # index is 0 if there is an active departure port, otherwise None (no waypoint associated with pre-departure problem)
+                assigned_indices.append(0 if has_active_departure_port else None)
                 continue
 
             if not avail_indices:
@@ -246,10 +256,10 @@ class ProblemSimulator:
         if not assigned_problems:
             return None
 
-        # sort chronologically (waypoint 0 first, then remaining waypoint index order)
+        # sort chronologically (waypoint 0/None first, then remaining waypoint index order)
         paired = sorted(
             zip(assigned_problems, assigned_indices, strict=True),
-            key=lambda x: 0 if x[1] == 0 else x[1],
+            key=lambda x: (x[1] is not None, x[1]),
         )
         return {
             "problem_class": [p for p, _ in paired],
@@ -297,7 +307,12 @@ class ProblemSimulator:
         problem_wp_i will often == public_wp (given 0-indexing), but this makes the logic explicit and clear.
         """
         waypoints = self.waypoints
-        public_wp = _get_public_wp(problem_wp_i, waypoints)
+
+        if problem_wp_i is None:
+            # pre-departure problem but no active Port in the schedule, so pretend the problem is at departure port for user messaging
+            public_wp = None
+        else:
+            public_wp = _get_public_wp(problem_wp_i, waypoints)
 
         alert_msg = (
             LOG_MESSAGING["pre_departure"]
@@ -353,6 +368,12 @@ class ProblemSimulator:
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
         """Check whether scheduled contingency covers expected delay duration."""
+        # special case where pretending that a pre-departure problem is at the departure port but there is no active Port in the schedule (problem_wp_i = None)
+        # always returns False, as there is no way to determine whether there is enough contingency time in this case
+        is_pre_departure_no_active_port = problem.pre_departure and problem_wp_i is None
+        if is_pre_departure_no_active_port:
+            return False
+
         curr_wp, next_wp = (
             self.waypoints[problem_wp_i],
             self.waypoints[problem_wp_i + 1],
