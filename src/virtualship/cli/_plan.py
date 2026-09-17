@@ -7,7 +7,6 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.dom import NoMatches
-from textual.markup import escape
 from textual.screen import ModalScreen, Screen
 from textual.validation import Function, Integer
 from textual.widgets import (
@@ -443,8 +442,8 @@ class ExpeditionEditor(Static):
         """Save changes to expedition.yaml."""
         try:
             self._update_ship_speed()
-            self._update_instrument_configs()
             self._update_schedule()
+            self._update_instrument_configs()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
             return True
         except UserError:
@@ -505,6 +504,7 @@ class ExpeditionEditor(Static):
                     kwargs["max_depth_meter"] = -1000.0
                 else:
                     kwargs["max_depth_meter"] = -150.0
+
             # collect sensor toggles
             default_sensor_configs = _default_sensors(config_class)
             if default_sensor_configs:
@@ -515,20 +515,22 @@ class ExpeditionEditor(Static):
                         f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
                     ).value
                 ]
-                if not sensors:
-                    # for schedule-based instruments, only raise if actually used in a waypoint
-                    # for underway, this is handled by the on/off toggle
-                    instrument_type = info.get("instrument_type")
-                    is_active = instrument_type is None or any(
-                        instrument_type
-                        in (
-                            wp.instrument
-                            if isinstance(wp.instrument, list)
-                            else [wp.instrument]
-                        )
-                        for wp in self.expedition.schedule.waypoints
-                        if wp.instrument
+
+                instrument_type = info.get("instrument_type")
+
+                # safe check for instrument existence across all waypoint types
+                is_active = instrument_type is None or any(
+                    instrument_type
+                    in (
+                        wp.instrument
+                        if isinstance(wp.instrument, list)
+                        else [wp.instrument]
                     )
+                    for wp in self.expedition.schedule.waypoints
+                    if getattr(wp, "instrument", None)
+                )
+
+                if not sensors:
                     if is_active:
                         title = info.get(
                             "title", instrument_name.replace("_", " ").title()
@@ -537,9 +539,16 @@ class ExpeditionEditor(Static):
                             f"'{title}' has no sensors selected. "
                             f"At least one sensor must be enabled for each active instrument."
                         )
-                kwargs["sensors"] = (
-                    sensors if sensors else _default_sensors(config_class)
-                )
+                    else:
+                        # if the instrument is not active in the schedule and no sensors are selected:
+                        # reset to default sensors (or keep default_sensor_configs) so pydantic validation passes.
+                        sensors = [
+                            SensorConfig(sensor_type=sc.sensor_type)
+                            for sc in default_sensor_configs
+                        ]
+
+                kwargs["sensors"] = sensors
+
             try:
                 setattr(
                     self.expedition.instruments_config,
@@ -1182,14 +1191,13 @@ class PlanScreen(Screen):
 
         try:
             ship_speed_value = self.get_ship_speed(expedition_editor)
-            self.sync_ui_waypoints()  # call to ensure waypoint inputs are synced
+            self.sync_ui_waypoints()
 
             instruments_config = expedition_editor.expedition.instruments_config
             schedule = expedition_editor.expedition.schedule
 
             schedule.verify(ship_speed_value, instruments_config, ignore_land_test=True)
 
-            # save changes
             expedition_saved = expedition_editor.save_changes()
 
             if expedition_saved:
@@ -1212,11 +1220,10 @@ class PlanScreen(Screen):
 
         except Exception as e:
             self.notify(
-                escape(
-                    f"*** Error saving changes ***:\n\n{e}\n"
-                ),  # escape avoids issues with special characters being interpreted as markup
+                f"*** Error saving changes ***:\n\n{e}\n",
                 severity="error",
                 timeout=20,
+                markup=False,
             )
             return False
 
