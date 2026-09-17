@@ -211,7 +211,7 @@ def _run(
     )
 
     if problems:
-        ProblemSimulator.post_expedition_report(
+        problem_simulator.post_expedition_report(
             problems, expedition_dir.joinpath(RESULTS, REPORT)
         )
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")

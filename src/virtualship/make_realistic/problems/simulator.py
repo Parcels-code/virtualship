@@ -441,16 +441,19 @@ class ProblemSimulator:
 
         return {"problem_class": selected_classes, "waypoint_i": waypoint_indices}
 
-    @staticmethod
     def post_expedition_report(
-        problems: SelectedProblemsDict, report_fpath: str | Path
+        self, problems: SelectedProblemsDict, report_fpath: str | Path
     ) -> None:
         """Append human-readable report summary of all occurring problems."""
         with open(report_fpath, "a", encoding="utf-8") as f:
             for problem, wp_i in zip(
                 problems["problem_class"], problems["waypoint_i"], strict=True
             ):
-                affected = "in-port" if wp_i is None else f"{wp_i + 1}"
+                # None means pre-departure with no active departure port
+                public_wp = (
+                    None if wp_i is None else _get_public_wp(wp_i, self.waypoints)
+                )
+                affected = "in-port" if public_wp is None else f"{public_wp}"
                 delay_hrs = problem.delay_duration.total_seconds() / 3600.0
                 f.write(
                     f"---\nWaypoint: {affected}\n"
