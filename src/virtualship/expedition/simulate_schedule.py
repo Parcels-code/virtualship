@@ -32,14 +32,6 @@ class ScheduleOk:
 
 
 @dataclass
-class ScheduleProblem:
-    """Result of schedule that could not be fully completed."""
-
-    time: datetime
-    failed_wp: int
-
-
-@dataclass
 class MeasurementsToSimulate:
     """
     The measurements to simulate, as concluded from schedule simulation.
@@ -69,15 +61,13 @@ class MeasurementsToSimulate:
     xbts: list[XBT] = field(default_factory=list, init=False)
 
 
-def simulate_schedule(
-    projection: pyproj.Geod, expedition: Expedition
-) -> ScheduleOk | ScheduleProblem:
+def simulate_schedule(projection: pyproj.Geod, expedition: Expedition) -> ScheduleOk:
     """
     Simulate a schedule.
 
     :param projection: The projection to use for sailing.
     :param expedition: Expedition object containing the schedule to simulate.
-    :returns: Either the results of a successfully simulated schedule, or information on where the schedule became infeasible.
+    :returns: The results of the simulated schedule.
     """
     return _ScheduleSimulator(projection, expedition).simulate()
 
@@ -115,7 +105,7 @@ class _ScheduleSimulator:
         self._next_adcp_time = self._time
         self._next_ship_underwater_st_time = self._time
 
-    def simulate(self) -> ScheduleOk | ScheduleProblem:
+    def simulate(self) -> ScheduleOk:
         # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here (i.e. #236)...
 
         for waypoint in self._wps_in_use:

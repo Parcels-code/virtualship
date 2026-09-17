@@ -10,7 +10,6 @@ import copernicusmarine
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
-    ScheduleProblem,
     simulate_schedule,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
@@ -19,7 +18,6 @@ from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     CACHE,
     CHECKPOINT,
-    EXPEDITION,
     EXPEDITION_IDENTIFIER,
     EXPEDITION_LATEST,
     PROBLEMS_ENCOUNTERED,
@@ -28,7 +26,6 @@ from virtualship.utils import (
     RESULTS,
     SELECTED_PROBLEMS,
     _get_expedition,
-    _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
@@ -111,20 +108,6 @@ def _run(
         projection=PROJECTION,
         expedition=expedition,
     )
-
-    # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
-    if isinstance(schedule_results, ScheduleProblem):
-        print(
-            f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
-        )
-        _save_checkpoint(
-            Checkpoint(
-                past_schedule=expedition.schedule,
-                failed_waypoint_i=schedule_results.failed_waypoint_i,
-            ),
-            expedition_dir,
-        )
-        return
 
     # delete and create results directory
     results_dir = expedition_dir.joinpath(RESULTS)
