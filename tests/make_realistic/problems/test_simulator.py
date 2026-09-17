@@ -60,6 +60,15 @@ def _make_simple_expedition(
     )
 
 
+def _get_pre_departure_problem() -> GeneralProblem:
+    """Return a pre-departure problem class from the general problem registry."""
+    problem = next(gp for gp in GENERAL_PROBLEMS if getattr(gp, "pre_departure", False))
+    assert problem is not None, (
+        "Need at least one pre-departure problem class in the general problem registry"
+    )
+    return problem
+
+
 def test_select_problems_single_waypoint_returns_pre_departure(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=1)
     instruments_in_expedition = expedition.get_instruments()
@@ -158,12 +167,7 @@ def test_has_contingency_pre_departure(tmp_path):
     expedition = _make_simple_expedition(num_waypoints=2)
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
-    pre_departure_problem = next(
-        gp for gp in GENERAL_PROBLEMS if getattr(gp, "pre_departure", False)
-    )
-    assert pre_departure_problem is not None, (
-        "Need at least one pre-departure problem class in the general problem registry"
-    )
+    pre_departure_problem = _get_pre_departure_problem()
 
     # _has_contingency should return False for pre-departure (waypoint = None)
     assert simulator._has_contingency(pre_departure_problem, 0) is False
@@ -179,16 +183,10 @@ def test_has_contingency_pre_departure_inactive_port(tmp_path):
 
     simulator = ProblemSimulator(expedition, str(tmp_path))
 
-    pre_departure_problem = next(
-        gp for gp in GENERAL_PROBLEMS if getattr(gp, "pre_departure", False)
-    )
-    assert pre_departure_problem is not None, (
-        "Need at least one pre-departure problem class in the general problem registry"
-    )
+    pre_departure_problem = _get_pre_departure_problem()
 
-    problem_wp_i = (
-        None  # no active port, so no waypoint index for pre-departure problem
-    )
+    # no active port, so no waypoint index for pre-departure problem
+    problem_wp_i = None
 
     # _has_contingency should return False for pre-departure (waypoint = None)
     assert simulator._has_contingency(pre_departure_problem, problem_wp_i) is False
