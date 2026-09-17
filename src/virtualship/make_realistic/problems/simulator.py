@@ -73,12 +73,6 @@ class ProblemSimulator:
 
         self.waypoints = expedition.schedule.waypoints
 
-    def __post_init__(self):
-        """Ensure first and last waypoints are Ports. Allows the problem selection to work properly."""
-        assert isinstance(self.waypoints[0], Port) & isinstance(
-            self.waypoints[-1], Port
-        ), "First and last waypoints must be Port types."
-
     def select_problems(
         self,
         instruments_in_expedition: set[InstrumentType],
