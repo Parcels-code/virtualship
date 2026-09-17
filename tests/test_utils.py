@@ -10,7 +10,7 @@ from parcels import FieldSet, ParticleClass, Variable
 import virtualship.utils
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition, SensorConfig
+from virtualship.models.expedition import Expedition, Port, SensorConfig, Waypoint
 from virtualship.models.location import Location
 from virtualship.utils import (
     PROJECTION,
@@ -19,6 +19,7 @@ from virtualship.utils import (
     _find_nc_file_with_variable,
     _get_bathy_data,
     _get_example_expedition,
+    _get_public_wp,
     _select_product_id,
     _start_end_in_product_timerange,
     build_particle_class_from_sensors,
@@ -309,6 +310,23 @@ def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
     assert stationkeeping_time_xbt == datetime.timedelta(0), (
         "XBT should have zero stationkeeping time"
     )
+
+
+def test_get_public_wp():
+    """Port waypoints have no public number; non-port waypoints are numbered 1-indexed, ignoring ports."""
+    waypoints = [
+        Port(location=Location(0, 0)),  # index 0: departure port
+        Waypoint(location=Location(1, 1)),  # index 1: public waypoint 1
+        Port(location=Location(2, 2)),  # index 2: stop-over port
+        Waypoint(location=Location(3, 3)),  # index 3: public waypoint 2
+        Port(location=Location(4, 4)),  # index 4: arrival port
+    ]
+
+    assert _get_public_wp(0, waypoints) is None
+    assert _get_public_wp(1, waypoints) == 1
+    assert _get_public_wp(2, waypoints) is None
+    assert _get_public_wp(3, waypoints) == 2
+    assert _get_public_wp(4, waypoints) is None
 
 
 def test_calc_wp_stationkeeping_time_no_instruments(expedition):

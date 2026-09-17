@@ -349,3 +349,38 @@ def test_wps_in_use(base_expedition):
     wps_in_use = expedition.schedule._get_wps_in_use()
     assert len(wps_in_use) == 2  # placeholder waypoints should be removed
     assert all(isinstance(wp, Waypoint) for wp in wps_in_use)
+
+
+def test_wps_in_use_asymmetric_placeholder_ports():
+    """Only the inactive side (departure and/or arrival) should be excluded, not both."""
+    base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
+    wp1 = Waypoint(location=Location(1, 1), time=base_time + timedelta(hours=1))
+    active_arrival = Port(location=Location(2, 2), time=base_time + timedelta(hours=2))
+
+    # inactive departure, active arrival
+    schedule = Schedule(waypoints=[Port(location=None, time=None), wp1, active_arrival])
+    wps_in_use = schedule._get_wps_in_use()
+    assert wps_in_use == [wp1, active_arrival]
+
+    # active departure, inactive arrival
+    active_departure = Port(location=Location(0, 0), time=base_time)
+    schedule = Schedule(
+        waypoints=[active_departure, wp1, Port(location=None, time=None)]
+    )
+    wps_in_use = schedule._get_wps_in_use()
+    assert wps_in_use == [active_departure, wp1]
+
+
+@pytest.mark.parametrize(
+    "location, time, expected",
+    [
+        (Location(0, 0), datetime(2024, 1, 1), True),
+        (None, datetime(2024, 1, 1), False),
+        (Location(0, 0), None, False),
+        (None, None, False),
+        (Location(None, None), datetime(2024, 1, 1), False),
+    ],
+)
+def test_port_is_in_use(location, time, expected):
+    """A Port is only 'in use' when it has both a fully-specified location and a time."""
+    assert Port(location=location, time=time).is_in_use is expected
