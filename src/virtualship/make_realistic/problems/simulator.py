@@ -94,8 +94,11 @@ class ProblemSimulator:
         if difficulty_level == "easy":
             return None
 
-        # # if only one waypoint, return just a pre-departure problem
-        if len(self.waypoints) < 2:
+        # filter out any inactive Ports
+        wps_in_use = self.expedition.schedule._get_wps_in_use()
+
+        # if only one waypoint, return just a pre-departure problem
+        if len(wps_in_use) < 2:
             pre_departure = [p for p in GENERAL_PROBLEMS if p.pre_departure]
             return {
                 "problem_class": [random.choice(pre_departure)],
@@ -109,8 +112,8 @@ class ProblemSimulator:
         ]
         num_problems = self._calculate_problem_count(
             difficulty_level=difficulty_level,
-            expedition_days=(self.waypoints[-1].time - self.waypoints[0].time).days,
-            num_waypoints=len(self.waypoints),
+            expedition_days=(wps_in_use[-1].time - wps_in_use[0].time).days,
+            num_waypoints=len(wps_in_use),
             num_instruments=len(instruments_in_expedition),
             max_available=len(GENERAL_PROBLEMS) + len(valid_instruments),
         )
