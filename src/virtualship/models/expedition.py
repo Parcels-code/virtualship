@@ -154,11 +154,13 @@ class Schedule(pydantic.BaseModel):
         """Verify the feasibility and correctness of the schedule's waypoints."""
         print("\nVerifying route... ")
 
+        # waypoints excluding any inactive placeholder departure/arrival ports
+        wps_in_use = self._get_wps_in_use()
+
         # is the departure port in use or a placeholder (i.e. all None)?
-        check_idx = 0 if self.departure_port.is_in_use else 1
         wp_str = "Departure port" if self.departure_port.is_in_use else "Waypoint 1"
 
-        if self.waypoints[check_idx].time is None:
+        if wps_in_use[0].time is None:
             raise ScheduleError(f"{wp_str} must have a specified time.")
 
         # check waypoint times are in ascending order
@@ -207,13 +209,7 @@ class Schedule(pydantic.BaseModel):
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
-        time = (
-            self.waypoints[0].time
-            if self.departure_port.is_in_use
-            else self.waypoints[1].time
-        )
-
-        wps_in_use = self._get_wps_in_use()
+        time = wps_in_use[0].time
 
         for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
             stationkeeping_time = _calc_wp_stationkeeping_time(
