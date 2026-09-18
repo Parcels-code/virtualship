@@ -45,7 +45,7 @@ RESULTS = "results"
 # projection used to sail between waypoints
 PROJECTION = pyproj.Geod(ellps="WGS84")
 
-# caching for problems module
+# problems module
 CACHE = "cache"
 EXPEDITION_IDENTIFIER = "id_latest.txt"
 PROBLEMS_ENCOUNTERED = "problems_encountered_" + "{expedition_id}"
@@ -54,6 +54,9 @@ REPORT = "post_expedition_report.txt"
 
 EXPEDITION_ORIGINAL = "expedition_original.yaml"
 EXPEDITION_LATEST = "expedition_latest.yaml"
+
+# Parcels cacheing
+MAX_CACHE_BYTES = 300_000_000  # [Bytes per variable]
 
 
 # =====================================================

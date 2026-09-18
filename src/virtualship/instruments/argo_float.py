@@ -165,7 +165,12 @@ def _argo_sample_temperature(particles, fieldset):
     # Phase 3: ascending — sample temperature
     phase_mask = particles.cycle_phase == 3
     depth_mask = particles.z < particles.min_depth  # still ascending
-    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    mask = np.logical_and(phase_mask, depth_mask)
+    if not np.any(mask):
+        # TODO: tmp fix avoiding IndexError in Parcels' ChunkCachedArray vectorized indexing when sampling with an empty ParticleSet (Parcels issue: #2906)
+        # TODO: can be removed when fixed upstream in Parcels
+        return
+    sampling_particles = particles[mask]
     sampling_particles.temperature = fieldset.T[sampling_particles]
 
 
@@ -173,7 +178,12 @@ def _argo_sample_salinity(particles, fieldset):
     # Phase 3: ascending — sample salinity
     phase_mask = particles.cycle_phase == 3
     depth_mask = particles.z < particles.min_depth  # still ascending
-    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    mask = np.logical_and(phase_mask, depth_mask)
+    if not np.any(mask):
+        # TODO: tmp fix avoiding IndexError in Parcels' ChunkCachedArray vectorized indexing when sampling with an empty ParticleSet (Parcels issue: #2906)
+        # TODO: can be removed when fixed upstream in Parcels
+        return
+    sampling_particles = particles[mask]
     sampling_particles.salinity = fieldset.S[sampling_particles]
 
 
@@ -247,6 +257,8 @@ class ArgoFloatInstrument(Instrument):
             latlon_buffer=9.0,  # [degrees]
             time_buffer=expedition.instruments_config.argo_float_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
+            depth_min=expedition.instruments_config.argo_float_config.min_depth_meter,
+            depth_max=expedition.instruments_config.argo_float_config.max_depth_meter,
         )
 
         super().__init__(

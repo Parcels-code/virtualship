@@ -107,7 +107,7 @@ class _FakeFieldSet:
             setattr(self, name, value)
         self.fields = {}
 
-    def to_windowed_arrays(self):
+    def to_chunk_cached_arrays(self):
         """Mimic FieldSet.to_windowed_arrays."""
         return self
 
@@ -139,7 +139,6 @@ def test_load_input_data():
             return_value="dummy_product_id",
         ),
         patch("copernicusmarine.open_dataset"),
-        patch.object(dummy, "_via_tmp_ds", side_effect=lambda ds: ds),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch(
             "parcels.FieldSet.from_sgrid_conventions", return_value=fake_fieldset
@@ -228,61 +227,6 @@ def test_fetch_spec_applied_to_instrument():
     assert dummy.fetch_spec.depth_max is None
 
 
-def test_via_tmp_ds_roundtrip():
-    """_via_tmp_ds writes to a tmp file and re-opens it."""
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-
-    with DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-
-        assert isinstance(result, xr.Dataset)
-        assert "temperature" in result
-        assert (
-            result is not ds
-        )  # result is new object loaded from tmp file, not the original
-
-        result.close()
-        ds.close()
-
-
-def test_instrument_context_manager():
-    """Test that context manager cleans up temporary directories upon exit."""
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-
-    with DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-        assert len(dummy._tmp_dirs) == 1
-        result.close()
-        ds.close()
-
-    # outside 'with' block, tmp dirs should be cleared
-    assert len(dummy._tmp_dirs) == 0
-
-
 def test_generate_fieldset_combines_fields():
     mock_waypoint = MagicMock()
     mock_waypoint.location.latitude = 1.0
@@ -299,12 +243,11 @@ def test_generate_fieldset_combines_fields():
     fs_A = MagicMock()
     fs_B = MagicMock()
 
-    fs_A.to_windowed_arrays.return_value = fs_A
-    fs_B.to_windowed_arrays.return_value = fs_B
+    fs_A.to_chunk_cached_arrays.return_value = fs_A
+    fs_B.to_chunk_cached_arrays.return_value = fs_B
 
     with (
         patch.object(dummy, "_get_copernicus_ds"),
-        patch.object(dummy, "_via_tmp_ds"),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch("parcels.FieldSet.from_sgrid_conventions", side_effect=[fs_A, fs_B]),
     ):
