@@ -124,11 +124,6 @@ def _validate_mfp_data(file_path: Path) -> pd.DataFrame:
     """Load and validate MFP CruiseData export."""
     mfp_data = _load_mfp_export(file_path)
 
-    # clean up column names
-    mfp_data.columns = mfp_data.columns.astype(str).str.strip()
-    junk_col_pattern = r"^(Unnamed:.*||\.\d+)$"
-    mfp_data = mfp_data.loc[:, ~mfp_data.columns.str.match(junk_col_pattern)]
-
     expected_columns = [
         "Station",
         "Type",
@@ -217,12 +212,21 @@ def _load_mfp_export(file_path: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"File not found: {file_path}")
 
     try:
-        return pd.read_excel(file_path).dropna(how="all", axis=1)  # drop empty columns
+        mfp_data = pd.read_excel(file_path)
+
     except Exception as e:
         raise RuntimeError(
             "Could not read coordinates data from the provided file. "
             "Ensure it is an exported .xlsx file from MFP."
         ) from e
+
+    # clean up columns (remove junk "Unnamed" columns and trailing whitespace)
+    # but preserve other collumns, even if empty (e.g. Sea Depth and Time at Station can be empty only using Ports)
+    mfp_data.columns = mfp_data.columns.astype(str).str.strip()
+    junk_col_pattern = r"^(Unnamed:.*||\.\d+)$"
+    mfp_data = mfp_data.loc[:, ~mfp_data.columns.str.match(junk_col_pattern)]
+
+    return mfp_data
 
 
 def _create_port_row(columns, port_type: str) -> pd.DataFrame:

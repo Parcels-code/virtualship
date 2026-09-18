@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from virtualship.cli._initialise import _mfp_to_yaml
+from virtualship.cli._initialise import _load_mfp_export, _mfp_to_yaml
 from virtualship.models import Expedition, Port, Waypoint
 from virtualship.utils import _get_example_expedition
 
@@ -117,6 +117,16 @@ def unexpected_header_mfp_file(tmp_path):
     return path
 
 
+@pytest.fixture
+def mfp_file_with_junk_columns(tmp_path):
+    """MFP export containing pandas-generated 'Unnamed' junk columns."""
+    path = tmp_path / "file.xlsx"
+    df = valid_mfp_data()
+    df[""] = range(len(df))  # empty column with no name
+    df.to_excel(path, index=True)  # index=True creates an 'Unnamed: 0' column
+    return path
+
+
 @pytest.mark.parametrize(
     "fixture_name",
     ["valid_excel_mfp_file", "valid_excel_mfp_file_with_commas"],
@@ -200,3 +210,23 @@ def test_mfp_to_yaml_missing_ports_warning(missing_ports_mfp_file, tmp_path):
         match="The MFP export is missing either a 'Departure Port' or 'Arrival Port'",
     ):
         _mfp_to_yaml(missing_ports_mfp_file, start_date, yaml_output_path)
+
+
+def test_load_mfp_export_drops_junk_columns(mfp_file_with_junk_columns):
+    """_load_mfp_export should drop pandas' auto-generated 'Unnamed' junk columns, whilst preserving all genuine MFP columns."""
+    mfp_data = _load_mfp_export(mfp_file_with_junk_columns)
+
+    assert not any(col.startswith("Unnamed:") for col in mfp_data.columns), (
+        f"Got junk 'Unnamed' columns: {list(mfp_data.columns)}"
+    )
+
+    expected_columns = list(valid_mfp_data().columns)
+    assert list(mfp_data.columns) == expected_columns, (
+        f"Expected core MFP columns {expected_columns} to be preserved, got {list(mfp_data.columns)}"
+    )
+
+    mfp_data = mfp_data.reset_index(drop=True)
+    expected = valid_mfp_data()
+    assert list(mfp_data["Station"]) == list(expected["Station"])
+    assert list(mfp_data["Latitude"]) == list(expected["Latitude"])
+    assert list(mfp_data["EEZ"]) == list(expected["EEZ"])
