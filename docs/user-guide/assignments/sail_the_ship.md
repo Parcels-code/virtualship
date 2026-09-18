@@ -131,7 +131,7 @@ There are other instrument configurations settings that can be adjusted in the e
 ### Waypoint datetimes
 
 ```{note}
-VirtualShip supports running experiments in the years 1993 through to the present day by leveraging the suite of products available on the Copernicus Marine Data Store.
+VirtualShip supports running experiments in the years 1993 through to the present day by leveraging the suite of products available on the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 ```
 
 You will need to enter dates and times for each of the sampling stations/waypoints selected in the MFP route planning stage. This can be done under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
