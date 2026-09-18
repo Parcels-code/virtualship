@@ -7,7 +7,6 @@ import parcels
 import pyproj
 import pytest
 import xarray as xr
-import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
@@ -143,8 +142,8 @@ def test_verify_on_land(base_expedition):
                 Port(location=Location(1, 0)),
             ],
             ScheduleError,
-            "At least one non-port waypoint must be provided.",
-            id="NoWaypoints",
+            "Schedule has no active waypoints",
+            id="NoActiveWaypoints",
         ),
         pytest.param(
             [
@@ -198,6 +197,23 @@ def test_verify_schedule_errors(base_expedition, waypoints: list, error, match) 
             base_expedition.instruments_config,
             ignore_land_test=True,
         )
+
+
+def test_verify_schedule_ports_only(base_expedition) -> None:
+    """A schedule with only active Ports (no non-port waypoints) is valid."""
+    schedule = Schedule(
+        waypoints=[
+            Port(location=Location(0, 0), time=datetime(2022, 1, 1, 0, 0, 0)),
+            Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
+        ]
+    )
+    schedule.verify(
+        base_expedition.ship_config.ship_speed_knots,
+        base_expedition.instruments_config,
+        ignore_land_test=True,
+    )
+
+    assert schedule._verified, "Schedule with only active ports should be accepted."
 
 
 @pytest.fixture
@@ -290,43 +306,54 @@ def test_all_instrument_configs_use_mixin(expedition):
         )
 
 
-def test_waypoint_yaml_lines(base_expedition) -> None:
-    """Each full waypoint entry in the raw YAML dump should start with '- instrument:', whereas Port waypoints should start with just '- location:'."""
+def test_annotate_waypoint_number_comments(base_expedition) -> None:
+    """Expedition._annotate() should provide one comment per waypoint, matching each waypoint's type (Port vs Waypoint) and number."""
     schedule = base_expedition.schedule
-    raw = yaml.dump(
-        {
-            "schedule": {
-                "waypoints": [wp.model_dump(by_alias=True) for wp in schedule.waypoints]
-            }
-        },
-        default_flow_style=False,
+    annotated = base_expedition._annotate()
+
+    comments = [line.strip() for line in annotated if line.strip().startswith("#")]
+
+    expected = []
+    waypoint_number = 0
+    for wp_index, wp in enumerate(schedule.waypoints):
+        if isinstance(wp, Port):
+            arrival_departure = "Departure" if wp_index == 0 else "Arrival"
+            expected.append(f"# Port of {arrival_departure}")
+        else:
+            waypoint_number += 1
+            expected.append(f"# Waypoint {waypoint_number}")
+
+    assert comments == expected
+
+
+@pytest.mark.parametrize(
+    "waypoints",
+    [
+        pytest.param(None, id="example_schedule_with_intervening_waypoints"),
+        pytest.param(
+            [
+                Port(location=Location(0.0, 0.0), time=datetime(1998, 5, 1)),
+                Port(location=Location(0.3, 0.0), time=datetime(1998, 5, 1, 3)),
+            ],
+            id="only_departure_and_arrival_ports",
+        ),
+    ],
+)
+def test_annotate_no_duplicate_comments(base_expedition, waypoints) -> None:
+    """Expedition._annotate() should never produce the same comment twice. E.g. there should only be one Waypoint 1, one Port of Departure, etc."""
+    schedule = (
+        base_expedition.schedule if waypoints is None else Schedule(waypoints=waypoints)
+    )
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=base_expedition.instruments_config,
+        ship_config=base_expedition.ship_config,
     )
 
-    standard_lines = [
-        line for line in raw.splitlines() if line.lstrip().startswith("- instrument:")
-    ]
-    port_lines = [
-        line for line in raw.splitlines() if line.lstrip().startswith("- location:")
-    ]
+    annotated = expedition._annotate()
+    comments = [line.strip() for line in annotated if line.strip().startswith("#")]
 
-    port_wps = [wp for wp in schedule.waypoints if isinstance(wp, Port)]
-    standard_wps = [wp for wp in schedule.waypoints if not isinstance(wp, Port)]
-
-    assert len(port_wps) == 2, (
-        "There should be exactly 2 Port waypoints (departure and arrival)."
-    )
-
-    assert len(port_lines) == len(port_wps), (
-        f"Expected {len(port_wps)} lines starting with '- location:' in the YAML dump, "
-        f"got {len(port_lines)}. The Port/Waypoint field order or terminology may have changed. "
-        "Note this can have implications for the placement of port/waypoint number comments in Expedition.to_yaml()."
-    )
-
-    assert len(standard_lines) == len(standard_wps), (
-        f"Expected {len(standard_wps)} lines starting with '- instrument:' in the YAML dump, "
-        f"got {len(standard_lines)}. The Waypoint field order or terminology may have changed. "
-        "Note this can have implications for the placement of waypoint number comments in Expedition.to_yaml()."
-    )
+    assert len(set(comments)) == len(comments)
 
 
 def test_wps_in_use(base_expedition):

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from virtualship.cli._initialise import _mfp_to_yaml
+from virtualship.cli._initialise import _load_mfp_export, _mfp_to_yaml
 from virtualship.models import Expedition, Port, Waypoint
 from virtualship.utils import _get_example_expedition
 
@@ -109,11 +109,32 @@ def missing_ports_mfp_file(tmp_path):
 
 
 @pytest.fixture
+def all_ports_mfp_file(tmp_path):
+    """MFP export with only ports, i.e. no waypoint stations."""
+    path = tmp_path / "file.xlsx"
+    df = valid_mfp_data()
+    df["Station"] = ["Departure Port", "Port", "Port", "Port", "Arrival Port"]
+    df["Type"] = df["Station"]
+    df.to_excel(path, index=False)
+    return path
+
+
+@pytest.fixture
 def unexpected_header_mfp_file(tmp_path):
     path = tmp_path / "file.xlsx"
     df = valid_mfp_data()
     df["Unexpected Column"] = ["Extra1", "Extra2", "Extra3", "Extra4", "Extra5"]
     df.to_excel(path, index=False)
+    return path
+
+
+@pytest.fixture
+def mfp_file_with_junk_columns(tmp_path):
+    """MFP export containing pandas-generated 'Unnamed' junk columns."""
+    path = tmp_path / "file.xlsx"
+    df = valid_mfp_data()
+    df[""] = range(len(df))  # empty column with no name
+    df.to_excel(path, index=True)  # index=True creates an 'Unnamed: 0' column
     return path
 
 
@@ -200,3 +221,38 @@ def test_mfp_to_yaml_missing_ports_warning(missing_ports_mfp_file, tmp_path):
         match="The MFP export is missing either a 'Departure Port' or 'Arrival Port'",
     ):
         _mfp_to_yaml(missing_ports_mfp_file, start_date, yaml_output_path)
+
+
+def test_mfp_to_yaml_no_science_stations_warning(all_ports_mfp_file, tmp_path):
+    """Test that _mfp_to_yaml warns when the MFP export contains no non-port waypoints."""
+    yaml_output_path = tmp_path / "expedition.yaml"
+    start_date = "1998-05-01 01:00:00"
+
+    with pytest.warns(
+        UserWarning,
+        match="The MFP export contains no waypoint stations",
+    ):
+        _mfp_to_yaml(all_ports_mfp_file, start_date, yaml_output_path)
+
+    data = Expedition.from_yaml(yaml_output_path)
+    assert all(isinstance(wp, Port) for wp in data.schedule.waypoints)
+
+
+def test_load_mfp_export_drops_junk_columns(mfp_file_with_junk_columns):
+    """_load_mfp_export should drop pandas' auto-generated 'Unnamed' junk columns, whilst preserving all genuine MFP columns."""
+    mfp_data = _load_mfp_export(mfp_file_with_junk_columns)
+
+    assert not any(col.startswith("Unnamed:") for col in mfp_data.columns), (
+        f"Got junk 'Unnamed' columns: {list(mfp_data.columns)}"
+    )
+
+    expected_columns = list(valid_mfp_data().columns)
+    assert list(mfp_data.columns) == expected_columns, (
+        f"Expected core MFP columns {expected_columns} to be preserved, got {list(mfp_data.columns)}"
+    )
+
+    mfp_data = mfp_data.reset_index(drop=True)
+    expected = valid_mfp_data()
+    assert list(mfp_data["Station"]) == list(expected["Station"])
+    assert list(mfp_data["Latitude"]) == list(expected["Latitude"])
+    assert list(mfp_data["EEZ"]) == list(expected["EEZ"])

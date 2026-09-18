@@ -647,24 +647,16 @@ class ExpeditionEditor(Static):
         """Add a new waypoint to the schedule (N.B. ports always remain). Copies time from last waypoint if possible (Lat/lon and instruments blank)."""
         try:
             wps = self.expedition.schedule.waypoints
-            if wps:
-                non_port_wps = [wp for wp in wps if not isinstance(wp, Port)]
-                last_wp = non_port_wps[-1]
-                new_time = last_wp.time if last_wp.time else None
-                new_wp = Waypoint(
-                    location=Location(
-                        latitude=0.0,
-                        longitude=0.0,
-                    ),
-                    time=new_time,
-                    instrument=[],
-                )
-            else:
-                new_wp = Waypoint(
-                    location=Location(latitude=0.0, longitude=0.0),
-                    time=None,
-                    instrument=[],
-                )
+            non_port_wps = [wp for wp in wps if not isinstance(wp, Port)]
+            new_time = non_port_wps[-1].time if non_port_wps else None
+            new_wp = Waypoint(
+                location=Location(
+                    latitude=0.0,
+                    longitude=0.0,
+                ),
+                time=new_time,
+                instrument=[],
+            )
 
             # add waypoint before the last port (arrival port) if it exists, otherwise at the end
             insert_index = next(
@@ -681,15 +673,11 @@ class ExpeditionEditor(Static):
         """Remove the last waypoint (non-port) from the schedule."""
         try:
             wps = self.expedition.schedule.waypoints
-            if wps:
-                last_wp_index = next(
-                    (
-                        i
-                        for i, wp in reversed(list(enumerate(wps)))
-                        if isinstance(wp, Waypoint)
-                    )
-                )
-                self.expedition.schedule.waypoints.pop(last_wp_index)
+            non_port_indices = [
+                i for i, wp in enumerate(wps) if isinstance(wp, Waypoint)
+            ]
+            if non_port_indices:
+                self.expedition.schedule.waypoints.pop(non_port_indices[-1])
                 self.refresh_waypoint_widgets()
             else:
                 self.notify("No waypoints to remove.", severity="error", timeout=5)
@@ -1010,9 +998,13 @@ class WaypointWidget(Static):
                         for instrument in [
                             inst for inst in InstrumentType if not inst.is_underway
                         ]:
-                            prev_switch = schedule_editor.query_one(
-                                f"#wp{self.index - 1}_{instrument.value}"
-                            )
+                            try:
+                                prev_switch = schedule_editor.query_one(
+                                    f"#wp{self.index - 1}_{instrument.value}"
+                                )
+                            except NoMatches:
+                                # previous waypoint is a port so no instrument controls to copy
+                                break
                             curr_switch = self.query_one(
                                 f"#wp{self.index}_{instrument.value}"
                             )
