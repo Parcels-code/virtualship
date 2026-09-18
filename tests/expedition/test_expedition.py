@@ -7,7 +7,6 @@ import parcels
 import pyproj
 import pytest
 import xarray as xr
-import yaml
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.models import (
@@ -290,43 +289,24 @@ def test_all_instrument_configs_use_mixin(expedition):
         )
 
 
-def test_waypoint_yaml_lines(base_expedition) -> None:
-    """Each full waypoint entry in the raw YAML dump should start with '- instrument:', whereas Port waypoints should start with just '- location:'."""
+def test_annotate_waypoint_number_comments(base_expedition) -> None:
+    """Expedition._annotate() should provide one comment per waypoint, matching each waypoint's type (Port vs Waypoint) and number."""
     schedule = base_expedition.schedule
-    raw = yaml.dump(
-        {
-            "schedule": {
-                "waypoints": [wp.model_dump(by_alias=True) for wp in schedule.waypoints]
-            }
-        },
-        default_flow_style=False,
-    )
+    annotated = base_expedition._annotate()
 
-    standard_lines = [
-        line for line in raw.splitlines() if line.lstrip().startswith("- instrument:")
-    ]
-    port_lines = [
-        line for line in raw.splitlines() if line.lstrip().startswith("- location:")
-    ]
+    comments = [line.strip() for line in annotated if line.strip().startswith("#")]
 
-    port_wps = [wp for wp in schedule.waypoints if isinstance(wp, Port)]
-    standard_wps = [wp for wp in schedule.waypoints if not isinstance(wp, Port)]
+    expected = []
+    waypoint_number = 0
+    for wp in schedule.waypoints:
+        if isinstance(wp, Port):
+            arrival_departure = "Departure" if waypoint_number == 0 else "Arrival"
+            expected.append(f"# Port of {arrival_departure}")
+        else:
+            waypoint_number += 1
+            expected.append(f"# Waypoint {waypoint_number}")
 
-    assert len(port_wps) == 2, (
-        "There should be exactly 2 Port waypoints (departure and arrival)."
-    )
-
-    assert len(port_lines) == len(port_wps), (
-        f"Expected {len(port_wps)} lines starting with '- location:' in the YAML dump, "
-        f"got {len(port_lines)}. The Port/Waypoint field order or terminology may have changed. "
-        "Note this can have implications for the placement of port/waypoint number comments in Expedition.to_yaml()."
-    )
-
-    assert len(standard_lines) == len(standard_wps), (
-        f"Expected {len(standard_wps)} lines starting with '- instrument:' in the YAML dump, "
-        f"got {len(standard_lines)}. The Waypoint field order or terminology may have changed. "
-        "Note this can have implications for the placement of waypoint number comments in Expedition.to_yaml()."
-    )
+    assert comments == expected
 
 
 def test_wps_in_use(base_expedition):

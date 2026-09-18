@@ -77,26 +77,45 @@ class Expedition(pydantic.BaseModel):
             ) from e
 
     def _annotate(self):
-        """Add port/waypoint comments/annotations to the expedition.yaml file."""
-        raw = yaml.dump(self.model_dump(by_alias=True), default_flow_style=False)
+        """
+        Add port/waypoint comments/annotations to the expedition.yaml file.
+
+        Infer the waypoint type (Port vs Waypoint) from the Python object type.
+        """
+        data = self.model_dump(by_alias=True)
+        waypoints = self.schedule.waypoints
+        waypoints_data = data["schedule"]["waypoints"]
+
+        # blank out waypoints in the dumped data to make it easier to identify and rebuild with annotated waypoint blocks below
+        data["schedule"]["waypoints"] = []
+        raw = yaml.dump(data, default_flow_style=False)
 
         lines = raw.splitlines(keepends=True)
         annotated = []
         waypoint_number = 0
         for line in lines:
-            stripped = line.lstrip()
-            indent = " " * (len(line) - len(stripped))
+            if line.strip() != "waypoints: []":
+                annotated.append(line)
+                continue
 
-            # waypoints start with "- instrument:" and Ports start with "- location:" (no instrument field).
-            if stripped.startswith("- instrument:"):
-                waypoint_number += 1
-                annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
+            indent = " " * (len(line) - len(line.lstrip()))
+            annotated.append(f"{indent}waypoints:\n")
 
-            if stripped.startswith("- location:"):
-                arrival_departure = "Departure" if waypoint_number == 0 else "Arrival"
-                annotated.append(f"{indent}# Port of {arrival_departure}\n")
+            for waypoint, wp_data in zip(waypoints, waypoints_data, strict=True):
+                if isinstance(waypoint, Port):
+                    arrival_departure = (
+                        "Departure" if waypoint_number == 0 else "Arrival"
+                    )
+                    annotated.append(f"{indent}# Port of {arrival_departure}\n")
+                else:
+                    waypoint_number += 1
+                    annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
 
-            annotated.append(line)
+                # dump the waypoint on its own so its block can be indented and inserted independently of the others
+                wp_lines = yaml.dump([wp_data], default_flow_style=False).splitlines(
+                    keepends=True
+                )
+                annotated.extend(f"{indent}{wp_line}" for wp_line in wp_lines)
 
         return annotated
 
