@@ -8,6 +8,7 @@ from .expedition import (
     DrifterConfig,
     Expedition,
     InstrumentsConfig,
+    Port,
     Schedule,
     SensorConfig,
     ShipConfig,
@@ -23,6 +24,7 @@ from .spacetime import (
 
 __all__ = [  # noqa: RUF022
     "Location",
+    "Port",
     "Schedule",
     "SensorConfig",
     "ShipConfig",

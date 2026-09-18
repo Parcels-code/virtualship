@@ -3,6 +3,7 @@
 import contextlib
 import io
 from datetime import datetime, timedelta
+from typing import ClassVar
 
 import numpy as np
 import parcels
@@ -128,11 +129,20 @@ def create_argo_float(waypoint):
 def create_dummy_expedition(sensors, lifetime=timedelta(days=1), location=(1, 2)):
     """Create a DummyExpedition class with specified sensors and parameters."""
 
+    class DummySchedule:
+        waypoints: ClassVar[list] = [
+            Waypoint(
+                location=Location(*location),
+                time=BASE_TIME,
+                instrument=[InstrumentType.ARGO_FLOAT],
+            ),
+        ]
+
+        def _get_wps_in_use(self):
+            return self.waypoints
+
     class DummyExpedition:
-        class schedule:
-            waypoints: list[Waypoint] = [  # noqa: RUF012
-                Waypoint(location=Location(*location), time=BASE_TIME)
-            ]
+        schedule = DummySchedule()
 
         instruments_config = InstrumentsConfig(
             argo_float_config=ArgoFloatConfig(

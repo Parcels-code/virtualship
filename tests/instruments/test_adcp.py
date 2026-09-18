@@ -32,15 +32,20 @@ NUM_BINS = 40
 def adcp_expedition():
     """Minimal Expedition for ADCPInstrument instantiation."""
 
+    class DummySchedule:
+        waypoints: ClassVar[list] = [
+            Waypoint(
+                location=Location(1, 2),
+                time=BASE_TIME,
+                instrument=[],
+            ),
+        ]
+
+        def _get_wps_in_use(self):
+            return self.waypoints
+
     class DummyExpedition:
-        class schedule:
-            waypoints: ClassVar[list] = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=BASE_TIME,
-                    instrument=InstrumentType.ADCP,
-                ),
-            ]
+        schedule = DummySchedule()
 
         instruments_config = InstrumentsConfig(
             adcp_config=ADCPConfig(
