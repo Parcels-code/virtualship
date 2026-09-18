@@ -204,7 +204,7 @@ Upon successfully completing the simulation, results from the expedition will be
 From here you can carry on your analysis. In general, we encourage you to use [Parcels](https://Parcels-code.org/) (i.e. `parcels.read_particlefile()`) to read in VirtualShip output files, and tools such as [Polars](https://www.pola.rs/) and/or [Pandas](https://pandas.pydata.org/) for further data analysis. We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments. Use these to help you get started!
 
 ```{tip}
-We also host a [Binder](https://mybinder.org/) environment (note this is separate to the GitHub Codespaces workspace you may be using) with all the necessary post-processing tools pre-installed and all the tutorials ready to use. This might be useful as a means to explore your data at first. See [here](../tutorials/binder_workspace.md) for more detail or await further instruction from your instructor.
+We also host a [Binder environment](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) (note this is separate to the GitHub Codespaces workspace you may be using) with all the necessary post-processing tools pre-installed and all the tutorials ready to use. This might be useful as a means to explore your data at first. See [here](../tutorials/binder_workspace.md) for more detail or await further instruction from your instructor.
 ```
 
 ## Reporting

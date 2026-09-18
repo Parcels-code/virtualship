@@ -102,7 +102,7 @@ This will be sufficient for _most_ courses, but could be insufficient if your pl
 ```
 
 ```{note}
-We also offer a [Binder](https://mybinder.org/) workspace for post-processing VirtualShip output files, which is a separate solution to the VirtualShip simulation workspace (GitHub Codespaces). See the [post-processing workspace section](#pre-configured-post-processing-workspace) later in this document for more information and why these are two separate solutions.
+We also offer a [Binder workspace](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) for post-processing VirtualShip output files, which is a separate solution to the VirtualShip simulation workspace (GitHub Codespaces). See the [post-processing workspace section](#pre-configured-post-processing-workspace) later in this document for more information and why these are two separate solutions.
 ```
 
 ### Option 1) Local installation
@@ -245,7 +245,7 @@ VirtualShip does not provide explicit tooling for analysis, as this will be depe
 
 #### Pre-configured post-processing workspace
 
-We also host a VirtualShip post-processing environment via [Binder](https://mybinder.org/), which is a cloud-based JupyterLab environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the example tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
+We also host a VirtualShip [post-processing environment](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) via [Binder](https://mybinder.org/), which is a cloud-based JupyterLab environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the example tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
 
 This is of course optional, but is offered as a means to make the post-processing analysis more accessible to students with less time spent setting up their local environment.
 
