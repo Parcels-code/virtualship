@@ -74,6 +74,9 @@ class ProblemSimulator:
 
         Map each selected problem to a random waypoint (or None if pre-departure). Finally, cache the suite of problems to a directory (expedition-specific) for reference.
         """
+        if difficulty_level == "easy":
+            return None
+
         valid_instrument_problems = [
             problem
             for problem in INSTRUMENT_PROBLEMS
@@ -100,9 +103,7 @@ class ProblemSimulator:
                 "waypoint_i": [None],
             }
 
-        if difficulty_level == "easy":
-            num_problems = 0
-        elif difficulty_level == "medium":
+        if difficulty_level == "medium":
             num_problems = random.randint(1, 2)
 
         elif difficulty_level == "hard":
@@ -117,110 +118,113 @@ class ProblemSimulator:
                 num_problems, len(GENERAL_PROBLEMS) + len(valid_instrument_problems)
             )
 
+        assert num_problems > 0, (
+            f"Difficulty mode is: {difficulty_level}, but no problems were selected."
+        )
+
         selected_problems = []
         problems_sorted = None
-        if num_problems > 0:
-            random.shuffle(GENERAL_PROBLEMS)
-            random.shuffle(valid_instrument_problems)
+        random.shuffle(GENERAL_PROBLEMS)
+        random.shuffle(valid_instrument_problems)
 
-            # bias towards more instrument problems when there are more instruments
-            instrument_bias = min(0.7, num_instruments / (num_instruments + 2))
-            n_instrument = round(num_problems * instrument_bias)
-            n_general = min(len(GENERAL_PROBLEMS), num_problems - n_instrument)
-            n_instrument = (
-                num_problems - n_general
-            )  # recalc in case n_general was capped to len(GENERAL_PROBLEMS)
+        # bias towards more instrument problems when there are more instruments
+        instrument_bias = min(0.7, num_instruments / (num_instruments + 2))
+        n_instrument = round(num_problems * instrument_bias)
+        n_general = min(len(GENERAL_PROBLEMS), num_problems - n_instrument)
+        n_instrument = (
+            num_problems - n_general
+        )  # recalc in case n_general was capped to len(GENERAL_PROBLEMS)
 
-            selected_problems.extend(GENERAL_PROBLEMS[:n_general])
-            selected_problems.extend(valid_instrument_problems[:n_instrument])
+        selected_problems.extend(GENERAL_PROBLEMS[:n_general])
+        selected_problems.extend(valid_instrument_problems[:n_instrument])
 
-            # allow only one pre-departure problem to occur; replace any extras with non-pre-departure problems
-            selected_pre_departure = [
-                p
-                for p in selected_problems
-                if isinstance(p, GeneralProblem) and p.pre_departure
+        # allow only one pre-departure problem to occur; replace any extras with non-pre-departure problems
+        selected_pre_departure = [
+            p
+            for p in selected_problems
+            if isinstance(p, GeneralProblem) and p.pre_departure
+        ]
+        if len(selected_pre_departure) > 1:
+            to_keep = random.choice(selected_pre_departure)
+            num_to_replace = len(selected_pre_departure) - 1
+            # remove all but one pre_departure problem
+            selected_problems = [
+                problem
+                for problem in selected_problems
+                if not (
+                    isinstance(problem, GeneralProblem)
+                    and problem.pre_departure
+                    and problem is not to_keep
+                )
             ]
-            if len(selected_pre_departure) > 1:
-                to_keep = random.choice(selected_pre_departure)
-                num_to_replace = len(selected_pre_departure) - 1
-                # remove all but one pre_departure problem
-                selected_problems = [
-                    problem
-                    for problem in selected_problems
-                    if not (
-                        isinstance(problem, GeneralProblem)
-                        and problem.pre_departure
-                        and problem is not to_keep
-                    )
-                ]
-                # available non-pre_departure problems not already selected
-                available_general = [
-                    p
-                    for p in GENERAL_PROBLEMS
-                    if not p.pre_departure and p not in selected_problems
-                ]
-                available_instrument = [
-                    p for p in valid_instrument_problems if p not in selected_problems
-                ]
-                available_replacements = available_general + available_instrument
-                random.shuffle(available_replacements)
-                selected_problems.extend(available_replacements[:num_to_replace])
+            # available non-pre_departure problems not already selected
+            available_general = [
+                p
+                for p in GENERAL_PROBLEMS
+                if not p.pre_departure and p not in selected_problems
+            ]
+            available_instrument = [
+                p for p in valid_instrument_problems if p not in selected_problems
+            ]
+            available_replacements = available_general + available_instrument
+            random.shuffle(available_replacements)
+            selected_problems.extend(available_replacements[:num_to_replace])
 
-            # map each problem to a [random] waypoint (or None if pre-departure)
-            # limited to one per waypoint, else complicates scheduling and contingency checking
-            waypoint_idxs = []
-            unassigned_problems = []
-            available_idxs = list(
-                range(len(self.expedition.schedule.waypoints) - 1)
-            )  # exclude last waypoint (problem there would have no impact on scheduling)
+        # map each problem to a [random] waypoint (or None if pre-departure)
+        # limited to one per waypoint, else complicates scheduling and contingency checking
+        waypoint_idxs = []
+        unassigned_problems = []
+        available_idxs = list(
+            range(len(self.expedition.schedule.waypoints) - 1)
+        )  # exclude last waypoint (problem there would have no impact on scheduling)
 
-            # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
-            for problem in selected_problems:
-                if getattr(problem, "pre_departure", False):
-                    waypoint_idxs.append(None)
+        # TODO: if incorporate departure and arrival port/waypoints in future, bear in mind index selection here may need to change
+        for problem in selected_problems:
+            if getattr(problem, "pre_departure", False):
+                waypoint_idxs.append(None)
+            else:
+                if available_idxs:
+                    wp_select = random.choice(available_idxs)
+
+                    # fmt: off
+                    # check waypoint actually deploys the instrument associated with the problem...if not, replace it with a general (non-instrument related) problem
+                    # rather than a different waypoint, because it's possible no applicable waypoint is still available
+                    wp_instruments = self.expedition.schedule.waypoints[wp_select].instrument
+                    if isinstance(problem, InstrumentProblem) and problem.instrument_type not in wp_instruments:
+                        available_general = [p for p in GENERAL_PROBLEMS if not p.pre_departure and p not in selected_problems]
+
+                        if not available_general:
+                            unassigned_problems.append(problem)
+                            continue
+
+                        replacement = random.choice(available_general)
+                        problem_idx = selected_problems.index(problem)
+                        selected_problems[problem_idx] = replacement
+                    # fmt: on
+
+                    waypoint_idxs.append(wp_select)
+                    available_idxs.remove(wp_select)  # each waypoint only used once
+
                 else:
-                    if available_idxs:
-                        wp_select = random.choice(available_idxs)
+                    unassigned_problems.append(
+                        problem
+                    )  # if run out of available waypoints, remove problem from selection
 
-                        # fmt: off
-                        # check waypoint actually deploys the instrument associated with the problem...if not, replace it with a general (non-instrument related) problem
-                        # rather than a different waypoint, because it's possible no applicable waypoint is still available
-                        wp_instruments = self.expedition.schedule.waypoints[wp_select].instrument
-                        if isinstance(problem, InstrumentProblem) and problem.instrument_type not in wp_instruments:
-                            available_general = [p for p in GENERAL_PROBLEMS if not p.pre_departure and p not in selected_problems]
+        # remove any problems that couldn't be assigned a waypoint (i.e. if more problems than available waypoints)
+        if unassigned_problems:
+            selected_problems = [
+                p for p in selected_problems if p not in unassigned_problems
+            ]
 
-                            if not available_general:
-                                unassigned_problems.append(problem)
-                                continue
-
-                            replacement = random.choice(available_general)
-                            problem_idx = selected_problems.index(problem)
-                            selected_problems[problem_idx] = replacement
-                        # fmt: on
-
-                        waypoint_idxs.append(wp_select)
-                        available_idxs.remove(wp_select)  # each waypoint only used once
-
-                    else:
-                        unassigned_problems.append(
-                            problem
-                        )  # if run out of available waypoints, remove problem from selection
-
-            # remove any problems that couldn't be assigned a waypoint (i.e. if more problems than available waypoints)
-            if unassigned_problems:
-                selected_problems = [
-                    p for p in selected_problems if p not in unassigned_problems
-                ]
-
-            # pair problems with their waypoint indices and sort by waypoint index (pre-departure first)
-            paired = sorted(
-                zip(selected_problems, waypoint_idxs, strict=True),
-                key=lambda x: (x[1] is not None, x[1] if x[1] is not None else -1),
-            )
-            problems_sorted = {
-                "problem_class": [p for p, _ in paired],
-                "waypoint_i": [w for _, w in paired],
-            }
+        # pair problems with their waypoint indices and sort by waypoint index (pre-departure first)
+        paired = sorted(
+            zip(selected_problems, waypoint_idxs, strict=True),
+            key=lambda x: (x[1] is not None, x[1] if x[1] is not None else -1),
+        )
+        problems_sorted = {
+            "problem_class": [p for p, _ in paired],
+            "waypoint_i": [w for _, w in paired],
+        }
 
         return problems_sorted if selected_problems else None
 
