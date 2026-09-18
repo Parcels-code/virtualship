@@ -94,8 +94,6 @@ This will create a folder/directory called `EXPEDITION_NAME` (or what you have c
 From here, you should replace any references to `EXPEDITION_NAME` with the actual name you used for your expedition when running any `virtualship` commands.
 ```
 
-<!-- TODO: some of this detail will change when [#362](https://github.com/Parcels-code/virtualship/issues/362) is implemented -->
-
 The next step is to finalise the expedition schedule plan, including setting times and instrument selection choices for each waypoint, as well as configuring the ship (including any underway measurement instruments).
 
 ```{note}
