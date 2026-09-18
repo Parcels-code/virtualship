@@ -20,14 +20,20 @@ The `expedition.yaml` file is highly sensitive to indentation and formatting, so
 
 ### Structure
 
-The `expedition.yaml` file is written in [YAML](https://en.wikipedia.org/wiki/YAML) format, which is a human-readable data serialization standard. Below is an annotated example of a simple `expedition.yaml` file with two waypoints:
+The `expedition.yaml` file is written in [YAML](https://en.wikipedia.org/wiki/YAML) format, which is a human-readable data serialization standard. Below is an annotated example of a simple `expedition.yaml` file with a port of departure, two waypoints, and a port of arrival:
 
 ```yaml
 # EXAMPLE EXPEDITION.YAML
 #
 schedule: # <-- 1. expedition schedule section
   waypoints:
-    - instrument: # <-- Waypoint 1
+    # Port of Departure
+    - location:
+        latitude: 50.909698
+        longitude: -1.404830
+      time: 1998-03-07 08:00:00
+    # Waypoint 1
+    - instrument:
         - CTD
         - ARGO_FLOAT
         - DRIFTER
@@ -35,7 +41,8 @@ schedule: # <-- 1. expedition schedule section
         latitude: 45.604174
         longitude: -43.886739
       time: 1998-03-08 03:37:00
-    - instrument: # <-- Waypoint 2
+    # Waypoint 2
+    - instrument:
         - ARGO_FLOAT
         - DRIFTER
         - XBT
@@ -43,6 +50,11 @@ schedule: # <-- 1. expedition schedule section
         latitude: 48.185988
         longitude: -32.988302
       time: 1998-03-10 03:05:00
+    # Port of Arrival
+    - location:
+        latitude: 43.263500
+        longitude: -8.410000
+      time: 1998-03-12 12:00:00
 #
 instruments_config: # <-- 2. instrument configuration section
   adcp_config:
@@ -73,7 +85,19 @@ In the example above, some instrument configuration parameters are replaced by e
 
 #### 1. `schedule`
 
-This section contains a list of `waypoints` that define the expedition's route. Each waypoint includes:
+This section contains a list of `waypoints` that define the expedition's route. The **first and last entries must always be Ports** (of departure and arrival respectively; this will be checked in the code). Then, every entry in between is a regular waypoint.
+
+##### Ports
+
+A Port (of departure or arrival) has a `location` and `time`, but no `instrument` field, since no measurements are taken there. The auto-generated `# Port of Departure` / `# Port of Arrival` comments (see [below](#comments)) make these easy to spot.
+
+```{tip}
+If you don't yet know your port of departure and/or arrival, you can leave a Port as a placeholder by setting `location: null` and `time: null`. Placeholder ports are ignored when the expedition is simulated, so the ship's schedule will effectively start/end at the first/last regular waypoint instead. VirtualShip will warn you when an expedition has placeholder ports, as a reminder to fill them in.
+```
+
+##### Waypoints
+
+Each regular waypoint includes:
 
 - **Instruments (`instrument`)**: A list of instruments to be deployed at that waypoint. Add or remove instruments by adding or deleting entries on _new lines_. The instrument selection can also be left empty (i.e., no instruments deployed at that waypoint) by setting the parameter to: `instrument: null`.
 
@@ -88,6 +112,10 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 - **Location (`location`)**: The geographical coordinates (latitude and longitude) of the waypoint. These must be in decimal degrees (DD) format and within valid ranges: latitude between -90 and 90, longitude between -180 and 180.
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
+
+##### Comments
+
+You may notice comments such as `# Port of Departure`, `# Waypoint 1`, `# Waypoint 2`, etc. next to each entry in the `waypoints` list, as in the example above. These are added automatically whenever `virtualship init` or `virtualship plan` writes the file, purely to aid readability. They are not required when editing the file by hand and won't be automatically added/renumbered by doing so.
 
 #### 2. `instruments_config`
 
