@@ -8,9 +8,7 @@ If you do not already have a GitHub account, please sign up for a free account h
 
 ## 2) Launch the VirtualShip Workspace via GitHub Codespaces
 
-<!-- TODO: replace eventually with the Parcels-code hosted repo -->
-
-Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/j-atkins/virtualship-workspace](https://github.com/j-atkins/virtualship-workspace)
+Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/Parcels-code/virtualship-workspace](https://github.com/Parcels-code/virtualship-workspace)
 
 From here you should see a green button labelled `Code`. Click on this button and select the `Codespaces` tab. Then click on the `Create codespace on main` button to launch your cloud-based environment.
 

@@ -8,7 +8,7 @@ Using this workspace saves you from having to install any dependencies on your o
 
 ## Accessing the VirtualShip post-processing workspace
 
-Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/j-atkins/virtualship-workspace](https://github.com/j-atkins/virtualship-workspace)
+Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/Parcels-code/virtualship-workspace](https://github.com/Parcels-code/virtualship-workspace)
 
 From here, on the repo welcome page, you should a section labelled **Workspace for VirtualShip post-processing - Binder**. Click on the **Step on Board: VirtualShip** button (Figure 1) to launch the post-processing workspace.
 
@@ -50,5 +50,5 @@ The Binder workspace is not suitable for long-running analysis, as it has non-pe
 If you want to do more extensive analysis, we recommend that you download your data and results to your own computer, and run the analysis there. You will also need to install the required dependencies to your own computer.
 
 ```{tip}
-A full list of dependencies is provided in the [environment.yml](https://github.com/j-atkins/virtualship-workspace/blob/main/.binder/environment.yml) file in the VirtualShip Workspace repository. You can use this file to install the dependencies on your own computer (e.g. with the `conda` [package manager](https://anaconda.org/channels/anaconda/packages/conda/overview)).
+A full list of dependencies is provided in the [environment.yml](https://github.com/Parcels-code/virtualship-workspace/blob/main/.binder/environment.yml) file in the VirtualShip Workspace repository. You can use this file to install the dependencies on your own computer (e.g. with the `conda` [package manager](https://anaconda.org/channels/anaconda/packages/conda/overview)).
 ```
