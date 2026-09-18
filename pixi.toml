@@ -41,7 +41,12 @@ pyarrow = "*"
 ipdb = ">=0.13.13,<0.14"
 cmocean = ">=4.0.3,<5"
 numba = ">=0.59.0"
-healpix = "*" # downstream uxarray dep, source builds may be causing CI failure
+# downstream uxarray deps, source builds may be causing CI failures (Windows testing) with newer Python versions
+healpix = "*"
+cartopy = "*"
+shapely = "*"
+geopandas = "*"
+scipy = "*"
 
 [pypi-dependencies]
 parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
