@@ -101,11 +101,11 @@ class Expedition(pydantic.BaseModel):
             indent = " " * (len(line) - len(line.lstrip()))
             annotated.append(f"{indent}waypoints:\n")
 
-            for waypoint, wp_data in zip(waypoints, waypoints_data, strict=True):
+            for wp_index, (waypoint, wp_data) in enumerate(
+                zip(waypoints, waypoints_data, strict=True)
+            ):
                 if isinstance(waypoint, Port):
-                    arrival_departure = (
-                        "Departure" if waypoint_number == 0 else "Arrival"
-                    )
+                    arrival_departure = "Departure" if wp_index == 0 else "Arrival"
                     annotated.append(f"{indent}# Port of {arrival_departure}\n")
                 else:
                     waypoint_number += 1

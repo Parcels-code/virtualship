@@ -298,15 +298,45 @@ def test_annotate_waypoint_number_comments(base_expedition) -> None:
 
     expected = []
     waypoint_number = 0
-    for wp in schedule.waypoints:
+    for wp_index, wp in enumerate(schedule.waypoints):
         if isinstance(wp, Port):
-            arrival_departure = "Departure" if waypoint_number == 0 else "Arrival"
+            arrival_departure = "Departure" if wp_index == 0 else "Arrival"
             expected.append(f"# Port of {arrival_departure}")
         else:
             waypoint_number += 1
             expected.append(f"# Waypoint {waypoint_number}")
 
     assert comments == expected
+
+
+@pytest.mark.parametrize(
+    "waypoints",
+    [
+        pytest.param(None, id="example_schedule_with_intervening_waypoints"),
+        pytest.param(
+            [
+                Port(location=Location(0.0, 0.0), time=datetime(1998, 5, 1)),
+                Port(location=Location(0.3, 0.0), time=datetime(1998, 5, 1, 3)),
+            ],
+            id="only_departure_and_arrival_ports",
+        ),
+    ],
+)
+def test_annotate_no_duplicate_comments(base_expedition, waypoints) -> None:
+    """Expedition._annotate() should never produce the same comment twice. E.g. there should only be one Waypoint 1, one Port of Departure, etc."""
+    schedule = (
+        base_expedition.schedule if waypoints is None else Schedule(waypoints=waypoints)
+    )
+    expedition = Expedition(
+        schedule=schedule,
+        instruments_config=base_expedition.instruments_config,
+        ship_config=base_expedition.ship_config,
+    )
+
+    annotated = expedition._annotate()
+    comments = [line.strip() for line in annotated if line.strip().startswith("#")]
+
+    assert len(set(comments)) == len(comments)
 
 
 def test_wps_in_use(base_expedition):
