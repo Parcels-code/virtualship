@@ -41,6 +41,7 @@ pyarrow = "*"
 ipdb = ">=0.13.13,<0.14"
 cmocean = ">=4.0.3,<5"
 numba = ">=0.59.0"
+sphinx-design = ">=0.7.0,<0.8"
 
 [pypi-dependencies]
 parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }

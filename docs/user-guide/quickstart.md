@@ -28,7 +28,7 @@ Below is a screenshot of a North Sea expedition. This example expedition departs
 
 Feel free to design your expedition as you wish! There is no need to copy these sampling sites in your own expeditions.
 
-![MFP North Sea cruise plan screenshot](image-1.png)
+![MFP North Sea cruise plan screenshot](_images/mfp_route.png)
 
 ### Export the coordinates
 
@@ -70,7 +70,7 @@ virtualship plan EXPEDITION_NAME
 
 The planning tool should look something like this and offers an intuitive way to make your selections:
 
-![example_plan_app](example_plan_app.gif)
+![example_plan_app](_images/example_plan_app.gif)
 
 ### Ship speed
 
@@ -128,6 +128,18 @@ Click [here](https://virtualship.readthedocs.io/en/latest/user-guide/assignments
 
 You can make instrument selections for each waypoint in the same sub-panels as the [waypoint time](#waypoint-datetimes) selection by simply switching each on or off. Multiple instruments are allowed at each waypoint.
 
+```{important}
+Certain combinations of instruments and waypoint placements may be more computationally intensive than others, in particular, **Argo Floats** and **CTDs**. They move and/or sample in full lat/lon/depth space across time, thus requiring large datasets from Copernicus Marine to be streamed and processed.
+
+Depending on the power of the machine that you are running VirtualShip on, this _might_ cause the simulation to run out of RAM and crash. Therefore we recommend the following points:
+
+- Deploying Argo Floats or CTDs at waypoints which are far apart in space and/or time will require more RAM than deploying them at waypoints which are closer together.
+    - If experiencing issues with termination during simualtion, consider reducing the number of waypoints and/or the distance between waypoints.
+    - Note, you can likely keep less intensive instruments (e.g. Drifters, ADCP) running at more distant waypoints. The software will recognise that CTDs/Argo Floats are not being deployed at these waypoints and will not inflate the data retrieval for these instruments uncessarily in this case.
+- If you are running VirtualShip in the pre-configured GitHub Codespaces environment, the more [powerful option](../tutorials/codespaces_guide.md/#spinning-up-a-more-powerful-codespace) (4 cores, 16GB RAM) should be able to handle most expedition deployments. This is a useful option if you are experiencing issues with the standard Codespaces configuration (2 cores, 8GB RAM).
+
+```
+
 ### Save changes
 
 When you are happy with your ship configuration and schedule plan, press _Save Changes_.
@@ -152,7 +164,7 @@ If this is your first time running VirtualShip, you will be prompted to enter yo
 
 Your command line output should look something like this...
 
-![GIF of example VirtualShip log output](example_log_instruments.gif)
+![GIF of example VirtualShip log output](_images/example_log_instruments.gif)
 
 Small simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 
