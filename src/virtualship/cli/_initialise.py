@@ -31,7 +31,7 @@ def _initialise(
 
     if expedition.exists():
         raise FileExistsError(
-            f"File '{expedition}' already exists. Please remove it or choose another directory."
+            f"File '{expedition}' already exists. Please remove it or use another directory."
         )
 
     if from_mfp:
