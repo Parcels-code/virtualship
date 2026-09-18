@@ -109,6 +109,17 @@ def missing_ports_mfp_file(tmp_path):
 
 
 @pytest.fixture
+def all_ports_mfp_file(tmp_path):
+    """MFP export with only ports, i.e. no waypoint stations."""
+    path = tmp_path / "file.xlsx"
+    df = valid_mfp_data()
+    df["Station"] = ["Departure Port", "Port", "Port", "Port", "Arrival Port"]
+    df["Type"] = df["Station"]
+    df.to_excel(path, index=False)
+    return path
+
+
+@pytest.fixture
 def unexpected_header_mfp_file(tmp_path):
     path = tmp_path / "file.xlsx"
     df = valid_mfp_data()
@@ -210,6 +221,21 @@ def test_mfp_to_yaml_missing_ports_warning(missing_ports_mfp_file, tmp_path):
         match="The MFP export is missing either a 'Departure Port' or 'Arrival Port'",
     ):
         _mfp_to_yaml(missing_ports_mfp_file, start_date, yaml_output_path)
+
+
+def test_mfp_to_yaml_no_science_stations_warning(all_ports_mfp_file, tmp_path):
+    """Test that _mfp_to_yaml warns when the MFP export contains no non-port waypoints."""
+    yaml_output_path = tmp_path / "expedition.yaml"
+    start_date = "1998-05-01 01:00:00"
+
+    with pytest.warns(
+        UserWarning,
+        match="The MFP export contains no waypoint stations",
+    ):
+        _mfp_to_yaml(all_ports_mfp_file, start_date, yaml_output_path)
+
+    data = Expedition.from_yaml(yaml_output_path)
+    assert all(isinstance(wp, Port) for wp in data.schedule.waypoints)
 
 
 def test_load_mfp_export_drops_junk_columns(mfp_file_with_junk_columns):

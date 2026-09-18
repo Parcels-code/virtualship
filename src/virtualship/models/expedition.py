@@ -140,15 +140,12 @@ class Schedule(pydantic.BaseModel):
     @pydantic.field_validator("waypoints", mode="after")
     @classmethod
     def _validate_waypoints(cls, value: list[Port | Waypoint]) -> list[Port | Waypoint]:
-        """Ensure first and last waypoints are Port objects and schedule contains non-port waypoints."""
+        """Ensure first and last waypoints are Port objects."""
         if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
             raise ScheduleError(
                 "First and last waypoints must be Ports (of arrival/departure). "
                 "One or the other is currently missing."
             )
-
-        if not any(isinstance(wp, Waypoint) for wp in value):
-            raise ScheduleError("At least one non-port waypoint must be provided.")
 
         return value
 
@@ -175,6 +172,13 @@ class Schedule(pydantic.BaseModel):
 
         # waypoints excluding any inactive placeholder departure/arrival ports
         wps_in_use = self._get_wps_in_use()
+
+        if not wps_in_use:
+            raise ScheduleError(
+                "Schedule has no active waypoints: at least one waypoint, or an "
+                "in-use departure/arrival port (with both a location and a time), "
+                "must be provided."
+            )
 
         # is the departure port in use or a placeholder (i.e. all None)?
         wp_str = "Departure port" if self.departure_port.is_in_use else "Waypoint 1"

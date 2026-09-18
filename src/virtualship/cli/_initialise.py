@@ -108,6 +108,14 @@ def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
             row["Total Time"] if pd.notna(row["Total Time"]) else timedelta(0)
         )
 
+    if not any(isinstance(wp, Waypoint) for wp in waypoints):
+        warnings.warn(
+            "The MFP export contains no waypoint stations (only ports). "
+            "The generated schedule will have no waypoint instrument deployments unless you add waypoints manually. "
+            "Underway instruments will still measure across the expedition.",
+            stacklevel=2,
+        )
+
     # build and dump expedition YAML
     static_yaml = yaml.safe_load(_get_example_expedition())
     expedition = Expedition(

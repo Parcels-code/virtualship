@@ -142,8 +142,8 @@ def test_verify_on_land(base_expedition):
                 Port(location=Location(1, 0)),
             ],
             ScheduleError,
-            "At least one non-port waypoint must be provided.",
-            id="NoWaypoints",
+            "Schedule has no active waypoints",
+            id="NoActiveWaypoints",
         ),
         pytest.param(
             [
@@ -197,6 +197,23 @@ def test_verify_schedule_errors(base_expedition, waypoints: list, error, match) 
             base_expedition.instruments_config,
             ignore_land_test=True,
         )
+
+
+def test_verify_schedule_ports_only(base_expedition) -> None:
+    """A schedule with only active Ports (no non-port waypoints) is valid."""
+    schedule = Schedule(
+        waypoints=[
+            Port(location=Location(0, 0), time=datetime(2022, 1, 1, 0, 0, 0)),
+            Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
+        ]
+    )
+    schedule.verify(
+        base_expedition.ship_config.ship_speed_knots,
+        base_expedition.instruments_config,
+        ignore_land_test=True,
+    )
+
+    assert schedule._verified, "Schedule with only active ports should be accepted."
 
 
 @pytest.fixture
