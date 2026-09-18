@@ -208,6 +208,7 @@ You will notice in the "Quickstart" and "Sail the Ship" guides that there are a 
   - It is an authentic tool used by real-life oceanographers to plan their research expedtions, and is a good example of the type of software that students may encounter in their future careers.
   - There is no sign-up required to use the tool, but students may need some time to get familiar with it.
   - As mentioned in the guides, the `VirtualShip` software can ingest exported coordinate files straight from MFP.
+  - Documentation on how to use the website can be found [here](https://surfdrive.surf.nl/files/index.php/s/84TFmsAAzcSD56F) or, alternatively, in [video](https://www.youtube.com/watch?v=yIpYX2xCvsM&list=PLE-LzO7kk1gLM74U4PLDh8RywYXmZcloz&ab_channel=VirtualShipClassroom) format.
 
 ### Simulating Real Life Challenges
 
