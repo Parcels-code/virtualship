@@ -154,9 +154,12 @@ def _validate_mfp_data(file_path: Path) -> pd.DataFrame:
     extra_columns = actual_set - expected_set
     if extra_columns:
         warnings.warn(
-            f"Found additional unexpected columns {list(extra_columns)}. Manually added columns have no effect.",
+            f"Found additional unexpected columns {list(extra_columns)}. These will be dropped from the export. Manually added columns have no effect.",
             stacklevel=2,
         )
+
+    # drop unexpected columns
+    mfp_data = mfp_data[list(expected_columns)]
 
     # safe float conversion for lat/lon
     for coord in ["Latitude", "Longitude"]:
@@ -191,9 +194,6 @@ def _validate_mfp_data(file_path: Path) -> pd.DataFrame:
         if not has_arrival:
             arr_row = _create_port_row(expected_columns, "Arrival Port")
             mfp_data = pd.concat([mfp_data, arr_row], ignore_index=True)  # last row
-
-    # Drop unexpected columns
-    mfp_data = mfp_data[list(expected_columns)]
 
     # convert 'Travel Time to Next' and 'Time at Station' to timedelta
     mfp_data["Travel Time to Next"] = mfp_data["Travel Time to Next"].apply(
