@@ -20,9 +20,9 @@ from virtualship.utils import (
     "--from-mfp",
     type=str,
     default=None,
-    help="Partially initialise a project from an exported xlsx or csv file from NIOZ' "
-    'Marine Facilities Planning tool (specifically the "Export Coordinates > DD" option). '
-    "User edits are required after initialisation.",
+    help="Initialise a project from an exported xlsx file from NIOZ' "
+    'Marine Facilities Planning tool (specifically the "Export Cruise Data" option). '
+    "User edits may be required after initialisation.",
 )
 @click.option(
     "--start-date",

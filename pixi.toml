@@ -93,6 +93,7 @@ nbsphinx = "*"
 ipykernel = "*"
 pandoc = "*"
 sphinx-copybutton = "*"
+sphinx-design = "*"
 pydata-sphinx-theme = "*"
 sphinx-autobuild = "*"
 

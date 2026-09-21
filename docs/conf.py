@@ -15,6 +15,7 @@ extensions = [
     "sphinx.ext.napoleon",
     # "sphinx_autodoc_typehints",# https://github.com/Parcels-code/virtualship/pull/125#issuecomment-2668766302
     "sphinx_copybutton",
+    "sphinx_design",
 ]
 
 source_suffix = [".rst", ".md"]
@@ -44,6 +45,7 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
+    "announcement": "<strong>Warning</strong>: this is a pre-release version of the VirtualShip documentation (V1 to be released in September/October 2026). The contents are subject to change and may not be complete.",
 }
 html_context = {
     "github_user": "Parcels-code",
@@ -70,11 +72,13 @@ nitpick_ignore = [
 always_document_param_types = True
 
 nbsphinx_thumbnails = {
+    "user-guide/quickstart": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/index": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/Research_proposal_intro": "user-guide/_images/MFPtimeline.jpg",
     "user-guide/assignments/Research_Proposal_only": "user-guide/_images/MFP.jpg",
     "user-guide/assignments/Virtualship_research_proposal": "user-guide/_images/AnnaWeber.jpeg",
     "user-guide/assignments/sciencecommunication_assignment": "user-guide/_images/marine_ss.jpg",
-    "user-guide/assignments/Sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
+    "user-guide/assignments/sail_the_ship": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/assignments/Code_of_conduct": "user-guide/_images/freepik_code_of_conduct.jpg",
     "user-guide/teacher-content/ILOs": "user-guide/_images/ILOs.jpg",
     "user-guide/teacher-content/UU-ocean-of-future/Tutorial1": "user-guide/_images/freepik_assignment.png",
@@ -82,8 +86,9 @@ nbsphinx_thumbnails = {
     "user-guide/tutorials/surf_collaborative_setup": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/tutorials/surf_research_cloud_setup": "user-guide/_images/freepik_research_vessel.jpg",
     "user-guide/tutorials/working_with_expedition_yaml": "user-guide/_images/AnnaWeber.jpeg",
-    "user-guide/teacher-content/UU-dyoc/example_expedition": "user-guide/_images/AnnaWeber.jpeg",
-    "user-guide/teacher-content/UU-dyoc/file_permissions": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/codespaces_guide": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/tutorials/binder_guide": "user-guide/_images/AnnaWeber.jpeg",
+    "user-guide/user-profiles/educators/letter": "user-guide/_images/freepik_research_vessel.jpg",
 }
 
 sphinx_gallery_conf = {"default_thumb_file": "_static/virtual_ship_logo.png"}
