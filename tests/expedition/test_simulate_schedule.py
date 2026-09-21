@@ -2,13 +2,14 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pyproj
+import pytest
 
 from virtualship.expedition.simulate_schedule import (
     ScheduleOk,
-    ScheduleProblem,
     simulate_schedule,
 )
 from virtualship.models import Expedition, Location, Schedule, Waypoint
+from virtualship.models.expedition import Port
 
 
 def test_simulate_schedule_feasible() -> None:
@@ -20,33 +21,18 @@ def test_simulate_schedule_feasible() -> None:
     expedition.ship_config.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
+            Port(location=None, time=None),
             Waypoint(location=Location(0, 0), time=base_time),
             Waypoint(location=Location(0.01, 0), time=base_time + timedelta(days=1)),
+            Port(location=None, time=None),
         ]
     )
+    # assume the schedule has been verified
+    expedition.schedule._verified = True
 
     result = simulate_schedule(projection, expedition)
 
     assert isinstance(result, ScheduleOk)
-
-
-def test_simulate_schedule_too_far() -> None:
-    """Test schedule with two waypoints that are very far away and cannot be reached in time is not OK."""
-    base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
-
-    projection = pyproj.Geod(ellps="WGS84")
-    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
-    expedition.ship_config.ship_speed_knots = 10.0
-    expedition.schedule = Schedule(
-        waypoints=[
-            Waypoint(location=Location(0, 0), time=base_time),
-            Waypoint(location=Location(1.0, 0), time=base_time + timedelta(minutes=1)),
-        ]
-    )
-
-    result = simulate_schedule(projection, expedition)
-
-    assert isinstance(result, ScheduleProblem)
 
 
 def test_time_in_minutes_in_ship_schedule() -> None:
@@ -81,26 +67,34 @@ def test_ship_path_inside_domain() -> None:
     # waypoints with enough distance where curvature is clear
     expedition.schedule = Schedule(
         waypoints=[
+            Port(location=None, time=None),
             Waypoint(location=wp1, time=base_time),
             Waypoint(location=wp2, time=base_time + timedelta(days=5)),
             Waypoint(location=wp3, time=base_time + timedelta(days=10)),
             Waypoint(location=wp4, time=base_time + timedelta(days=15)),
+            Port(location=None, time=None),
         ]
     )
 
     # get waypoint domain bounds
+    wps_in_use = expedition.schedule._get_wps_in_use()
+
     wp_max_lat, wp_min_lat, wp_max_lon, wp_min_lon = (
-        max(wp.location.lat for wp in expedition.schedule.waypoints),
-        min(wp.location.lat for wp in expedition.schedule.waypoints),
-        max(wp.location.lon for wp in expedition.schedule.waypoints),
-        min(wp.location.lon for wp in expedition.schedule.waypoints),
+        max(wp.location.lat for wp in wps_in_use),
+        min(wp.location.lat for wp in wps_in_use),
+        max(wp.location.lon for wp in wps_in_use),
+        min(wp.location.lon for wp in wps_in_use),
     )
+
+    # assume the schedule has been verified
+    expedition.schedule._verified = True
 
     result = simulate_schedule(projection, expedition)
     assert isinstance(result, ScheduleOk)
 
     # adcp measurements path
     adcp_measurements = result.measurements_to_simulate.adcps
+
     adcp_lats = [m.location.lat for m in adcp_measurements]
     adcp_lons = [m.location.lon for m in adcp_measurements]
 
@@ -122,3 +116,27 @@ def test_ship_path_inside_domain() -> None:
     assert np.isclose(adcp_min_lat, wp1.lat, atol=0.1)
     assert np.isclose(adcp_max_lon, wp4.lon, atol=0.1)
     assert np.isclose(adcp_min_lon, wp3.lon, atol=0.1)
+
+
+def test_does_not_simulate_unverified():
+    """Test that simulating an unverified schedule raises an error."""
+    base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
+
+    projection = pyproj.Geod(ellps="WGS84")
+    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition.ship_config.ship_speed_knots = 10.0
+    expedition.schedule = Schedule(
+        waypoints=[
+            Port(location=None, time=None),
+            Waypoint(location=Location(0, 0), time=base_time),
+            Waypoint(location=Location(0.01, 0), time=base_time + timedelta(days=1)),
+            Port(location=None, time=None),
+        ]
+    )
+
+    expedition.schedule._verified = False
+
+    with pytest.raises(
+        AssertionError, match=r"Schedule must be verified before simulation."
+    ):
+        simulate_schedule(projection, expedition)

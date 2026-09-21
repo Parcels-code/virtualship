@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +12,7 @@ import xarray as xr
 from virtualship.instruments.base import (
     FetchSpec,
     Instrument,
+    SpatialBounds,
     UnderwayCoordinates,
     UnderwayInstrument,
 )
@@ -22,6 +24,30 @@ from virtualship.utils import get_instrument_class
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+
+@pytest.fixture()
+def mock_waypoints():
+    """Shared fixture providing mock Waypoint objects."""
+    wp1 = MagicMock()
+    wp1.location.latitude = 10.0
+    wp1.location.longitude = -20.0
+    wp1.time = datetime(2026, 1, 1, 12, 0)
+
+    wp2 = MagicMock()
+    wp2.location.latitude = 15.0
+    wp2.location.longitude = -15.0
+    wp2.time = datetime(2026, 1, 5, 12, 0)
+
+    return [wp1, wp2]
+
+
+@pytest.fixture()
+def mock_expedition(mock_waypoints):
+    """Shared fixture providing a mock Expedition initialized with waypoints."""
+    expedition = MagicMock()
+    expedition.schedule._get_wps_in_use.return_value = mock_waypoints
+    return expedition
 
 
 @pytest.fixture()
@@ -49,7 +75,7 @@ def fieldset():
 
 @pytest.fixture()
 def pset(fieldset):
-    """Minimal ParticleSet initialized with a custom Particle class and the fieldset fixture."""
+    """Minimal ParticleSet initialized with a custom Particle class and fieldset fixture."""
     SampleParticle = parcels.Particle.add_variable(parcels.Variable("temperature"))
     t1 = np.datetime64("2024-01-01T00:00:00")
 
@@ -59,23 +85,57 @@ def pset(fieldset):
 
 
 # =============================================================================
-# Instrument base class testing
+# SpatialBounds & FetchSpec Tests
 # =============================================================================
 
 
 def test_FetchSpec():
     fetch_spec = FetchSpec()
 
-    # test that default values are set
     assert fetch_spec.latlon_buffer is not None
     assert fetch_spec.time_buffer is not None
 
-    # test setting values (in new instance) and that original is unchanged in memory
     fetch_spec2 = FetchSpec(latlon_buffer=0.5, time_buffer=1.0)
     assert fetch_spec2.latlon_buffer == 0.5
     assert fetch_spec2.time_buffer == 1.0
 
     assert fetch_spec.latlon_buffer != fetch_spec2.latlon_buffer
+
+
+def test_spatial_bounds_from_waypoints(mock_waypoints):
+    """Verify bounds calculations and 1-day time buffer addition."""
+    with patch(
+        "virtualship.instruments.base._get_waypoint_latlons",
+        return_value=([10.0, 15.0], [-20.0, -15.0]),
+    ):
+        bounds = SpatialBounds.from_waypoints(mock_waypoints)
+
+    assert bounds.min_lat == 10.0
+    assert bounds.max_lat == 15.0
+    assert bounds.min_lon == -20.0
+    assert bounds.max_lon == -15.0
+    assert bounds.min_time == datetime(2026, 1, 1, 12, 0)
+    assert bounds.max_time == datetime(2026, 1, 6, 12, 0)  # +1 day applied
+
+
+def test_spatial_bounds_with_buffer():
+    """Verify buffer padding returns correct order (min_lon, max_lon, min_lat, max_lat)."""
+    bounds = SpatialBounds(
+        min_lat=-10.0,
+        max_lat=10.0,
+        min_lon=-50.0,
+        max_lon=-40.0,
+        min_time=datetime(2026, 1, 1),
+        max_time=datetime(2026, 1, 2),
+    )
+
+    assert bounds.with_buffer(0.0) == (-50.0, -40.0, -10.0, 10.0)
+    assert bounds.with_buffer(0.5) == (-50.5, -39.5, -10.5, 10.5)
+
+
+# =============================================================================
+# Instrument Base Class Tests
+# =============================================================================
 
 
 def test_all_instruments_have_instrument_class():
@@ -89,18 +149,18 @@ class DummyInstrument(Instrument):
 
     sensor_kernels = {}  # noqa
 
-    def simulate(self, data_dir, measurements, out_path):
+    def simulate(self, measurements, out_path):
         """Dummy simulate implementation for test."""
         self.simulate_called = True
 
     @property
     def instrument_type(self) -> InstrumentType:
-        """Return a valid InstrumentType for the test."""
+        """Return a valid InstrumentType for testing."""
         return InstrumentType.CTD
 
 
 class _FakeFieldSet:
-    """Minimal fieldset."""
+    """Minimal fieldset structure."""
 
     def __init__(self, **fields):
         for name, value in fields.items():
@@ -112,14 +172,10 @@ class _FakeFieldSet:
         return self
 
 
-def test_load_input_data():
+def test_load_input_data(mock_expedition):
     """Test Instrument.load_input_data with mocks."""
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        expedition=mock_expedition,
         variables={"A": "a"},
         add_bathymetry=False,
         verbose_progress=False,
@@ -150,14 +206,10 @@ def test_load_input_data():
     assert fieldset == fake_fieldset
 
 
-def test_gets_uv_vectorfield_when_u_and_v_present():
+def test_gets_uv_vectorfield_when_u_and_v_present(mock_expedition):
     """load_input_data creates a 'UV' VectorField when U and V fields are present."""
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        expedition=mock_expedition,
         variables={"U": "uo", "V": "vo"},
         add_bathymetry=False,
         verbose_progress=False,
@@ -186,14 +238,9 @@ def test_gets_uv_vectorfield_when_u_and_v_present():
     assert result.fields["UV"] is mock_uv
 
 
-def test_execute_calls_simulate(monkeypatch):
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-    mock_schedule = MagicMock()
-    mock_schedule.waypoints = [mock_waypoint]
+def test_execute_calls_simulate(mock_expedition):
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=mock_schedule),
+        expedition=mock_expedition,
         variables={"A": "a"},
         add_bathymetry=False,
         verbose_progress=True,
@@ -204,16 +251,11 @@ def test_execute_calls_simulate(monkeypatch):
     dummy.simulate.assert_called_once()
 
 
-def test_fetch_spec_applied_to_instrument():
+def test_fetch_spec_applied_to_instrument(mock_expedition):
     """FetchSpec values are correctly stored on the instrument."""
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-    mock_schedule = MagicMock()
-    mock_schedule.waypoints = [mock_waypoint]
     fetch_spec = FetchSpec(latlon_buffer=5.0, depth_min=-10.0)
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=mock_schedule),
+        expedition=mock_expedition,
         variables={"A": "a"},
         add_bathymetry=False,
         verbose_progress=False,
@@ -222,7 +264,6 @@ def test_fetch_spec_applied_to_instrument():
     )
     assert dummy.fetch_spec.latlon_buffer == 5.0
     assert dummy.fetch_spec.depth_min == -10.0
-    # unset values use dataclass defaults
     assert dummy.fetch_spec.time_buffer == 0.0
     assert dummy.fetch_spec.depth_max is None
 
@@ -233,7 +274,7 @@ def test_generate_fieldset_combines_fields():
     mock_waypoint.location.longitude = 2.0
 
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=MagicMock(waypoints=[mock_waypoint])),
+        expedition=mock_expedition,
         variables={"A": "a", "B": "b"},
         add_bathymetry=False,
         verbose_progress=False,
@@ -256,14 +297,9 @@ def test_generate_fieldset_combines_fields():
     fs_A.__add__.assert_called_once_with(fs_B)
 
 
-def test_load_input_data_error(monkeypatch):
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-    mock_schedule = MagicMock()
-    mock_schedule.waypoints = [mock_waypoint]
+def test_load_input_data_error(mock_expedition, monkeypatch):
     dummy = DummyInstrument(
-        expedition=MagicMock(schedule=mock_schedule),
+        expedition=mock_expedition,
         variables={"A": "a"},
         add_bathymetry=False,
         verbose_progress=False,
@@ -274,10 +310,10 @@ def test_load_input_data_error(monkeypatch):
     )
     import virtualship.errors
 
-    try:
+    with pytest.raises(
+        virtualship.errors.CopernicusCatalogueError, match="Failed to load input data"
+    ):
         dummy.load_input_data()
-    except virtualship.errors.CopernicusCatalogueError as e:
-        assert "Failed to load input data" in str(e)
 
 
 def test_instrument_subclass_without_sensor_kernels_error():
@@ -305,6 +341,42 @@ def test_instrument_samples_initial_conditions(fieldset, pset):
     assert np.allclose(psetT_postinit, [15.0]), (
         "Initial conditions do not match expected values."
     )
+
+
+def test_instrument_init_filters_out_placeholder_ports(mock_expedition, mock_waypoints):
+    """Verify Instrument init uses _get_wps_in_use to strip null ports."""
+    null_port = MagicMock()
+    null_port.location.latitude = None
+    null_port.location.longitude = None
+    null_port.time = None
+
+    # insert placeholder ports around the valid mock_waypoints
+    mock_expedition.schedule._get_wps_in_use.return_value = [
+        null_port,
+        *mock_waypoints,
+        null_port,
+    ]
+
+    with patch(
+        "virtualship.instruments.base._get_instr_relevant_wps",
+        return_value=mock_waypoints,
+    ) as mock_filter:
+        dummy = DummyInstrument(
+            expedition=mock_expedition,
+            variables={"A": "a"},
+            add_bathymetry=False,
+            verbose_progress=False,
+            from_data=None,
+        )
+
+        mock_filter.assert_called_once_with(
+            mock_expedition.schedule._get_wps_in_use(),
+            dummy.instrument_type,
+        )
+
+    assert dummy.bounds.min_lat == 10.0
+    assert dummy.bounds.max_lat == 15.0
+    assert dummy.bounds.min_time == datetime(2026, 1, 1, 12, 0)
 
 
 # =============================================================================

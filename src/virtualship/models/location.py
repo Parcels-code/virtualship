@@ -7,26 +7,29 @@ from dataclasses import dataclass
 class Location:
     """A location on a sphere."""
 
-    latitude: float
-    longitude: float
+    latitude: float | None = None
+    longitude: float | None = None
 
     def __post_init__(self) -> None:
         """
-        Verify this location has valid latitude and longitude.
+        Verify this location has valid latitude and longitude if provided.
 
         :raises ValueError: If latitude and/or longitude are not valid.
         """
-        if self.lat < -90:
-            raise ValueError("Latitude cannot be smaller than -90.")
-        if self.lat > 90:
-            raise ValueError("Latitude cannot be larger than 90.")
-        if self.lon < -180:
-            raise ValueError("Longitude cannot be smaller than -180.")
-        if self.lon > 360:
-            raise ValueError("Longitude cannot be larger than 360.")
+        if self.lat is not None:
+            if self.lat < -90:
+                raise ValueError("Latitude cannot be smaller than -90.")
+            if self.lat > 90:
+                raise ValueError("Latitude cannot be larger than 90.")
+
+        if self.lon is not None:
+            if self.lon < -180:
+                raise ValueError("Longitude cannot be smaller than -180.")
+            if self.lon > 360:
+                raise ValueError("Longitude cannot be larger than 360.")
 
     @property
-    def lat(self) -> float:
+    def lat(self) -> float | None:
         """
         Shorthand for latitude variable.
 
@@ -35,7 +38,7 @@ class Location:
         return self.latitude
 
     @property
-    def lon(self) -> float:
+    def lon(self) -> float | None:
         """
         Shorthand for longitude variable.
 

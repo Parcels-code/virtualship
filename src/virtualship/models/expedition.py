@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import numpy as np
 import pydantic
@@ -17,6 +17,7 @@ from virtualship.utils import (
     _calc_sail_time,
     _calc_wp_stationkeeping_time,
     _get_bathy_data,
+    _get_public_wp,
     _validate_numeric_to_timedelta,
     get_supported_sensors,
     register_instrument_config,
@@ -37,9 +38,11 @@ class Expedition(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="forbid")
 
     def to_yaml(self, file_path: str) -> None:
-        """Write exepedition object to yaml file."""
+        """Write expedition object to yaml file, with port/waypoint number comments."""
+        annotated = self._annotate()
+
         with open(file_path, "w") as file:
-            yaml.dump(self.model_dump(by_alias=True), file)
+            file.writelines(annotated)
 
     @classmethod
     def from_yaml(cls, file_path: str) -> Expedition:
@@ -51,8 +54,11 @@ class Expedition(pydantic.BaseModel):
     def get_instruments(self) -> set[InstrumentType]:
         """Return a set of unique InstrumentType enums used in the expedition."""
         instruments_in_expedition = []
+
         # from waypoints
         for waypoint in self.schedule.waypoints:
+            if isinstance(waypoint, Port):
+                continue
             if waypoint.instrument:
                 for instrument in waypoint.instrument:
                     if instrument:
@@ -70,6 +76,49 @@ class Expedition(pydantic.BaseModel):
                 "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
             ) from e
 
+    def _annotate(self):
+        """
+        Add port/waypoint comments/annotations to the expedition.yaml file.
+
+        Infer the waypoint type (Port vs Waypoint) from the Python object type.
+        """
+        data = self.model_dump(by_alias=True)
+        waypoints = self.schedule.waypoints
+        waypoints_data = data["schedule"]["waypoints"]
+
+        # blank out waypoints in the dumped data to make it easier to identify and rebuild with annotated waypoint blocks below
+        data["schedule"]["waypoints"] = []
+        raw = yaml.dump(data, default_flow_style=False)
+
+        lines = raw.splitlines(keepends=True)
+        annotated = []
+        waypoint_number = 0
+        for line in lines:
+            if line.strip() != "waypoints: []":
+                annotated.append(line)
+                continue
+
+            indent = " " * (len(line) - len(line.lstrip()))
+            annotated.append(f"{indent}waypoints:\n")
+
+            for wp_index, (waypoint, wp_data) in enumerate(
+                zip(waypoints, waypoints_data, strict=True)
+            ):
+                if isinstance(waypoint, Port):
+                    arrival_departure = "Departure" if wp_index == 0 else "Arrival"
+                    annotated.append(f"{indent}# Port of {arrival_departure}\n")
+                else:
+                    waypoint_number += 1
+                    annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
+
+                # dump the waypoint on its own so its block can be indented and inserted independently of the others
+                wp_lines = yaml.dump([wp_data], default_flow_style=False).splitlines(
+                    keepends=True
+                )
+                annotated.extend(f"{indent}{wp_line}" for wp_line in wp_lines)
+
+        return annotated
+
 
 class ShipConfig(pydantic.BaseModel):
     """Configuration of the ship."""
@@ -84,9 +133,31 @@ class ShipConfig(pydantic.BaseModel):
 class Schedule(pydantic.BaseModel):
     """Schedule of the virtual ship."""
 
-    waypoints: list[Waypoint]
-
+    waypoints: list[Port | Waypoint]
     model_config = pydantic.ConfigDict(extra="forbid")
+    _verified: bool = False  # internal flag to indicate if the schedule has been verified, so that a schedule can be simulated safely elsewhere in codebase
+
+    @pydantic.field_validator("waypoints", mode="after")
+    @classmethod
+    def _validate_waypoints(cls, value: list[Port | Waypoint]) -> list[Port | Waypoint]:
+        """Ensure first and last waypoints are Port objects."""
+        if not isinstance(value[0], Port) or not isinstance(value[-1], Port):
+            raise ScheduleError(
+                "First and last waypoints must be Ports (of arrival/departure). "
+                "One or the other is currently missing."
+            )
+
+        return value
+
+    @property
+    def departure_port(self) -> Port:
+        """Departure port (always the first waypoint)."""
+        return cast(Port, self.waypoints[0])
+
+    @property
+    def arrival_port(self) -> Port:
+        """Arrival port (always the last waypoint)."""
+        return cast(Port, self.waypoints[-1])
 
     def verify(
         self,
@@ -96,24 +167,24 @@ class Schedule(pydantic.BaseModel):
         *,
         from_data: Path | None = None,
     ) -> None:
-        """
-        Verify the feasibility and correctness of the schedule's waypoints.
-
-        This method checks various conditions to ensure the schedule is valid:
-        1. At least one waypoint is provided.
-        2. The first waypoint has a specified time.
-        3. Waypoint times are in ascending order.
-        4. All waypoints are in water (not on land).
-        5. The ship can arrive on time at each waypoint given its speed.
-        """
+        """Verify the feasibility and correctness of the schedule's waypoints."""
         print("\nVerifying route... ")
 
-        if len(self.waypoints) == 0:
-            raise ScheduleError("At least one waypoint must be provided.")
+        # waypoints excluding any inactive placeholder departure/arrival ports
+        wps_in_use = self._get_wps_in_use()
 
-        # check first waypoint has a time
-        if self.waypoints[0].time is None:
-            raise ScheduleError("First waypoint must have a specified time.")
+        if not wps_in_use:
+            raise ScheduleError(
+                "Schedule has no active waypoints: at least one waypoint, or an "
+                "in-use departure/arrival port (with both a location and a time), "
+                "must be provided."
+            )
+
+        # is the departure port in use or a placeholder (i.e. all None)?
+        wp_str = "Departure port" if self.departure_port.is_in_use else "Waypoint 1"
+
+        if wps_in_use[0].time is None:
+            raise ScheduleError(f"{wp_str} must have a specified time.")
 
         # check waypoint times are in ascending order
         timed_waypoints = [wp for wp in self.waypoints if wp.time is not None]
@@ -122,11 +193,12 @@ class Schedule(pydantic.BaseModel):
         ]
         if not all(checks):
             invalid_i = [i for i, c in enumerate(checks) if c]
+            public_wps = [_get_public_wp(i, self.waypoints) for i in invalid_i]
             raise ScheduleError(
-                f"Waypoint(s) {', '.join(f'#{i + 1}' for i in invalid_i)}: each waypoint should be timed after all previous waypoints",
+                f"Waypoint(s) {', '.join(f'#{i}' for i in public_wps)}: each waypoint should be timed after all previous waypoints",
             )
 
-        # check if all waypoints are in water using bathymetry data
+        # check if all non-port waypoints are in water using bathymetry data
         land_waypoints = []
         if not ignore_land_test:
             try:
@@ -137,6 +209,9 @@ class Schedule(pydantic.BaseModel):
                 ) from e
 
             for wp_i, wp in enumerate(self.waypoints):
+                if isinstance(wp, Port):
+                    continue  # ports are in harbour; skip bathymetry land check
+                public_wp = _get_public_wp(wp_i, self.waypoints)
                 try:
                     value = bathymetry_field.eval(
                         0,  # time
@@ -145,24 +220,24 @@ class Schedule(pydantic.BaseModel):
                         wp.location.lon,
                     )
                     if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
-                        land_waypoints.append((wp_i, wp))
+                        land_waypoints.append((public_wp, wp))
                 except Exception as e:
                     raise ScheduleError(
-                        f"Waypoint #{wp_i + 1} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
+                        f"Waypoint #{public_wp} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
                     ) from e
 
             if len(land_waypoints) > 0:
                 raise ScheduleError(
-                    f"The following waypoint(s) throw(s) error(s): {['#' + str(wp_i + 1) + ' ' + str(wp) for (wp_i, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
+                    f"The following waypoint(s) throw(s) error(s): {['#' + str(public_wp) + ' ' + str(wp) for (public_wp, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
                 )
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
-        time = self.waypoints[0].time
-        for wp_i, (wp, wp_next) in enumerate(
-            zip(self.waypoints, self.waypoints[1:], strict=False)
-        ):
+        time = wps_in_use[0].time
+
+        for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
             stationkeeping_time = _calc_wp_stationkeeping_time(
-                wp.instrument, instruments_config
+                wp.instrument if isinstance(wp, Waypoint) else None,
+                instruments_config,
             )
 
             time_to_reach = _calc_sail_time(
@@ -177,15 +252,56 @@ class Schedule(pydantic.BaseModel):
             if wp_next.time is None:
                 time = arrival_time
             elif arrival_time > wp_next.time:
+                affected = (
+                    f"waypoint {_get_public_wp(wp_i + 1, self.waypoints)}"  # +1 to get next
+                    if not isinstance(wp_next, Port)
+                    else "the final port of arrival"
+                )
+
+                # TODO: add messaging of stationkeeping time to the error message, e.g. how much each instrument is taking...
                 raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at waypoint {wp_i + 2}. "
+                    f"Waypoint planning is not valid: would arrive too late at {affected}. "
                     f"Location: {wp_next.location} Time: {wp_next.time}. "
                     f"Currently projected to arrive at: {arrival_time}."
+                    "\n\nHint: adding instruments may increase the amount of time spent stationary at a waypoints. "
+                    "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
                 )
             else:
                 time = wp_next.time
 
+        # finally, mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
+        self._verified = True
+
         print("... All good to go!")
+
+    def _get_wps_in_use(self) -> list[Port | Waypoint]:
+        """Return waypoints that are in use (i.e., have a specified time and location), i.e. excluding placeholder departure/arrival ports."""
+        start_slice = 0 if self.departure_port.is_in_use else 1
+        end_slice = (
+            len(self.waypoints)
+            if self.arrival_port.is_in_use
+            else len(self.waypoints) - 1
+        )
+        return self.waypoints[start_slice:end_slice]
+
+
+class Port(pydantic.BaseModel):
+    """A port stop: a location the ship visits with no instrument deployments made."""
+
+    location: Location | None = None
+    time: datetime | None = None
+
+    model_config = pydantic.ConfigDict(extra="forbid")
+
+    @property
+    def is_in_use(self) -> bool:
+        """Return True if the port has both a valid time and location (lat/lon)."""
+        return (
+            self.time is not None
+            and self.location is not None
+            and self.location.lat is not None
+            and self.location.lon is not None
+        )
 
 
 class Waypoint(pydantic.BaseModel):

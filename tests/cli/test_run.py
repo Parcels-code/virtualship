@@ -8,7 +8,7 @@ from virtualship.expedition.simulate_schedule import (
     ScheduleOk,
 )
 from virtualship.instruments.types import InstrumentType
-from virtualship.utils import EXPEDITION, EXPEDITION_IDENTIFIER, get_example_expedition
+from virtualship.utils import EXPEDITION, EXPEDITION_IDENTIFIER, _get_example_expedition
 
 
 def _simulate_schedule(projection, expedition):
@@ -47,7 +47,7 @@ def test_run(tmp_path, monkeypatch):
 
     expedition_dir = tmp_path / "expedition_dir"
     expedition_dir.mkdir()
-    (expedition_dir / EXPEDITION).write_text(get_example_expedition())
+    (expedition_dir / EXPEDITION).write_text(_get_example_expedition())
 
     monkeypatch.setattr("virtualship.cli._run.simulate_schedule", _simulate_schedule)
 

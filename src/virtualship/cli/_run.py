@@ -10,25 +10,23 @@ import copernicusmarine
 
 from virtualship.expedition.simulate_schedule import (
     MeasurementsToSimulate,
-    ScheduleProblem,
     simulate_schedule,
 )
 from virtualship.make_realistic.problems.simulator import ProblemSimulator
-from virtualship.models import Checkpoint, Schedule
+from virtualship.models import Checkpoint
 from virtualship.models.expedition import Expedition
 from virtualship.utils import (
     CACHE,
     CHECKPOINT,
-    EXPEDITION,
     EXPEDITION_IDENTIFIER,
     EXPEDITION_LATEST,
+    INCOMPLETE_PORT_MSG,
     PROBLEMS_ENCOUNTERED,
     PROJECTION,
     REPORT,
     RESULTS,
     SELECTED_PROBLEMS,
     _get_expedition,
-    _save_checkpoint,
     expedition_cost,
     get_instrument_class,
 )
@@ -78,6 +76,11 @@ def _run(
         expedition_dir = Path(expedition_dir)
 
     expedition = _get_expedition(expedition_dir)
+    schedule = expedition.schedule
+
+    # warn if the departure and/or arrival port is incomplete
+    if not schedule.departure_port.is_in_use or not schedule.arrival_port.is_in_use:
+        print(f"\n{INCOMPLETE_PORT_MSG}")
 
     # unique id to determine if an expedition has 'changed' since last run (to avoid re-selecting problems when user makes tweaks to schedule to deal with problems encountered)
     cache_dir = expedition_dir.joinpath(CACHE)
@@ -93,15 +96,14 @@ def _run(
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
-    if checkpoint is None:
-        checkpoint = Checkpoint(past_schedule=Schedule(waypoints=[]))
 
-    # verify that schedule and checkpoint match, and that problems have been resolved
-    checkpoint.verify(expedition, problems_dir)
+    # verify that schedule and checkpoint match, and that problems have been resolved (if checkpoint exists)
+    if checkpoint is not None:
+        checkpoint.verify(expedition, problems_dir)
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
-    expedition.schedule.verify(
+    schedule.verify(
         expedition.ship_config.ship_speed_knots,
         expedition.instruments_config,
         from_data=Path(from_data) if from_data else None,
@@ -112,20 +114,6 @@ def _run(
         projection=PROJECTION,
         expedition=expedition,
     )
-
-    # handle cases where user defined schedule is incompatible (i.e. not enough time between waypoints, not problems)
-    if isinstance(schedule_results, ScheduleProblem):
-        print(
-            f"Please update your schedule (`virtualship plan` or directly in {EXPEDITION}) and continue the expedition by executing the `virtualship run` command again.\nCheckpoint has been saved to {expedition_dir.joinpath(CHECKPOINT)}."
-        )
-        _save_checkpoint(
-            Checkpoint(
-                past_schedule=expedition.schedule,
-                failed_waypoint_i=schedule_results.failed_waypoint_i,
-            ),
-            expedition_dir,
-        )
-        return
 
     # delete and create results directory
     results_dir = expedition_dir.joinpath(RESULTS)
@@ -226,7 +214,7 @@ def _run(
     )
 
     if problems:
-        ProblemSimulator.post_expedition_report(
+        problem_simulator.post_expedition_report(
             problems, expedition_dir.joinpath(RESULTS, REPORT)
         )
         print("\n----- RECORD OF PROBLEMS ENCOUNTERED ------")
@@ -311,10 +299,10 @@ def _load_checkpoint(expedition_dir: Path) -> Checkpoint | None:
 
 def _write_expedition_cost(expedition, schedule_results, expedition_dir):
     """Calculate the expedition cost, write it to a file, and print summary."""
-    assert expedition.schedule.waypoints[0].time is not None, (
-        "First waypoint has no time. This should not be possible as it should have been verified before."
-    )
-    time_past = schedule_results.time - expedition.schedule.waypoints[0].time
+    wps_in_use = expedition.schedule._get_wps_in_use()
+
+    assert wps_in_use[0].time is not None, "First waypoint has no time."
+    time_past = schedule_results.time - wps_in_use[0].time
     cost = expedition_cost(schedule_results, time_past)
     with open(expedition_dir.joinpath(RESULTS, "cost.txt"), "w") as file:
         file.writelines(f"cost: {cost} US$")

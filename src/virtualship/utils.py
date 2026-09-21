@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import glob
 import hashlib
-import os
+import json
 import re
 import sys
-import warnings
 from datetime import datetime, timedelta
 from functools import lru_cache
 from importlib.resources import files
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from virtualship.models.checkpoint import Checkpoint
     from virtualship.models.expedition import SensorConfig
 
-import pandas as pd
 import yaml
 from pydantic import BaseModel
 from yaspin import Spinner
@@ -103,6 +101,16 @@ COPERNICUSMARINE_BGC_VARIABLES = ["o2", "chl", "no3", "po4", "ph", "phyc", "nppv
 
 BATHYMETRY_ID = "cmems_mod_glo_phy_my_0.083deg_static"
 
+# =====================================================
+# SECTION: warnings and messages
+# =====================================================
+
+
+INCOMPLETE_PORT_MSG = (
+    "WARNING: Departure and/or arrival port is/are incomplete in the schedule (missing time, location, or both). "
+    "The simulation will continue but incomplete ports will be ignored."
+)
+
 
 # =====================================================
 # SECTION: decorators / dynamic registries and mapping
@@ -161,16 +169,15 @@ def register_instrument_config(instrument_type):
 # =====================================================
 
 
-def load_static_file(name: str) -> str:
+def _load_static_file(name: str) -> str:
     """Load static file from the ``virtualship.static`` module by file name."""
     return files("virtualship.static").joinpath(name).read_text(encoding="utf-8")
 
 
 @lru_cache(None)
-@lru_cache(None)
-def get_example_expedition() -> str:
+def _get_example_expedition() -> str:
     """Get the example unified expedition configuration file."""
-    return load_static_file(EXPEDITION)
+    return _load_static_file(EXPEDITION)
 
 
 def _dump_yaml(model: BaseModel, stream: TextIO) -> str | None:
@@ -183,137 +190,6 @@ def _dump_yaml(model: BaseModel, stream: TextIO) -> str | None:
 def _generic_load_yaml(data: str, model: BaseModel) -> BaseModel:
     """Load a yaml string into a pydantic model."""
     return model.model_validate(yaml.safe_load(data))
-
-
-def load_coordinates(file_path):
-    """Loads coordinates from a file based on its extension."""
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    ext = os.path.splitext(file_path)[-1].lower()
-
-    try:
-        if ext in [".xls", ".xlsx"]:
-            return pd.read_excel(file_path)
-
-        if ext == ".csv":
-            return pd.read_csv(file_path)
-
-        raise ValueError(f"Unsupported file extension {ext}.")
-
-    except Exception as e:
-        raise RuntimeError(
-            "Could not read coordinates data from the provided file. "
-            "Ensure it is either a csv or excel file."
-        ) from e
-
-
-def validate_coordinates(coordinates_data):
-    # Expected column headers
-    expected_columns = {"Station Type", "Name", "Latitude", "Longitude"}
-
-    # Check if the headers match the expected ones
-    actual_columns = set(coordinates_data.columns)
-
-    missing_columns = expected_columns - actual_columns
-    if missing_columns:
-        raise ValueError(
-            f"Error: Found columns {list(actual_columns)}, but expected columns {list(expected_columns)}. "
-            "Are you sure that you're using the correct export from MFP?"
-        )
-
-    extra_columns = actual_columns - expected_columns
-    if extra_columns:
-        warnings.warn(
-            f"Found additional unexpected columns {list(extra_columns)}. "
-            "Manually added columns have no effect. "
-            "If the MFP export format changed, please submit an issue: "
-            "https://github.com/OceanParcels/virtualship/issues.",
-            stacklevel=2,
-        )
-
-    # Drop unexpected columns (optional, only if you want to ensure strict conformity)
-    coordinates_data = coordinates_data[list(expected_columns)]
-
-    # Continue with the rest of the function after validation...
-    coordinates_data = coordinates_data.dropna()
-
-    # Convert latitude and longitude to floats, replacing commas with dots
-    # Handles case when the latitude and longitude have decimals with commas
-    if coordinates_data["Latitude"].dtype in ["object", "string"]:
-        coordinates_data["Latitude"] = coordinates_data["Latitude"].apply(
-            lambda x: float(x.replace(",", "."))
-        )
-
-    if coordinates_data["Longitude"].dtype in ["object", "string"]:
-        coordinates_data["Longitude"] = coordinates_data["Longitude"].apply(
-            lambda x: float(x.replace(",", "."))
-        )
-
-    return coordinates_data
-
-
-def mfp_to_yaml(coordinates_file_path: str, yaml_output_path: str):  # noqa: D417
-    """
-    Generates an expedition.yaml file with schedule information based on data from MFP excel file. The ship and instrument configurations entries in the YAML file are sourced from the static version.
-
-    Parameters
-    ----------
-    - excel_file_path (str): Path to the Excel file containing coordinate and instrument data.
-
-    The function:
-    1. Reads instrument and location data from the Excel file.
-    2. Determines the maximum depth and buffer based on the instruments present.
-    3. Ensures longitude and latitude values remain valid after applying buffer adjustments.
-    4. returns the yaml information.
-
-    """
-    # avoid circular imports
-    from virtualship.models import (
-        Expedition,
-        InstrumentsConfig,
-        Location,
-        Schedule,
-        Waypoint,
-    )
-
-    # Read data from file
-    coordinates_data = load_coordinates(coordinates_file_path)
-
-    coordinates_data = validate_coordinates(coordinates_data)
-
-    # Generate waypoints
-    waypoints = []
-    for _, row in coordinates_data.iterrows():
-        waypoints.append(
-            Waypoint(
-                instrument=None,  # instruments blank, to be built by user using `virtualship plan` UI or by interacting directly with YAML files
-                location=Location(latitude=row["Latitude"], longitude=row["Longitude"]),
-            )
-        )
-
-    # Create Schedule object
-    schedule = Schedule(
-        waypoints=waypoints,
-    )
-
-    # extract instruments config from static
-    instruments_config = InstrumentsConfig.model_validate(
-        yaml.safe_load(get_example_expedition()).get("instruments_config")
-    )
-
-    # extract ship config from static
-    ship_config = yaml.safe_load(get_example_expedition()).get("ship_config")
-
-    # combine to Expedition object
-    expedition = Expedition(
-        schedule=schedule,
-        instruments_config=instruments_config,
-        ship_config=ship_config,
-    )
-
-    # Save to YAML file
-    expedition.to_yaml(yaml_output_path)
 
 
 def _validate_numeric_to_timedelta(
@@ -595,20 +471,23 @@ def _get_waypoint_latlons(waypoints):
     return wp_lats, wp_lons
 
 
-def _get_instrument_relevant_waypoints(waypoints, instrument_type) -> list:
+def _get_instr_relevant_wps(waypoints, instrument_type) -> list:
     """Subset of waypoints that are relevant to this `instrument_type`."""
+    from virtualship.models import Port  # avoid circular import problems
+
     if instrument_type.is_underway:
         return list(waypoints)
 
     relevant = []
     for wp in waypoints:
-        wp_instruments = (
-            wp.instrument
-            if isinstance(wp.instrument, list)
-            else ([wp.instrument] if wp.instrument else [])
-        )
-        if instrument_type in wp_instruments:
-            relevant.append(wp)
+        if not isinstance(wp, Port):
+            wp_instruments = (
+                wp.instrument
+                if isinstance(wp.instrument, list)
+                else ([wp.instrument] if wp.instrument else [])
+            )
+            if instrument_type in wp_instruments:
+                relevant.append(wp)
 
     return relevant or list(waypoints)
 
@@ -616,6 +495,16 @@ def _get_instrument_relevant_waypoints(waypoints, instrument_type) -> list:
 def _save_checkpoint(checkpoint: Checkpoint, expedition_dir: Path) -> None:
     file_path = expedition_dir.joinpath(CHECKPOINT)
     checkpoint.to_yaml(file_path)
+
+
+def _read_json(path: Path) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_json(path: Path, data: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
 
 
 def _calc_sail_time(
@@ -641,7 +530,7 @@ def _calc_sail_time(
 
 
 def _calc_wp_stationkeeping_time(
-    wp_instrument_types: list,
+    wp_instrument_types: list | None,
     instruments_config: InstrumentsConfig,
     instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
 ) -> timedelta:
@@ -693,6 +582,25 @@ def build_particle_class_from_sensors(
     ]
 
     return Particle.add_variable(nonsensor_variables + sensor_variables)
+
+
+def _get_public_wp(raw_wp_i: int, waypoints: list) -> int | None:
+    """
+    Get the public waypoint number for a given raw waypoint index (accounting for Port waypoints).
+
+    Note, the returned number is not an index, rather it corresponds to Waypoint numbers ignoring Ports (which are not waypoints from the user's perspective).
+    """
+    from virtualship.models.expedition import Port  # avoid circular import
+
+    port_wps = [i for i, wp in enumerate(waypoints) if isinstance(wp, Port)]
+    non_port_wps = [i for i in range(len(waypoints)) if i not in port_wps]
+
+    if raw_wp_i in port_wps:
+        public_wp = None  # Port waypoints do not have public waypoint numbers
+    else:
+        public_wp = non_port_wps.index(raw_wp_i) + 1
+
+    return public_wp
 
 
 # =====================================================
