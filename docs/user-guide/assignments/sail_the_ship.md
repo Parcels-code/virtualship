@@ -60,11 +60,15 @@ Your route can be created with the online [NIOZ MFP tool](https://nioz.marinefac
 The MFP tool is used by professional oceanographers to plan research expeditions, so this is a great opportunity to get a feel for how real-world oceanographic research is planned!
 ```
 
-### Export the coordinates from MFP
+```{tip}
+Make sure to also set a Port of Departure and Port of Arrival in your MFP route, in addition to your sampling stations. These are picked up automatically when importing into VirtualShip, and mark the start/end of your expedition.
+```
 
-Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Coordinates" --> "DD". This will download your coordinates as an `.xlsx` (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
+### Export the data from MFP
 
-### _If using a cloud-based workspace_... upload the coordinates to your virtual machine
+Once you have finalised your MFP expedition route, select "Export" on the right hand side of the window --> "Export Cruise Data". This will download your route (including timings and, if specified, your ports of departure/arrival) as an `.xlsx` (Excel) file, which we will later feed into the VirtualShip protocol to initialise the expedition.
+
+### _If using a cloud-based workspace_... upload the MFP data to your virtual machine
 
 ```{tip}
 We suggest practicing good file management and creating a dedicated folder for your group's expedition data in the workspace. You can do so running `mkdir {your-group-name}` in the Terminal (replacing `{your-group-name}` with your actual group name) or via the File Explore panel in the Codespaces interface.
@@ -80,13 +84,15 @@ When working in the Terminal, navigate to where you would like your expedition t
 
 Now enter the following command in the Terminal (changing `EXPEDITION_NAME` to something more meaningful for your group's expedition):
 
-`virtualship init EXPEDITION_NAME --from-mfp {CruiseDataExport}.xlsx`
+`virtualship init EXPEDITION_NAME --from-mfp {CruiseDataExport}.xlsx --start-date 'YYYY-MM-DD HH:MM:SS'`
 
 ```{tip}
 The `{CruiseDataExport}.xlsx` in the command above refers to the `.xlsx` file exported from MFP and uploaded to your virtual machine earlier. Replace the filename with the name of your own file.
+
+The `--start-date` should be set to your intended departure date/time. MFP's estimated travel and station durations are then used to automatically fill in a time for each waypoint relative to this start date.
 ```
 
-This will create a folder/directory called `EXPEDITION_NAME` (or what you have changed this to) with a single file: `expedition.yaml`. This file contains details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates that you specified in your MFP export. The `--from-mfp` flag indicates that the exported coordinates should be used.
+This will create a folder/directory called `EXPEDITION_NAME` (or what you have changed this to) with a single file: `expedition.yaml`. This file contains details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates (and, if specified, ports of departure/arrival) from your MFP export. The `--from-mfp` flag indicates that the exported route will be used, and `--start-date` is required alongside it.
 
 ## 5) Expedition scheduling & ship configuration
 
@@ -134,16 +140,16 @@ There are other instrument configurations settings that can be adjusted in the e
 VirtualShip supports running experiments in the years 1993 through to the present day by leveraging the suite of products available on the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products).
 ```
 
-You will need to enter dates and times for each of the sampling stations/waypoints selected in the MFP route planning stage. This can be done under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
+If you provided a `--start-date` during initialisation from an MFP export, each waypoint's time will already be pre-filled, based on MFP's estimated travel and station durations relative to your start date. You can review and adjust these under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
 
 Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
 
 ```{note}
-It is important to ensure that the timings for each station are realistic. There must be enough time for the ship to travel to each site at the prescribed speed (10 knots). The expedition schedule will be automatically verified when you press _Save Changes_ in the planning tool.
+Your Port of Departure and Port of Arrival (if set in MFP) appear as special waypoints in this list. They have no instrument selection options and cannot be added or removed.
 ```
 
-```{tip}
-The MFP route planning tool will give estimated durations of sailing between sites at the 10 knots sailing speed. This can be useful to refer back to when planning the expedition timings and entering these into the `virtualship plan` tool.
+```{note}
+It is important to ensure that the timings for each station are realistic. There must be enough time for the ship to travel to each site at the prescribed speed (10 knots). The expedition schedule will be automatically verified when you press _Save Changes_ in the planning tool.
 ```
 
 ### Instrument selection
