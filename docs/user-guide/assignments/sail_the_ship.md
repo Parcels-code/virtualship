@@ -165,7 +165,7 @@ Depending on the power of the machine that you are running VirtualShip on, this 
     - If experiencing issues with termination during simualtion, consider reducing the number of waypoints and/or the distance between waypoints.
     - Note, you can likely keep less intensive instruments (e.g. Drifters, ADCP) running at more distant waypoints. The software will recognise that CTDs/Argo Floats are not being deployed at these waypoints and will not inflate the data retrieval for these instruments uncessarily in this case.
 - If you are running VirtualShip in the pre-configured GitHub Codespaces environment, the more [powerful option](../tutorials/codespaces_guide.md/#spinning-up-a-more-powerful-codespace) (4 cores, 16GB RAM) should be able to handle most expedition deployments. This is a useful option if you are experiencing issues with the standard Codespaces configuration (2 cores, 8GB RAM).
-    - Note, however, this comes at cost of reducing your allocation of available Codespaces hours (60 hours per month for the standard configuration, 30 hours for the more powerful configuration).
+    - Note, however, this comes at cost of halving your allocation of available Codespaces hours per month as a free user.
 
 ```
 

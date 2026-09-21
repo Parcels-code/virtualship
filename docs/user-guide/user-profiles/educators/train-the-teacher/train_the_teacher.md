@@ -94,11 +94,13 @@ There are broadly two ways to set up the `VirtualShip` software for teaching:
 Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
 ```{important}
-At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, up to 60 hours of usage (per student/GitHub account).
+At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, up to 60 hours of usage* (per student/GitHub account).
 
 This will be sufficient for _most_ courses, but could be insufficient if your planned teaching activities are longer or more intensive. We continually monitor the optimum solution for distributing the VirtualShip software to whole classrooms in the most accessible way possible, and we are open to [feedback/advice](#feedback-support) on this.
 
 **See the [Pre-configured environment (cloud based)](#option-2-pre-configured-environment-cloud-based) section below for more information on this option.**
+
+*_Please note this value is accurate at the time of writing (2026). It may change subject to GitHub's policies._
 ```
 
 ```{note}

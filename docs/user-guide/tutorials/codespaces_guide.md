@@ -68,9 +68,11 @@ Deleting is not the same as stopping the Codespace. You can stop the Codespace w
 ### Compute usage restrictions
 
 ```{important}
-The amount of time you can use the Codespace is limited to approximately **60 hours per month** (per free GitHub account), or 30 hours if using the more powerful machine (see [above](#spinning-up-a-more-powerful-codespace)). This should be sufficient for your course, but it's good to be aware so that you can limit unnecessary usage.
+The amount of time you can use the Codespace is limited to approximately **60 hours per month*** (per free GitHub account), and that amount is halved if using the more powerful machine (see [above](#spinning-up-a-more-powerful-codespace)). This should be sufficient for your course, but it's good to be aware so that you can limit unnecessary usage.
 
 See also the GitHub docs for more information on [Codespaces usage limits](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces).
+
+***Please note this value is accurate at the time of writing (2026). It may change subject to GitHub's policies.**
 
 ```
 
