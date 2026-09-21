@@ -167,8 +167,8 @@ class _FakeFieldSet:
             setattr(self, name, value)
         self.fields = {}
 
-    def to_chunk_cached_arrays(self):
-        """Mimic FieldSet.to_windowed_arrays."""
+    def to_chunk_cached_arrays(self, **kwargs):
+        """Mimic FieldSet.to_chunk_cached_arrays."""
         return self
 
 
@@ -268,11 +268,7 @@ def test_fetch_spec_applied_to_instrument(mock_expedition):
     assert dummy.fetch_spec.depth_max is None
 
 
-def test_generate_fieldset_combines_fields():
-    mock_waypoint = MagicMock()
-    mock_waypoint.location.latitude = 1.0
-    mock_waypoint.location.longitude = 2.0
-
+def test_generate_fieldset_combines_fields(mock_expedition):
     dummy = DummyInstrument(
         expedition=mock_expedition,
         variables={"A": "a", "B": "b"},
