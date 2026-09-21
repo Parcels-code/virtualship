@@ -87,15 +87,23 @@ Usage: virtualship init [OPTIONS] PATH
 
   Initialize a directory for a new expedition, with an expedition.yaml file.
 
-  If --mfp-file is provided, it will generate the expedition.yaml from the MPF
-  file instead.
+  If --mfp-file is provided (and --start-date is also provided), it will
+  generate the expedition.yaml from the MPF file instead.
 
 Options:
-  --from-mfp TEXT  Partially initialise a project from an exported xlsx or csv
-                   file from NIOZ' Marine Facilities Planning tool
-                   (specifically the "Export Coordinates > DD" option). User
-                   edits are required after initialisation.
-  --help           Show this message and exit.
+  --from-mfp TEXT                 Initialise a project from an exported xlsx
+                                  file from NIOZ' Marine Facilities Planning
+                                  tool (specifically the "Export Cruise Data"
+                                  option). User edits may be required after
+                                  initialisation.
+  --start-date [%Y-%m-%d %H:%M:%S|%Y-%m-%d]
+                                  The departure/start date of the expedition
+                                  (required when using --from-mfp). Expected
+                                  format: 'YYYY-MM-DD HH:MM:SS' (with quotes,
+                                  e.g., '2023-10-20 01:00:00'). If only the
+                                  date is provided, the time will default to
+                                  00:00:00.
+  --help                          Show this message and exit.
 ```
 
 ```console

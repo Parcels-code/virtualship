@@ -174,7 +174,7 @@ Your command line output should look something like this...
 
 Small simulations (e.g. small space-time domains and fewer instrument deployments) will be relatively fast. For large, complex expeditions, it _could_ take up to an hour to simulate the measurements depending on your choices. Waiting for simulation is a great time to practice your level of patience. A skill much needed in oceanographic fieldwork ;-)
 
-Why not browse through previous real-life [blogs and expedition reports](https://virtualship.readthedocs.io/en/latest/user-guide/assignments/Sail_the_ship.html#Reporting) in the meantime?!
+Why not browse through previous real-life [blogs and expedition reports](./assignments/sail_the_ship.md#reporting) in the meantime?!
 
 #### Encountering 'real-life challenges' during the expediton (configurable)
 
