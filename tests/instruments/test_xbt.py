@@ -38,15 +38,20 @@ DECELERATION_COEFFICIENT = 0.00225
 def xbt_expedition():
     """Minimal Expedition for Underwater_STInstrument instantiation."""
 
+    class DummySchedule:
+        waypoints: ClassVar[list] = [
+            Waypoint(
+                location=Location(1, 2),
+                time=BASE_TIME,
+                instrument=[InstrumentType.XBT],
+            ),
+        ]
+
+        def _get_wps_in_use(self):
+            return self.waypoints
+
     class DummyExpedition:
-        class schedule:
-            waypoints: ClassVar[list] = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=BASE_TIME,
-                    instrument=InstrumentType.XBT,
-                ),
-            ]
+        schedule = DummySchedule()
 
         instruments_config = InstrumentsConfig(
             xbt_config=XBTConfig(

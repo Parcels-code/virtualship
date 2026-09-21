@@ -30,15 +30,20 @@ PERIOD = 5.0  # minutes
 def underwater_st_expedition():
     """Minimal Expedition for Underwater_STInstrument instantiation."""
 
+    class DummySchedule:
+        waypoints: ClassVar[list] = [
+            Waypoint(
+                location=Location(1, 2),
+                time=BASE_TIME,
+                instrument=[],
+            ),
+        ]
+
+        def _get_wps_in_use(self):
+            return self.waypoints
+
     class DummyExpedition:
-        class schedule:
-            waypoints: ClassVar[list] = [
-                Waypoint(
-                    location=Location(1, 2),
-                    time=BASE_TIME,
-                    instrument=InstrumentType.UNDERWATER_ST,
-                ),
-            ]
+        schedule = DummySchedule()
 
         instruments_config = InstrumentsConfig(
             ship_underwater_st_config=ShipUnderwaterSTConfig(

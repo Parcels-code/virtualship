@@ -16,6 +16,7 @@ from virtualship.instruments.xbt import XBT
 from virtualship.models import (
     Expedition,
     Location,
+    Port,
     Spacetime,
     Waypoint,
 )
@@ -28,14 +29,6 @@ class ScheduleOk:
 
     time: datetime
     measurements_to_simulate: MeasurementsToSimulate
-
-
-@dataclass
-class ScheduleProblem:
-    """Result of schedule that could not be fully completed."""
-
-    time: datetime
-    failed_waypoint_i: int
 
 
 @dataclass
@@ -68,15 +61,13 @@ class MeasurementsToSimulate:
     xbts: list[XBT] = field(default_factory=list, init=False)
 
 
-def simulate_schedule(
-    projection: pyproj.Geod, expedition: Expedition
-) -> ScheduleOk | ScheduleProblem:
+def simulate_schedule(projection: pyproj.Geod, expedition: Expedition) -> ScheduleOk:
     """
     Simulate a schedule.
 
     :param projection: The projection to use for sailing.
     :param expedition: Expedition object containing the schedule to simulate.
-    :returns: Either the results of a successfully simulated schedule, or information on where the schedule became infeasible.
+    :returns: The results of the simulated schedule.
     """
     return _ScheduleSimulator(projection, expedition).simulate()
 
@@ -101,39 +92,31 @@ class _ScheduleSimulator:
         self._projection = projection
         self._expedition = expedition
 
-        assert self._expedition.schedule.waypoints[0].time is not None, (
-            "First waypoint must have a time. This should have been verified before calling this function."
+        assert self._expedition.schedule._verified, (
+            "Schedule must be verified before simulation."
         )
-        self._time = expedition.schedule.waypoints[0].time
-        self._location = expedition.schedule.waypoints[0].location
+
+        self._wps_in_use = self._expedition.schedule._get_wps_in_use()  # remove any placeholder departure/arrival ports which are ignored in simulation
+        self._time = self._wps_in_use[0].time
+        self._location = self._wps_in_use[0].location
 
         self._measurements_to_simulate = MeasurementsToSimulate()
 
         self._next_adcp_time = self._time
         self._next_ship_underwater_st_time = self._time
 
-    def simulate(self) -> ScheduleOk | ScheduleProblem:
+    def simulate(self) -> ScheduleOk:
         # TODO: instrument config mapping (as introduced in #269) should be helpful for refactoring here (i.e. #236)...
 
-        for wp_i, waypoint in enumerate(self._expedition.schedule.waypoints):
+        for waypoint in self._wps_in_use:
             # sail towards waypoint
             self._progress_time_traveling_towards(waypoint.location)
 
-            # check if waypoint was reached in time
-            # TODO: already tested in schedule.verify(), re-check here for robustness but could be removed if deemed redundant
-            if waypoint.time is not None and self._time > waypoint.time:
-                print(
-                    f"\nWaypoint {wp_i + 1} could not be reached in time. Current time: {self._time}. Waypoint time: {waypoint.time}."
-                    "\n\nHave you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                )
-                return ScheduleProblem(self._time, wp_i)
-            else:
-                self._time = (
-                    waypoint.time
-                )  # wait at the waypoint until ship is scheduled to be there
+            # wait at the waypoint until ship is scheduled to be there
+            self._time = waypoint.time
 
             # note measurements made at waypoint
-            time_passed = self._make_measurements(waypoint)
+            time_passed = self._get_instrument_timescosts(waypoint)
 
             # wait while measurements are being done
             self._progress_time_stationary(time_passed)
@@ -247,9 +230,13 @@ class _ScheduleSimulator:
             for i in range(1, int(npts) + 1)
         ]
 
-    def _make_measurements(self, waypoint: Waypoint) -> timedelta:
-        # if there are no instruments, there is no time cost
-        if waypoint.instrument is None:
+    def _get_instrument_timescosts(self, waypoint: Waypoint | Port) -> timedelta:
+        # port stops have no instruments; if there are no instruments, there is no time cost
+        if isinstance(waypoint, Port):
+            return timedelta()
+
+        # if proper waypoint but there are no instruments, there is no time cost
+        if isinstance(waypoint, Waypoint) and waypoint.instrument is None:
             return timedelta()
 
         # make instruments a list even if it's only a single one
