@@ -286,7 +286,7 @@ class Instrument(abc.ABC):
             physical=physical,
             schedule_start=self.bounds.min_time,
             schedule_end=self.bounds.max_time,
-            variable=var if not physical else None,
+            variable=var,
         )
 
         buf = self.fetch_spec.latlon_buffer if self.fetch_spec.spatial else 0.0
