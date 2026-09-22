@@ -63,14 +63,21 @@ EXPEDITION_LATEST = "expedition_latest.yaml"
 PRODUCT_IDS = {
     "phys": {
         "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
-        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+        "analysis": None,  # will be set per variable
     },
     "bgc": {
         "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
         "analysis": None,  # will be set per variable
     },
+}
+
+# analysis & forecast products are split per variable (or variable group), and require variable-specific product IDs
+
+PHYS_ANALYSIS_IDS = {
+    "uo": "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+    "vo": "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+    "so": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m",
+    "thetao": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
 }
 
 BGC_ANALYSIS_IDS = {
@@ -86,10 +93,6 @@ BGC_ANALYSIS_IDS = {
 MONTHLY_BGC_REANALYSIS_IDS = {
     "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
     "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-}
-MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
-    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
 }
 
 # variables used in VirtualShip which are physical or biogeochemical variables, respectively
@@ -226,47 +229,35 @@ def _select_product_id(
     password: str | None = None,
     variable: str | None = None,
 ) -> str:
-    """Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC."""
+    """
+    Determine which copernicus product id should be selected (reanalysis, analysis & forecast), for prescribed schedule and physical vs. BGC.
+
+    Checks that start and end of schedule are covered by the product time range, falls back to analysis product (if available) if not.
+    """
     key = "phys" if physical else "bgc"
+    analysis_ids = PHYS_ANALYSIS_IDS if physical else BGC_ANALYSIS_IDS
     selected_id = None
 
     for period, pid in PRODUCT_IDS[key].items():
-        # for BGC analysis, set pid per variable
-        if key == "bgc" and period == "analysis":
-            if variable is None or variable not in BGC_ANALYSIS_IDS:
+        # analysis & forecast products are split per variable (or variable group)
+        if period == "analysis":
+            if variable is None or variable not in analysis_ids:
                 continue
-            pid = BGC_ANALYSIS_IDS[variable]
-        # for BGC reanalysis, check if requires monthly product
+            pid = analysis_ids[variable]
         if (
             key == "bgc"
             and period == "reanalysis"
             and variable in MONTHLY_BGC_REANALYSIS_IDS
         ):
-            monthly_pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
-            ds_monthly = copernicusmarine.open_dataset(
-                monthly_pid,
-                username=username,
-                password=password,
-            )
-            time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(schedule_end) <= time_end_monthly:
-                pid = monthly_pid
-        # for BGC reanalysis_interim, check if requires monthly product
-        if (
-            key == "bgc"
-            and period == "reanalysis_interim"
-            and variable in MONTHLY_BGC_REANALYSIS_INTERIM_IDS
-        ):
-            monthly_pid = MONTHLY_BGC_REANALYSIS_INTERIM_IDS[variable]
-            ds_monthly = copernicusmarine.open_dataset(
-                monthly_pid, username=username, password=password
-            )
-            time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(schedule_end) <= time_end_monthly:
-                pid = monthly_pid
+            pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
         if pid is None:
             continue
-        ds = copernicusmarine.open_dataset(pid, username=username, password=password)
+        try:
+            ds = copernicusmarine.open_dataset(
+                pid, username=username, password=password
+            )
+        except copernicusmarine.DatasetNotFound:
+            continue
         time_end = ds["time"][-1].values
         if np.datetime64(schedule_end) <= time_end:
             selected_id = pid
@@ -282,9 +273,7 @@ def _select_product_id(
     ):
         return selected_id
     else:
-        return (
-            PRODUCT_IDS["phys"]["analysis"] if physical else BGC_ANALYSIS_IDS[variable]
-        )
+        return analysis_ids[variable]
 
 
 def _start_end_in_product_timerange(
