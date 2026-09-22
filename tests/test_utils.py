@@ -463,7 +463,7 @@ def test_product_ids_exist_in_copernicus_catalogue():
     missing = []
     for product_id in sorted(product_ids):
         try:
-            copernicusmarine.describe(dataset_id=product_id)
+            copernicusmarine.describe(dataset_id=product_id, disable_progress_bar=True)
         except copernicusmarine.DatasetNotFound:
             missing.append(product_id)
         except Exception as e:
