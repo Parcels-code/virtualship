@@ -453,8 +453,9 @@ def test_allowed_sensors_matches_docs():
 def test_product_ids_exist_in_copernicus_catalogue():
     """Check if Copernicus Marine has retired or renamed any products which VirtualShip relies on."""
     product_ids = {
-        *virtualship.utils.PRODUCT_IDS["phys"].values(),
+        *(v for v in virtualship.utils.PRODUCT_IDS["phys"].values() if v is not None),
         *(v for v in virtualship.utils.PRODUCT_IDS["bgc"].values() if v is not None),
+        *virtualship.utils.PHYS_ANALYSIS_IDS.values(),
         *virtualship.utils.BGC_ANALYSIS_IDS.values(),
         *virtualship.utils.MONTHLY_BGC_REANALYSIS_IDS.values(),
         virtualship.utils.BATHYMETRY_ID,
@@ -474,4 +475,67 @@ def test_product_ids_exist_in_copernicus_catalogue():
     assert not missing, (
         f"The following Copernicus Marine product IDs no longer exist in the catalogue: "
         f"{missing}. This likely means Copernicus has retired or renamed a product."
+    )
+
+
+@pytest.mark.network
+def test_product_variables_match_expected_variable_names():
+    """Check that each Copernicus product VirtualShip queries actually contains the variable(s) expected."""
+    # (dataset_id, variable) pairs that _select_product_id can resolve a variable to
+    dataset_variable_pairs = []
+
+    for var in virtualship.utils.COPERNICUSMARINE_PHYS_VARIABLES:
+        dataset_variable_pairs.append(
+            (virtualship.utils.PRODUCT_IDS["phys"]["reanalysis"], var)
+        )
+        dataset_variable_pairs.append((virtualship.utils.PHYS_ANALYSIS_IDS[var], var))
+
+    for var in virtualship.utils.COPERNICUSMARINE_BGC_VARIABLES:
+        dataset_variable_pairs.append((virtualship.utils.BGC_ANALYSIS_IDS[var], var))
+        if var in virtualship.utils.MONTHLY_BGC_REANALYSIS_IDS:
+            dataset_variable_pairs.append(
+                (virtualship.utils.MONTHLY_BGC_REANALYSIS_IDS[var], var)
+            )
+        else:
+            dataset_variable_pairs.append(
+                (virtualship.utils.PRODUCT_IDS["bgc"]["reanalysis"], var)
+            )
+
+    # group by dataset, so each dataset is only queried once
+    expected_vars_by_dataset = {}
+    for dataset_id, var in dataset_variable_pairs:
+        expected_vars_by_dataset.setdefault(dataset_id, set()).add(var)
+
+    mismatches = []
+    for dataset_id, variables in sorted(expected_vars_by_dataset.items()):
+        try:
+            catalogue = copernicusmarine.describe(
+                dataset_id=dataset_id, disable_progress_bar=True
+            )
+        except copernicusmarine.DatasetNotFound:
+            mismatches.append(f"{dataset_id}: dataset not found")
+            continue
+        except Exception as e:
+            pytest.skip(
+                f"Could not reach the Copernicus Marine catalogue to verify variables: {e}"
+            )
+
+        available_vars = {
+            var.short_name
+            for dataset in catalogue.products[0].datasets
+            for version in dataset.versions
+            for part in version.parts
+            for service in part.services
+            for var in service.variables
+        }
+        missing_vars = variables - available_vars
+        if missing_vars:
+            mismatches.append(
+                f"{dataset_id}: expected variable(s) {sorted(missing_vars)} not found "
+                f"(dataset has: {sorted(available_vars)})"
+            )
+
+    assert not mismatches, (
+        f"The following Copernicus Marine datasets no longer contain the variable(s) "
+        f"VirtualShip expects: {mismatches}."
     )

@@ -63,12 +63,21 @@ EXPEDITION_LATEST = "expedition_latest.yaml"
 PRODUCT_IDS = {
     "phys": {
         "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
+        "analysis": None,  # will be set per variable
     },
     "bgc": {
         "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
         "analysis": None,  # will be set per variable
     },
+}
+
+# analysis & forecast products are split per variable (or variable group), and require variable-specific product IDs
+
+PHYS_ANALYSIS_IDS = {
+    "uo": "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+    "vo": "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+    "so": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m",
+    "thetao": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
 }
 
 BGC_ANALYSIS_IDS = {
@@ -222,29 +231,25 @@ def _select_product_id(
 ) -> str:
     """Determine which copernicus product id should be selected (reanalysis, analysis & forecast), for prescribed schedule and physical vs. BGC."""
     key = "phys" if physical else "bgc"
+    analysis_ids = PHYS_ANALYSIS_IDS if physical else BGC_ANALYSIS_IDS
     selected_id = None
 
     for period, pid in PRODUCT_IDS[key].items():
-        # for BGC analysis, set pid per variable
-        if key == "bgc" and period == "analysis":
-            if variable is None or variable not in BGC_ANALYSIS_IDS:
+        # analysis & forecast products are split per variable (or variable group)
+        if period == "analysis":
+            if variable is None or variable not in analysis_ids:
                 continue
-            pid = BGC_ANALYSIS_IDS[variable]
-        # for BGC reanalysis, check if requires monthly product
+            pid = analysis_ids[variable]
+        # ph/phyc are only available as monthly products in the reanalysis period (the
+        # daily reanalysis dataset doesn't contain them at all), so always use the
+        # monthly product id here; the coverage check below will reject it (and let the
+        # loop fall through to the analysis period) if it doesn't cover schedule_end.
         if (
             key == "bgc"
             and period == "reanalysis"
             and variable in MONTHLY_BGC_REANALYSIS_IDS
         ):
-            monthly_pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
-            ds_monthly = copernicusmarine.open_dataset(
-                monthly_pid,
-                username=username,
-                password=password,
-            )
-            time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(schedule_end) <= time_end_monthly:
-                pid = monthly_pid
+            pid = MONTHLY_BGC_REANALYSIS_IDS[variable]
         if pid is None:
             continue
         try:
@@ -268,9 +273,7 @@ def _select_product_id(
     ):
         return selected_id
     else:
-        return (
-            PRODUCT_IDS["phys"]["analysis"] if physical else BGC_ANALYSIS_IDS[variable]
-        )
+        return analysis_ids[variable]
 
 
 def _start_end_in_product_timerange(
