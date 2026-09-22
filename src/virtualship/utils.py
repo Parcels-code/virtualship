@@ -63,12 +63,10 @@ EXPEDITION_LATEST = "expedition_latest.yaml"
 PRODUCT_IDS = {
     "phys": {
         "reanalysis": "cmems_mod_glo_phy_my_0.083deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_phy_myint_0.083deg_P1D-m",
         "analysis": "cmems_mod_glo_phy_anfc_0.083deg_P1D-m",
     },
     "bgc": {
         "reanalysis": "cmems_mod_glo_bgc_my_0.25deg_P1D-m",
-        "reanalysis_interim": "cmems_mod_glo_bgc_myint_0.25deg_P1D-m",
         "analysis": None,  # will be set per variable
     },
 }
@@ -86,10 +84,6 @@ BGC_ANALYSIS_IDS = {
 MONTHLY_BGC_REANALYSIS_IDS = {
     "ph": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
     "phyc": "cmems_mod_glo_bgc_my_0.25deg_P1M-m",
-}
-MONTHLY_BGC_REANALYSIS_INTERIM_IDS = {
-    "ph": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
-    "phyc": "cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
 }
 
 # variables used in VirtualShip which are physical or biogeochemical variables, respectively
@@ -226,7 +220,7 @@ def _select_product_id(
     password: str | None = None,
     variable: str | None = None,
 ) -> str:
-    """Determine which copernicus product id should be selected (reanalysis, reanalysis-interim, analysis & forecast), for prescribed schedule and physical vs. BGC."""
+    """Determine which copernicus product id should be selected (reanalysis, analysis & forecast), for prescribed schedule and physical vs. BGC."""
     key = "phys" if physical else "bgc"
     selected_id = None
 
@@ -251,22 +245,14 @@ def _select_product_id(
             time_end_monthly = ds_monthly["time"][-1].values
             if np.datetime64(schedule_end) <= time_end_monthly:
                 pid = monthly_pid
-        # for BGC reanalysis_interim, check if requires monthly product
-        if (
-            key == "bgc"
-            and period == "reanalysis_interim"
-            and variable in MONTHLY_BGC_REANALYSIS_INTERIM_IDS
-        ):
-            monthly_pid = MONTHLY_BGC_REANALYSIS_INTERIM_IDS[variable]
-            ds_monthly = copernicusmarine.open_dataset(
-                monthly_pid, username=username, password=password
-            )
-            time_end_monthly = ds_monthly["time"][-1].values
-            if np.datetime64(schedule_end) <= time_end_monthly:
-                pid = monthly_pid
         if pid is None:
             continue
-        ds = copernicusmarine.open_dataset(pid, username=username, password=password)
+        try:
+            ds = copernicusmarine.open_dataset(
+                pid, username=username, password=password
+            )
+        except copernicusmarine.DatasetNotFound:
+            continue
         time_end = ds["time"][-1].values
         if np.datetime64(schedule_end) <= time_end:
             selected_id = pid
