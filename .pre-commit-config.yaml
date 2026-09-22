@@ -16,7 +16,7 @@ repos:
       - id: zizmor
         args: ["--offline"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.7
+    rev: v0.16.8
     hooks:
       - id: ruff
         args: [--fix, --show-fixes]
@@ -27,6 +27,6 @@ repos:
       - id: ruff-format
         types_or: [python, jupyter]
   - repo: https://github.com/rbubley/mirrors-prettier # Update mirror as official mirror is deprecated
-    rev: v3.9.6
+    rev: v3.9.8
     hooks:
       - id: prettier
