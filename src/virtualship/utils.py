@@ -229,7 +229,11 @@ def _select_product_id(
     password: str | None = None,
     variable: str | None = None,
 ) -> str:
-    """Determine which copernicus product id should be selected (reanalysis, analysis & forecast), for prescribed schedule and physical vs. BGC."""
+    """
+    Determine which copernicus product id should be selected (reanalysis, analysis & forecast), for prescribed schedule and physical vs. BGC.
+
+    Checks that start and end of schedule are covered by the product time range, falls back to analysis product (if available) if not.
+    """
     key = "phys" if physical else "bgc"
     analysis_ids = PHYS_ANALYSIS_IDS if physical else BGC_ANALYSIS_IDS
     selected_id = None
@@ -240,10 +244,6 @@ def _select_product_id(
             if variable is None or variable not in analysis_ids:
                 continue
             pid = analysis_ids[variable]
-        # ph/phyc are only available as monthly products in the reanalysis period (the
-        # daily reanalysis dataset doesn't contain them at all), so always use the
-        # monthly product id here; the coverage check below will reject it (and let the
-        # loop fall through to the analysis period) if it doesn't cover schedule_end.
         if (
             key == "bgc"
             and period == "reanalysis"
