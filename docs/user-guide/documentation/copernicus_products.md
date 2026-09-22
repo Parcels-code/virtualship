@@ -25,10 +25,12 @@ For biogeochemical variables `ph` and `phyc`, monthly products are required for 
 
 #### Physical products
 
-| Period              | Dataset ID                              | Temporal Resolution | Typical Years Covered                 | Variables                  |
-| :------------------ | :-------------------------------------- | :------------------ | :------------------------------------ | :------------------------- |
-| Reanalysis          | `cmems_mod_glo_phy_my_0.083deg_P1D-m`   | Daily               | ~30 years ago to ~2-4 months ago      | `uo`, `vo`, `so`, `thetao` |
-| Analysis & Forecast | `cmems_mod_glo_phy_anfc_0.083deg_P1D-m` | Daily               | ~2-4 months ago to ~2 weeks in future | `uo`, `vo`, `so`, `thetao` |
+| Period                            | Dataset ID                                     | Temporal Resolution | Typical Years Covered                 | Variables                  |
+| :-------------------------------- | :--------------------------------------------- | :------------------ | :------------------------------------ | :------------------------- |
+| Reanalysis                        | `cmems_mod_glo_phy_my_0.083deg_P1D-m`          | Daily               | ~30 years ago to ~2-4 months ago      | `uo`, `vo`, `so`, `thetao` |
+| Analysis & Forecast (currents)    | `cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m`    | Daily               | ~2-4 months ago to ~2 weeks in future | `uo`, `vo`                 |
+| Analysis & Forecast (salinity)    | `cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m`     | Daily               | ~2-4 months ago to ~2 weeks in future | `so`                       |
+| Analysis & Forecast (temperature) | `cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m` | Daily               | ~2-4 months ago to ~2 weeks in future | `thetao`                   |
 
 ---
 
