@@ -70,6 +70,9 @@ log_cli_level = "INFO"
 testpaths = [
   "tests",
 ]
+markers = [
+  "network: test makes live calls to an external service (e.g. the Copernicus Marine Data Store); skip if service is unreachable rather than fail",
+]
 
 [tool.coverage.run]
 source = ["virtualship"]
