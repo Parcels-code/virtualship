@@ -38,7 +38,7 @@ You will be part of the study for the preparation and duration of the VirtualShi
 
 ## What are the possible risks or discomforts?
 
-Very little. Perhaps being bored while doing the tutorials or filling in the questionnaire. During the 360°/VR experience you could experience minor nausea or dizziness.
+Very little. During the 360°/VR experience you could experience minor nausea or dizziness.
 
 ## Are there any potential benefits to taking part in this study?
 

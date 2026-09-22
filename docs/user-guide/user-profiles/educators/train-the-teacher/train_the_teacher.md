@@ -11,7 +11,7 @@ No matter how you choose to implement the VirtualShip Classroom, we ask that you
 
 This is really important for us to continue to research, evaluate and improve the VirtualShip Classroom! 🙂
 
-We also ask that you **please share the VirtualShip Classroom [participant information sheet](../information_sheet.md)** with students (ideally before they start the course), so that they are aware of what it means to participate and how their data will be used and stored.
+We also ask that you **please share the VirtualShip Classroom [participant information sheet](../information_sheet.md)** with students (ideally before they start the course), so that they are aware of what it means to participate in the survey and how their data will be used and stored.
 ```
 
 ## Foreword
