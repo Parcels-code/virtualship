@@ -2,6 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
+import copernicusmarine
 import numpy as np
 import pytest
 import xarray as xr
@@ -446,3 +447,31 @@ def test_allowed_sensors_matches_docs():
         assert instrument_type in expected, (
             f"{instrument_type} is registered in SUPPORTED_SENSORS_MAP but not listed in full_sensor_list.md."
         )
+
+
+@pytest.mark.network
+def test_product_ids_exist_in_copernicus_catalogue():
+    """Check if Copernicus Marine has retired or renamed any products which VirtualShip relies on."""
+    product_ids = {
+        *virtualship.utils.PRODUCT_IDS["phys"].values(),
+        *(v for v in virtualship.utils.PRODUCT_IDS["bgc"].values() if v is not None),
+        *virtualship.utils.BGC_ANALYSIS_IDS.values(),
+        *virtualship.utils.MONTHLY_BGC_REANALYSIS_IDS.values(),
+        virtualship.utils.BATHYMETRY_ID,
+    }
+
+    missing = []
+    for product_id in sorted(product_ids):
+        try:
+            copernicusmarine.describe(dataset_id=product_id)
+        except copernicusmarine.DatasetNotFound:
+            missing.append(product_id)
+        except Exception as e:
+            pytest.skip(
+                f"Could not reach the Copernicus Marine catalogue to verify product IDs: {e}"
+            )
+
+    assert not missing, (
+        f"The following Copernicus Marine product IDs no longer exist in the catalogue: "
+        f"{missing}. This likely means Copernicus has retired or renamed a product."
+    )
