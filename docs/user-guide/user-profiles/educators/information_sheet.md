@@ -42,7 +42,7 @@ Very little. During the 360°/VR experience you could experience minor nausea or
 
 ## Are there any potential benefits to taking part in this study?
 
-Enhanced satisfaction and learning.
+By completing the survey you will help improve the VirtualShip Clasroom for future students, and you will help increase the knowledge base for developing virtual classroom experiences in general.
 
 ## Will information about me and my participation in this study be kept confidential?
 
