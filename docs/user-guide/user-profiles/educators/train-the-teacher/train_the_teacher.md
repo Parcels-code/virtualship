@@ -7,9 +7,11 @@ The instructions are currently tailored primarily for educators at partner instu
 For this guide, we will assume that you're familiar with the purpose and motivations for using VirtualShip. We will be going through all the practical steps to get you up and running.
 
 ```{important}
-No matter how you choose to implement the VirtualShip Classroom, we ask that you please ask your students to complete the end-of-course survey (see [below](#end-of-course-survey)) so that we can collect feedback on their experience with the VirtualShip Classroom.
+No matter how you choose to implement the VirtualShip Classroom, we ask that you **please ask your students to complete the end-of-course survey (see [below](#end-of-course-survey))** so that we can collect feedback on their experience with the VirtualShip Classroom.
 
 This is really important for us to continue to research, evaluate and improve the VirtualShip Classroom! 🙂
+
+We also ask that you **please share the VirtualShip Classroom [participant information sheet](../information_sheet.md)** with students (ideally before they start the course), so that they are aware of what it means to participate in the survey and how their data will be used and stored.
 ```
 
 ## Foreword
@@ -277,6 +279,9 @@ We hope the VirtualShip Classroom has been a valuable addition to your teaching 
 We would be really grateful for your help in collecting feedback from your students on their experience with VirtualShip. This will help us to improve the platform, research its impact and to better understand how it is being used in different contexts.
 
 Please distribute the following survey link to your students at the end of the course: [https://survey.uu.nl/jfe/form/SV_0OLu4lKYPyLhAxM](https://survey.uu.nl/jfe/form/SV_0OLu4lKYPyLhAxM).
+
+Please also don't forget to share the [participant information sheet](../information_sheet.md) with your students, if you haven't done so already, so that they are aware of what it means to participate and how their data will be used and stored.
+
 ```
 
 ## Feedback & support
