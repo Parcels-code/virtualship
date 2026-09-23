@@ -29,6 +29,15 @@ projection = pyproj.Geod(ellps="WGS84")
 expedition_dir = Path("expedition_dir")
 
 
+def _with_schedule(base_expedition, schedule) -> Expedition:
+    """An expedition using the given schedule, with the shared ship and instrument configs."""
+    return Expedition(
+        schedule=schedule,
+        instruments_config=base_expedition.instruments_config,
+        ship_config=base_expedition.ship_config,
+    )
+
+
 @pytest.fixture
 def base_expedition():
     """Shared expedition instance loaded directly from expedition_dir."""
@@ -51,11 +60,7 @@ def test_import_export_expedition(tmpdir, base_expedition) -> None:
 
 def test_verify_schedule(base_expedition) -> None:
     schedule = base_expedition.schedule
-    schedule.verify(
-        base_expedition.ship_config.ship_speed_knots,
-        base_expedition.instruments_config,
-        ignore_land_test=True,
-    )
+    base_expedition.verify_schedule(ignore_land_test=True)
 
     assert schedule._verified, (
         "Schedule should be marked as verified after successful verification."
@@ -167,11 +172,8 @@ def test_verify_on_land(base_expedition):
             ScheduleError,
             match=r"The following waypoint\(s\) throw\(s\) error\(s\):",
         ):
-            schedule.verify(
-                base_expedition.ship_config.ship_speed_knots,
-                base_expedition.instruments_config,
-                ignore_land_test=False,
-                from_data=None,
+            _with_schedule(base_expedition, schedule).verify_schedule(
+                ignore_land_test=False, from_data=None
             )
 
 
@@ -269,11 +271,7 @@ def test_verify_on_land(base_expedition):
 def test_verify_schedule_errors(base_expedition, waypoints: list, error, match) -> None:
     with pytest.raises(error, match=match):
         schedule = Schedule(waypoints=waypoints)
-        schedule.verify(
-            base_expedition.ship_config.ship_speed_knots,
-            base_expedition.instruments_config,
-            ignore_land_test=True,
-        )
+        _with_schedule(base_expedition, schedule).verify_schedule(ignore_land_test=True)
 
 
 def test_verify_schedule_ports_only(base_expedition) -> None:
@@ -284,11 +282,7 @@ def test_verify_schedule_ports_only(base_expedition) -> None:
             Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
         ]
     )
-    schedule.verify(
-        base_expedition.ship_config.ship_speed_knots,
-        base_expedition.instruments_config,
-        ignore_land_test=True,
-    )
+    _with_schedule(base_expedition, schedule).verify_schedule(ignore_land_test=True)
 
     assert schedule._verified, "Schedule with only active ports should be accepted."
 
@@ -344,11 +338,11 @@ def missing_instrument_config(request, expedition):
 
 
 def test_verify_instruments_config(expedition) -> None:
-    expedition.instruments_config.verify(expedition)
+    expedition.verify_instruments_config()
 
 
 def test_verify_instruments_config_no_instrument(expedition, expedition_no_xbt) -> None:
-    expedition.instruments_config.verify(expedition_no_xbt)
+    expedition.instruments_config.verify(expedition_no_xbt.get_instruments())
 
 
 def test_verify_instruments_config_errors(
@@ -356,7 +350,7 @@ def test_verify_instruments_config_errors(
 ) -> None:
     instruments_config, match = missing_instrument_config
     with pytest.raises(InstrumentsConfigError, match=match):
-        instruments_config.verify(expedition)
+        instruments_config.verify(expedition.get_instruments())
 
 
 def test_all_instrument_configs_use_mixin(expedition):

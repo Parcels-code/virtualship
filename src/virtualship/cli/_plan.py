@@ -1124,20 +1124,24 @@ class PlanScreen(Screen):
                     "Some waypoint entries are invalid or incomplete:\n\n"
                     + "\n".join(waypoint_errors)
                 )
+
             ship_speed = self.get_ship_speed(editor)
-            schedule = editor.expedition.schedule
-            schedule.verify(
-                ship_speed, editor.expedition.instruments_config, ignore_land_test=True
+            editor.expedition.verify_schedule(
+                ignore_land_test=True, ship_speed=ship_speed
             )
+
             if editor.save_changes():
                 self.notify(
                     "Changes saved successfully", severity="information", timeout=20
                 )
+
             # check for incomplete ports and warn the user, but allow save to continue
+            schedule = editor.expedition.schedule
             if not (
                 schedule.departure_port.is_in_use and schedule.arrival_port.is_in_use
             ):
                 self.notify(INCOMPLETE_PORT_MSG, severity="warning", timeout=20)
+
         except Exception as e:
             self.notify(
                 f"*** Error saving changes ***:\n\n{e}\n",
