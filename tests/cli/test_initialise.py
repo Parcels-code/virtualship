@@ -163,6 +163,45 @@ def test_mfp_to_yaml_success(request, fixture_name, tmp_path):
     assert isinstance(data.schedule.waypoints[1], Waypoint)
 
 
+def test_mfp_sea_depth_is_positive_and_negated_on_ingest(
+    valid_excel_mfp_file, tmp_path
+):
+    """Ingest positive MFP sea depths and negate in VirtualShip internal representation."""
+    # MFP export gives depths as positive metres below the surface
+    source_depths = valid_mfp_data()["Sea Depth"]
+    assert (source_depths > 0).all(), (
+        "MFP appears to not be reporting sea depths as positive values, which is a change in behaviour relevant to the VirtualShip workflow (expects positive which are then negated in VirtualShip). Please check the MFP export."
+    )
+
+    yaml_output_path = tmp_path / "expedition.yaml"
+    _mfp_to_yaml(valid_excel_mfp_file, "2023-10-20 01:00:00", yaml_output_path)
+
+    expedition = Expedition.from_yaml(yaml_output_path)
+    waypoints = [wp for wp in expedition.schedule.waypoints if isinstance(wp, Waypoint)]
+
+    # sign flipped on the way in, magnitude preserved, and the order is kept
+    station_depths = source_depths[1:-1].tolist()  # excluding the two port rows
+    assert [wp.sea_depth_meter for wp in waypoints] == [-d for d in station_depths]
+    assert all(wp.sea_depth_meter < 0 for wp in waypoints)
+
+
+def test_mfp_sea_depth_absent_leaves_waypoint_depth_unset(tmp_path):
+    """A blank sea depth is left as None, and not read as e.g. a depth of zero."""
+    df = valid_mfp_data()
+    df["Sea Depth"] = [None] * len(df)
+    mfp_file = tmp_path / "no_depths.xlsx"
+    df.to_excel(mfp_file, index=False)
+
+    yaml_output_path = tmp_path / "expedition.yaml"
+    _mfp_to_yaml(mfp_file, "2023-10-20 01:00:00", yaml_output_path)
+
+    expedition = Expedition.from_yaml(yaml_output_path)
+    waypoints = [wp for wp in expedition.schedule.waypoints if isinstance(wp, Waypoint)]
+
+    assert waypoints, "expected the fixture to produce waypoints, but got none"
+    assert all(wp.sea_depth_meter is None for wp in waypoints)
+
+
 @pytest.mark.parametrize(
     "fixture_name,error,match",
     [

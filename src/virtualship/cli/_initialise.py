@@ -102,7 +102,17 @@ def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
             has_latlon = lat is not None and lon is not None
             waypoints.append(Port(location=loc, time=time_val if has_latlon else None))
         else:
-            waypoints.append(Waypoint(instrument=None, location=loc, time=time_val))
+            sea_depth = (
+                None if pd.isna(row["Sea Depth"]) else -abs(float(row["Sea Depth"]))
+            )  # MFP reports sea depth as positive, but here we use negative elevations
+            waypoints.append(
+                Waypoint(
+                    instrument=None,
+                    location=loc,
+                    time=time_val,
+                    sea_depth_meter=sea_depth,
+                )
+            )
 
         previous_timedelta = (
             row["Total Time"] if pd.notna(row["Total Time"]) else timedelta(0)
