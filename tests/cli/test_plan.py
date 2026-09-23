@@ -215,7 +215,11 @@ async def test_UI_changes(tmp_path):
         assert saved_wps[2].location.lon == float(NEW_LON)
         assert saved_wps[1].instrument == [InstrumentType.XBT]
 
-        # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
+        # the ship's slow-down / speed-up times survive a round trip through the UI
+        assert saved_expedition["ship_config"]["deceleration_time_minutes"] == 15.0
+        assert saved_expedition["ship_config"]["acceleration_time_minutes"] == 15.0
+
+        # check expedition.verify_schedule() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"
         await simulate_input(pilot, ship_speed_input, invalid_speed)
         await pilot.click(save_button)
@@ -223,6 +227,64 @@ async def test_UI_changes(tmp_path):
 
         args, _ = plan_screen.notify.call_args
         assert "*** Error saving changes ***" in args[0]
+
+
+@pytest.mark.asyncio
+async def test_ship_decel_accel_editable_and_saved(tmp_path):
+    """The ship's deceleration and acceleration times can be edited in the UI and are written back."""
+    _make_expedition(
+        tmp_path,
+        [
+            Port(location=None, time=None),
+            Waypoint(
+                location=Location(0, 0),
+                time=datetime(2022, 1, 1, 0, 0, 0),
+                instrument=["CTD"],
+            ),
+            Waypoint(
+                location=Location(0.01, 0.01),
+                time=datetime(2022, 1, 1, 6, 0, 0),
+                instrument=None,
+            ),
+            Port(location=None, time=None),
+        ],
+    )
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(160, 140)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        speed_collapsible = expedition_editor.query_one(
+            "#speed_collapsible", Collapsible
+        )
+        speed_collapsible.collapsed = False
+        await pilot.pause()
+
+        await simulate_input(
+            pilot, expedition_editor.query_one("#deceleration", Input), "20"
+        )
+        await simulate_input(
+            pilot, expedition_editor.query_one("#acceleration", Input), "25"
+        )
+
+        await pilot.click(plan_screen.query_one("#save_button", Button))
+        await pilot.pause(0.5)
+
+        calls = plan_screen.notify.call_args_list
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            and call[1].get("severity") == "information"
+            for call in calls
+        )
+
+    with open(tmp_path / EXPEDITION) as f:
+        saved = yaml.safe_load(f)
+
+    assert saved["ship_config"]["deceleration_time_minutes"] == 20.0
+    assert saved["ship_config"]["acceleration_time_minutes"] == 25.0
 
 
 @pytest.mark.asyncio
