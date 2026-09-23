@@ -40,6 +40,7 @@ schedule: # <-- 1. expedition schedule section
       location:
         latitude: 45.604174
         longitude: -43.886739
+      sea_depth_meter: -4400.0
       time: 1998-03-08 03:37:00
     # Waypoint 2
     - instrument:
@@ -49,6 +50,7 @@ schedule: # <-- 1. expedition schedule section
       location:
         latitude: 48.185988
         longitude: -32.988302
+      sea_depth_meter: -3200.0
       time: 1998-03-10 03:05:00
     # Port of Arrival
     - location:
@@ -75,6 +77,8 @@ instruments_config: # <-- 2. instrument configuration section
 #
 ship_config: # <-- 3. ship configuration section
   ship_speed_knots: 10.0
+  deceleration_time_minutes: 15.0
+  acceleration_time_minutes: 15.0
 ```
 
 ```{note}
@@ -113,9 +117,7 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
-##### Comments
-
-You may notice comments such as `# Port of Departure`, `# Waypoint 1`, `# Waypoint 2`, etc. next to each entry in the `waypoints` list, as in the example above. These are added automatically whenever `virtualship init` or `virtualship plan` writes the file, purely to aid readability. They are not required when editing the file by hand and won't be automatically added/renumbered by doing so.
+- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint. This value matters because it determines how a long a deployment takes if there is a depth dependence, e.g. for a CTD that has to be lowered and raised. If you leave it as `null`, VirtualShip doesn't know how deep the water is and assumes the CTD descends all the way to its configured `max_depth_meter`. That is the slowest possible cast, so your schedule is verified against a worst case rather than an optimistic one in the simulations.
 
 #### 2. `instruments_config`
 
@@ -129,7 +131,7 @@ For most users, the most important instrument configuration setting to consider 
 ctd_config:
   max_depth_meter: -2000.0
   min_depth_meter: -11.0
-  stationkeeping_time_minutes: 50.0
+  winch_speed_meter_per_second: 1.0
   sensors:
     - TEMPERATURE
     - SALINITY
@@ -158,4 +160,18 @@ This section contains setting related to the ship itself, specifically:
 
 - **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
-<!-- TODO: more details on ship configuration if added in the future -->
+- **Deceleration and acceleration times (`deceleration_time_minutes`, `acceleration_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy any instruments.
+
+### How long the ship spends at each waypoint
+
+When VirtualShip checks whether your schedule is achievable, it needs to know how long the ship is held stationary at each waypoint. That time is made up of three parts:
+
+```text
+time at waypoint  =  deceleration  +  slowest deployment  +  acceleration
+```
+
+A few consequences are worth understanding, because they determine whether your schedule passes verification:
+
+- **Waypoints with no instruments cost nothing.** If `instrument` is `null` or an empty list, the ship does not slow down at all and simply sails past.
+
+- **Deployments happen side by side, so only the slowest one counts.** Different teams onboard work in parallel, so the total time is taken as whichever deployment takes longest.

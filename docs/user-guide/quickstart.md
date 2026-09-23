@@ -56,6 +56,12 @@ The `CruiseDataExport.xlsx` in the `virtualship init` command refers to the .xls
 The `--start-date` should be set to your intended departure date/time. MFP's estimated travel and station durations are then used to automatically fill in a time for each waypoint relative to this start date.
 ```
 
+```{important}
+MFP usually allows a default of **45 minutes** at each station, and that default is what determines the waypoint times written into your `expedition.yaml`. That may well be enough for your expedition, but it may not be, so be prepared to adjust the times once you have chosen your instruments.
+
+Watch out in particular for **CTDs in deep water**. A CTD is winched all the way down and hauled back up, so the time it takes depends on the depth: a cast at a station in more than 2000 m of water takes over an hour on the winch alone, which does not fit inside a 45 minute allowance. VirtualShip will tell you if your schedule does not add up when you come to run it. See [here](./tutorials/working_with_expedition_yaml.md#how-long-the-ship-spends-at-each-waypoint) for how this time is calculated.
+```
+
 This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates (and, if specified, ports of departure/arrival) from your MFP export. The `--from-mfp` flag indicates that the exported route will be used, and `--start-date` is required alongside it.
 
 ```{note}
