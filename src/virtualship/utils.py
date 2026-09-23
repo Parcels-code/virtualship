@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from virtualship.expedition.simulate_schedule import (
         ScheduleOk,
     )
-    from virtualship.models import Expedition, InstrumentsConfig, Location
+    from virtualship.models import Expedition, Location
     from virtualship.models.checkpoint import Checkpoint
     from virtualship.models.expedition import SensorConfig
 
@@ -513,42 +513,6 @@ def _calc_sail_time(
         geodinv[0],
         ship_speed_meter_per_second,
     )
-
-
-def _calc_wp_stationkeeping_time(
-    wp_instrument_types: list | None,
-    instruments_config: InstrumentsConfig,
-    instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
-) -> timedelta:
-    """For a given waypoint (and the instruments present at this waypoint), calculate how much time is required to carry out all instrument deployments."""
-    # to empty list if wp instruments set to 'null'
-    if not wp_instrument_types:
-        wp_instrument_types = []
-
-    # extract configs for all instruments present in expedition
-    valid_instrument_configs = [
-        iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
-    ]
-
-    # extract configs for instruments present in given waypoint
-    wp_instrument_configs = []
-    for iconfig in valid_instrument_configs:
-        for itype in wp_instrument_types:
-            if (
-                instrument_config_map.get(itype) == iconfig.__class__.__name__
-                and (
-                    iconfig not in wp_instrument_configs
-                )  # avoid duplicates (would happen when multiple drifter deployments at same waypoint)
-            ):
-                wp_instrument_configs.append(iconfig)
-
-    # get wp total stationkeeping time
-    cumulative_stationkeeping_time = timedelta()
-    for iconfig in wp_instrument_configs:
-        if hasattr(iconfig, "stationkeeping_time"):
-            cumulative_stationkeeping_time += iconfig.stationkeeping_time
-
-    return cumulative_stationkeeping_time
 
 
 def _make_hash(s: str, length: int) -> str:
