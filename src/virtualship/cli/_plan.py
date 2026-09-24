@@ -94,11 +94,70 @@ def parse_waypoint_datetime(year, month, day, hour, minute):
     return None
 
 
+def _failure_label(input_id: str) -> Label:
+    """Label that shows validation failures for the input id."""
+    return Label(
+        "",
+        id=f"validation-failure-label-{input_id}",
+        classes="-hidden validation-failure",
+    )
+
+
+def _field_validators(model_class, attr: str) -> list[Function]:
+    """Textual input validators for a model field, derived from its pydantic constraints."""
+    return [
+        Function(validator, f"INVALID: value must be {validator.__doc__.lower()}")
+        for validator in group_validators(model_class, attr)
+    ]
+
+
+def _instrument_title(instrument_name: str, info: dict) -> str:
+    return info.get("title", instrument_name.replace("_", " ").title())
+
+
+def _time_unit(attr_meta: dict) -> tuple[str, str, float] | None:
+    """(label suffix, timedelta keyword, seconds per unit) for attributes entered in minutes or days."""
+    if attr_meta.get("minutes", False):
+        return " Minutes", "minutes", 60.0
+    if attr_meta.get("days", False):
+        return " Days", "days", 86400.0
+    return None
+
+
+def _config_display_value(config_instance, attr_meta: dict) -> str:
+    """The value to show in an instrument config input (timedeltas in minutes/days)."""
+    if not config_instance:
+        return ""
+    raw_value = getattr(config_instance, attr_meta["name"], "")
+    unit = _time_unit(attr_meta)
+    if unit and raw_value != "":
+        try:
+            return str(raw_value.total_seconds() / unit[2])
+        except AttributeError:
+            pass
+    return str(raw_value)
+
+
+def _raise_logged_unexpected(e: Exception, path, context_message: str):
+    """Log error to expedition directory and raise a user-facing UnexpectedError."""
+    log_exception_to_file(e, path, context_message=context_message)
+    raise UnexpectedError(
+        UNEXPECTED_MSG_ONSAVE
+        + f"\n\nTraceback will be logged in {path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
+    ) from None
+
+
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
     "period_minutes": 5.0,
+}
+
+# on/off switches for the underway instruments (set to null in the config when off)
+UNDERWAY_SWITCH_IDS = {
+    "adcp_config": "#has_adcp",
+    "ship_underwater_st_config": "#has_onboard_ts",
 }
 
 
@@ -229,57 +288,44 @@ class ExpeditionEditor(Static):
 
             # SECTION: "Ship Speed & Onboard Measurements"
 
+            ship_config = self.expedition.ship_config
+            instruments_config = self.expedition.instruments_config
             with Collapsible(
                 title="[b]Ship Speed & Onboard Measurements[/b]",
                 id="speed_collapsible",
                 collapsed=False,
             ):
                 attr = "ship_speed_knots"
-                validators = group_validators(ShipConfig, attr)
                 with Horizontal(classes="ship_speed"):
                     yield Label("[b]Ship Speed (knots):[/b]")
                     yield Input(
                         id="speed",
                         type=type_to_textual(get_field_type(ShipConfig, attr)),
-                        validators=[
-                            Function(
-                                validator,
-                                f"INVALID: value must be {validator.__doc__.lower()}",
-                            )
-                            for validator in validators
-                        ],
+                        validators=_field_validators(ShipConfig, attr),
                         classes="ship_speed_input",
                         placeholder="knots",
-                        value=str(
-                            self.expedition.ship_config.ship_speed_knots
-                            if self.expedition.ship_config.ship_speed_knots
-                            else ""
-                        ),
+                        value=str(ship_config.ship_speed_knots or ""),
                     )
                 yield Label("", id="validation-failure-label-speed", classes="-hidden")
 
                 with Horizontal(classes="ts-section"):
                     yield Label("[b]Onboard Temperature/Salinity:[/b]")
                     yield Switch(
-                        value=bool(
-                            self.expedition.instruments_config.ship_underwater_st_config
-                        ),
+                        value=bool(instruments_config.ship_underwater_st_config),
                         id="has_onboard_ts",
                     )
 
                 with Horizontal(classes="adcp-section"):
                     yield Label("[b]Onboard ADCP:[/b]")
                     yield Switch(
-                        value=bool(self.expedition.instruments_config.adcp_config),
-                        id="has_adcp",
+                        value=bool(instruments_config.adcp_config), id="has_adcp"
                     )
 
                 # adcp type selection
                 with Horizontal(id="adcp_type_container", classes="-hidden"):
                     is_deep = (
-                        self.expedition.instruments_config.adcp_config
-                        and self.expedition.instruments_config.adcp_config.max_depth_meter
-                        == -1000.0
+                        instruments_config.adcp_config
+                        and instruments_config.adcp_config.max_depth_meter == -1000.0
                     )
                     yield Label("       OceanObserver:")
                     yield Switch(value=is_deep, id="adcp_deep")
@@ -289,109 +335,15 @@ class ExpeditionEditor(Static):
 
             ## SECTION: "Instrument Configurations""
 
-            with Collapsible(
-                title="[b]Instrument Configurations[/b]",
-                collapsed=True,
-            ):
+            with Collapsible(title="[b]Instrument Configurations[/b]", collapsed=True):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
-                    config_class = info["class"]
-                    attributes = info["attributes"]
-                    config_instance = getattr(
-                        self.expedition.instruments_config, instrument_name, None
-                    )
-                    title = info.get("title", instrument_name.replace("_", " ").title())
                     with Collapsible(
-                        title=f"[b]{title}[/b]",
+                        title=f"[b]{_instrument_title(instrument_name, info)}[/b]",
                         collapsed=True,
                     ):
-                        if instrument_name in (
-                            "adcp_config",
-                            "ship_underwater_st_config",
-                        ):
-                            yield Label(
-                                f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
-                            )
-                        with Container(classes="instrument-config"):
-                            for attr_meta in attributes:
-                                attr = attr_meta["name"]
-                                is_minutes, is_days = (
-                                    attr_meta.get("minutes", False),
-                                    attr_meta.get("days", False),
-                                )
-                                validators = group_validators(config_class, attr)
-                                if config_instance:
-                                    raw_value = getattr(config_instance, attr, "")
-                                    if is_minutes and raw_value != "":
-                                        try:
-                                            value = str(
-                                                raw_value.total_seconds() / 60.0
-                                            )
-                                        except AttributeError:
-                                            value = str(raw_value)
-                                    elif is_days and raw_value != "":
-                                        try:
-                                            value = str(
-                                                raw_value.total_seconds() / 86400.0
-                                            )
-                                        except AttributeError:
-                                            value = str(raw_value)
-                                    else:
-                                        value = str(raw_value)
-                                else:
-                                    value = ""
-                                label = f"{attr.replace('_', ' ').title()}:"
-                                if is_minutes:
-                                    label = label.replace(":", " Minutes:")
-                                elif is_days:
-                                    label = label.replace(":", " Days:")
-                                yield Label(label)
-                                yield Input(
-                                    id=f"{instrument_name}_{attr}",
-                                    type=type_to_textual(
-                                        get_field_type(config_class, attr)
-                                    ),
-                                    validators=[
-                                        Function(
-                                            validator,
-                                            f"INVALID: value must be {validator.__doc__.lower()}",
-                                        )
-                                        for validator in validators
-                                    ],
-                                    value=value,
-                                )
-                                yield Label(
-                                    "",
-                                    id=f"validation-failure-label-{instrument_name}_{attr}",
-                                    classes="-hidden validation-failure",
-                                )
-                            # sensor toggles, derived from the config class's sensors default_factory
-                            default_sensor_configs = _default_sensors(config_class)
-                            if default_sensor_configs:
-                                yield Label("[b]Sensors:[/b]", markup=True)
-                                # which sensors are currently active
-                                if config_instance and hasattr(
-                                    config_instance, "sensors"
-                                ):
-                                    active_sensor_types = {
-                                        sc.sensor_type
-                                        for sc in config_instance.sensors
-                                        if sc.enabled
-                                    }
-                                else:
-                                    # if no config loaded yet, default all sensors on
-                                    active_sensor_types = {
-                                        sc.sensor_type for sc in default_sensor_configs
-                                    }
-                                for sc in default_sensor_configs:
-                                    sensor_id = f"{instrument_name}_sensor_{sc.sensor_type.value}"
-                                    with Horizontal(classes="sensor-toggle-row"):
-                                        yield Label(
-                                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
-                                        )
-                                        yield Switch(
-                                            value=sc.sensor_type in active_sensor_types,
-                                            id=sensor_id,
-                                        )
+                        yield from self._compose_instrument_config(
+                            instrument_name, info
+                        )
 
             ## 2) SCHEDULE EDITOR
 
@@ -423,14 +375,59 @@ class ExpeditionEditor(Static):
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
+    def _compose_instrument_config(self, instrument_name: str, info: dict):
+        """Inputs (and sensor toggles) for one instrument's configuration."""
+        config_class = info["class"]
+        config_instance = getattr(
+            self.expedition.instruments_config, instrument_name, None
+        )
+        if instrument_name in ("adcp_config", "ship_underwater_st_config"):
+            yield Label(
+                f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
+            )
+        with Container(classes="instrument-config"):
+            for attr_meta in info["attributes"]:
+                attr = attr_meta["name"]
+                unit = _time_unit(attr_meta)
+                yield Label(
+                    f"{attr.replace('_', ' ').title()}{unit[0] if unit else ''}:"
+                )
+                yield Input(
+                    id=f"{instrument_name}_{attr}",
+                    type=type_to_textual(get_field_type(config_class, attr)),
+                    validators=_field_validators(config_class, attr),
+                    value=_config_display_value(config_instance, attr_meta),
+                )
+                yield _failure_label(f"{instrument_name}_{attr}")
+            # sensor toggles, derived from the config class's sensors default_factory
+            default_sensor_configs = _default_sensors(config_class)
+            if default_sensor_configs:
+                yield Label("[b]Sensors:[/b]", markup=True)
+                # which sensors are currently active
+                if config_instance and hasattr(config_instance, "sensors"):
+                    active_sensor_types = {
+                        sc.sensor_type for sc in config_instance.sensors if sc.enabled
+                    }
+                else:
+                    # if no config loaded yet, default all sensors on
+                    active_sensor_types = {
+                        sc.sensor_type for sc in default_sensor_configs
+                    }
+                for sc in default_sensor_configs:
+                    with Horizontal(classes="sensor-toggle-row"):
+                        yield Label(
+                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
+                        )
+                        yield Switch(
+                            value=sc.sensor_type in active_sensor_types,
+                            id=f"{instrument_name}_sensor_{sc.sensor_type.value}",
+                        )
+
     def on_mount(self) -> None:
         self.refresh_waypoint_widgets()
-        adcp_present = (
-            getattr(self.expedition.instruments_config, "adcp_config", None)
-            if self.expedition.instruments_config
-            else False
+        self.show_hide_adcp_type(
+            bool(getattr(self.expedition.instruments_config, "adcp_config", None))
         )
-        self.show_hide_adcp_type(bool(adcp_present))
 
     def refresh_waypoint_widgets(self):
         waypoint_list = self.query_one("#waypoint_list", VerticalScroll)
@@ -449,15 +446,9 @@ class ExpeditionEditor(Static):
         except UserError:
             raise
         except Exception as e:
-            log_exception_to_file(
-                e,
-                self.path,
-                context_message=f"Error saving {self.path.joinpath(EXPEDITION)}:",
+            _raise_logged_unexpected(
+                e, self.path, f"Error saving {self.path.joinpath(EXPEDITION)}:"
             )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
 
     def _update_ship_speed(self):
         attr = "ship_speed_knots"
@@ -469,35 +460,27 @@ class ExpeditionEditor(Static):
         self.expedition.ship_config.ship_speed_knots = value
 
     def _update_instrument_configs(self):
+        instruments_config = self.expedition.instruments_config
         for instrument_name, info in INSTRUMENT_FIELDS.items():
             config_class = info["class"]
-            attributes = info["attributes"]
+            title = _instrument_title(instrument_name, info)
+            # onboard ADCP and T/S are removed when switched off
+            switch_id = UNDERWAY_SWITCH_IDS.get(instrument_name)
+            if switch_id and not self.query_one(switch_id, Switch).value:
+                setattr(instruments_config, instrument_name, None)
+                continue
+
             kwargs = {}
-            # special handling for onboard ADCP and T/S
-            if instrument_name == "adcp_config":
-                has_adcp = self.query_one("#has_adcp", Switch).value
-                if not has_adcp:
-                    setattr(self.expedition.instruments_config, instrument_name, None)
-                    continue
-            if instrument_name == "ship_underwater_st_config":
-                has_ts = self.query_one("#has_onboard_ts", Switch).value
-                if not has_ts:
-                    setattr(self.expedition.instruments_config, instrument_name, None)
-                    continue
-            for attr_meta in attributes:
+            for attr_meta in info["attributes"]:
                 attr = attr_meta["name"]
-                is_minutes = attr_meta.get("minutes", False)
-                is_days = attr_meta.get("days", False)
-                input_id = f"{instrument_name}_{attr}"
-                value = self.query_one(f"#{input_id}").value
+                value = self.query_one(f"#{instrument_name}_{attr}").value
                 field_type = get_field_type(config_class, attr)
-                if is_minutes and field_type is datetime.timedelta:
-                    value = datetime.timedelta(minutes=float(value))
-                elif is_days and field_type is datetime.timedelta:
-                    value = datetime.timedelta(days=float(value))
+                unit = _time_unit(attr_meta)
+                if unit and field_type is datetime.timedelta:
+                    kwargs[attr] = datetime.timedelta(**{unit[1]: float(value)})
                 else:
-                    value = field_type(value)
-                kwargs[attr] = value
+                    kwargs[attr] = field_type(value)
+
             # ADCP max_depth_meter based on deep/shallow switch
             if instrument_name == "adcp_config":
                 is_deep = self.query_one("#adcp_deep", Switch).value
@@ -517,59 +500,35 @@ class ExpeditionEditor(Static):
                         f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
                     ).value
                 ]
-
-                instrument_type = info.get("instrument_type")
-
-                # safe check for instrument existence across all waypoint types
-                is_active = instrument_type is None or any(
-                    instrument_type
-                    in (
-                        wp.instrument
-                        if isinstance(wp.instrument, list)
-                        else [wp.instrument]
-                    )
-                    for wp in self.expedition.schedule.waypoints
-                    if getattr(wp, "instrument", None)
-                )
-
                 if not sensors:
-                    if is_active:
-                        title = info.get(
-                            "title", instrument_name.replace("_", " ").title()
-                        )
+                    if self._is_instrument_in_schedule(info.get("instrument_type")):
                         raise UserError(
                             f"'{title}' has no sensors selected. "
                             f"At least one sensor must be enabled for each active instrument."
                         )
-                    else:
-                        # if the instrument is not active in the schedule and no sensors are selected:
-                        # reset to default sensors (or keep default_sensor_configs) so pydantic validation passes.
-                        sensors = [
-                            SensorConfig(sensor_type=sc.sensor_type)
-                            for sc in default_sensor_configs
-                        ]
-
+                    # fall back to the default sensors so pydantic validation passes
+                    sensors = [
+                        SensorConfig(sensor_type=sc.sensor_type)
+                        for sc in default_sensor_configs
+                    ]
                 kwargs["sensors"] = sensors
 
             try:
-                setattr(
-                    self.expedition.instruments_config,
-                    instrument_name,
-                    config_class(**kwargs),
-                )
-            except (ValueError, Exception) as e:
-                # catch validation errors, e.g. drift_days >= cycle_days
-                if isinstance(e, ValueError):
-                    title = info.get("title", instrument_name.replace("_", " ").title())
+                setattr(instruments_config, instrument_name, config_class(**kwargs))
+            except Exception as e:
+                # validation errors, e.g. drift_days >= cycle_days
+                if isinstance(e, ValueError) or "ValidationError" in type(e).__name__:
                     raise UserError(f"'{title}' configuration error: {e}") from None
-                elif (  # pydantic validation error
-                    hasattr(e, "__class__")
-                    and "ValidationError" in e.__class__.__name__
-                ):
-                    title = info.get("title", instrument_name.replace("_", " ").title())
-                    raise UserError(f"'{title}' configuration error: {e}") from None
-                else:
-                    raise
+                raise
+
+    def _is_instrument_in_schedule(self, instrument_type) -> bool:
+        """Whether any waypoint deploys `instrument_type` (always True for underway instruments, i.e. None)."""
+        return instrument_type is None or any(
+            instrument_type
+            in (wp.instrument if isinstance(wp.instrument, list) else [wp.instrument])
+            for wp in self.expedition.schedule.waypoints
+            if getattr(wp, "instrument", None)
+        )
 
     def _update_schedule(self):
         for i, wp in enumerate(self.expedition.schedule.waypoints):
@@ -728,33 +687,21 @@ class ExpeditionEditor(Static):
         self._pending_remove_idx = None
 
     def show_hide_adcp_type(self, show: bool) -> None:
-        container = self.query_one("#adcp_type_container")
-        if show:
-            container.remove_class("-hidden")
-        else:
-            container.add_class("-hidden")
-
-    def _set_adcp_default_values(self):
-        self.query_one("#adcp_config_num_bins").value = str(
-            DEFAULT_ADCP_CONFIG["num_bins"]
-        )
-        self.query_one("#adcp_config_period").value = str(
-            DEFAULT_ADCP_CONFIG["period_minutes"]
-        )
-        self.query_one("#adcp_shallow").value = False
-        self.query_one("#adcp_deep").value = True
-
-    def _set_ts_default_values(self):
-        self.query_one("#ship_underwater_st_config_period").value = str(
-            DEFAULT_TS_CONFIG["period_minutes"]
-        )
+        self.query_one("#adcp_type_container").set_class(not show, "-hidden")
 
     @on(Switch.Changed, "#has_adcp")
     def on_adcp_toggle(self, event: Switch.Changed) -> None:
         self.show_hide_adcp_type(event.value)
         if event.value and not self.expedition.instruments_config.adcp_config:
-            # ADCP was turned on and was previously null
-            self._set_adcp_default_values()
+            # use defaults when ADCP was turned on and was previously null
+            self.query_one("#adcp_config_num_bins").value = str(
+                DEFAULT_ADCP_CONFIG["num_bins"]
+            )
+            self.query_one("#adcp_config_period").value = str(
+                DEFAULT_ADCP_CONFIG["period_minutes"]
+            )
+            self.query_one("#adcp_shallow").value = False
+            self.query_one("#adcp_deep").value = True
 
     @on(Switch.Changed, "#has_onboard_ts")
     def on_ts_toggle(self, event: Switch.Changed) -> None:
@@ -762,8 +709,10 @@ class ExpeditionEditor(Static):
             event.value
             and not self.expedition.instruments_config.ship_underwater_st_config
         ):
-            # T/S was turned on and was previously null
-            self._set_ts_default_values()
+            # use defaults when T/S was turned on and was previously null
+            self.query_one("#ship_underwater_st_config_period").value = str(
+                DEFAULT_TS_CONFIG["period_minutes"]
+            )
 
     # one ADCP type is always selected
     @on(Switch.Changed, "#adcp_deep")
@@ -822,11 +771,7 @@ class WaypointWidget(Static):
             placeholder=placeholder,
             classes=f"{field}itude-input",
         )
-        yield Label(
-            "",
-            id=f"validation-failure-label-wp{wp_id}_{field}",
-            classes="-hidden validation-failure",
-        )
+        yield _failure_label(f"wp{wp_id}_{field}")
 
     def _yield_time_selectors(self, wp_id: int) -> ComposeResult:
         """Yields year, month, day, hour, and minute Select controls."""
@@ -900,11 +845,7 @@ class WaypointWidget(Static):
                         ),
                         classes="drifter-count-input",
                     )
-                    yield Label(
-                        "",
-                        id=f"validation-failure-label-wp{wp_id}_drifter_count",
-                        classes="-hidden validation-failure",
-                    )
+                    yield _failure_label(f"wp{wp_id}_drifter_count")
 
     def compose(self) -> ComposeResult:
         try:
@@ -1161,15 +1102,9 @@ class PlanScreen(Screen):
                 errors.append(f"Waypoint {i + 1}: {e}")
 
         if errors:
-            log_exception_to_file(
-                Exception("\n".join(errors)),
-                self.path,
-                context_message="Error syncing waypoints:",
+            _raise_logged_unexpected(
+                Exception("\n".join(errors)), self.path, "Error syncing waypoints:"
             )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
 
     @on(Button.Pressed, "#exit_button")
     def exit_pressed(self) -> None:
@@ -1223,13 +1158,7 @@ class PlanScreen(Screen):
             ship_speed = float(expedition_editor.query_one("#speed").value)
             assert ship_speed > 0
         except Exception as e:
-            log_exception_to_file(
-                e, self.path, context_message="Error saving schedule:"
-            )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
+            _raise_logged_unexpected(e, self.path, "Error saving schedule:")
         return ship_speed
 
 
