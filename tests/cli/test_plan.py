@@ -73,6 +73,28 @@ async def _expand_instrument_configs(
                 break
 
 
+def _four_waypoint_schedule() -> list:
+    return [
+        Port(location=None, time=None),
+        Waypoint(
+            location=Location(0, 0),
+            time=datetime(2022, 1, 1, 0, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.01, 0.01),
+            time=datetime(2022, 1, 1, 1, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.02, 0.02),
+            time=datetime(2022, 1, 1, 2, 0, 0),
+            instrument=["CTD"],
+        ),
+        Port(location=None, time=None),
+    ]
+
+
 @pytest.mark.asyncio
 async def test_UI_changes(tmp_path):
     """Test making changes to UI inputs and saving to YAML (simulated botton presses and typing inputs)."""
@@ -405,3 +427,31 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
         sal_switch = expedition_editor.query_one("#ctd_config_sensor_SALINITY", Switch)
         assert temp_switch.value is True, "TEMPERATURE should be ON"
         assert sal_switch.value is False, "SALINITY should be OFF (not in saved config)"
+
+
+@pytest.mark.asyncio
+async def test_adcp_type_always_exactly_one_selected(tmp_path):
+    """Switching one ADCP type off selects the other, so both can never be off/on together."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        deep = expedition_editor.query_one("#adcp_deep", Switch)
+        shallow = expedition_editor.query_one("#adcp_shallow", Switch)
+        assert expedition_editor.query_one("#has_adcp", Switch).value
+
+        for switch in (deep, shallow, deep, shallow):
+            switch.value = not switch.value
+            await pilot.pause()
+            assert deep.value != shallow.value
+
+        # whichever is selected is what gets saved
+        plan_screen.save_pressed()
+        await pilot.pause(0.5)
+        saved = Expedition.from_yaml(tmp_path / EXPEDITION)
+        expected = -1000.0 if deep.value else -150.0
+        assert saved.instruments_config.adcp_config.max_depth_meter == expected

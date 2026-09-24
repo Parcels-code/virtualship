@@ -500,10 +500,12 @@ class ExpeditionEditor(Static):
                 kwargs[attr] = value
             # ADCP max_depth_meter based on deep/shallow switch
             if instrument_name == "adcp_config":
-                if self.query_one("#adcp_deep", Switch).value:
-                    kwargs["max_depth_meter"] = -1000.0
-                else:
-                    kwargs["max_depth_meter"] = -150.0
+                is_deep = self.query_one("#adcp_deep", Switch).value
+                if is_deep == self.query_one("#adcp_shallow", Switch).value:
+                    raise UserError(
+                        "Onboard ADCP is ON, so exactly one ADCP type (OceanObserver or SeaSeven) must be selected."
+                    )
+                kwargs["max_depth_meter"] = -1000.0 if is_deep else -150.0
 
             # collect sensor toggles
             default_sensor_configs = _default_sensors(config_class)
@@ -763,17 +765,14 @@ class ExpeditionEditor(Static):
             # T/S was turned on and was previously null
             self._set_ts_default_values()
 
+    # one ADCP type is always selected
     @on(Switch.Changed, "#adcp_deep")
     def deep_changed(self, event: Switch.Changed) -> None:
-        if event.value:
-            shallow = self.query_one("#adcp_shallow", Switch)
-            shallow.value = False
+        self.query_one("#adcp_shallow", Switch).value = not event.value
 
     @on(Switch.Changed, "#adcp_shallow")
     def shallow_changed(self, event: Switch.Changed) -> None:
-        if event.value:
-            deep = self.query_one("#adcp_deep", Switch)
-            deep.value = False
+        self.query_one("#adcp_deep", Switch).value = not event.value
 
     @on(Button.Pressed, "#info_button")
     def info_pressed(self) -> None:
