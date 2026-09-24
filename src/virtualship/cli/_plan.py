@@ -1393,6 +1393,8 @@ class PlanApp(App):
     def __init__(self, path: str):
         super().__init__()
         self.path = path
+        # for speed-up on remote/browser-based terminals
+        self.animation_level = "none"
 
     def on_mount(self) -> None:
         self.push_screen(PlanScreen(self.path))
