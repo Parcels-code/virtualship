@@ -9,6 +9,7 @@ from textual.widgets import Button, Collapsible, Input, Switch
 from virtualship.cli._plan import (
     ExpeditionEditor,
     PlanApp,
+    QuitConfirmScreen,
     WaypointWidget,
     _default_sensors,
     parse_waypoint_time,
@@ -468,11 +469,36 @@ async def test_adcp_type_always_exactly_one_selected(tmp_path):
             assert deep.value != shallow.value
 
         # whichever is selected is what gets saved
-        plan_screen.save_pressed()
+        await plan_screen.run_action("save")
         await pilot.pause(0.5)
         saved = Expedition.from_yaml(tmp_path / EXPEDITION)
         expected = -1000.0 if deep.value else -150.0
         assert saved.instruments_config.adcp_config.max_depth_meter == expected
+
+
+@pytest.mark.asyncio
+async def test_collapse_all(tmp_path):
+    """The collapse-all button and Escape collapse every section and waypoint."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        for trigger in ("button", "escape"):
+            await _expand_instrument_configs(expedition_editor, pilot, "CTD")
+            await _expand_waypoint(expedition_editor, pilot, 1)
+            await _expand_waypoint(expedition_editor, pilot, 2)
+            assert any(not c.collapsed for c in plan_screen.query(Collapsible))
+
+            if trigger == "button":
+                plan_screen.query_one("#collapse_all_button", Button).press()
+            else:
+                await pilot.press("escape")
+            await pilot.pause()
+            assert all(c.collapsed for c in plan_screen.query(Collapsible))
 
 
 def test_parse_waypoint_time():
@@ -598,7 +624,7 @@ async def test_waypoint_time_entry_and_adjust(tmp_path):
         await simulate_input(pilot, time_input, "202202301000")
         await pilot.pause()
         assert "time" in wp3.errors
-        plan_screen.save_pressed()
+        await plan_screen.run_action("save")
         await pilot.pause()
         args, _ = plan_screen.notify.call_args
         assert "*** Error saving changes ***" in args[0]
@@ -614,3 +640,46 @@ async def test_waypoint_time_entry_and_adjust(tmp_path):
         assert wp3.query_one("#XBT", Switch).value is True
         assert wp[3].location.lat == 0.02
         assert not wp3.errors
+
+
+@pytest.mark.asyncio
+async def test_save_shortcut_and_unsaved_changes_prompt(tmp_path):
+    """ctrl+s saves, quitting with unsaved changes asks first, quitting after saving does not."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        # opening/expanding alone is not an unsaved change
+        await _expand_waypoint(expedition_editor, pilot, 1)
+        assert not expedition_editor.has_unsaved_changes()
+
+        wp1 = expedition_editor.waypoint_widgets[1]
+        await simulate_input(pilot, wp1.query_one("#lat", Input), "0.005")
+        await pilot.pause()
+        assert expedition_editor.has_unsaved_changes()
+
+        await pilot.press("ctrl+q")
+        await pilot.pause()
+        assert isinstance(pilot.app.screen, QuitConfirmScreen)
+        await pilot.click("#confirm-no")
+        await pilot.pause()
+        assert pilot.app.screen is plan_screen
+
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.5)
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            for call in plan_screen.notify.call_args_list
+        )
+        assert not expedition_editor.has_unsaved_changes()
+        saved = Expedition.from_yaml(tmp_path / EXPEDITION)
+        assert saved.schedule.waypoints[1].location.lat == 0.005
+
+        # a ship/instrument config edit also counts as unsaved
+        await simulate_input(pilot, expedition_editor.query_one("#speed", Input), "9.0")
+        assert expedition_editor.has_unsaved_changes()

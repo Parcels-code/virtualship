@@ -3,9 +3,11 @@ import datetime
 import os
 import traceback
 from collections import Counter
+from typing import ClassVar
 
 from textual import on
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.dom import NoMatches
 from textual.message import Message
@@ -14,6 +16,7 @@ from textual.validation import Function, Integer
 from textual.widgets import (
     Button,
     Collapsible,
+    Footer,
     Input,
     Label,
     MaskedInput,
@@ -305,12 +308,15 @@ class ExpeditionEditor(Static):
         self.path = path
         self.expedition = None
         self._original_schedule = None  # as loaded, for "reset changes"
+        self._saved_schedule = None  # as last saved, for the unsaved-changes check
+        self._saved_config_values = {}  # config widget values as last saved
         self._validation_labels = {}  # cache input id for validation failure labels, avoid querying the whole model on every keystroke
 
     def compose(self) -> ComposeResult:
         try:
             self.expedition = Expedition.from_yaml(self.path.joinpath(EXPEDITION))
             self._original_schedule = copy.deepcopy(self.expedition.schedule)
+            self._saved_schedule = copy.deepcopy(self.expedition.schedule)
         except Exception as e:
             raise UserError(
                 f"There is an issue in {self.path.joinpath(EXPEDITION)}:\n\n{e}"
@@ -464,6 +470,8 @@ class ExpeditionEditor(Static):
                         )
 
     async def on_mount(self) -> None:
+        # snapshot before any waypoint bodies exist, so only ship/instrument config widgets are captured
+        self._saved_config_values = self._config_values()
         await self.refresh_waypoint_widgets()
         self.show_hide_adcp_type(
             bool(getattr(self.expedition.instruments_config, "adcp_config", None))
@@ -487,6 +495,23 @@ class ExpeditionEditor(Static):
         for i, widget in enumerate(self.waypoint_widgets):
             widget.set_index(i)
 
+    def _config_values(self) -> dict:
+        """Current values of the ship/instrument config widgets."""
+        return {
+            widget.id: widget.value
+            for widget in self.query("Input, Switch")
+            if widget.id
+            and not any(isinstance(a, WaypointWidget) for a in widget.ancestors)
+        }
+
+    def has_unsaved_changes(self) -> bool:
+        if self.expedition.schedule != self._saved_schedule:
+            return True
+        return any(
+            self.query_one(f"#{widget_id}").value != value
+            for widget_id, value in self._saved_config_values.items()
+        )
+
     def waypoint_errors(self) -> list[str]:
         """Messages for waypoint entries that are invalid or incomplete."""
         return [
@@ -501,6 +526,11 @@ class ExpeditionEditor(Static):
             self._update_ship_speed()
             self._update_instrument_configs()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
+            self._saved_schedule = copy.deepcopy(self.expedition.schedule)
+            self._saved_config_values = {
+                widget_id: self.query_one(f"#{widget_id}").value
+                for widget_id in self._saved_config_values
+            }
             return True
         except UserError:
             raise
@@ -1041,7 +1071,16 @@ class WaypointWidget(Static):
         self._sync_time()
 
 
+class QuitConfirmScreen(ConfirmScreen):
+    """Confirmation before quitting with unsaved changes."""
+
+
 class PlanScreen(Screen):
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("ctrl+s", "save", "Save", priority=True),
+        Binding("escape", "collapse_all", "Collapse all"),
+    ]
+
     def __init__(self, path: str):
         super().__init__()
         self.path = path
@@ -1053,12 +1092,27 @@ class PlanScreen(Screen):
                 with Horizontal():
                     yield Button("Save Changes", id="save_button", variant="success")
                     yield Button("Exit", id="exit_button", variant="error")
+                    yield Button(
+                        "Collapse All", id="collapse_all_button", variant="default"
+                    )
+            yield Footer()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     @on(Button.Pressed, "#exit_button")
-    def exit_pressed(self) -> None:
-        self.app.exit()
+    async def exit_pressed(self) -> None:
+        await self.app.run_action("quit")
+
+    @on(Button.Pressed, "#collapse_all_button")
+    def action_collapse_all(self) -> None:
+        """Collapse every section and waypoint, and scroll back to the top."""
+        with self.app.batch_update():
+            for collapsible in self.query(Collapsible):
+                collapsible.collapsed = True
+        self.query_one(VerticalScroll).scroll_home(animate=False)
+
+    def action_save(self) -> None:
+        self.save_pressed()
 
     @on(Button.Pressed, "#save_button")
     def save_pressed(self) -> None:
@@ -1322,6 +1376,10 @@ class PlanApp(App):
     }
     """
 
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("ctrl+q", "quit", "Quit", priority=True),
+    ]
+
     def __init__(self, path: str):
         super().__init__()
         self.path = path
@@ -1331,6 +1389,29 @@ class PlanApp(App):
     def on_mount(self) -> None:
         self.push_screen(PlanScreen(self.path))
         self.theme = "textual-light"
+
+    async def action_quit(self) -> None:
+        """Quit, asking first if there are unsaved changes."""
+        if isinstance(self.screen, QuitConfirmScreen):
+            self.exit()
+            return
+        try:
+            editor = self.screen.query_one(ExpeditionEditor)
+        except NoMatches:
+            self.exit()
+            return
+        if not (editor.has_unsaved_changes() or editor.waypoint_errors()):
+            self.exit()
+            return
+
+        def on_confirmed(confirmed: bool) -> None:
+            if confirmed:
+                self.exit()
+
+        self.push_screen(
+            QuitConfirmScreen("You have unsaved changes. Quit without saving?"),
+            on_confirmed,
+        )
 
 
 def _plan(path: str) -> None:
