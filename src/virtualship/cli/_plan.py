@@ -2,11 +2,13 @@ import copy
 import datetime
 import os
 import traceback
+from collections import Counter
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.dom import NoMatches
+from textual.message import Message
 from textual.screen import ModalScreen, Screen
 from textual.validation import Function, Integer
 from textual.widgets import (
@@ -102,6 +104,8 @@ TIME_STEPS = (
     ("minus_thirty_minutes", "-30 minutes", "default", -datetime.timedelta(minutes=30)),
 )
 
+DEPLOYABLE_INSTRUMENTS = [inst for inst in InstrumentType if not inst.is_underway]
+
 
 def parse_waypoint_time(text: str) -> datetime.datetime | None:
     """Parse 'YYYY-MM-DD hh:mm' string."""
@@ -120,6 +124,17 @@ def is_valid_waypoint_time(text: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def show_validation_result(label: Label, validation_result) -> None:
+    """Show validation failure messages in `label`, or hide it if valid."""
+    is_invalid = validation_result is not None and not validation_result.is_valid
+    message = "\n".join(validation_result.failure_descriptions) if is_invalid else ""
+    # only edit label when something changes
+    if label.content != message:
+        label.update(message)
+    label.set_class(not is_invalid, "-hidden")
+    label.set_class(is_invalid, "validation-failure")
 
 
 def _failure_label(input_id: str) -> Label:
@@ -256,19 +271,16 @@ INSTRUMENT_FIELDS = {
 }
 
 
-class WaypointRemoveConfirmScreen(ModalScreen):
-    """Modal confirmation dialog for waypoint removal."""
+class ConfirmScreen(ModalScreen):
+    """Modal yes/no confirmation dialog."""
 
-    def __init__(self, waypoint_index: int):
+    def __init__(self, message: str):
         super().__init__()
-        self.waypoint_index = waypoint_index
+        self.message = message
 
     def compose(self) -> ComposeResult:
         yield Container(
-            Label(
-                f"Are you sure you want to remove waypoint {self.waypoint_index + 1}?",
-                id="confirm-label",
-            ),
+            Label(self.message, id="confirm-label"),
             Horizontal(
                 Button("Yes", id="confirm-yes", variant="error"),
                 Button("No", id="confirm-no", variant="primary"),
@@ -292,8 +304,8 @@ class ExpeditionEditor(Static):
         super().__init__()
         self.path = path
         self.expedition = None
-        self._pending_remove_idx = None
-        self._original_schedule = None  # Store original schedule
+        self._original_schedule = None  # as loaded, for "reset changes"
+        self._validation_labels = {}  # cache input id for validation failure labels, avoid querying the whole model on every keystroke
 
     def compose(self) -> ComposeResult:
         try:
@@ -451,23 +463,42 @@ class ExpeditionEditor(Static):
                             id=f"{instrument_name}_sensor_{sc.sensor_type.value}",
                         )
 
-    def on_mount(self) -> None:
-        self.refresh_waypoint_widgets()
+    async def on_mount(self) -> None:
+        await self.refresh_waypoint_widgets()
         self.show_hide_adcp_type(
             bool(getattr(self.expedition.instruments_config, "adcp_config", None))
         )
 
-    def refresh_waypoint_widgets(self):
+    @property
+    def waypoint_widgets(self) -> list["WaypointWidget"]:
+        return list(self.query_one("#waypoint_list").query_children(WaypointWidget))
+
+    async def refresh_waypoint_widgets(self) -> None:
+        """Rebuild all waypoint widgets from the schedule (only needed on load and reset)."""
         waypoint_list = self.query_one("#waypoint_list", VerticalScroll)
-        waypoint_list.remove_children()
-        for i, waypoint in enumerate(self.expedition.schedule.waypoints):
-            waypoint_list.mount(WaypointWidget(waypoint, i))
+        with self.app.batch_update():
+            await waypoint_list.remove_children()
+            await waypoint_list.mount_all(
+                WaypointWidget(waypoint, i)
+                for i, waypoint in enumerate(self.expedition.schedule.waypoints)
+            )
+
+    def _renumber_waypoints(self) -> None:
+        for i, widget in enumerate(self.waypoint_widgets):
+            widget.set_index(i)
+
+    def waypoint_errors(self) -> list[str]:
+        """Messages for waypoint entries that are invalid or incomplete."""
+        return [
+            f"{widget.get_title()}: {message}"
+            for widget in self.waypoint_widgets
+            for message in widget.errors.values()
+        ]
 
     def save_changes(self) -> bool:
         """Save changes to expedition.yaml."""
         try:
             self._update_ship_speed()
-            self._update_schedule()
             self._update_instrument_configs()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
             return True
@@ -558,157 +589,118 @@ class ExpeditionEditor(Static):
             if getattr(wp, "instrument", None)
         )
 
-    def _update_schedule(self):
-        for i, wp in enumerate(self.expedition.schedule.waypoints):
-            wp.time = parse_waypoint_time(
-                self.query_one(f"#wp{i}_time", MaskedInput).value
-            )
-
-            lat_val = self.query_one(f"#wp{i}_lat").value
-            lon_val = self.query_one(f"#wp{i}_lon").value
-
-            if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
-                wp.location = Location(
-                    latitude=float(lat_val) if lat_val != "" else None,
-                    longitude=float(lon_val) if lon_val != "" else None,
-                )
-            else:
-                wp.location = Location(
-                    latitude=float(lat_val),
-                    longitude=float(lon_val),
-                )
-
-            if not isinstance(wp, Port):
-                wp.instrument = []
-                for instrument in [
-                    inst for inst in InstrumentType if not inst.is_underway
-                ]:
-                    switch_on = self.query_one(f"#wp{i}_{instrument.value}").value
-                    if instrument.value == "DRIFTER" and switch_on:
-                        count_str = self.query_one(f"#wp{i}_drifter_count").value
-                        count = int(count_str)
-                        assert count > 0
-                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                    elif switch_on:
-                        wp.instrument.append(instrument)
-
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:
         input_id = event.input.id
         label_id = f"validation-failure-label-{input_id}"
 
-        # avoid errors when button pressed too rapidly
-        try:
-            label = self.query_one(f"#{label_id}", Label)
-        except NoMatches:
-            return
-
-        if input_id.endswith("_drifter_count"):
-            wp_index = int(input_id.split("_")[0][2:])
-            drifter_switch = self.query_one(f"#wp{wp_index}_DRIFTER")
-            if not drifter_switch.value:
-                label.update("")
-                label.add_class("-hidden")
-                label.remove_class("validation-failure")
-                event.input.remove_class("-valid")
-                event.input.remove_class("-invalid")
+        # cached to avoid querying the whole model on every keystroke
+        label = self._validation_labels.get(label_id)
+        if label is None:
+            try:
+                label = self.query_one(f"#{label_id}", Label)
+            except NoMatches:
                 return
-        if not event.validation_result.is_valid:
-            message = (
-                "\n".join(event.validation_result.failure_descriptions)
-                if isinstance(event.validation_result.failure_descriptions, list)
-                else str(event.validation_result.failure_descriptions)
-            )
-            label.update(message)
-            label.remove_class("-hidden")
-            label.add_class("validation-failure")
-        else:
-            label.update("")
-            label.add_class("-hidden")
-            label.remove_class("validation-failure")
+            self._validation_labels[label_id] = label
+
+        show_validation_result(label, event.validation_result)
+
+    def _schedule_index(self, waypoint: Waypoint) -> int:
+        return next(
+            i
+            for i, wp in enumerate(self.expedition.schedule.waypoints)
+            if wp is waypoint
+        )
+
+    def _arrival_port_index(self) -> int:
+        return next(
+            i
+            for i, wp in reversed(list(enumerate(self.expedition.schedule.waypoints)))
+            if isinstance(wp, Port)
+        )
 
     @on(Button.Pressed, "#add_waypoint")
-    def add_waypoint(self) -> None:
+    async def add_waypoint(self) -> None:
         """Add a new waypoint to the schedule (N.B. ports always remain). Copies time from last waypoint if possible (Lat/lon and instruments blank)."""
         try:
             wps = self.expedition.schedule.waypoints
             non_port_wps = [wp for wp in wps if not isinstance(wp, Port)]
-            new_time = non_port_wps[-1].time if non_port_wps else None
             new_wp = Waypoint(
-                location=Location(
-                    latitude=0.0,
-                    longitude=0.0,
-                ),
-                time=new_time,
+                location=Location(latitude=0.0, longitude=0.0),
+                time=non_port_wps[-1].time if non_port_wps else None,
                 instrument=[],
             )
-
-            # add waypoint before the last port (arrival port) if it exists, otherwise at the end
-            insert_index = next(
-                (i for i, wp in reversed(list(enumerate(wps))) if isinstance(wp, Port))
-            )  # just before arrival port
-            self.expedition.schedule.waypoints.insert(insert_index, new_wp)
-            self.refresh_waypoint_widgets()
-
+            # add waypoint just before the arrival port
+            insert_index = self._arrival_port_index()
+            wps.insert(insert_index, new_wp)
+            await self.query_one("#waypoint_list").mount(
+                WaypointWidget(new_wp, insert_index),
+                before=self.waypoint_widgets[insert_index],
+            )
+            self._renumber_waypoints()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
+    async def _remove_waypoint_widget(self, widget: "WaypointWidget") -> None:
+        self.expedition.schedule.waypoints.pop(self._schedule_index(widget.waypoint))
+        await widget.remove()
+        self._renumber_waypoints()
+
     @on(Button.Pressed, "#remove_waypoint")
-    def remove_waypoint(self) -> None:
+    async def remove_waypoint(self) -> None:
         """Remove the last waypoint (non-port) from the schedule."""
         try:
-            wps = self.expedition.schedule.waypoints
-            non_port_indices = [
-                i for i, wp in enumerate(wps) if isinstance(wp, Waypoint)
+            non_port_widgets = [
+                w for w in self.waypoint_widgets if not isinstance(w.waypoint, Port)
             ]
-            if non_port_indices:
-                self.expedition.schedule.waypoints.pop(non_port_indices[-1])
-                self.refresh_waypoint_widgets()
+            if non_port_widgets:
+                await self._remove_waypoint_widget(non_port_widgets[-1])
             else:
                 self.notify("No waypoints to remove.", severity="error", timeout=5)
-
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     @on(Button.Pressed, "#reset_changes")
-    def reset_changes(self) -> None:
+    async def reset_changes(self) -> None:
         """Reset all changes to the schedule, reverting to the original loaded schedule."""
         try:
             self.expedition.schedule = copy.deepcopy(self._original_schedule)
-            self.refresh_waypoint_widgets()
-
+            await self.refresh_waypoint_widgets()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    @on(Button.Pressed)
-    def remove_specific_waypoint(self, event: Button.Pressed) -> None:
+    def on_waypoint_widget_remove_requested(
+        self, event: "WaypointWidget.RemoveRequested"
+    ) -> None:
         """Ask for confirmation before removing a specific waypoint."""
-        btn_id = event.button.id
-        if btn_id and btn_id.startswith("wp") and btn_id.endswith("_remove"):
-            try:
-                idx_str = btn_id[2:-7]
-                idx = int(idx_str)
-                if 0 <= idx < len(self.expedition.schedule.waypoints):
-                    self._pending_remove_idx = idx
-                    self.app.push_screen(
-                        WaypointRemoveConfirmScreen(idx), self._on_remove_confirmed
-                    )
-                else:
-                    self.notify("Invalid waypoint index.", severity="error", timeout=20)
-            except Exception as e:
-                raise UnexpectedError(unexpected_msg_compose(e)) from None
+        widget = event.widget
 
-    def _on_remove_confirmed(self, confirmed: bool) -> None:
-        """Callback after confirmation dialog."""
-        if confirmed and self._pending_remove_idx is not None:
-            try:
-                idx = self._pending_remove_idx
-                if 0 <= idx < len(self.expedition.schedule.waypoints):
-                    self.expedition.schedule.waypoints.pop(idx)
-                    self.refresh_waypoint_widgets()
-            except Exception as e:
-                raise UnexpectedError(unexpected_msg_compose(e)) from None
-        self._pending_remove_idx = None
+        async def on_confirmed(confirmed: bool) -> None:
+            if confirmed and widget.is_attached:
+                try:
+                    await self._remove_waypoint_widget(widget)
+                except Exception as e:
+                    raise UnexpectedError(unexpected_msg_compose(e)) from None
+
+        message = f"Are you sure you want to remove {widget.get_title().lower()}?"
+        self.app.push_screen(ConfirmScreen(message), on_confirmed)
+
+    def on_waypoint_widget_copy_requested(
+        self, event: "WaypointWidget.CopyRequested"
+    ) -> None:
+        """Copy time (and instruments, between non-port waypoints) from the previous waypoint, not lat/lon."""
+        try:
+            widget = event.widget
+            idx = self._schedule_index(widget.waypoint)
+            if idx == 0:
+                return
+            previous, current = self.expedition.schedule.waypoints[idx - 1 : idx + 1]
+            current.time = previous.time
+            if not isinstance(current, Port) and not isinstance(previous, Port):
+                current.instrument = list(previous.instrument or [])
+            widget.load_from_model()
+        except Exception as e:
+            raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def show_hide_adcp_type(self, show: bool) -> None:
         self.query_one("#adcp_type_container").set_class(not show, "-hidden")
@@ -757,26 +749,24 @@ class ExpeditionEditor(Static):
         )
 
 
-class WaypointWidget(Static):
-    def __init__(self, waypoint: Waypoint, index: int):
+class WaypointBody(Vertical):
+    """The editable contents of a WaypointWidget. Only built when the waypoint is first expanded."""
+
+    def __init__(self, waypoint: Waypoint, show_copy_button: bool):
         super().__init__()
         self.waypoint = waypoint
-        self.index = index
-
-    def _get_coord_value(self, coord: float | None) -> str:
-        """Return coordinate as string or empty string if None."""
-        return str(coord) if coord is not None else ""
+        self.show_copy_button = show_copy_button
 
     def _yield_coordinate_input(
-        self, label: str, field: str, validator_fn, placeholder: str, wp_id: int
+        self, label: str, field: str, validator_fn, placeholder: str
     ) -> ComposeResult:
         """Yields a labeled coordinate input with its validation error label."""
         val = getattr(self.waypoint.location, field, None)
 
         yield Label(f"    {label}:")
         yield Input(
-            id=f"wp{wp_id}_{field}",
-            value=self._get_coord_value(val),
+            id=field,
+            value=str(val) if val is not None else "",
             validators=[
                 Function(
                     validator_fn,
@@ -787,27 +777,25 @@ class WaypointWidget(Static):
             placeholder=placeholder,
             classes=f"{field}itude-input",
         )
-        yield _failure_label(f"wp{wp_id}_{field}")
+        yield _failure_label(field)
 
-    def _yield_instrument_controls(self, wp_id: int) -> ComposeResult:
-        """Yields instrument controls if waypoint is not a Port."""
+    def _yield_instrument_controls(self) -> ComposeResult:
         yield Label("Instruments:")
 
-        for instrument in [i for i in InstrumentType if not i.is_underway]:
+        for instrument in DEPLOYABLE_INSTRUMENTS:
             is_selected = instrument in (self.waypoint.instrument or [])
             with Horizontal():
                 yield Label(instrument.value)
-                # Matches expected #inst_<INSTRUMENT> prefix or wp-indexed switch ID
-                yield Switch(
-                    value=is_selected,
-                    id=f"wp{wp_id}_{instrument.value}",
-                )
+                yield Switch(value=is_selected, id=instrument.value)
 
-                if instrument.value == "DRIFTER":
+                if instrument is InstrumentType.DRIFTER:
+                    drifter_count = (self.waypoint.instrument or []).count(
+                        InstrumentType.DRIFTER
+                    )
                     yield Label("Count")
                     yield Input(
-                        id=f"wp{wp_id}_drifter_count",
-                        value=str(self.get_drifter_count() if is_selected else ""),
+                        id="drifter_count",
+                        value=str(drifter_count) if is_selected else "",
                         type="integer",
                         placeholder="# of drifters",
                         validators=Integer(
@@ -816,61 +804,79 @@ class WaypointWidget(Static):
                         ),
                         classes="drifter-count-input",
                     )
-                    yield _failure_label(f"wp{wp_id}_drifter_count")
+                    yield _failure_label("drifter_count")
 
     def compose(self) -> ComposeResult:
-        try:
-            with Collapsible(
-                title=self.get_title(), collapsed=True, id=f"wp{self.index}"
-            ):
-                if self.index > 0:
-                    yield Button(
-                        self.get_copy_button_text(),
-                        id=f"wp{self.index}_copy",
-                        variant="warning",
-                    )
+        if self.show_copy_button:
+            yield Button(
+                "Copy Time from Previous"
+                if isinstance(self.waypoint, Port)
+                else "Copy Time & Instruments from Previous",
+                id="copy",
+                variant="warning",
+            )
 
-                yield Label("Location:")
-                yield from self._yield_coordinate_input(
-                    "Latitude", "lat", is_valid_lat, "°N", self.index
-                )
-                yield from self._yield_coordinate_input(
-                    "Longitude", "lon", is_valid_lon, "°E", self.index
-                )
+        yield Label("Location:")
+        yield from self._yield_coordinate_input("Latitude", "lat", is_valid_lat, "°N")
+        yield from self._yield_coordinate_input("Longitude", "lon", is_valid_lon, "°E")
 
-                yield Label("Time (YYYY-MM-DD hh:mm):")
-                yield MaskedInput(
-                    template=WAYPOINT_TIME_TEMPLATE,
-                    value=format_waypoint_time(self.waypoint.time),
-                    placeholder="YYYY-MM-DD hh:mm",
-                    id=f"wp{self.index}_time",
-                    validators=[
-                        Function(is_valid_waypoint_time, WAYPOINT_TIME_INVALID_MSG)
-                    ],
-                    valid_empty=True,
-                    classes="time-input",
-                )
-                yield _failure_label(f"wp{self.index}_time")
-                yield Horizontal(
-                    *(
-                        Button(label, id=button_id, variant=variant)
-                        for button_id, label, variant, _ in TIME_STEPS
-                    ),
-                    classes="time-adjust-buttons",
-                )
+        yield Label("Time (YYYY-MM-DD hh:mm):")
+        yield MaskedInput(
+            template=WAYPOINT_TIME_TEMPLATE,
+            value=format_waypoint_time(self.waypoint.time),
+            placeholder="YYYY-MM-DD hh:mm",
+            id="time",
+            validators=[Function(is_valid_waypoint_time, WAYPOINT_TIME_INVALID_MSG)],
+            valid_empty=True,
+            classes="time-input",
+        )
+        yield _failure_label("time")
+        yield Horizontal(
+            *(
+                Button(label, id=button_id, variant=variant)
+                for button_id, label, variant, _ in TIME_STEPS
+            ),
+            classes="time-adjust-buttons",
+        )
 
-                if not isinstance(self.waypoint, Port):
-                    yield from self._yield_instrument_controls(self.index)
-                    yield Horizontal(
-                        Button(
-                            "Remove Waypoint",
-                            id=f"wp{self.index}_remove",
-                            variant="error",
-                        )
-                    )
+        if not isinstance(self.waypoint, Port):
+            yield from self._yield_instrument_controls()
+            yield Horizontal(Button("Remove Waypoint", id="remove", variant="error"))
 
-        except Exception as e:
-            raise UnexpectedError(unexpected_msg_compose(e)) from None
+
+class WaypointWidget(Static):
+    """A waypoint in the schedule editor."""
+
+    class _Request(Message):
+        def __init__(self, widget: "WaypointWidget"):
+            super().__init__()
+            self.widget = widget
+
+    class RemoveRequested(_Request):
+        """Posted when the user asks to remove this waypoint."""
+
+    class CopyRequested(_Request):
+        """Posted when the user asks to copy time/instruments from the previous waypoint."""
+
+    def __init__(self, waypoint: Waypoint, index: int):
+        super().__init__()
+        self.waypoint = waypoint
+        self.index = index
+        self.errors: dict[str, str] = {}
+        self.body: WaypointBody | None = None
+
+    def compose(self) -> ComposeResult:
+        yield Collapsible(title=self.get_title(), collapsed=True)
+
+    @on(Collapsible.Expanded)
+    async def build_body(self, event: Collapsible.Expanded) -> None:
+        event.stop()
+        if self.body is None:
+            try:
+                self.body = WaypointBody(self.waypoint, show_copy_button=self.index > 0)
+                await self.query_one(Collapsible.Contents).mount(self.body)
+            except Exception as e:
+                raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def get_title(self) -> str:
         if isinstance(self.waypoint, Port):
@@ -878,80 +884,149 @@ class WaypointWidget(Static):
         else:
             return f"Waypoint {self.index}"
 
-    def get_copy_button_text(self) -> str:
-        if isinstance(self.waypoint, Port):
-            return "Copy Time from Previous"
-        else:
-            return "Copy Time & Instruments from Previous"
+    def set_index(self, index: int) -> None:
+        if index != self.index:
+            self.index = index
+            self.query_one(Collapsible).title = self.get_title()
 
-    def get_drifter_count(self) -> int:
-        return sum(
-            1 for inst in self.waypoint.instrument if inst == InstrumentType.DRIFTER
+    def load_from_model(self) -> None:
+        """Update the (built) controls to match the waypoint model's time and instruments."""
+        if self.body is None:
+            return  # built from the model when first expanded
+        self.body.query_one("#time", MaskedInput).value = format_waypoint_time(
+            self.waypoint.time
         )
+        if not isinstance(self.waypoint, Port):
+            instruments = self.waypoint.instrument or []
+            drifter_count = instruments.count(InstrumentType.DRIFTER)
+            self.body.query_one("#drifter_count", Input).value = (
+                str(drifter_count) if drifter_count else ""
+            )
+            for instrument in DEPLOYABLE_INSTRUMENTS:
+                self.body.query_one(f"#{instrument.value}", Switch).value = (
+                    instrument in instruments
+                )
 
-    def copy_from_previous(self) -> None:
-        """Copy inputs from previous waypoint widget (time and instruments only, not lat/lon)."""
+    # model updates
+
+    def _sync_location(self) -> None:
+        lat_text = self.body.query_one("#lat", Input).value.strip()
+        lon_text = self.body.query_one("#lon", Input).value.strip()
         try:
-            if self.index > 0:
-                schedule_editor = self.parent
-                if schedule_editor:
-                    prev_time = schedule_editor.query_one(
-                        f"#wp{self.index - 1}_time", MaskedInput
+            lat = float(lat_text) if lat_text else None
+            lon = float(lon_text) if lon_text else None
+            if (lat is None or lon is None) and not isinstance(self.waypoint, Port):
+                raise ValueError("Latitude and longitude are both required.")
+            if lat is None and lon is None:
+                # leave an existing null/empty location when unused port
+                location = self.waypoint.location or None
+                if location is not None and (
+                    location.latitude is not None or location.longitude is not None
+                ):
+                    location = Location(latitude=None, longitude=None)
+            else:
+                location = Location(latitude=lat, longitude=lon)
+        except ValueError as e:
+            message = str(e)
+            if message.startswith("could not convert"):
+                message = "Latitude and longitude must be numbers."
+            self.errors["location"] = message
+            return
+        self.errors.pop("location", None)
+        if location != self.waypoint.location:
+            self.waypoint.location = location
+
+    def _sync_time(self) -> None:
+        try:
+            time = parse_waypoint_time(self.body.query_one("#time", MaskedInput).value)
+        except ValueError:
+            self.errors["time"] = (
+                "Time must be a complete, real date and time (YYYY-MM-DD hh:mm)."
+            )
+            return
+        self.errors.pop("time", None)
+        current = self.waypoint.time
+        # only overwrite if the minute actually changed (keeps any seconds)
+        if time != (current.replace(second=0, microsecond=0) if current else None):
+            self.waypoint.time = time
+
+    def _sync_instruments(self) -> None:
+        if isinstance(self.waypoint, Port):
+            return
+        instruments = []
+        for instrument in DEPLOYABLE_INSTRUMENTS:
+            if not self.body.query_one(f"#{instrument.value}", Switch).value:
+                continue
+            if instrument is InstrumentType.DRIFTER:
+                try:
+                    count = int(self.body.query_one("#drifter_count", Input).value)
+                    if count < 1:
+                        raise ValueError
+                except ValueError:
+                    self.errors["drifter_count"] = (
+                        "Drifter count must be a whole number greater than 0."
                     )
-                    self.query_one(
-                        f"#wp{self.index}_time", MaskedInput
-                    ).value = prev_time.value
+                    return
+                instruments.extend([instrument] * count)
+            else:
+                instruments.append(instrument)
+        self.errors.pop("drifter_count", None)
+        # compare ignoring order, so an untouched waypoint's instrument order is left as loaded
+        if Counter(instruments) != Counter(self.waypoint.instrument or []):
+            self.waypoint.instrument = instruments
 
-                    if not isinstance(
-                        self.waypoint, Port
-                    ):  # only copy instruments for non-port waypoints
-                        for instrument in [
-                            inst for inst in InstrumentType if not inst.is_underway
-                        ]:
-                            try:
-                                prev_switch = schedule_editor.query_one(
-                                    f"#wp{self.index - 1}_{instrument.value}"
-                                )
-                            except NoMatches:
-                                # previous waypoint is a port so no instrument controls to copy
-                                break
-                            curr_switch = self.query_one(
-                                f"#wp{self.index}_{instrument.value}"
-                            )
-                            if prev_switch and curr_switch:
-                                curr_switch.value = prev_switch.value
+    # event handlers
 
-                    # hard update self.waypoint.time to match new value as shown in UI
-                    self.waypoint.time = parse_waypoint_time(prev_time.value)
+    @on(Input.Changed)
+    def input_changed(self, event: Input.Changed) -> None:
+        event.stop()
+        input_id = event.input.id
+        validation_result = event.validation_result
+        if input_id in ("lat", "lon"):
+            self._sync_location()
+        elif input_id == "time":
+            self._sync_time()
+        elif input_id == "drifter_count":
+            self._sync_instruments()
+            if not self.body.query_one("#DRIFTER", Switch).value:
+                # count is irrelevant while drifters are off
+                validation_result = None
+                event.input.remove_class("-valid", "-invalid")
 
-        except Exception as e:
-            raise UnexpectedError(unexpected_msg_compose(e)) from None
-
-    @on(Button.Pressed, "Button")
-    def button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == f"wp{self.index}_copy":
-            self.copy_from_previous()
+        try:
+            label = self.body.query_one(f"#validation-failure-label-{input_id}", Label)
+        except NoMatches:
+            return
+        show_validation_result(label, validation_result)
 
     @on(Switch.Changed)
-    def on_switch_changed(self, event: Switch.Changed) -> None:
-        if event.switch.id == f"wp{self.index}_DRIFTER":
-            drifter_count_input = self.query_one(
-                f"#wp{self.index}_drifter_count", Input
-            )
+    def switch_changed(self, event: Switch.Changed) -> None:
+        event.stop()
+        if event.switch.id == "DRIFTER":
+            drifter_count_input = self.body.query_one("#drifter_count", Input)
             if not event.value:
                 drifter_count_input.value = ""
-            else:
-                if not drifter_count_input.value:
-                    drifter_count_input.value = "1"
+            elif not drifter_count_input.value:
+                drifter_count_input.value = "1"
+        self._sync_instruments()
 
     @on(Button.Pressed)
-    def time_adjust_buttons(self, event: Button.Pressed) -> None:
-        step = next((s[3] for s in TIME_STEPS if s[0] == event.button.id), None)
-        if step is None:
-            return
-        time_input = self.query_one(f"#wp{self.index}_time", MaskedInput)
+    def button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        button_id = event.button.id
+        if button_id == "copy":
+            self.post_message(self.CopyRequested(self))
+        elif button_id == "remove":
+            self.post_message(self.RemoveRequested(self))
+        else:
+            step = next((s[3] for s in TIME_STEPS if s[0] == button_id), None)
+            if step is not None:
+                self._adjust_time(step)
+
+    def _adjust_time(self, step: datetime.timedelta) -> None:
+        time_input = self.body.query_one("#time", MaskedInput)
         try:
-            # from the box rather than the model, so typed edits and rapid presses are kept
+            # from the box rather than the model, so rapid presses accumulate properly
             time = parse_waypoint_time(time_input.value)
         except ValueError:
             time = None
@@ -962,8 +1037,8 @@ class WaypointWidget(Static):
                 timeout=20,
             )
             return
-        self.waypoint.time = time + step
-        time_input.value = format_waypoint_time(self.waypoint.time)
+        time_input.value = format_waypoint_time(time + step)
+        self._sync_time()
 
 
 class PlanScreen(Screen):
@@ -981,58 +1056,6 @@ class PlanScreen(Screen):
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    def sync_ui_waypoints(self):
-        """Update the waypoints models with current UI values from the live UI inputs."""
-        expedition_editor = self.query_one(ExpeditionEditor)
-        errors = []
-
-        for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
-            try:
-                wp.time = parse_waypoint_time(
-                    self.query_one(f"#wp{i}_time", MaskedInput).value
-                )
-
-                lat_val = expedition_editor.query_one(f"#wp{i}_lat").value
-                lon_val = expedition_editor.query_one(f"#wp{i}_lon").value
-
-                if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
-                    wp.location = Location(
-                        latitude=float(lat_val) if lat_val != "" else None,
-                        longitude=float(lon_val) if lon_val != "" else None,
-                    )
-                else:
-                    wp.location = Location(
-                        latitude=float(lat_val),
-                        longitude=float(lon_val),
-                    )
-
-                if not isinstance(wp, Port):
-                    wp.instrument = []
-
-                    for instrument in [
-                        inst for inst in InstrumentType if not inst.is_underway
-                    ]:
-                        switch_on = expedition_editor.query_one(
-                            f"#wp{i}_{instrument.value}", Switch
-                        ).value
-                        if instrument.value == "DRIFTER" and switch_on:
-                            count_str = expedition_editor.query_one(
-                                f"#wp{i}_drifter_count", Input
-                            ).value
-                            count = int(count_str)
-                            assert count > 0
-                            wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                        elif switch_on:
-                            wp.instrument.append(instrument)
-
-            except Exception as e:
-                errors.append(f"Waypoint {i + 1}: {e}")
-
-        if errors:
-            _raise_logged_unexpected(
-                Exception("\n".join(errors)), self.path, "Error syncing waypoints:"
-            )
-
     @on(Button.Pressed, "#exit_button")
     def exit_pressed(self) -> None:
         self.app.exit()
@@ -1040,37 +1063,27 @@ class PlanScreen(Screen):
     @on(Button.Pressed, "#save_button")
     def save_pressed(self) -> None:
         """Save button press."""
-        expedition_editor = self.query_one(ExpeditionEditor)
-
+        editor = self.query_one(ExpeditionEditor)
         try:
-            ship_speed_value = self.get_ship_speed(expedition_editor)
-            self.sync_ui_waypoints()
-
-            instruments_config = expedition_editor.expedition.instruments_config
-            schedule = expedition_editor.expedition.schedule
-
-            schedule.verify(ship_speed_value, instruments_config, ignore_land_test=True)
-
-            expedition_saved = expedition_editor.save_changes()
-
-            if expedition_saved:
-                self.notify(
-                    "Changes saved successfully",
-                    severity="information",
-                    timeout=20,
+            if waypoint_errors := editor.waypoint_errors():
+                raise UserError(
+                    "Some waypoint entries are invalid or incomplete:\n\n"
+                    + "\n".join(waypoint_errors)
                 )
-
+            ship_speed = self.get_ship_speed(editor)
+            schedule = editor.expedition.schedule
+            schedule.verify(
+                ship_speed, editor.expedition.instruments_config, ignore_land_test=True
+            )
+            if editor.save_changes():
+                self.notify(
+                    "Changes saved successfully", severity="information", timeout=20
+                )
             # check for incomplete ports and warn the user, but allow save to continue
-            if (
-                not schedule.departure_port.is_in_use
-                or not schedule.arrival_port.is_in_use
+            if not (
+                schedule.departure_port.is_in_use and schedule.arrival_port.is_in_use
             ):
-                self.notify(
-                    INCOMPLETE_PORT_MSG,
-                    severity="warning",
-                    timeout=20,
-                )
-
+                self.notify(INCOMPLETE_PORT_MSG, severity="warning", timeout=20)
         except Exception as e:
             self.notify(
                 f"*** Error saving changes ***:\n\n{e}\n",

@@ -9,10 +9,12 @@ from textual.widgets import Button, Collapsible, Input, Switch
 from virtualship.cli._plan import (
     ExpeditionEditor,
     PlanApp,
+    WaypointWidget,
     _default_sensors,
     parse_waypoint_time,
 )
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     CTDConfig,
     Expedition,
@@ -76,6 +78,18 @@ async def _expand_instrument_configs(
                 coll.collapsed = False
                 await pilot.pause()
                 break
+
+
+async def _expand_waypoint(expedition_editor, pilot, index: int) -> WaypointWidget:
+    """Expand the waypoint editor."""
+    waypoints_collapsible = expedition_editor.query_one("#waypoints", Collapsible)
+    if waypoints_collapsible.collapsed:
+        waypoints_collapsible.collapsed = False
+        await pilot.pause()
+    widget = expedition_editor.waypoint_widgets[index]
+    widget.query_one(Collapsible).collapsed = False
+    await pilot.pause()
+    return widget
 
 
 def _four_waypoint_schedule() -> list:
@@ -156,28 +170,22 @@ async def test_UI_changes(tmp_path):
         if waypoints_collapsible.collapsed:
             waypoints_collapsible.collapsed = False
             await pilot.pause()
-        wp_collapsible = waypoints_collapsible.query_one("#wp2", Collapsible)
-        if wp_collapsible.collapsed:
-            wp_collapsible.collapsed = False
-            await pilot.pause()
+        wp2 = await _expand_waypoint(expedition_editor, pilot, 2)
         lat_input, lon_input = (
-            wp_collapsible.query_one("#wp2_lat", Input),
-            wp_collapsible.query_one("#wp2_lon", Input),
+            wp2.query_one("#lat", Input),
+            wp2.query_one("#lon", Input),
         )
         await simulate_input(pilot, lat_input, NEW_LAT)
         await simulate_input(pilot, lon_input, NEW_LON)
 
-        # toggle CTD on first waypoint
-        await pilot.click("#wp1_CTD")
+        # toggle CTD and XBT on first waypoint
+        wp1 = await _expand_waypoint(expedition_editor, pilot, 1)
+        wp1.query_one("#CTD", Switch).toggle()
         await pilot.pause(0.1)
-
-        # toggle XBT on first waypoint
-        await pilot.click("#wp1_XBT")
+        wp1.query_one("#XBT", Switch).toggle()
         await pilot.pause(0.1)
 
         # re-collapse widget editors to make save button visible on screen
-        wp_collapsible.collapsed = True
-        await pilot.pause()
         waypoints_collapsible.collapsed = True
         await pilot.pause()
 
@@ -199,6 +207,11 @@ async def test_UI_changes(tmp_path):
             saved_expedition = yaml.safe_load(f)
 
         assert saved_expedition["ship_config"]["ship_speed_knots"] == float(NEW_SPEED)
+
+        saved_wps = Expedition.from_yaml(tmp_path / EXPEDITION).schedule.waypoints
+        assert saved_wps[2].location.lat == float(NEW_LAT)
+        assert saved_wps[2].location.lon == float(NEW_LON)
+        assert saved_wps[1].instrument == [InstrumentType.XBT]
 
         # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"
@@ -468,3 +481,136 @@ def test_parse_waypoint_time():
     for invalid in ("2023-06-", "2023-02-30 10:00", "2023-06-15 25:00"):
         with pytest.raises(ValueError):
             parse_waypoint_time(invalid)
+
+
+@pytest.mark.asyncio
+async def test_waypoint_controls_built_lazily(tmp_path):
+    """Waypoint controls are only built when a waypoint is first expanded."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        expedition_editor = pilot.app.screen.query_one(ExpeditionEditor)
+
+        widgets = expedition_editor.waypoint_widgets
+        assert len(widgets) == 5
+        assert all(w.body is None for w in widgets)
+        assert not list(expedition_editor.query("#lat"))
+
+        wp2 = await _expand_waypoint(expedition_editor, pilot, 2)
+        assert wp2.body is not None
+        assert wp2.query_one("#lat", Input).value == "0.01"
+        assert wp2.query_one("#time", Input).value == "2022-01-01 01:00"
+        assert sum(w.body is not None for w in expedition_editor.waypoint_widgets) == 1
+
+
+@pytest.mark.asyncio
+async def test_add_and_remove_waypoints_renumber(tmp_path):
+    """Adding/removing waypoints updates the schedule and renumbers titles without rebuilding the others."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        schedule = expedition_editor.expedition.schedule
+
+        # an expanded waypoint keeps its controls through add/remove
+        wp3 = await _expand_waypoint(expedition_editor, pilot, 3)
+
+        await expedition_editor.add_waypoint()
+        await pilot.pause()
+        titles = [w.get_title() for w in expedition_editor.waypoint_widgets]
+        assert titles == [
+            "Port of Departure",
+            "Waypoint 1",
+            "Waypoint 2",
+            "Waypoint 3",
+            "Waypoint 4",
+            "Port of Arrival",
+        ]
+        assert len(schedule.waypoints) == 6
+        # new waypoint copies the last waypoint's time, just before the arrival port
+        assert schedule.waypoints[4].time == datetime(2022, 1, 1, 2, 0, 0)
+
+        # remove waypoint 1 via its remove button, confirming in the dialog
+        wp1 = await _expand_waypoint(expedition_editor, pilot, 1)
+        wp1.query_one("#remove", Button).press()
+        await pilot.pause()
+        await pilot.click("#confirm-yes")
+        await pilot.pause()
+
+        widgets = expedition_editor.waypoint_widgets
+        assert len(widgets) == 5
+        assert len(schedule.waypoints) == 5
+        assert [w.get_title() for w in widgets][1:4] == [
+            "Waypoint 1",
+            "Waypoint 2",
+            "Waypoint 3",
+        ]
+        # the previously-expanded waypoint 3 is now waypoint 2, with the same controls
+        assert widgets[2] is wp3
+        assert wp3.query_one(Collapsible).title == "Waypoint 2"
+        assert schedule.waypoints[1].location.lat == 0.01
+
+        # remove last waypoint
+        await expedition_editor.remove_waypoint()
+        await pilot.pause()
+        assert len(schedule.waypoints) == 4
+
+        # reset restores the schedule as loaded
+        await expedition_editor.reset_changes()
+        await pilot.pause()
+        assert len(expedition_editor.waypoint_widgets) == 5
+        assert expedition_editor.expedition.schedule.waypoints[1].location.lat == 0.0
+
+
+@pytest.mark.asyncio
+async def test_waypoint_time_entry_and_adjust(tmp_path):
+    """Typed times and the +/- buttons update the waypoint, and invalid times block saving."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        wp = expedition_editor.expedition.schedule.waypoints
+
+        wp3 = await _expand_waypoint(expedition_editor, pilot, 3)
+        time_input = wp3.query_one("#time", Input)
+        await simulate_input(pilot, time_input, "202201011015")
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 10:15"
+        assert wp[3].time == datetime(2022, 1, 1, 10, 15)
+
+        wp3.query_one("#plus_one_hour", Button).press()
+        await pilot.pause()
+        wp3.query_one("#minus_thirty_minutes", Button).press()
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 10:45"
+        assert wp[3].time == datetime(2022, 1, 1, 10, 45)
+
+        # a non-existent date is flagged and blocks saving
+        await simulate_input(pilot, time_input, "202202301000")
+        await pilot.pause()
+        assert "time" in wp3.errors
+        plan_screen.save_pressed()
+        await pilot.pause()
+        args, _ = plan_screen.notify.call_args
+        assert "*** Error saving changes ***" in args[0]
+        assert "Waypoint 3" in args[0]
+
+        # copy from previous copies time and instruments, not location
+        wp[2].instrument = [InstrumentType.XBT]
+        wp3.query_one("#copy", Button).press()
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 01:00"
+        assert wp[3].time == datetime(2022, 1, 1, 1, 0)
+        assert wp[3].instrument == [InstrumentType.XBT]
+        assert wp3.query_one("#XBT", Switch).value is True
+        assert wp[3].location.lat == 0.02
+        assert not wp3.errors
