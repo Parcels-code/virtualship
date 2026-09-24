@@ -14,8 +14,8 @@ from textual.widgets import (
     Collapsible,
     Input,
     Label,
+    MaskedInput,
     Rule,
-    Select,
     Static,
     Switch,
 )
@@ -86,12 +86,40 @@ def _default_sensors(config_class) -> list:
     return sensors_field.default_factory()
 
 
-def parse_waypoint_datetime(year, month, day, hour, minute):
-    """Parses date/time values into a datetime object if all components are present."""
-    values = (year, month, day, hour, minute)
-    if all(v is not None and v != Select.NULL for v in values):
-        return datetime.datetime(*(int(v) for v in values))
-    return None
+WAYPOINT_TIME_FORMAT = "%Y-%m-%d %H:%M"
+WAYPOINT_TIME_TEMPLATE = "9999-99-99 99:99"
+WAYPOINT_TIME_INVALID_MSG = (
+    "INVALID: time must be a complete, real date and time (YYYY-MM-DD hh:mm)"
+)
+
+# waypoint time adjustment buttons (button id, label, variant, step)
+TIME_STEPS = (
+    ("plus_one_day", "+1 day", "primary", datetime.timedelta(days=1)),
+    ("plus_one_hour", "+1 hour", "primary", datetime.timedelta(hours=1)),
+    ("plus_thirty_minutes", "+30 minutes", "primary", datetime.timedelta(minutes=30)),
+    ("minus_one_day", "-1 day", "default", -datetime.timedelta(days=1)),
+    ("minus_one_hour", "-1 hour", "default", -datetime.timedelta(hours=1)),
+    ("minus_thirty_minutes", "-30 minutes", "default", -datetime.timedelta(minutes=30)),
+)
+
+
+def parse_waypoint_time(text: str) -> datetime.datetime | None:
+    """Parse 'YYYY-MM-DD hh:mm' string."""
+    if text.strip() == "":
+        return None
+    return datetime.datetime.strptime(text, WAYPOINT_TIME_FORMAT)
+
+
+def format_waypoint_time(time: datetime.datetime | None) -> str:
+    return time.strftime(WAYPOINT_TIME_FORMAT) if time else ""
+
+
+def is_valid_waypoint_time(text: str) -> bool:
+    try:
+        parse_waypoint_time(text)
+    except ValueError:
+        return False
+    return True
 
 
 def _failure_label(input_id: str) -> Label:
@@ -532,12 +560,8 @@ class ExpeditionEditor(Static):
 
     def _update_schedule(self):
         for i, wp in enumerate(self.expedition.schedule.waypoints):
-            wp.time = parse_waypoint_datetime(
-                self.query_one(f"#wp{i}_year", Select).value,
-                self.query_one(f"#wp{i}_month", Select).value,
-                self.query_one(f"#wp{i}_day", Select).value,
-                self.query_one(f"#wp{i}_hour", Select).value,
-                self.query_one(f"#wp{i}_minute", Select).value,
+            wp.time = parse_waypoint_time(
+                self.query_one(f"#wp{i}_time", MaskedInput).value
             )
 
             lat_val = self.query_one(f"#wp{i}_lat").value
@@ -743,14 +767,6 @@ class WaypointWidget(Static):
         """Return coordinate as string or empty string if None."""
         return str(coord) if coord is not None else ""
 
-    def _get_minute_options(self) -> list[tuple[str, int]]:
-        """Generate minute options, inserting current minute if non-multiple of 5."""
-        options = {(f"{m:02d}", m) for m in range(0, 60, 5)}
-        if self.waypoint.time and self.waypoint.time.minute % 5 != 0:
-            m = self.waypoint.time.minute
-            options.add((f"{m:02d}", m))
-        return sorted(list(options), key=lambda x: x[1])
-
     def _yield_coordinate_input(
         self, label: str, field: str, validator_fn, placeholder: str, wp_id: int
     ) -> ComposeResult:
@@ -772,51 +788,6 @@ class WaypointWidget(Static):
             classes=f"{field}itude-input",
         )
         yield _failure_label(f"wp{wp_id}_{field}")
-
-    def _yield_time_selectors(self, wp_id: int) -> ComposeResult:
-        """Yields year, month, day, hour, and minute Select controls."""
-        time = self.waypoint.time
-
-        yield Label("Year:")
-        yield Select(
-            [(str(y), y) for y in range(1993, datetime.datetime.now().year + 1)],
-            id=f"wp{wp_id}_year",
-            value=time.year if time else Select.NULL,
-            prompt="YYYY",
-            classes="year-select",
-        )
-        yield Label("Month:")
-        yield Select(
-            [(f"{m:02d}", m) for m in range(1, 13)],
-            id=f"wp{wp_id}_month",
-            value=time.month if time else Select.NULL,
-            prompt="MM",
-            classes="month-select",
-        )
-        yield Label("Day:")
-        yield Select(
-            [(f"{d:02d}", d) for d in range(1, 32)],
-            id=f"wp{wp_id}_day",
-            value=time.day if time else Select.NULL,
-            prompt="DD",
-            classes="day-select",
-        )
-        yield Label("Hour:")
-        yield Select(
-            [(f"{h:02d}", h) for h in range(24)],
-            id=f"wp{wp_id}_hour",
-            value=time.hour if time else Select.NULL,
-            prompt="hh",
-            classes="hour-select",
-        )
-        yield Label("Min:")
-        yield Select(
-            self._get_minute_options(),
-            id=f"wp{wp_id}_minute",
-            value=time.minute if time else Select.NULL,
-            prompt="mm",
-            classes="minute-select",
-        )
 
     def _yield_instrument_controls(self, wp_id: int) -> ComposeResult:
         """Yields instrument controls if waypoint is not a Port."""
@@ -867,17 +838,24 @@ class WaypointWidget(Static):
                     "Longitude", "lon", is_valid_lon, "°E", self.index
                 )
 
-                yield Label("Time:")
-                with Horizontal():
-                    yield from self._yield_time_selectors(self.index)
-
+                yield Label("Time (YYYY-MM-DD hh:mm):")
+                yield MaskedInput(
+                    template=WAYPOINT_TIME_TEMPLATE,
+                    value=format_waypoint_time(self.waypoint.time),
+                    placeholder="YYYY-MM-DD hh:mm",
+                    id=f"wp{self.index}_time",
+                    validators=[
+                        Function(is_valid_waypoint_time, WAYPOINT_TIME_INVALID_MSG)
+                    ],
+                    valid_empty=True,
+                    classes="time-input",
+                )
+                yield _failure_label(f"wp{self.index}_time")
                 yield Horizontal(
-                    Button("+1 day", id="plus_one_day", variant="primary"),
-                    Button("+1 hour", id="plus_one_hour", variant="primary"),
-                    Button("+30 minutes", id="plus_thirty_minutes", variant="primary"),
-                    Button("-1 day", id="minus_one_day", variant="default"),
-                    Button("-1 hour", id="minus_one_hour", variant="default"),
-                    Button("-30 minutes", id="minus_thirty_minutes", variant="default"),
+                    *(
+                        Button(label, id=button_id, variant=variant)
+                        for button_id, label, variant, _ in TIME_STEPS
+                    ),
                     classes="time-adjust-buttons",
                 )
 
@@ -917,20 +895,12 @@ class WaypointWidget(Static):
             if self.index > 0:
                 schedule_editor = self.parent
                 if schedule_editor:
-                    time_components = ["year", "month", "day", "hour", "minute"]
-                    for comp in time_components:
-                        prev = schedule_editor.query_one(f"#wp{self.index - 1}_{comp}")
-                        curr = self.query_one(f"#wp{self.index}_{comp}")
-                        if prev and curr:
-                            if (
-                                comp == "minute"
-                            ):  # special handle minute, round to nearest 5 for compatibility with options
-                                minute_value = prev.value
-                                if minute_value % 5 != 0:
-                                    minute_value = 5 * round(minute_value / 5)
-                                curr.value = minute_value
-                            else:
-                                curr.value = prev.value
+                    prev_time = schedule_editor.query_one(
+                        f"#wp{self.index - 1}_time", MaskedInput
+                    )
+                    self.query_one(
+                        f"#wp{self.index}_time", MaskedInput
+                    ).value = prev_time.value
 
                     if not isinstance(
                         self.waypoint, Port
@@ -951,15 +921,8 @@ class WaypointWidget(Static):
                             if prev_switch and curr_switch:
                                 curr_switch.value = prev_switch.value
 
-                    # hard update self.waypoint.time to match new values as shown in UI
-                    year = int(self.query_one(f"#wp{self.index}_year").value)
-                    month = int(self.query_one(f"#wp{self.index}_month").value)
-                    day = int(self.query_one(f"#wp{self.index}_day").value)
-                    hour = int(self.query_one(f"#wp{self.index}_hour").value)
-                    minute = int(self.query_one(f"#wp{self.index}_minute").value)
-                    self.waypoint.time = datetime.datetime(
-                        year, month, day, hour, minute, 0
-                    )
+                    # hard update self.waypoint.time to match new value as shown in UI
+                    self.waypoint.time = parse_waypoint_time(prev_time.value)
 
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
@@ -981,58 +944,26 @@ class WaypointWidget(Static):
                 if not drifter_count_input.value:
                     drifter_count_input.value = "1"
 
-    # fmt: off
-    def update_time(self) -> None:
-        """Update the time selects to match the current waypoint time."""
-        self.query_one(f"#wp{self.index}_year", Select).value = self.waypoint.time.year
-        self.query_one(f"#wp{self.index}_month", Select).value = self.waypoint.time.month
-        self.query_one(f"#wp{self.index}_day", Select).value = self.waypoint.time.day
-        self.query_one(f"#wp{self.index}_hour", Select).value = self.waypoint.time.hour
-        self.query_one(f"#wp{self.index}_minute", Select).value = self.waypoint.time.minute
-    # fmt: on
-
-    def round_minutes(self) -> None:
-        """Round the waypoint time minutes to the nearest 5 minutes, for compatability with UI selection fields."""
-        if self.waypoint.time:
-            minute = self.waypoint.time.minute
-            if minute % 5 == 0:
-                return
-            else:
-                rounded_minute = 5 * round(minute / 5)
-                if rounded_minute == 60:  # increment hour
-                    self.waypoint.time += datetime.timedelta(hours=1)
-                    rounded_minute = 0
-                self.waypoint.time = self.waypoint.time.replace(minute=rounded_minute)
-
     @on(Button.Pressed)
     def time_adjust_buttons(self, event: Button.Pressed) -> None:
-        if self.waypoint.time:
-            if event.button.id == "plus_one_day":
-                self.waypoint.time += datetime.timedelta(days=1)
-                self.update_time()
-            if event.button.id == "plus_one_hour":
-                self.waypoint.time += datetime.timedelta(hours=1)
-                self.update_time()
-            elif event.button.id == "plus_thirty_minutes":
-                self.waypoint.time += datetime.timedelta(minutes=30)
-                self.round_minutes()
-                self.update_time()
-            elif event.button.id == "minus_one_day":
-                self.waypoint.time -= datetime.timedelta(days=1)
-                self.update_time()
-            elif event.button.id == "minus_one_hour":
-                self.waypoint.time -= datetime.timedelta(hours=1)
-                self.update_time()
-            elif event.button.id == "minus_thirty_minutes":
-                self.waypoint.time -= datetime.timedelta(minutes=30)
-                self.round_minutes()
-                self.update_time()
-        else:
+        step = next((s[3] for s in TIME_STEPS if s[0] == event.button.id), None)
+        if step is None:
+            return
+        time_input = self.query_one(f"#wp{self.index}_time", MaskedInput)
+        try:
+            # from the box rather than the model, so typed edits and rapid presses are kept
+            time = parse_waypoint_time(time_input.value)
+        except ValueError:
+            time = None
+        if time is None:
             self.notify(
-                "Cannot adjust time: Time is not set for this waypoint.",
+                "Cannot adjust time: a complete time is not set for this waypoint.",
                 severity="error",
                 timeout=20,
             )
+            return
+        self.waypoint.time = time + step
+        time_input.value = format_waypoint_time(self.waypoint.time)
 
 
 class PlanScreen(Screen):
@@ -1057,12 +988,8 @@ class PlanScreen(Screen):
 
         for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
             try:
-                wp.time = parse_waypoint_datetime(
-                    self.query_one(f"#wp{i}_year", Select).value,
-                    self.query_one(f"#wp{i}_month", Select).value,
-                    self.query_one(f"#wp{i}_day", Select).value,
-                    self.query_one(f"#wp{i}_hour", Select).value,
-                    self.query_one(f"#wp{i}_minute", Select).value,
+                wp.time = parse_waypoint_time(
+                    self.query_one(f"#wp{i}_time", MaskedInput).value
                 )
 
                 lat_val = expedition_editor.query_one(f"#wp{i}_lat").value
@@ -1340,16 +1267,8 @@ class PlanApp(App):
         color: $text-muted;
     }
 
-    .year-select {
-        width: 20;
-    }
-
-    .month-select, .day-select {
-        width: 18;
-    }
-
-    .hour-select, .minute-select {
-        width: 15;
+    .time-input {
+        width: 24;
     }
 
     Label.validation-failure {

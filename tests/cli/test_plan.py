@@ -6,7 +6,12 @@ import pytest
 import yaml
 from textual.widgets import Button, Collapsible, Input, Switch
 
-from virtualship.cli._plan import ExpeditionEditor, PlanApp, _default_sensors
+from virtualship.cli._plan import (
+    ExpeditionEditor,
+    PlanApp,
+    _default_sensors,
+    parse_waypoint_time,
+)
 from virtualship.instruments.sensors import SensorType
 from virtualship.models import (
     CTDConfig,
@@ -455,3 +460,11 @@ async def test_adcp_type_always_exactly_one_selected(tmp_path):
         saved = Expedition.from_yaml(tmp_path / EXPEDITION)
         expected = -1000.0 if deep.value else -150.0
         assert saved.instruments_config.adcp_config.max_depth_meter == expected
+
+
+def test_parse_waypoint_time():
+    assert parse_waypoint_time("") is None
+    assert parse_waypoint_time("2023-06-15 10:30") == datetime(2023, 6, 15, 10, 30)
+    for invalid in ("2023-06-", "2023-02-30 10:00", "2023-06-15 25:00"):
+        with pytest.raises(ValueError):
+            parse_waypoint_time(invalid)

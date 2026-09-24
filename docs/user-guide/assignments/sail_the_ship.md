@@ -142,7 +142,7 @@ VirtualShip supports running experiments in the years 1993 through to the presen
 
 If you provided a `--start-date` during initialisation from an MFP export, each waypoint's time will already be pre-filled, based on MFP's estimated travel and station durations relative to your start date. You can review and adjust these under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
 
-Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
+Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted or edited in the format `YYYY-MM-DD hh:mm` (e.g. `2023-06-15 14:30`). There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
 
 ```{note}
 Your Port of Departure and Port of Arrival (if set in MFP) appear as special waypoints in this list. They have no instrument selection options and cannot be added or removed.
