@@ -15,7 +15,6 @@ from virtualship.utils import (
     EXPEDITION,
     PROJECTION,
     _calc_sail_time,
-    _calc_wp_stationkeeping_time,
     _get_public_wp,
     _read_json,
     _write_json,
@@ -102,7 +101,7 @@ class Checkpoint(pydantic.BaseModel):
             problem_waypoint = new_schedule.waypoints[problem_wp_i]
 
             stationkeeping_time = (
-                _calc_wp_stationkeeping_time(problem_waypoint.instrument, expedition)
+                problem_waypoint.stationkeeping_time(expedition.instruments_config)
                 if not isinstance(problem_waypoint, Port)
                 else timedelta(0)
             )

@@ -9,6 +9,7 @@ import pytest
 import xarray as xr
 
 from virtualship.errors import InstrumentsConfigError, ScheduleError
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     Expedition,
     Location,
@@ -74,6 +75,53 @@ def test_get_instruments(base_expedition) -> None:
         "ARGO_FLOAT",
         "DRIFTER",
     }
+
+
+def test_waypoint_stationkeeping_time(expedition) -> None:
+    """Waypoint.stationkeeping_time sums the stationkeeping time of each unique instrument config present and not duplicating repeated instruments (e.g. multiple drifters)."""
+    instruments_config = expedition.instruments_config
+
+    waypoint = Waypoint(
+        location=Location(0, 0),
+        instrument=[
+            InstrumentType.CTD,
+            InstrumentType.ARGO_FLOAT,
+            InstrumentType.XBT,  # has no stationkeeping time, should be ignored
+            InstrumentType.DRIFTER,
+            InstrumentType.DRIFTER,  # two drifter deployments
+        ],
+    )
+
+    expected = (
+        instruments_config.ctd_config.stationkeeping_time
+        + instruments_config.argo_float_config.stationkeeping_time
+        + instruments_config.drifter_config.stationkeeping_time
+    )
+    assert waypoint.stationkeeping_time(instruments_config) == expected
+
+
+def test_waypoint_stationkeeping_time_single_instrument(expedition) -> None:
+    """A bare (non-list) InstrumentType value on a waypoint is handled the same as a single element list."""
+    instruments_config = expedition.instruments_config
+
+    waypoint = Waypoint(location=Location(0, 0), instrument=InstrumentType.CTD)
+
+    assert (
+        waypoint.stationkeeping_time(instruments_config)
+        == instruments_config.ctd_config.stationkeeping_time
+    )
+
+
+def test_waypoint_stationkeeping_time_no_instruments(expedition) -> None:
+    """Waypoints with no instruments (None or empty list) have zero stationkeeping time."""
+    instruments_config = expedition.instruments_config
+
+    assert Waypoint(location=Location(0, 0), instrument=None).stationkeeping_time(
+        instruments_config
+    ) == timedelta(0)
+    assert Waypoint(location=Location(0, 0), instrument=[]).stationkeeping_time(
+        instruments_config
+    ) == timedelta(0)
 
 
 def test_verify_on_land(base_expedition):
