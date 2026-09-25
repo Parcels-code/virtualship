@@ -29,6 +29,7 @@ pyyaml = "*"
 copernicusmarine = ">=2.2.2"
 yaspin = "*"
 textual = "*"
+parcels = ">=4"
 
 [dependencies]
 virtualship = { path = "." }
@@ -47,9 +48,7 @@ cartopy = "*"
 shapely = "*"
 geopandas = "*"
 scipy = "*"
-
-[pypi-dependencies]
-parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
+parcels = ">=4"
 
 [feature.py311.dependencies]
 python = "3.11.*"

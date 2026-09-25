@@ -14,8 +14,8 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
+    INSTRUMENT_CONFIG_MAP,
     _calc_sail_time,
-    _calc_wp_stationkeeping_time,
     _get_bathy_data,
     _get_public_wp,
     _validate_numeric_to_timedelta,
@@ -235,9 +235,10 @@ class Schedule(pydantic.BaseModel):
         time = wps_in_use[0].time
 
         for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
-            stationkeeping_time = _calc_wp_stationkeeping_time(
-                wp.instrument if isinstance(wp, Waypoint) else None,
-                instruments_config,
+            stationkeeping_time = (
+                wp.stationkeeping_time(instruments_config)
+                if isinstance(wp, Waypoint)
+                else timedelta()
             )
 
             time_to_reach = _calc_sail_time(
@@ -317,6 +318,39 @@ class Waypoint(pydantic.BaseModel):
         if isinstance(instrument, list):
             return [inst.value for inst in instrument]
         return instrument.value if instrument else None
+
+    def stationkeeping_time(
+        self,
+        instruments_config: InstrumentsConfig,
+        instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
+    ) -> timedelta:
+        """Calculate how much time is required to carry out all instrument deployments at this waypoint."""
+        wp_instruments = (
+            self.instrument
+            if isinstance(self.instrument, list)
+            else ([self.instrument] if self.instrument else [])  # safe handling of None
+        )
+
+        valid_instrument_configs = [
+            iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
+        ]
+
+        wp_instrument_configs = []
+        for iconfig in valid_instrument_configs:
+            for instr in wp_instruments:
+                if (
+                    instrument_config_map.get(instr) == iconfig.__class__.__name__
+                    and iconfig
+                    not in wp_instrument_configs  # avoid duplicates (would happen when multiple drifter deployments at same wp)
+                ):
+                    wp_instrument_configs.append(iconfig)
+
+        cumulative_stationkeeping_time = timedelta()
+        for iconfig in wp_instrument_configs:
+            if hasattr(iconfig, "stationkeeping_time"):
+                cumulative_stationkeeping_time += iconfig.stationkeeping_time
+
+        return cumulative_stationkeeping_time
 
 
 ##
