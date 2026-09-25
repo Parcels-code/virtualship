@@ -57,7 +57,11 @@ def _make_simple_expedition(
 
     schedule = Schedule(waypoints=waypoints)
     instruments = InstrumentsConfig()
-    ship = ShipConfig(ship_speed_knots=10.0)
+    ship = ShipConfig(
+        ship_speed_knots=10.0,
+        deceleration_time_minutes=15.0,
+        acceleration_time_minutes=15.0,
+    )
     return Expedition(
         schedule=schedule, instruments_config=instruments, ship_config=ship
     )

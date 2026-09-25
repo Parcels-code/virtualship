@@ -53,3 +53,5 @@ instruments_config:
     period_minutes: 5.0
 ship_config:
   ship_speed_knots: 10.0
+  deceleration_time_minutes: 15.0
+  acceleration_time_minutes: 15.0
