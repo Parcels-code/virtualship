@@ -32,7 +32,7 @@ dependencies = [
     "copernicusmarine>=2.2.2",
     "yaspin",
     "textual",
-    "parcels",
+    "parcels>=4",
 ]
 
 [project.urls]
