@@ -34,7 +34,7 @@ from virtualship.utils import (
 
 if TYPE_CHECKING:
     from virtualship.instruments.sensors import SensorType
-    from virtualship.models import Expedition, Waypoint
+    from virtualship.models import Expedition, Waypoint, _InstrumentConfigMixin
 
 
 @dataclass(frozen=True)
@@ -159,6 +159,13 @@ class Instrument(abc.ABC):
             fieldset.UV = uv
 
         return fieldset
+
+    @classmethod
+    @abc.abstractmethod
+    def deployment_time(
+        cls, config: _InstrumentConfigMixin, seabed_depth: float | None
+    ) -> timedelta:
+        """How long one deployment holds the ship on station, beyond slowing down and speeding up."""
 
     @abc.abstractmethod
     def simulate(
@@ -401,6 +408,13 @@ class UnderwayCoordinates:
 
 class UnderwayInstrument(Instrument):
     """Intermediate base class for underway instruments, which perform variable sampling without ParticleSets."""
+
+    @classmethod
+    def deployment_time(
+        cls, config: _InstrumentConfigMixin, seabed_depth: float | None
+    ) -> timedelta:
+        """Samples continuously while the ship is under way, so never holds it at a waypoint."""
+        return timedelta()
 
     def _sample_underway(
         self,

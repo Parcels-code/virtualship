@@ -380,6 +380,9 @@ class Waypoint(pydantic.BaseModel):
     location: Location
     time: datetime | None = None
     instrument: InstrumentType | list[InstrumentType] | None = None
+    sea_depth_meter: float | None = pydantic.Field(
+        default=None, le=0.0
+    )  # estimated depth from MFP, if available. If None, instrument deployment times costed against configured max depth, thus over-estimateing rather than under-estimating than under-estimating.
 
     @pydantic.field_serializer("instrument")
     def serialize_instrument(self, instrument):
@@ -567,6 +570,7 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     )
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
+    winch_speed_meter_per_second: float = pydantic.Field(gt=0.0)
 
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [

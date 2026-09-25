@@ -263,6 +263,11 @@ class ArgoFloatInstrument(Instrument):
             from_data=from_data,
         )
 
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Released and left behind, so no additional stationkeeping time."""
+        return timedelta()
+
     def simulate(self, measurements, out_path) -> None:
         """Simulate Argo float measurements."""
         DT = 60.0 * 5  # dt of Argo float simulation integrator [seconds]

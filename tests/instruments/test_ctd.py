@@ -54,6 +54,7 @@ def create_dummy_expedition(
         instruments_config = InstrumentsConfig(
             ctd_config=CTDConfig(
                 stationkeeping_time_minutes=STATIONKEEPING_TIME,
+                winch_speed_meter_per_second=1.0,
                 min_depth_meter=MIN_DEPTH,
                 max_depth_meter=MAX_DEPTH,
                 sensors=sensors,
@@ -329,6 +330,7 @@ def test_ctd_sensor_config_active_variables() -> None:
     """active_variables() only returns variables for enabled sensors."""
     config_both = CTDConfig(
         stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[
@@ -340,6 +342,7 @@ def test_ctd_sensor_config_active_variables() -> None:
 
     config_temp_only = CTDConfig(
         stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[
@@ -353,6 +356,7 @@ def test_ctd_sensor_config_yaml() -> None:
     """CTDConfig sensors survive YAML serialisation."""
     config = CTDConfig(
         stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[
@@ -437,6 +441,7 @@ def test_ctd_config_default_sensors():
     """CTDConfig defaults to all supported sensors (phys + bgc)."""
     config = CTDConfig(
         stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
     )
@@ -460,6 +465,7 @@ def test_ctd_config_unsupported_sensor_rejected():
     with pytest.raises(pydantic.ValidationError, match="does not support"):
         CTDConfig(
             stationkeeping_time_minutes=50,
+            winch_speed_meter_per_second=1.0,
             min_depth_meter=-11.0,
             max_depth_meter=-2000.0,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],

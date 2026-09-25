@@ -232,6 +232,7 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},
+            {"name": "winch_speed_meter_per_second"},
             {"name": "stationkeeping_time", "minutes": True},
         ],
     },

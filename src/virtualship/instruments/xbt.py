@@ -103,6 +103,11 @@ class XBTInstrument(Instrument):
             from_data=from_data,
         )
 
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Dropped over the side and not recovered, so no additional stationkeeping times."""
+        return timedelta()
+
     def simulate(self, measurements, out_path) -> None:
         """Simulate XBT measurements."""
         DT = 10.0  # dt of XBT simulation integrator

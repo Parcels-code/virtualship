@@ -100,6 +100,11 @@ class DrifterInstrument(Instrument):
             from_data=from_data,
         )
 
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Released and left behind, so no additional stationkeeping time."""
+        return timedelta()
+
     def simulate(self, measurements, out_path) -> None:
         """Simulate Drifter measurements."""
         OUTPUT_DT = timedelta(hours=5)

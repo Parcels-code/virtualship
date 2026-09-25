@@ -39,6 +39,10 @@ def dummy_instrument():
     class DummyInstrument(Instrument):
         sensor_kernels = {}  # noqa
 
+        @classmethod
+        def deployment_time(cls, config, seabed_depth):
+            return datetime.timedelta()
+
         def simulate(self, measurements, out_path):
             pass
 

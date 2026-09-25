@@ -282,7 +282,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
     )
 
     app = PlanApp(path=tmp_path)
-    async with app.run_test(size=(160, 120)) as pilot:
+    async with app.run_test(size=(160, 140)) as pilot:
         await pilot.pause(0.5)
         plan_screen = pilot.app.screen
         plan_screen.notify = MagicMock()
@@ -408,6 +408,7 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
     """Sensor switches should reflect the enabled sensors already stored in the config."""
     ctd_config = CTDConfig(
         stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],

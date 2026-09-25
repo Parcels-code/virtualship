@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import ClassVar
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -152,6 +152,11 @@ class DummyInstrument(Instrument):
     """Minimal concrete Instrument for testing."""
 
     sensor_kernels = {}  # noqa
+
+    @classmethod
+    def deployment_time(cls, config, seabed_depth):
+        """Dummy deployment time for test."""
+        return timedelta()
 
     def simulate(self, measurements, out_path):
         """Dummy simulate implementation for test."""
@@ -415,6 +420,22 @@ def test_register_instrument_without_sensor_kernels_error(isolated_registry):
 
         @register_instrument(InstrumentType.CTD)
         class ErrorInstrument(Instrument):
+            @classmethod
+            def deployment_time(cls, config, seabed_depth):
+                return timedelta()
+
+            def simulate(self, measurements, out_path):
+                pass
+
+
+def test_register_instrument_without_deployment_time_error(isolated_registry):
+    """Registering an instrument that leaves deployment_time unimplemented raises TypeError."""
+    with pytest.raises(TypeError, match="deployment_time"):
+
+        @register_instrument(InstrumentType.CTD)
+        class ErrorInstrument(Instrument):
+            sensor_kernels = {}  # noqa
+
             def simulate(self, measurements, out_path):
                 pass
 
