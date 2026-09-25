@@ -458,13 +458,11 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
         return SensorConfig.build_variables(self.sensors)
 
-    @pydantic.field_serializer("stationkeeping_time", "period", check_fields=False)
+    @pydantic.field_serializer("period", check_fields=False)
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
-    @pydantic.field_validator(
-        "stationkeeping_time", "period", mode="before", check_fields=False
-    )
+    @pydantic.field_validator("period", mode="before", check_fields=False)
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
@@ -497,12 +495,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         gt=timedelta(),
     )
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
@@ -513,7 +505,7 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     @pydantic.model_validator(mode="after")
     def _drift_days_less_than_cycle_days(self) -> ArgoFloatConfig:
@@ -547,7 +539,7 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     def active_variables(self) -> dict[str, str]:
         """
@@ -569,11 +561,6 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD
     _instrument_name: ClassVar[str] = "CTD"
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
     winch_speed_meter_per_second: float = pydantic.Field(gt=0.0)
@@ -595,7 +582,7 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
@@ -620,7 +607,7 @@ class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
@@ -635,18 +622,12 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         validation_alias="lifetime_days",
         gt=timedelta(),
     )
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the drifter. Supported: TEMPERATURE. "),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
@@ -664,6 +645,8 @@ class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the XBT. Supported: TEMPERATURE. "),
     )
+
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class InstrumentsConfig(pydantic.BaseModel):

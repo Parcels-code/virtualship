@@ -36,7 +36,6 @@ MAX_DEPTH = -2000
 VERTICAL_SPEED = -0.10
 CYCLE_DAYS = 10
 DRIFT_DAYS = 9
-STATIONKEEPING_TIME = 10
 
 
 @pytest.fixture
@@ -49,7 +48,6 @@ def argo_config_kwargs():
         "vertical_speed_meter_per_second": VERTICAL_SPEED,
         "cycle_days": CYCLE_DAYS,
         "drift_days": DRIFT_DAYS,
-        "stationkeeping_time_minutes": STATIONKEEPING_TIME,
     }
 
 
@@ -162,7 +160,6 @@ def create_dummy_expedition(sensors, lifetime=timedelta(days=1), location=(1, 2)
                 cycle_days=CYCLE_DAYS,
                 drift_days=DRIFT_DAYS,
                 lifetime=lifetime,
-                stationkeeping_time_minutes=STATIONKEEPING_TIME,
                 sensors=sensors,
             )
         )

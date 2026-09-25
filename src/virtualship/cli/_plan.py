@@ -233,7 +233,6 @@ INSTRUMENT_FIELDS = {
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},
             {"name": "winch_speed_meter_per_second"},
-            {"name": "stationkeeping_time", "minutes": True},
         ],
     },
     "xbt_config": {
@@ -258,7 +257,6 @@ INSTRUMENT_FIELDS = {
             {"name": "vertical_speed_meter_per_second"},
             {"name": "cycle_days"},
             {"name": "drift_days"},
-            {"name": "stationkeeping_time", "minutes": True},
             {"name": "lifetime", "days": True},
         ],
     },
@@ -269,7 +267,6 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "depth_meter"},
             {"name": "lifetime", "days": True},
-            {"name": "stationkeeping_time", "minutes": True},
         ],
     },
 }

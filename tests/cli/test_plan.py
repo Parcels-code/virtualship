@@ -407,7 +407,6 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
 async def test_sensor_initial_state_reflects_config(tmp_path):
     """Sensor switches should reflect the enabled sensors already stored in the config."""
     ctd_config = CTDConfig(
-        stationkeeping_time_minutes=50,
         winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
