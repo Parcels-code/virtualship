@@ -21,7 +21,6 @@ from virtualship.utils import (
     _validate_numeric_to_timedelta,
     get_instrument_class,
     get_supported_sensors,
-    register_instrument_config,
 )
 
 from .location import Location
@@ -480,7 +479,6 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "days")
 
 
-@register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for argos floats."""
 
@@ -527,7 +525,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return self
 
 
-@register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for ADCP instrument."""
 
@@ -566,7 +563,6 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return variables
 
 
-@register_instrument_config(InstrumentType.CTD)
 class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for CTD instrument."""
 
@@ -602,7 +598,6 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
-@register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for underwater ST."""
 
@@ -628,7 +623,6 @@ class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
-@register_instrument_config(InstrumentType.DRIFTER)
 class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for drifters."""
 
@@ -655,7 +649,6 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     model_config = pydantic.ConfigDict(populate_by_name=True)
 
 
-@register_instrument_config(InstrumentType.XBT)
 class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for xbt instrument."""
 

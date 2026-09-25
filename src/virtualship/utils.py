@@ -163,18 +163,6 @@ def get_supported_sensors(instrument_type):
     return supported
 
 
-# map for instrument type to instrument config (pydantic basemodel) names
-INSTRUMENT_CONFIG_MAP = {}
-
-
-def register_instrument_config(instrument_type):
-    def decorator(cls):
-        INSTRUMENT_CONFIG_MAP[instrument_type] = cls.__name__
-        return cls
-
-    return decorator
-
-
 # =====================================================
 # SECTION: helper functions
 # =====================================================
