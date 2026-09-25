@@ -4,7 +4,6 @@ import abc
 import collections
 import inspect
 import itertools
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -23,6 +22,7 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
     COPERNICUSMARINE_PHYS_VARIABLES,
     INSTRUMENT_CLASS_MAP,
+    MAX_CACHE_BYTES,
     _find_files_in_timerange,
     _find_nc_file_with_variable,
     _get_bathy_data,
@@ -119,7 +119,6 @@ class Instrument(abc.ABC):
         self.add_bathymetry = add_bathymetry
         self.verbose_progress = verbose_progress
         self.fetch_spec = fetch_spec if fetch_spec is not None else FetchSpec()
-        self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
         # filter to waypoints relevant to this instrument
         wps_in_use = self.expedition.schedule._get_wps_in_use()
@@ -136,26 +135,6 @@ class Instrument(abc.ABC):
 
         # spatio-temporal bounding box of all relevant waypoints
         self.bounds = SpatialBounds.from_waypoints(relevant_waypoints)
-
-    def close(self):
-        """Explicitly cleanup all tmp dirs."""
-        tmp_dirs = getattr(self, "_tmp_dirs", None)
-        if not tmp_dirs:
-            return
-        for tmp_dir in tmp_dirs:
-            try:
-                tmp_dir.cleanup()
-            except Exception:
-                pass  # i.e. best effort clean up
-        self._tmp_dirs = []
-
-    def __enter__(self):
-        """Enter the context manager."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit context manager, ensuring resource cleanup."""
-        self.close()
 
     def load_input_data(self) -> parcels.FieldSet:
         """Load and return the input data as a FieldSet for the instrument."""
@@ -227,11 +206,10 @@ class Instrument(abc.ABC):
         TODO: the need for this step may be removed as Parcels x copernicusmarine integration improves, tracked in https://github.com/Parcels-code/Parcels/issues/2756 and xref'd in VirtualShip #357 (https://github.com/Parcels-code/virtualship/issues/357)
         """
         combined_fieldset = None
-        keys = list(self.variables.keys())
         time_buffer = self.fetch_spec.time_buffer
+        is_underway = self.instrument_type.is_underway
 
-        for key in keys:
-            var = self.variables[key]
+        for key, var in self.variables.items():
             physical = var in COPERNICUSMARINE_PHYS_VARIABLES
 
             if self.from_data is not None:  # load from local data
@@ -260,16 +238,15 @@ class Instrument(abc.ABC):
             fields = {key: ds[field_var_name]}
             ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
 
-            # streaming data performance is improved by writing to a temporary file, unnecessary for local data
-            if self.from_data is None:
-                ds_fset = self._via_tmp_ds(ds_fset)
+            # operations only necessary for non-underway instruments
+            if not is_underway:
+                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
-            fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+                # to ChunkCachedArrays for better Dask/memory management
+                fs = fs.to_chunk_cached_arrays(max_cache_bytes=MAX_CACHE_BYTES)
 
-            # non-underway instruments to windowed arrays, just in case any ds is Dask backed
-            # underway instruments should not to converted to windowed arrays, as they use one direct fieldset.eval() call which could cause a big memory usage if the fieldset is windowed
-            if not self.instrument_type.is_underway:
-                fs = fs.to_windowed_arrays()
+            else:
+                fs = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
             combined_fieldset = combined_fieldset + fs if combined_fieldset else fs
 
@@ -361,32 +338,6 @@ class Instrument(abc.ABC):
 
         ds = ds.sel(**depth_sel)
         return ds
-
-    def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
-        """Create and re-load a temporary local dataset without loading everything into RAM, using local Zarr store for improved performance and concurrent chunk writing."""
-        tmp_dir = tempfile.TemporaryDirectory()
-        self._tmp_dirs.append(tmp_dir)
-        tmp_store = Path(tmp_dir.name) / f"tmp_{id(ds)}.zarr"
-
-        ds_to_write = ds.copy()
-        for variable in ds_to_write.variables.values():
-            variable.encoding = {}
-
-        ds_to_write = ds_to_write.chunk(
-            {dim: size for dim, size in ds_to_write.sizes.items()}
-        )
-
-        ds_to_write.to_zarr(
-            tmp_store,
-            mode="w",
-            consolidated=False,
-        )
-
-        loaded_ds = xr.open_zarr(
-            tmp_store, chunks=None, consolidated=False
-        )  # chunks=None to avoid Dask backed
-
-        return loaded_ds
 
     @staticmethod
     def _sample_initial(

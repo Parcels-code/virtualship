@@ -179,17 +179,20 @@ def _run(
             attr = MeasurementsToSimulate.get_attr_for_instrumenttype(itype)
             measurements = getattr(schedule_results.measurements_to_simulate, attr)
 
-            # initialise instrument, execute simulation within context manager
-            with instrument_class(
+            # initialise instrument
+            instrument = instrument_class(
                 expedition=expedition,
                 from_data=Path(from_data) if from_data is not None else None,
-            ) as instrument:
-                instrument.execute(
-                    measurements=measurements,
-                    out_path=expedition_dir.joinpath(
-                        RESULTS, f"{itype.name.lower()}.parquet"
-                    ),
-                )
+            )
+
+            # execute simulation
+            instrument.execute(
+                measurements=measurements,
+                out_path=expedition_dir.joinpath(
+                    RESULTS, f"{itype.name.lower()}.parquet"
+                ),
+            )
+
         except Exception as e:
             # clean up if unexpected error occurs
             if os.path.exists(problems_dir):
