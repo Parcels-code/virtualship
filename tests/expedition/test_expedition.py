@@ -214,6 +214,67 @@ def test_verify_on_land(base_expedition):
             )
 
 
+def _verify_against_deep_seabed(base_expedition, time_allowed_after_ctd):
+    """
+    Verify a schedule whose CTD station is planned at 100 m but sits on a 3000 m seabed.
+
+    At the planned depth (e.g. from MFP) the ship is held approx. 33 min; at the measured depth (e.g. from bathy fieldset; capped by the CTD's 2000 m max) approx.96 min.
+    The final leg to port takes approx. 36 min at 10 knots.
+    """
+    lat = lon = np.array([0.0, 1.0, 2.0])
+    ds_bathymetry = xr.Dataset(
+        {"deptho": (("lat", "lon"), np.full((3, 3), -3000.0))},
+        coords={
+            "lon": (("lon"), lon, {"units": "degrees_east"}),
+            "lat": (("lat"), lat, {"units": "degrees_north"}),
+        },
+    )
+    bathymetry_fieldset = parcels.FieldSet.from_sgrid_conventions(
+        parcels.convert.copernicusmarine_to_sgrid(
+            fields={"bathymetry": ds_bathymetry["deptho"]}
+        )
+    )
+
+    ctd_time = datetime(2022, 1, 1, 8, 0, 0)
+    schedule = Schedule(
+        waypoints=[
+            Port(location=Location(0.0, 0.0), time=datetime(2022, 1, 1, 0, 0, 0)),
+            Waypoint(
+                location=Location(0.0, 1.0),
+                time=ctd_time,
+                instrument=[InstrumentType.CTD],
+                sea_depth_meter=-100.0,
+            ),
+            Port(location=Location(0.0, 1.1), time=ctd_time + time_allowed_after_ctd),
+        ]
+    )
+
+    with patch(
+        "virtualship.models.expedition._get_bathy_data",
+        return_value=bathymetry_fieldset,
+    ):
+        _with_schedule(base_expedition, schedule).verify_schedule(
+            ignore_land_test=False, from_data=None
+        )
+
+
+def test_verify_warns_when_measured_bathymetry_breaks_schedule(base_expedition):
+    """A schedule that only fits at the planned depth warns that the real seabed breaks it."""
+    with pytest.warns(UserWarning, match="actual sea depth") as record:
+        _verify_against_deep_seabed(base_expedition, timedelta(minutes=90))
+
+    # tells the user which value to put in the schedule
+    message = str(record[0].message)
+    assert "update 'sea_depth_meter' for waypoint 1 to -3000.0" in message
+
+
+def test_verify_silent_when_measured_bathymetry_still_fits(base_expedition, recwarn):
+    """A deeper real seabed is not worth a warning if the schedule still has room for it."""
+    _verify_against_deep_seabed(base_expedition, timedelta(hours=3))
+
+    assert not [w for w in recwarn if "actual sea depth" in str(w.message)]
+
+
 @pytest.mark.parametrize(
     "waypoints,error,match",
     [
