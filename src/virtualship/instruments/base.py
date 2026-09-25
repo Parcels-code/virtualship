@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import inspect
 import itertools
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -90,18 +89,8 @@ class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
     # all instruments have sensor_kernels dict, mapping SensorType to sampling kernel
+    # (required of every registered instrument; checked by @register_instrument)
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
-
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        """Ensure concrete instrument subclasses define required class attributes."""
-        super().__init_subclass__(**kwargs)
-        if inspect.isabstract(cls):
-            return
-
-        if "sensor_kernels" not in cls.__dict__:
-            raise TypeError(
-                f"Instrument subclass '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
-            )
 
     def __init__(
         self,

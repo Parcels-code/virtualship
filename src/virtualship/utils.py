@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import hashlib
+import inspect
 import json
 import re
 import sys
@@ -129,12 +130,19 @@ SUPPORTED_SENSORS_MAP: dict = {}
 
 
 def register_instrument(instrument_type):
+    """Register a concrete instrument class, refusing if doesn't meet the full Instrument contract."""
+
     def decorator(cls):
-        INSTRUMENT_CLASS_MAP[instrument_type] = cls
-        if hasattr(cls, "sensor_kernels"):  # derive supported kernels from class attr
-            SUPPORTED_SENSORS_MAP[instrument_type] = frozenset(
-                cls.sensor_kernels.keys()
+        if inspect.isabstract(cls):
+            missing = ", ".join(sorted(cls.__abstractmethods__))
+            raise TypeError(f"Instrument '{cls.__name__}' must implement: {missing}.")
+        if "sensor_kernels" not in vars(cls):
+            raise TypeError(
+                f"Instrument '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
             )
+
+        INSTRUMENT_CLASS_MAP[instrument_type] = cls
+        SUPPORTED_SENSORS_MAP[instrument_type] = frozenset(cls.sensor_kernels)
         return cls
 
     return decorator
@@ -150,7 +158,7 @@ def get_supported_sensors(instrument_type):
     if supported is None:
         raise KeyError(
             f"No supported sensors registered for {instrument_type!r}. "
-            f"Does the instrument class define a `sensor_kernels` attribute?"
+            f"Is the instrument class decorated with @register_instrument?"
         )
     return supported
 

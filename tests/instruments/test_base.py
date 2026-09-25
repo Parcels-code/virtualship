@@ -19,7 +19,11 @@ from virtualship.instruments.base import (
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import SensorConfig
-from virtualship.utils import MAX_CACHE_BYTES, get_instrument_class
+from virtualship.utils import (
+    MAX_CACHE_BYTES,
+    get_instrument_class,
+    register_instrument,
+)
 
 # =============================================================================
 # Fixtures
@@ -398,12 +402,20 @@ def test_load_input_data_error(mock_expedition, monkeypatch):
         dummy.load_input_data()
 
 
-def test_instrument_subclass_without_sensor_kernels_error():
-    """Defining a concrete Instrument subclass without sensor_kernels raises TypeError."""
+@pytest.fixture
+def isolated_registry(monkeypatch):
+    """Keep test registrations out of the real instrument registry."""
+    monkeypatch.setattr("virtualship.utils.INSTRUMENT_CLASS_MAP", {})
+    monkeypatch.setattr("virtualship.utils.SUPPORTED_SENSORS_MAP", {})
+
+
+def test_register_instrument_without_sensor_kernels_error(isolated_registry):
+    """Registering an instrument without sensor_kernels raises TypeError."""
     with pytest.raises(TypeError, match="sensor_kernels"):
 
+        @register_instrument(InstrumentType.CTD)
         class ErrorInstrument(Instrument):
-            def simulate(self, data_dir, measurements, out_path):
+            def simulate(self, measurements, out_path):
                 pass
 
 
