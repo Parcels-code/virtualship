@@ -2,20 +2,25 @@ import copy
 import datetime
 import os
 import traceback
+from collections import Counter
+from typing import ClassVar
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.binding import Binding
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.dom import NoMatches
+from textual.message import Message
 from textual.screen import ModalScreen, Screen
 from textual.validation import Function, Integer
 from textual.widgets import (
     Button,
     Collapsible,
+    Footer,
     Input,
     Label,
+    MaskedInput,
     Rule,
-    Select,
     Static,
     Switch,
 )
@@ -86,12 +91,106 @@ def _default_sensors(config_class) -> list:
     return sensors_field.default_factory()
 
 
-def parse_waypoint_datetime(year, month, day, hour, minute):
-    """Parses date/time values into a datetime object if all components are present."""
-    values = (year, month, day, hour, minute)
-    if all(v is not None and v != Select.NULL for v in values):
-        return datetime.datetime(*(int(v) for v in values))
+WAYPOINT_TIME_FORMAT = "%Y-%m-%d %H:%M"
+WAYPOINT_TIME_TEMPLATE = "9999-99-99 99:99"
+WAYPOINT_TIME_INVALID_MSG = (
+    "INVALID: time must be a complete, real date and time (YYYY-MM-DD hh:mm)"
+)
+
+# waypoint time adjustment buttons (button id, label, variant, step)
+TIME_STEPS = (
+    ("plus_one_day", "+1 day", "primary", datetime.timedelta(days=1)),
+    ("plus_one_hour", "+1 hour", "primary", datetime.timedelta(hours=1)),
+    ("plus_thirty_minutes", "+30 minutes", "primary", datetime.timedelta(minutes=30)),
+    ("minus_one_day", "-1 day", "default", -datetime.timedelta(days=1)),
+    ("minus_one_hour", "-1 hour", "default", -datetime.timedelta(hours=1)),
+    ("minus_thirty_minutes", "-30 minutes", "default", -datetime.timedelta(minutes=30)),
+)
+
+DEPLOYABLE_INSTRUMENTS = [inst for inst in InstrumentType if not inst.is_underway]
+
+
+def parse_waypoint_time(text: str) -> datetime.datetime | None:
+    """Parse 'YYYY-MM-DD hh:mm' string."""
+    if text.strip() == "":
+        return None
+    return datetime.datetime.strptime(text, WAYPOINT_TIME_FORMAT)
+
+
+def format_waypoint_time(time: datetime.datetime | None) -> str:
+    return time.strftime(WAYPOINT_TIME_FORMAT) if time else ""
+
+
+def is_valid_waypoint_time(text: str) -> bool:
+    try:
+        parse_waypoint_time(text)
+    except ValueError:
+        return False
+    return True
+
+
+def show_validation_result(label: Label, validation_result) -> None:
+    """Show validation failure messages in `label`, or hide it if valid."""
+    is_invalid = validation_result is not None and not validation_result.is_valid
+    message = "\n".join(validation_result.failure_descriptions) if is_invalid else ""
+    # only edit label when something changes
+    if label.content != message:
+        label.update(message)
+    label.set_class(not is_invalid, "-hidden")
+    label.set_class(is_invalid, "validation-failure")
+
+
+def _failure_label(input_id: str) -> Label:
+    """Label that shows validation failures for the input id."""
+    return Label(
+        "",
+        id=f"validation-failure-label-{input_id}",
+        classes="-hidden validation-failure",
+    )
+
+
+def _field_validators(model_class, attr: str) -> list[Function]:
+    """Textual input validators for a model field, derived from its pydantic constraints."""
+    return [
+        Function(validator, f"INVALID: value must be {validator.__doc__.lower()}")
+        for validator in group_validators(model_class, attr)
+    ]
+
+
+def _instrument_title(instrument_name: str, info: dict) -> str:
+    return info.get("title", instrument_name.replace("_", " ").title())
+
+
+def _time_unit(attr_meta: dict) -> tuple[str, str, float] | None:
+    """(label suffix, timedelta keyword, seconds per unit) for attributes entered in minutes or days."""
+    if attr_meta.get("minutes", False):
+        return " Minutes", "minutes", 60.0
+    if attr_meta.get("days", False):
+        return " Days", "days", 86400.0
     return None
+
+
+def _config_display_value(config_instance, attr_meta: dict) -> str:
+    """The value to show in an instrument config input (timedeltas in minutes/days)."""
+    if not config_instance:
+        return ""
+    raw_value = getattr(config_instance, attr_meta["name"], "")
+    unit = _time_unit(attr_meta)
+    if unit and raw_value != "":
+        try:
+            return str(raw_value.total_seconds() / unit[2])
+        except AttributeError:
+            pass
+    return str(raw_value)
+
+
+def _raise_logged_unexpected(e: Exception, path, context_message: str):
+    """Log error to expedition directory and raise a user-facing UnexpectedError."""
+    log_exception_to_file(e, path, context_message=context_message)
+    raise UnexpectedError(
+        UNEXPECTED_MSG_ONSAVE
+        + f"\n\nTraceback will be logged in {path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
+    ) from None
 
 
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
@@ -99,6 +198,12 @@ DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
     "period_minutes": 5.0,
+}
+
+# on/off switches for the underway instruments (set to null in the config when off)
+UNDERWAY_SWITCH_IDS = {
+    "adcp_config": "#has_adcp",
+    "ship_underwater_st_config": "#has_onboard_ts",
 }
 
 
@@ -169,19 +274,16 @@ INSTRUMENT_FIELDS = {
 }
 
 
-class WaypointRemoveConfirmScreen(ModalScreen):
-    """Modal confirmation dialog for waypoint removal."""
+class ConfirmScreen(ModalScreen):
+    """Modal yes/no confirmation dialog."""
 
-    def __init__(self, waypoint_index: int):
+    def __init__(self, message: str):
         super().__init__()
-        self.waypoint_index = waypoint_index
+        self.message = message
 
     def compose(self) -> ComposeResult:
         yield Container(
-            Label(
-                f"Are you sure you want to remove waypoint {self.waypoint_index + 1}?",
-                id="confirm-label",
-            ),
+            Label(self.message, id="confirm-label"),
             Horizontal(
                 Button("Yes", id="confirm-yes", variant="error"),
                 Button("No", id="confirm-no", variant="primary"),
@@ -205,13 +307,16 @@ class ExpeditionEditor(Static):
         super().__init__()
         self.path = path
         self.expedition = None
-        self._pending_remove_idx = None
-        self._original_schedule = None  # Store original schedule
+        self._original_schedule = None  # as loaded, for "reset changes"
+        self._saved_schedule = None  # as last saved, for the unsaved-changes check
+        self._saved_config_values = {}  # config widget values as last saved
+        self._validation_labels = {}  # cache input id for validation failure labels, avoid querying the whole model on every keystroke
 
     def compose(self) -> ComposeResult:
         try:
             self.expedition = Expedition.from_yaml(self.path.joinpath(EXPEDITION))
             self._original_schedule = copy.deepcopy(self.expedition.schedule)
+            self._saved_schedule = copy.deepcopy(self.expedition.schedule)
         except Exception as e:
             raise UserError(
                 f"There is an issue in {self.path.joinpath(EXPEDITION)}:\n\n{e}"
@@ -229,57 +334,44 @@ class ExpeditionEditor(Static):
 
             # SECTION: "Ship Speed & Onboard Measurements"
 
+            ship_config = self.expedition.ship_config
+            instruments_config = self.expedition.instruments_config
             with Collapsible(
                 title="[b]Ship Speed & Onboard Measurements[/b]",
                 id="speed_collapsible",
                 collapsed=False,
             ):
                 attr = "ship_speed_knots"
-                validators = group_validators(ShipConfig, attr)
                 with Horizontal(classes="ship_speed"):
                     yield Label("[b]Ship Speed (knots):[/b]")
                     yield Input(
                         id="speed",
                         type=type_to_textual(get_field_type(ShipConfig, attr)),
-                        validators=[
-                            Function(
-                                validator,
-                                f"INVALID: value must be {validator.__doc__.lower()}",
-                            )
-                            for validator in validators
-                        ],
+                        validators=_field_validators(ShipConfig, attr),
                         classes="ship_speed_input",
                         placeholder="knots",
-                        value=str(
-                            self.expedition.ship_config.ship_speed_knots
-                            if self.expedition.ship_config.ship_speed_knots
-                            else ""
-                        ),
+                        value=str(ship_config.ship_speed_knots or ""),
                     )
                 yield Label("", id="validation-failure-label-speed", classes="-hidden")
 
                 with Horizontal(classes="ts-section"):
                     yield Label("[b]Onboard Temperature/Salinity:[/b]")
                     yield Switch(
-                        value=bool(
-                            self.expedition.instruments_config.ship_underwater_st_config
-                        ),
+                        value=bool(instruments_config.ship_underwater_st_config),
                         id="has_onboard_ts",
                     )
 
                 with Horizontal(classes="adcp-section"):
                     yield Label("[b]Onboard ADCP:[/b]")
                     yield Switch(
-                        value=bool(self.expedition.instruments_config.adcp_config),
-                        id="has_adcp",
+                        value=bool(instruments_config.adcp_config), id="has_adcp"
                     )
 
                 # adcp type selection
                 with Horizontal(id="adcp_type_container", classes="-hidden"):
                     is_deep = (
-                        self.expedition.instruments_config.adcp_config
-                        and self.expedition.instruments_config.adcp_config.max_depth_meter
-                        == -1000.0
+                        instruments_config.adcp_config
+                        and instruments_config.adcp_config.max_depth_meter == -1000.0
                     )
                     yield Label("       OceanObserver:")
                     yield Switch(value=is_deep, id="adcp_deep")
@@ -289,109 +381,15 @@ class ExpeditionEditor(Static):
 
             ## SECTION: "Instrument Configurations""
 
-            with Collapsible(
-                title="[b]Instrument Configurations[/b]",
-                collapsed=True,
-            ):
+            with Collapsible(title="[b]Instrument Configurations[/b]", collapsed=True):
                 for instrument_name, info in INSTRUMENT_FIELDS.items():
-                    config_class = info["class"]
-                    attributes = info["attributes"]
-                    config_instance = getattr(
-                        self.expedition.instruments_config, instrument_name, None
-                    )
-                    title = info.get("title", instrument_name.replace("_", " ").title())
                     with Collapsible(
-                        title=f"[b]{title}[/b]",
+                        title=f"[b]{_instrument_title(instrument_name, info)}[/b]",
                         collapsed=True,
                     ):
-                        if instrument_name in (
-                            "adcp_config",
-                            "ship_underwater_st_config",
-                        ):
-                            yield Label(
-                                f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
-                            )
-                        with Container(classes="instrument-config"):
-                            for attr_meta in attributes:
-                                attr = attr_meta["name"]
-                                is_minutes, is_days = (
-                                    attr_meta.get("minutes", False),
-                                    attr_meta.get("days", False),
-                                )
-                                validators = group_validators(config_class, attr)
-                                if config_instance:
-                                    raw_value = getattr(config_instance, attr, "")
-                                    if is_minutes and raw_value != "":
-                                        try:
-                                            value = str(
-                                                raw_value.total_seconds() / 60.0
-                                            )
-                                        except AttributeError:
-                                            value = str(raw_value)
-                                    elif is_days and raw_value != "":
-                                        try:
-                                            value = str(
-                                                raw_value.total_seconds() / 86400.0
-                                            )
-                                        except AttributeError:
-                                            value = str(raw_value)
-                                    else:
-                                        value = str(raw_value)
-                                else:
-                                    value = ""
-                                label = f"{attr.replace('_', ' ').title()}:"
-                                if is_minutes:
-                                    label = label.replace(":", " Minutes:")
-                                elif is_days:
-                                    label = label.replace(":", " Days:")
-                                yield Label(label)
-                                yield Input(
-                                    id=f"{instrument_name}_{attr}",
-                                    type=type_to_textual(
-                                        get_field_type(config_class, attr)
-                                    ),
-                                    validators=[
-                                        Function(
-                                            validator,
-                                            f"INVALID: value must be {validator.__doc__.lower()}",
-                                        )
-                                        for validator in validators
-                                    ],
-                                    value=value,
-                                )
-                                yield Label(
-                                    "",
-                                    id=f"validation-failure-label-{instrument_name}_{attr}",
-                                    classes="-hidden validation-failure",
-                                )
-                            # sensor toggles, derived from the config class's sensors default_factory
-                            default_sensor_configs = _default_sensors(config_class)
-                            if default_sensor_configs:
-                                yield Label("[b]Sensors:[/b]", markup=True)
-                                # which sensors are currently active
-                                if config_instance and hasattr(
-                                    config_instance, "sensors"
-                                ):
-                                    active_sensor_types = {
-                                        sc.sensor_type
-                                        for sc in config_instance.sensors
-                                        if sc.enabled
-                                    }
-                                else:
-                                    # if no config loaded yet, default all sensors on
-                                    active_sensor_types = {
-                                        sc.sensor_type for sc in default_sensor_configs
-                                    }
-                                for sc in default_sensor_configs:
-                                    sensor_id = f"{instrument_name}_sensor_{sc.sensor_type.value}"
-                                    with Horizontal(classes="sensor-toggle-row"):
-                                        yield Label(
-                                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
-                                        )
-                                        yield Switch(
-                                            value=sc.sensor_type in active_sensor_types,
-                                            id=sensor_id,
-                                        )
+                        yield from self._compose_instrument_config(
+                            instrument_name, info
+                        )
 
             ## 2) SCHEDULE EDITOR
 
@@ -423,41 +421,123 @@ class ExpeditionEditor(Static):
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    def on_mount(self) -> None:
-        self.refresh_waypoint_widgets()
-        adcp_present = (
-            getattr(self.expedition.instruments_config, "adcp_config", None)
-            if self.expedition.instruments_config
-            else False
+    def _compose_instrument_config(self, instrument_name: str, info: dict):
+        """Inputs (and sensor toggles) for one instrument's configuration."""
+        config_class = info["class"]
+        config_instance = getattr(
+            self.expedition.instruments_config, instrument_name, None
         )
-        self.show_hide_adcp_type(bool(adcp_present))
+        if instrument_name in ("adcp_config", "ship_underwater_st_config"):
+            yield Label(
+                f"NOTE: entries will be ignored here if {info['title']} is OFF in Ship Speed & Onboard Measurements."
+            )
+        with Container(classes="instrument-config"):
+            for attr_meta in info["attributes"]:
+                attr = attr_meta["name"]
+                unit = _time_unit(attr_meta)
+                yield Label(
+                    f"{attr.replace('_', ' ').title()}{unit[0] if unit else ''}:"
+                )
+                yield Input(
+                    id=f"{instrument_name}_{attr}",
+                    type=type_to_textual(get_field_type(config_class, attr)),
+                    validators=_field_validators(config_class, attr),
+                    value=_config_display_value(config_instance, attr_meta),
+                )
+                yield _failure_label(f"{instrument_name}_{attr}")
+            # sensor toggles, derived from the config class's sensors default_factory
+            default_sensor_configs = _default_sensors(config_class)
+            if default_sensor_configs:
+                yield Label("[b]Sensors:[/b]", markup=True)
+                # which sensors are currently active
+                if config_instance and hasattr(config_instance, "sensors"):
+                    active_sensor_types = {
+                        sc.sensor_type for sc in config_instance.sensors if sc.enabled
+                    }
+                else:
+                    # if no config loaded yet, default all sensors on
+                    active_sensor_types = {
+                        sc.sensor_type for sc in default_sensor_configs
+                    }
+                for sc in default_sensor_configs:
+                    with Horizontal(classes="sensor-toggle-row"):
+                        yield Label(
+                            f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
+                        )
+                        yield Switch(
+                            value=sc.sensor_type in active_sensor_types,
+                            id=f"{instrument_name}_sensor_{sc.sensor_type.value}",
+                        )
 
-    def refresh_waypoint_widgets(self):
+    async def on_mount(self) -> None:
+        # snapshot before any waypoint bodies exist, so only ship/instrument config widgets are captured
+        self._saved_config_values = self._config_values()
+        await self.refresh_waypoint_widgets()
+        self.show_hide_adcp_type(
+            bool(getattr(self.expedition.instruments_config, "adcp_config", None))
+        )
+
+    @property
+    def waypoint_widgets(self) -> list["WaypointWidget"]:
+        return list(self.query_one("#waypoint_list").query_children(WaypointWidget))
+
+    async def refresh_waypoint_widgets(self) -> None:
+        """Rebuild all waypoint widgets from the schedule (only needed on load and reset)."""
         waypoint_list = self.query_one("#waypoint_list", VerticalScroll)
-        waypoint_list.remove_children()
-        for i, waypoint in enumerate(self.expedition.schedule.waypoints):
-            waypoint_list.mount(WaypointWidget(waypoint, i))
+        with self.app.batch_update():
+            await waypoint_list.remove_children()
+            await waypoint_list.mount_all(
+                WaypointWidget(waypoint, i)
+                for i, waypoint in enumerate(self.expedition.schedule.waypoints)
+            )
+
+    def _renumber_waypoints(self) -> None:
+        for i, widget in enumerate(self.waypoint_widgets):
+            widget.set_index(i)
+
+    def _config_values(self) -> dict:
+        """Current values of the ship/instrument config widgets."""
+        return {
+            widget.id: widget.value
+            for widget in self.query("Input, Switch")
+            if widget.id
+            and not any(isinstance(a, WaypointWidget) for a in widget.ancestors)
+        }
+
+    def has_unsaved_changes(self) -> bool:
+        if self.expedition.schedule != self._saved_schedule:
+            return True
+        return any(
+            self.query_one(f"#{widget_id}").value != value
+            for widget_id, value in self._saved_config_values.items()
+        )
+
+    def waypoint_errors(self) -> list[str]:
+        """Messages for waypoint entries that are invalid or incomplete."""
+        return [
+            f"{widget.get_title()}: {message}"
+            for widget in self.waypoint_widgets
+            for message in widget.errors.values()
+        ]
 
     def save_changes(self) -> bool:
         """Save changes to expedition.yaml."""
         try:
             self._update_ship_speed()
-            self._update_schedule()
             self._update_instrument_configs()
             self.expedition.to_yaml(self.path.joinpath(EXPEDITION))
+            self._saved_schedule = copy.deepcopy(self.expedition.schedule)
+            self._saved_config_values = {
+                widget_id: self.query_one(f"#{widget_id}").value
+                for widget_id in self._saved_config_values
+            }
             return True
         except UserError:
             raise
         except Exception as e:
-            log_exception_to_file(
-                e,
-                self.path,
-                context_message=f"Error saving {self.path.joinpath(EXPEDITION)}:",
+            _raise_logged_unexpected(
+                e, self.path, f"Error saving {self.path.joinpath(EXPEDITION)}:"
             )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
 
     def _update_ship_speed(self):
         attr = "ship_speed_knots"
@@ -469,41 +549,35 @@ class ExpeditionEditor(Static):
         self.expedition.ship_config.ship_speed_knots = value
 
     def _update_instrument_configs(self):
+        instruments_config = self.expedition.instruments_config
         for instrument_name, info in INSTRUMENT_FIELDS.items():
             config_class = info["class"]
-            attributes = info["attributes"]
+            title = _instrument_title(instrument_name, info)
+            # onboard ADCP and T/S are removed when switched off
+            switch_id = UNDERWAY_SWITCH_IDS.get(instrument_name)
+            if switch_id and not self.query_one(switch_id, Switch).value:
+                setattr(instruments_config, instrument_name, None)
+                continue
+
             kwargs = {}
-            # special handling for onboard ADCP and T/S
-            if instrument_name == "adcp_config":
-                has_adcp = self.query_one("#has_adcp", Switch).value
-                if not has_adcp:
-                    setattr(self.expedition.instruments_config, instrument_name, None)
-                    continue
-            if instrument_name == "ship_underwater_st_config":
-                has_ts = self.query_one("#has_onboard_ts", Switch).value
-                if not has_ts:
-                    setattr(self.expedition.instruments_config, instrument_name, None)
-                    continue
-            for attr_meta in attributes:
+            for attr_meta in info["attributes"]:
                 attr = attr_meta["name"]
-                is_minutes = attr_meta.get("minutes", False)
-                is_days = attr_meta.get("days", False)
-                input_id = f"{instrument_name}_{attr}"
-                value = self.query_one(f"#{input_id}").value
+                value = self.query_one(f"#{instrument_name}_{attr}").value
                 field_type = get_field_type(config_class, attr)
-                if is_minutes and field_type is datetime.timedelta:
-                    value = datetime.timedelta(minutes=float(value))
-                elif is_days and field_type is datetime.timedelta:
-                    value = datetime.timedelta(days=float(value))
+                unit = _time_unit(attr_meta)
+                if unit and field_type is datetime.timedelta:
+                    kwargs[attr] = datetime.timedelta(**{unit[1]: float(value)})
                 else:
-                    value = field_type(value)
-                kwargs[attr] = value
+                    kwargs[attr] = field_type(value)
+
             # ADCP max_depth_meter based on deep/shallow switch
             if instrument_name == "adcp_config":
-                if self.query_one("#adcp_deep", Switch).value:
-                    kwargs["max_depth_meter"] = -1000.0
-                else:
-                    kwargs["max_depth_meter"] = -150.0
+                is_deep = self.query_one("#adcp_deep", Switch).value
+                if is_deep == self.query_one("#adcp_shallow", Switch).value:
+                    raise UserError(
+                        "Onboard ADCP is ON, so exactly one ADCP type (OceanObserver or SeaSeven) must be selected."
+                    )
+                kwargs["max_depth_meter"] = -1000.0 if is_deep else -150.0
 
             # collect sensor toggles
             default_sensor_configs = _default_sensors(config_class)
@@ -515,244 +589,165 @@ class ExpeditionEditor(Static):
                         f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
                     ).value
                 ]
-
-                instrument_type = info.get("instrument_type")
-
-                # safe check for instrument existence across all waypoint types
-                is_active = instrument_type is None or any(
-                    instrument_type
-                    in (
-                        wp.instrument
-                        if isinstance(wp.instrument, list)
-                        else [wp.instrument]
-                    )
-                    for wp in self.expedition.schedule.waypoints
-                    if getattr(wp, "instrument", None)
-                )
-
                 if not sensors:
-                    if is_active:
-                        title = info.get(
-                            "title", instrument_name.replace("_", " ").title()
-                        )
+                    if self._is_instrument_in_schedule(info.get("instrument_type")):
                         raise UserError(
                             f"'{title}' has no sensors selected. "
                             f"At least one sensor must be enabled for each active instrument."
                         )
-                    else:
-                        # if the instrument is not active in the schedule and no sensors are selected:
-                        # reset to default sensors (or keep default_sensor_configs) so pydantic validation passes.
-                        sensors = [
-                            SensorConfig(sensor_type=sc.sensor_type)
-                            for sc in default_sensor_configs
-                        ]
-
+                    # fall back to the default sensors so pydantic validation passes
+                    sensors = [
+                        SensorConfig(sensor_type=sc.sensor_type)
+                        for sc in default_sensor_configs
+                    ]
                 kwargs["sensors"] = sensors
 
             try:
-                setattr(
-                    self.expedition.instruments_config,
-                    instrument_name,
-                    config_class(**kwargs),
-                )
-            except (ValueError, Exception) as e:
-                # catch validation errors, e.g. drift_days >= cycle_days
-                if isinstance(e, ValueError):
-                    title = info.get("title", instrument_name.replace("_", " ").title())
+                setattr(instruments_config, instrument_name, config_class(**kwargs))
+            except Exception as e:
+                # validation errors, e.g. drift_days >= cycle_days
+                if isinstance(e, ValueError) or "ValidationError" in type(e).__name__:
                     raise UserError(f"'{title}' configuration error: {e}") from None
-                elif (  # pydantic validation error
-                    hasattr(e, "__class__")
-                    and "ValidationError" in e.__class__.__name__
-                ):
-                    title = info.get("title", instrument_name.replace("_", " ").title())
-                    raise UserError(f"'{title}' configuration error: {e}") from None
-                else:
-                    raise
+                raise
 
-    def _update_schedule(self):
-        for i, wp in enumerate(self.expedition.schedule.waypoints):
-            wp.time = parse_waypoint_datetime(
-                self.query_one(f"#wp{i}_year", Select).value,
-                self.query_one(f"#wp{i}_month", Select).value,
-                self.query_one(f"#wp{i}_day", Select).value,
-                self.query_one(f"#wp{i}_hour", Select).value,
-                self.query_one(f"#wp{i}_minute", Select).value,
-            )
-
-            lat_val = self.query_one(f"#wp{i}_lat").value
-            lon_val = self.query_one(f"#wp{i}_lon").value
-
-            if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
-                wp.location = Location(
-                    latitude=float(lat_val) if lat_val != "" else None,
-                    longitude=float(lon_val) if lon_val != "" else None,
-                )
-            else:
-                wp.location = Location(
-                    latitude=float(lat_val),
-                    longitude=float(lon_val),
-                )
-
-            if not isinstance(wp, Port):
-                wp.instrument = []
-                for instrument in [
-                    inst for inst in InstrumentType if not inst.is_underway
-                ]:
-                    switch_on = self.query_one(f"#wp{i}_{instrument.value}").value
-                    if instrument.value == "DRIFTER" and switch_on:
-                        count_str = self.query_one(f"#wp{i}_drifter_count").value
-                        count = int(count_str)
-                        assert count > 0
-                        wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                    elif switch_on:
-                        wp.instrument.append(instrument)
+    def _is_instrument_in_schedule(self, instrument_type) -> bool:
+        """Whether any waypoint deploys `instrument_type` (always True for underway instruments, i.e. None)."""
+        return instrument_type is None or any(
+            instrument_type
+            in (wp.instrument if isinstance(wp.instrument, list) else [wp.instrument])
+            for wp in self.expedition.schedule.waypoints
+            if getattr(wp, "instrument", None)
+        )
 
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:
         input_id = event.input.id
         label_id = f"validation-failure-label-{input_id}"
 
-        # avoid errors when button pressed too rapidly
-        try:
-            label = self.query_one(f"#{label_id}", Label)
-        except NoMatches:
-            return
-
-        if input_id.endswith("_drifter_count"):
-            wp_index = int(input_id.split("_")[0][2:])
-            drifter_switch = self.query_one(f"#wp{wp_index}_DRIFTER")
-            if not drifter_switch.value:
-                label.update("")
-                label.add_class("-hidden")
-                label.remove_class("validation-failure")
-                event.input.remove_class("-valid")
-                event.input.remove_class("-invalid")
+        # cached to avoid querying the whole model on every keystroke
+        label = self._validation_labels.get(label_id)
+        if label is None:
+            try:
+                label = self.query_one(f"#{label_id}", Label)
+            except NoMatches:
                 return
-        if not event.validation_result.is_valid:
-            message = (
-                "\n".join(event.validation_result.failure_descriptions)
-                if isinstance(event.validation_result.failure_descriptions, list)
-                else str(event.validation_result.failure_descriptions)
-            )
-            label.update(message)
-            label.remove_class("-hidden")
-            label.add_class("validation-failure")
-        else:
-            label.update("")
-            label.add_class("-hidden")
-            label.remove_class("validation-failure")
+            self._validation_labels[label_id] = label
+
+        show_validation_result(label, event.validation_result)
+
+    def _schedule_index(self, waypoint: Waypoint) -> int:
+        return next(
+            i
+            for i, wp in enumerate(self.expedition.schedule.waypoints)
+            if wp is waypoint
+        )
+
+    def _arrival_port_index(self) -> int:
+        return next(
+            i
+            for i, wp in reversed(list(enumerate(self.expedition.schedule.waypoints)))
+            if isinstance(wp, Port)
+        )
 
     @on(Button.Pressed, "#add_waypoint")
-    def add_waypoint(self) -> None:
+    async def add_waypoint(self) -> None:
         """Add a new waypoint to the schedule (N.B. ports always remain). Copies time from last waypoint if possible (Lat/lon and instruments blank)."""
         try:
             wps = self.expedition.schedule.waypoints
             non_port_wps = [wp for wp in wps if not isinstance(wp, Port)]
-            new_time = non_port_wps[-1].time if non_port_wps else None
             new_wp = Waypoint(
-                location=Location(
-                    latitude=0.0,
-                    longitude=0.0,
-                ),
-                time=new_time,
+                location=Location(latitude=0.0, longitude=0.0),
+                time=non_port_wps[-1].time if non_port_wps else None,
                 instrument=[],
             )
-
-            # add waypoint before the last port (arrival port) if it exists, otherwise at the end
-            insert_index = next(
-                (i for i, wp in reversed(list(enumerate(wps))) if isinstance(wp, Port))
-            )  # just before arrival port
-            self.expedition.schedule.waypoints.insert(insert_index, new_wp)
-            self.refresh_waypoint_widgets()
-
+            # add waypoint just before the arrival port
+            insert_index = self._arrival_port_index()
+            wps.insert(insert_index, new_wp)
+            await self.query_one("#waypoint_list").mount(
+                WaypointWidget(new_wp, insert_index),
+                before=self.waypoint_widgets[insert_index],
+            )
+            self._renumber_waypoints()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
+    async def _remove_waypoint_widget(self, widget: "WaypointWidget") -> None:
+        self.expedition.schedule.waypoints.pop(self._schedule_index(widget.waypoint))
+        await widget.remove()
+        self._renumber_waypoints()
+
     @on(Button.Pressed, "#remove_waypoint")
-    def remove_waypoint(self) -> None:
+    async def remove_waypoint(self) -> None:
         """Remove the last waypoint (non-port) from the schedule."""
         try:
-            wps = self.expedition.schedule.waypoints
-            non_port_indices = [
-                i for i, wp in enumerate(wps) if isinstance(wp, Waypoint)
+            non_port_widgets = [
+                w for w in self.waypoint_widgets if not isinstance(w.waypoint, Port)
             ]
-            if non_port_indices:
-                self.expedition.schedule.waypoints.pop(non_port_indices[-1])
-                self.refresh_waypoint_widgets()
+            if non_port_widgets:
+                await self._remove_waypoint_widget(non_port_widgets[-1])
             else:
                 self.notify("No waypoints to remove.", severity="error", timeout=5)
-
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     @on(Button.Pressed, "#reset_changes")
-    def reset_changes(self) -> None:
+    async def reset_changes(self) -> None:
         """Reset all changes to the schedule, reverting to the original loaded schedule."""
         try:
             self.expedition.schedule = copy.deepcopy(self._original_schedule)
-            self.refresh_waypoint_widgets()
-
+            await self.refresh_waypoint_widgets()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    @on(Button.Pressed)
-    def remove_specific_waypoint(self, event: Button.Pressed) -> None:
+    def on_waypoint_widget_remove_requested(
+        self, event: "WaypointWidget.RemoveRequested"
+    ) -> None:
         """Ask for confirmation before removing a specific waypoint."""
-        btn_id = event.button.id
-        if btn_id and btn_id.startswith("wp") and btn_id.endswith("_remove"):
-            try:
-                idx_str = btn_id[2:-7]
-                idx = int(idx_str)
-                if 0 <= idx < len(self.expedition.schedule.waypoints):
-                    self._pending_remove_idx = idx
-                    self.app.push_screen(
-                        WaypointRemoveConfirmScreen(idx), self._on_remove_confirmed
-                    )
-                else:
-                    self.notify("Invalid waypoint index.", severity="error", timeout=20)
-            except Exception as e:
-                raise UnexpectedError(unexpected_msg_compose(e)) from None
+        widget = event.widget
 
-    def _on_remove_confirmed(self, confirmed: bool) -> None:
-        """Callback after confirmation dialog."""
-        if confirmed and self._pending_remove_idx is not None:
-            try:
-                idx = self._pending_remove_idx
-                if 0 <= idx < len(self.expedition.schedule.waypoints):
-                    self.expedition.schedule.waypoints.pop(idx)
-                    self.refresh_waypoint_widgets()
-            except Exception as e:
-                raise UnexpectedError(unexpected_msg_compose(e)) from None
-        self._pending_remove_idx = None
+        async def on_confirmed(confirmed: bool) -> None:
+            if confirmed and widget.is_attached:
+                try:
+                    await self._remove_waypoint_widget(widget)
+                except Exception as e:
+                    raise UnexpectedError(unexpected_msg_compose(e)) from None
+
+        message = f"Are you sure you want to remove {widget.get_title().lower()}?"
+        self.app.push_screen(ConfirmScreen(message), on_confirmed)
+
+    def on_waypoint_widget_copy_requested(
+        self, event: "WaypointWidget.CopyRequested"
+    ) -> None:
+        """Copy time (and instruments, between non-port waypoints) from the previous waypoint, not lat/lon."""
+        try:
+            widget = event.widget
+            idx = self._schedule_index(widget.waypoint)
+            if idx == 0:
+                return
+            previous, current = self.expedition.schedule.waypoints[idx - 1 : idx + 1]
+            current.time = previous.time
+            if not isinstance(current, Port) and not isinstance(previous, Port):
+                current.instrument = list(previous.instrument or [])
+            widget.load_from_model()
+        except Exception as e:
+            raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def show_hide_adcp_type(self, show: bool) -> None:
-        container = self.query_one("#adcp_type_container")
-        if show:
-            container.remove_class("-hidden")
-        else:
-            container.add_class("-hidden")
-
-    def _set_adcp_default_values(self):
-        self.query_one("#adcp_config_num_bins").value = str(
-            DEFAULT_ADCP_CONFIG["num_bins"]
-        )
-        self.query_one("#adcp_config_period").value = str(
-            DEFAULT_ADCP_CONFIG["period_minutes"]
-        )
-        self.query_one("#adcp_shallow").value = False
-        self.query_one("#adcp_deep").value = True
-
-    def _set_ts_default_values(self):
-        self.query_one("#ship_underwater_st_config_period").value = str(
-            DEFAULT_TS_CONFIG["period_minutes"]
-        )
+        self.query_one("#adcp_type_container").set_class(not show, "-hidden")
 
     @on(Switch.Changed, "#has_adcp")
     def on_adcp_toggle(self, event: Switch.Changed) -> None:
         self.show_hide_adcp_type(event.value)
         if event.value and not self.expedition.instruments_config.adcp_config:
-            # ADCP was turned on and was previously null
-            self._set_adcp_default_values()
+            # use defaults when ADCP was turned on and was previously null
+            self.query_one("#adcp_config_num_bins").value = str(
+                DEFAULT_ADCP_CONFIG["num_bins"]
+            )
+            self.query_one("#adcp_config_period").value = str(
+                DEFAULT_ADCP_CONFIG["period_minutes"]
+            )
+            self.query_one("#adcp_shallow").value = False
+            self.query_one("#adcp_deep").value = True
 
     @on(Switch.Changed, "#has_onboard_ts")
     def on_ts_toggle(self, event: Switch.Changed) -> None:
@@ -760,20 +755,19 @@ class ExpeditionEditor(Static):
             event.value
             and not self.expedition.instruments_config.ship_underwater_st_config
         ):
-            # T/S was turned on and was previously null
-            self._set_ts_default_values()
+            # use defaults when T/S was turned on and was previously null
+            self.query_one("#ship_underwater_st_config_period").value = str(
+                DEFAULT_TS_CONFIG["period_minutes"]
+            )
 
+    # one ADCP type is always selected
     @on(Switch.Changed, "#adcp_deep")
     def deep_changed(self, event: Switch.Changed) -> None:
-        if event.value:
-            shallow = self.query_one("#adcp_shallow", Switch)
-            shallow.value = False
+        self.query_one("#adcp_shallow", Switch).value = not event.value
 
     @on(Switch.Changed, "#adcp_shallow")
     def shallow_changed(self, event: Switch.Changed) -> None:
-        if event.value:
-            deep = self.query_one("#adcp_deep", Switch)
-            deep.value = False
+        self.query_one("#adcp_deep", Switch).value = not event.value
 
     @on(Button.Pressed, "#info_button")
     def info_pressed(self) -> None:
@@ -785,34 +779,24 @@ class ExpeditionEditor(Static):
         )
 
 
-class WaypointWidget(Static):
-    def __init__(self, waypoint: Waypoint, index: int):
+class WaypointBody(Vertical):
+    """The editable contents of a WaypointWidget. Only built when the waypoint is first expanded."""
+
+    def __init__(self, waypoint: Waypoint, show_copy_button: bool):
         super().__init__()
         self.waypoint = waypoint
-        self.index = index
-
-    def _get_coord_value(self, coord: float | None) -> str:
-        """Return coordinate as string or empty string if None."""
-        return str(coord) if coord is not None else ""
-
-    def _get_minute_options(self) -> list[tuple[str, int]]:
-        """Generate minute options, inserting current minute if non-multiple of 5."""
-        options = {(f"{m:02d}", m) for m in range(0, 60, 5)}
-        if self.waypoint.time and self.waypoint.time.minute % 5 != 0:
-            m = self.waypoint.time.minute
-            options.add((f"{m:02d}", m))
-        return sorted(list(options), key=lambda x: x[1])
+        self.show_copy_button = show_copy_button
 
     def _yield_coordinate_input(
-        self, label: str, field: str, validator_fn, placeholder: str, wp_id: int
+        self, label: str, field: str, validator_fn, placeholder: str
     ) -> ComposeResult:
         """Yields a labeled coordinate input with its validation error label."""
         val = getattr(self.waypoint.location, field, None)
 
         yield Label(f"    {label}:")
         yield Input(
-            id=f"wp{wp_id}_{field}",
-            value=self._get_coord_value(val),
+            id=field,
+            value=str(val) if val is not None else "",
             validators=[
                 Function(
                     validator_fn,
@@ -823,76 +807,25 @@ class WaypointWidget(Static):
             placeholder=placeholder,
             classes=f"{field}itude-input",
         )
-        yield Label(
-            "",
-            id=f"validation-failure-label-wp{wp_id}_{field}",
-            classes="-hidden validation-failure",
-        )
+        yield _failure_label(field)
 
-    def _yield_time_selectors(self, wp_id: int) -> ComposeResult:
-        """Yields year, month, day, hour, and minute Select controls."""
-        time = self.waypoint.time
-
-        yield Label("Year:")
-        yield Select(
-            [(str(y), y) for y in range(1993, datetime.datetime.now().year + 1)],
-            id=f"wp{wp_id}_year",
-            value=time.year if time else Select.NULL,
-            prompt="YYYY",
-            classes="year-select",
-        )
-        yield Label("Month:")
-        yield Select(
-            [(f"{m:02d}", m) for m in range(1, 13)],
-            id=f"wp{wp_id}_month",
-            value=time.month if time else Select.NULL,
-            prompt="MM",
-            classes="month-select",
-        )
-        yield Label("Day:")
-        yield Select(
-            [(f"{d:02d}", d) for d in range(1, 32)],
-            id=f"wp{wp_id}_day",
-            value=time.day if time else Select.NULL,
-            prompt="DD",
-            classes="day-select",
-        )
-        yield Label("Hour:")
-        yield Select(
-            [(f"{h:02d}", h) for h in range(24)],
-            id=f"wp{wp_id}_hour",
-            value=time.hour if time else Select.NULL,
-            prompt="hh",
-            classes="hour-select",
-        )
-        yield Label("Min:")
-        yield Select(
-            self._get_minute_options(),
-            id=f"wp{wp_id}_minute",
-            value=time.minute if time else Select.NULL,
-            prompt="mm",
-            classes="minute-select",
-        )
-
-    def _yield_instrument_controls(self, wp_id: int) -> ComposeResult:
-        """Yields instrument controls if waypoint is not a Port."""
+    def _yield_instrument_controls(self) -> ComposeResult:
         yield Label("Instruments:")
 
-        for instrument in [i for i in InstrumentType if not i.is_underway]:
+        for instrument in DEPLOYABLE_INSTRUMENTS:
             is_selected = instrument in (self.waypoint.instrument or [])
             with Horizontal():
                 yield Label(instrument.value)
-                # Matches expected #inst_<INSTRUMENT> prefix or wp-indexed switch ID
-                yield Switch(
-                    value=is_selected,
-                    id=f"wp{wp_id}_{instrument.value}",
-                )
+                yield Switch(value=is_selected, id=instrument.value)
 
-                if instrument.value == "DRIFTER":
+                if instrument is InstrumentType.DRIFTER:
+                    drifter_count = (self.waypoint.instrument or []).count(
+                        InstrumentType.DRIFTER
+                    )
                     yield Label("Count")
                     yield Input(
-                        id=f"wp{wp_id}_drifter_count",
-                        value=str(self.get_drifter_count() if is_selected else ""),
+                        id="drifter_count",
+                        value=str(drifter_count) if is_selected else "",
                         type="integer",
                         placeholder="# of drifters",
                         validators=Integer(
@@ -901,58 +834,79 @@ class WaypointWidget(Static):
                         ),
                         classes="drifter-count-input",
                     )
-                    yield Label(
-                        "",
-                        id=f"validation-failure-label-wp{wp_id}_drifter_count",
-                        classes="-hidden validation-failure",
-                    )
+                    yield _failure_label("drifter_count")
 
     def compose(self) -> ComposeResult:
-        try:
-            with Collapsible(
-                title=self.get_title(), collapsed=True, id=f"wp{self.index}"
-            ):
-                if self.index > 0:
-                    yield Button(
-                        self.get_copy_button_text(),
-                        id=f"wp{self.index}_copy",
-                        variant="warning",
-                    )
+        if self.show_copy_button:
+            yield Button(
+                "Copy Time from Previous"
+                if isinstance(self.waypoint, Port)
+                else "Copy Time & Instruments from Previous",
+                id="copy",
+                variant="warning",
+            )
 
-                yield Label("Location:")
-                yield from self._yield_coordinate_input(
-                    "Latitude", "lat", is_valid_lat, "°N", self.index
-                )
-                yield from self._yield_coordinate_input(
-                    "Longitude", "lon", is_valid_lon, "°E", self.index
-                )
+        yield Label("Location:")
+        yield from self._yield_coordinate_input("Latitude", "lat", is_valid_lat, "°N")
+        yield from self._yield_coordinate_input("Longitude", "lon", is_valid_lon, "°E")
 
-                yield Label("Time:")
-                with Horizontal():
-                    yield from self._yield_time_selectors(self.index)
+        yield Label("Time (YYYY-MM-DD hh:mm):")
+        yield MaskedInput(
+            template=WAYPOINT_TIME_TEMPLATE,
+            value=format_waypoint_time(self.waypoint.time),
+            placeholder="YYYY-MM-DD hh:mm",
+            id="time",
+            validators=[Function(is_valid_waypoint_time, WAYPOINT_TIME_INVALID_MSG)],
+            valid_empty=True,
+            classes="time-input",
+        )
+        yield _failure_label("time")
+        yield Horizontal(
+            *(
+                Button(label, id=button_id, variant=variant)
+                for button_id, label, variant, _ in TIME_STEPS
+            ),
+            classes="time-adjust-buttons",
+        )
 
-                yield Horizontal(
-                    Button("+1 day", id="plus_one_day", variant="primary"),
-                    Button("+1 hour", id="plus_one_hour", variant="primary"),
-                    Button("+30 minutes", id="plus_thirty_minutes", variant="primary"),
-                    Button("-1 day", id="minus_one_day", variant="default"),
-                    Button("-1 hour", id="minus_one_hour", variant="default"),
-                    Button("-30 minutes", id="minus_thirty_minutes", variant="default"),
-                    classes="time-adjust-buttons",
-                )
+        if not isinstance(self.waypoint, Port):
+            yield from self._yield_instrument_controls()
+            yield Horizontal(Button("Remove Waypoint", id="remove", variant="error"))
 
-                if not isinstance(self.waypoint, Port):
-                    yield from self._yield_instrument_controls(self.index)
-                    yield Horizontal(
-                        Button(
-                            "Remove Waypoint",
-                            id=f"wp{self.index}_remove",
-                            variant="error",
-                        )
-                    )
 
-        except Exception as e:
-            raise UnexpectedError(unexpected_msg_compose(e)) from None
+class WaypointWidget(Static):
+    """A waypoint in the schedule editor."""
+
+    class _Request(Message):
+        def __init__(self, widget: "WaypointWidget"):
+            super().__init__()
+            self.widget = widget
+
+    class RemoveRequested(_Request):
+        """Posted when the user asks to remove this waypoint."""
+
+    class CopyRequested(_Request):
+        """Posted when the user asks to copy time/instruments from the previous waypoint."""
+
+    def __init__(self, waypoint: Waypoint, index: int):
+        super().__init__()
+        self.waypoint = waypoint
+        self.index = index
+        self.errors: dict[str, str] = {}
+        self.body: WaypointBody | None = None
+
+    def compose(self) -> ComposeResult:
+        yield Collapsible(title=self.get_title(), collapsed=True)
+
+    @on(Collapsible.Expanded)
+    async def build_body(self, event: Collapsible.Expanded) -> None:
+        event.stop()
+        if self.body is None:
+            try:
+                self.body = WaypointBody(self.waypoint, show_copy_button=self.index > 0)
+                await self.query_one(Collapsible.Contents).mount(self.body)
+            except Exception as e:
+                raise UnexpectedError(unexpected_msg_compose(e)) from None
 
     def get_title(self) -> str:
         if isinstance(self.waypoint, Port):
@@ -960,142 +914,173 @@ class WaypointWidget(Static):
         else:
             return f"Waypoint {self.index}"
 
-    def get_copy_button_text(self) -> str:
-        if isinstance(self.waypoint, Port):
-            return "Copy Time from Previous"
-        else:
-            return "Copy Time & Instruments from Previous"
+    def set_index(self, index: int) -> None:
+        if index != self.index:
+            self.index = index
+            self.query_one(Collapsible).title = self.get_title()
 
-    def get_drifter_count(self) -> int:
-        return sum(
-            1 for inst in self.waypoint.instrument if inst == InstrumentType.DRIFTER
+    def load_from_model(self) -> None:
+        """Update the (built) controls to match the waypoint model's time and instruments."""
+        if self.body is None:
+            return  # built from the model when first expanded
+        self.body.query_one("#time", MaskedInput).value = format_waypoint_time(
+            self.waypoint.time
         )
+        if not isinstance(self.waypoint, Port):
+            instruments = self.waypoint.instrument or []
+            drifter_count = instruments.count(InstrumentType.DRIFTER)
+            self.body.query_one("#drifter_count", Input).value = (
+                str(drifter_count) if drifter_count else ""
+            )
+            for instrument in DEPLOYABLE_INSTRUMENTS:
+                self.body.query_one(f"#{instrument.value}", Switch).value = (
+                    instrument in instruments
+                )
 
-    def copy_from_previous(self) -> None:
-        """Copy inputs from previous waypoint widget (time and instruments only, not lat/lon)."""
+    # model updates
+
+    def _sync_location(self) -> None:
+        lat_text = self.body.query_one("#lat", Input).value.strip()
+        lon_text = self.body.query_one("#lon", Input).value.strip()
         try:
-            if self.index > 0:
-                schedule_editor = self.parent
-                if schedule_editor:
-                    time_components = ["year", "month", "day", "hour", "minute"]
-                    for comp in time_components:
-                        prev = schedule_editor.query_one(f"#wp{self.index - 1}_{comp}")
-                        curr = self.query_one(f"#wp{self.index}_{comp}")
-                        if prev and curr:
-                            if (
-                                comp == "minute"
-                            ):  # special handle minute, round to nearest 5 for compatibility with options
-                                minute_value = prev.value
-                                if minute_value % 5 != 0:
-                                    minute_value = 5 * round(minute_value / 5)
-                                curr.value = minute_value
-                            else:
-                                curr.value = prev.value
+            lat = float(lat_text) if lat_text else None
+            lon = float(lon_text) if lon_text else None
+            if (lat is None or lon is None) and not isinstance(self.waypoint, Port):
+                raise ValueError("Latitude and longitude are both required.")
+            if lat is None and lon is None:
+                # leave an existing null/empty location when unused port
+                location = self.waypoint.location or None
+                if location is not None and (
+                    location.latitude is not None or location.longitude is not None
+                ):
+                    location = Location(latitude=None, longitude=None)
+            else:
+                location = Location(latitude=lat, longitude=lon)
+        except ValueError as e:
+            message = str(e)
+            if message.startswith("could not convert"):
+                message = "Latitude and longitude must be numbers."
+            self.errors["location"] = message
+            return
+        self.errors.pop("location", None)
+        if location != self.waypoint.location:
+            self.waypoint.location = location
 
-                    if not isinstance(
-                        self.waypoint, Port
-                    ):  # only copy instruments for non-port waypoints
-                        for instrument in [
-                            inst for inst in InstrumentType if not inst.is_underway
-                        ]:
-                            try:
-                                prev_switch = schedule_editor.query_one(
-                                    f"#wp{self.index - 1}_{instrument.value}"
-                                )
-                            except NoMatches:
-                                # previous waypoint is a port so no instrument controls to copy
-                                break
-                            curr_switch = self.query_one(
-                                f"#wp{self.index}_{instrument.value}"
-                            )
-                            if prev_switch and curr_switch:
-                                curr_switch.value = prev_switch.value
+    def _sync_time(self) -> None:
+        try:
+            time = parse_waypoint_time(self.body.query_one("#time", MaskedInput).value)
+        except ValueError:
+            self.errors["time"] = (
+                "Time must be a complete, real date and time (YYYY-MM-DD hh:mm)."
+            )
+            return
+        self.errors.pop("time", None)
+        current = self.waypoint.time
+        # only overwrite if the minute actually changed (keeps any seconds)
+        if time != (current.replace(second=0, microsecond=0) if current else None):
+            self.waypoint.time = time
 
-                    # hard update self.waypoint.time to match new values as shown in UI
-                    year = int(self.query_one(f"#wp{self.index}_year").value)
-                    month = int(self.query_one(f"#wp{self.index}_month").value)
-                    day = int(self.query_one(f"#wp{self.index}_day").value)
-                    hour = int(self.query_one(f"#wp{self.index}_hour").value)
-                    minute = int(self.query_one(f"#wp{self.index}_minute").value)
-                    self.waypoint.time = datetime.datetime(
-                        year, month, day, hour, minute, 0
+    def _sync_instruments(self) -> None:
+        if isinstance(self.waypoint, Port):
+            return
+        instruments = []
+        for instrument in DEPLOYABLE_INSTRUMENTS:
+            if not self.body.query_one(f"#{instrument.value}", Switch).value:
+                continue
+            if instrument is InstrumentType.DRIFTER:
+                try:
+                    count = int(self.body.query_one("#drifter_count", Input).value)
+                    if count < 1:
+                        raise ValueError
+                except ValueError:
+                    self.errors["drifter_count"] = (
+                        "Drifter count must be a whole number greater than 0."
                     )
+                    return
+                instruments.extend([instrument] * count)
+            else:
+                instruments.append(instrument)
+        self.errors.pop("drifter_count", None)
+        # compare ignoring order, so an untouched waypoint's instrument order is left as loaded
+        if Counter(instruments) != Counter(self.waypoint.instrument or []):
+            self.waypoint.instrument = instruments
 
-        except Exception as e:
-            raise UnexpectedError(unexpected_msg_compose(e)) from None
+    # event handlers
 
-    @on(Button.Pressed, "Button")
-    def button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == f"wp{self.index}_copy":
-            self.copy_from_previous()
+    @on(Input.Changed)
+    def input_changed(self, event: Input.Changed) -> None:
+        event.stop()
+        input_id = event.input.id
+        validation_result = event.validation_result
+        if input_id in ("lat", "lon"):
+            self._sync_location()
+        elif input_id == "time":
+            self._sync_time()
+        elif input_id == "drifter_count":
+            self._sync_instruments()
+            if not self.body.query_one("#DRIFTER", Switch).value:
+                # count is irrelevant while drifters are off
+                validation_result = None
+                event.input.remove_class("-valid", "-invalid")
+
+        try:
+            label = self.body.query_one(f"#validation-failure-label-{input_id}", Label)
+        except NoMatches:
+            return
+        show_validation_result(label, validation_result)
 
     @on(Switch.Changed)
-    def on_switch_changed(self, event: Switch.Changed) -> None:
-        if event.switch.id == f"wp{self.index}_DRIFTER":
-            drifter_count_input = self.query_one(
-                f"#wp{self.index}_drifter_count", Input
-            )
+    def switch_changed(self, event: Switch.Changed) -> None:
+        event.stop()
+        if event.switch.id == "DRIFTER":
+            drifter_count_input = self.body.query_one("#drifter_count", Input)
             if not event.value:
                 drifter_count_input.value = ""
-            else:
-                if not drifter_count_input.value:
-                    drifter_count_input.value = "1"
-
-    # fmt: off
-    def update_time(self) -> None:
-        """Update the time selects to match the current waypoint time."""
-        self.query_one(f"#wp{self.index}_year", Select).value = self.waypoint.time.year
-        self.query_one(f"#wp{self.index}_month", Select).value = self.waypoint.time.month
-        self.query_one(f"#wp{self.index}_day", Select).value = self.waypoint.time.day
-        self.query_one(f"#wp{self.index}_hour", Select).value = self.waypoint.time.hour
-        self.query_one(f"#wp{self.index}_minute", Select).value = self.waypoint.time.minute
-    # fmt: on
-
-    def round_minutes(self) -> None:
-        """Round the waypoint time minutes to the nearest 5 minutes, for compatability with UI selection fields."""
-        if self.waypoint.time:
-            minute = self.waypoint.time.minute
-            if minute % 5 == 0:
-                return
-            else:
-                rounded_minute = 5 * round(minute / 5)
-                if rounded_minute == 60:  # increment hour
-                    self.waypoint.time += datetime.timedelta(hours=1)
-                    rounded_minute = 0
-                self.waypoint.time = self.waypoint.time.replace(minute=rounded_minute)
+            elif not drifter_count_input.value:
+                drifter_count_input.value = "1"
+        self._sync_instruments()
 
     @on(Button.Pressed)
-    def time_adjust_buttons(self, event: Button.Pressed) -> None:
-        if self.waypoint.time:
-            if event.button.id == "plus_one_day":
-                self.waypoint.time += datetime.timedelta(days=1)
-                self.update_time()
-            if event.button.id == "plus_one_hour":
-                self.waypoint.time += datetime.timedelta(hours=1)
-                self.update_time()
-            elif event.button.id == "plus_thirty_minutes":
-                self.waypoint.time += datetime.timedelta(minutes=30)
-                self.round_minutes()
-                self.update_time()
-            elif event.button.id == "minus_one_day":
-                self.waypoint.time -= datetime.timedelta(days=1)
-                self.update_time()
-            elif event.button.id == "minus_one_hour":
-                self.waypoint.time -= datetime.timedelta(hours=1)
-                self.update_time()
-            elif event.button.id == "minus_thirty_minutes":
-                self.waypoint.time -= datetime.timedelta(minutes=30)
-                self.round_minutes()
-                self.update_time()
+    def button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        button_id = event.button.id
+        if button_id == "copy":
+            self.post_message(self.CopyRequested(self))
+        elif button_id == "remove":
+            self.post_message(self.RemoveRequested(self))
         else:
+            step = next((s[3] for s in TIME_STEPS if s[0] == button_id), None)
+            if step is not None:
+                self._adjust_time(step)
+
+    def _adjust_time(self, step: datetime.timedelta) -> None:
+        time_input = self.body.query_one("#time", MaskedInput)
+        try:
+            # from the box rather than the model, so rapid presses accumulate properly
+            time = parse_waypoint_time(time_input.value)
+        except ValueError:
+            time = None
+        if time is None:
             self.notify(
-                "Cannot adjust time: Time is not set for this waypoint.",
+                "Cannot adjust time: a complete time is not set for this waypoint.",
                 severity="error",
                 timeout=20,
             )
+            return
+        time_input.value = format_waypoint_time(time + step)
+        self._sync_time()
+
+
+class QuitConfirmScreen(ConfirmScreen):
+    """Confirmation before quitting with unsaved changes."""
 
 
 class PlanScreen(Screen):
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("ctrl+s", "save", "Save", priority=True),
+        Binding("escape", "collapse_all", "Collapse all"),
+    ]
+
     def __init__(self, path: str):
         super().__init__()
         self.path = path
@@ -1107,109 +1092,52 @@ class PlanScreen(Screen):
                 with Horizontal():
                     yield Button("Save Changes", id="save_button", variant="success")
                     yield Button("Exit", id="exit_button", variant="error")
+                    yield Button(
+                        "Collapse All", id="collapse_all_button", variant="default"
+                    )
+            yield Footer()
         except Exception as e:
             raise UnexpectedError(unexpected_msg_compose(e)) from None
 
-    def sync_ui_waypoints(self):
-        """Update the waypoints models with current UI values from the live UI inputs."""
-        expedition_editor = self.query_one(ExpeditionEditor)
-        errors = []
-
-        for i, wp in enumerate(expedition_editor.expedition.schedule.waypoints):
-            try:
-                wp.time = parse_waypoint_datetime(
-                    self.query_one(f"#wp{i}_year", Select).value,
-                    self.query_one(f"#wp{i}_month", Select).value,
-                    self.query_one(f"#wp{i}_day", Select).value,
-                    self.query_one(f"#wp{i}_hour", Select).value,
-                    self.query_one(f"#wp{i}_minute", Select).value,
-                )
-
-                lat_val = expedition_editor.query_one(f"#wp{i}_lat").value
-                lon_val = expedition_editor.query_one(f"#wp{i}_lon").value
-
-                if isinstance(wp, Port) and (lat_val == "" or lon_val == ""):
-                    wp.location = Location(
-                        latitude=float(lat_val) if lat_val != "" else None,
-                        longitude=float(lon_val) if lon_val != "" else None,
-                    )
-                else:
-                    wp.location = Location(
-                        latitude=float(lat_val),
-                        longitude=float(lon_val),
-                    )
-
-                if not isinstance(wp, Port):
-                    wp.instrument = []
-
-                    for instrument in [
-                        inst for inst in InstrumentType if not inst.is_underway
-                    ]:
-                        switch_on = expedition_editor.query_one(
-                            f"#wp{i}_{instrument.value}", Switch
-                        ).value
-                        if instrument.value == "DRIFTER" and switch_on:
-                            count_str = expedition_editor.query_one(
-                                f"#wp{i}_drifter_count", Input
-                            ).value
-                            count = int(count_str)
-                            assert count > 0
-                            wp.instrument.extend([InstrumentType.DRIFTER] * count)
-                        elif switch_on:
-                            wp.instrument.append(instrument)
-
-            except Exception as e:
-                errors.append(f"Waypoint {i + 1}: {e}")
-
-        if errors:
-            log_exception_to_file(
-                Exception("\n".join(errors)),
-                self.path,
-                context_message="Error syncing waypoints:",
-            )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
-
     @on(Button.Pressed, "#exit_button")
-    def exit_pressed(self) -> None:
-        self.app.exit()
+    async def exit_pressed(self) -> None:
+        await self.app.run_action("quit")
+
+    @on(Button.Pressed, "#collapse_all_button")
+    def action_collapse_all(self) -> None:
+        """Collapse every section and waypoint, and scroll back to the top."""
+        with self.app.batch_update():
+            for collapsible in self.query(Collapsible):
+                collapsible.collapsed = True
+        self.query_one(VerticalScroll).scroll_home(animate=False)
+
+    def action_save(self) -> None:
+        self.save_pressed()
 
     @on(Button.Pressed, "#save_button")
     def save_pressed(self) -> None:
         """Save button press."""
-        expedition_editor = self.query_one(ExpeditionEditor)
-
+        editor = self.query_one(ExpeditionEditor)
         try:
-            ship_speed_value = self.get_ship_speed(expedition_editor)
-            self.sync_ui_waypoints()
-
-            instruments_config = expedition_editor.expedition.instruments_config
-            schedule = expedition_editor.expedition.schedule
-
-            schedule.verify(ship_speed_value, instruments_config, ignore_land_test=True)
-
-            expedition_saved = expedition_editor.save_changes()
-
-            if expedition_saved:
-                self.notify(
-                    "Changes saved successfully",
-                    severity="information",
-                    timeout=20,
+            if waypoint_errors := editor.waypoint_errors():
+                raise UserError(
+                    "Some waypoint entries are invalid or incomplete:\n\n"
+                    + "\n".join(waypoint_errors)
                 )
-
+            ship_speed = self.get_ship_speed(editor)
+            schedule = editor.expedition.schedule
+            schedule.verify(
+                ship_speed, editor.expedition.instruments_config, ignore_land_test=True
+            )
+            if editor.save_changes():
+                self.notify(
+                    "Changes saved successfully", severity="information", timeout=20
+                )
             # check for incomplete ports and warn the user, but allow save to continue
-            if (
-                not schedule.departure_port.is_in_use
-                or not schedule.arrival_port.is_in_use
+            if not (
+                schedule.departure_port.is_in_use and schedule.arrival_port.is_in_use
             ):
-                self.notify(
-                    INCOMPLETE_PORT_MSG,
-                    severity="warning",
-                    timeout=20,
-                )
-
+                self.notify(INCOMPLETE_PORT_MSG, severity="warning", timeout=20)
         except Exception as e:
             self.notify(
                 f"*** Error saving changes ***:\n\n{e}\n",
@@ -1224,13 +1152,7 @@ class PlanScreen(Screen):
             ship_speed = float(expedition_editor.query_one("#speed").value)
             assert ship_speed > 0
         except Exception as e:
-            log_exception_to_file(
-                e, self.path, context_message="Error saving schedule:"
-            )
-            raise UnexpectedError(
-                UNEXPECTED_MSG_ONSAVE
-                + f"\n\nTraceback will be logged in {self.path}/virtualship_error.txt. Please attach this/copy the contents to any issue submitted."
-            ) from None
+            _raise_logged_unexpected(e, self.path, "Error saving schedule:")
         return ship_speed
 
 
@@ -1412,16 +1334,8 @@ class PlanApp(App):
         color: $text-muted;
     }
 
-    .year-select {
-        width: 20;
-    }
-
-    .month-select, .day-select {
-        width: 18;
-    }
-
-    .hour-select, .minute-select {
-        width: 15;
+    .time-input {
+        width: 24;
     }
 
     Label.validation-failure {
@@ -1462,13 +1376,42 @@ class PlanApp(App):
     }
     """
 
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("ctrl+q", "quit", "Quit", priority=True),
+    ]
+
     def __init__(self, path: str):
         super().__init__()
         self.path = path
+        # for speed-up on remote/browser-based terminals
+        self.animation_level = "none"
 
     def on_mount(self) -> None:
         self.push_screen(PlanScreen(self.path))
         self.theme = "textual-light"
+
+    async def action_quit(self) -> None:
+        """Quit, asking first if there are unsaved changes."""
+        if isinstance(self.screen, QuitConfirmScreen):
+            self.exit()
+            return
+        try:
+            editor = self.screen.query_one(ExpeditionEditor)
+        except NoMatches:
+            self.exit()
+            return
+        if not (editor.has_unsaved_changes() or editor.waypoint_errors()):
+            self.exit()
+            return
+
+        def on_confirmed(confirmed: bool) -> None:
+            if confirmed:
+                self.exit()
+
+        self.push_screen(
+            QuitConfirmScreen("You have unsaved changes. Quit without saving?"),
+            on_confirmed,
+        )
 
 
 def _plan(path: str) -> None:
