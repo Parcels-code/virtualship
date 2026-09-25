@@ -79,7 +79,7 @@ conda activate virtualship
 When your expedition has finished, you can analyse your results in our **post-processing workspace**. This is a separate, cloud-based JupyterLab environment (hosted on [Binder](https://mybinder.org/)) with all the analysis tools and example tutorials already installed. See the Post-processing Workspace Guide below for how to use it.
 
 ```{note}
-You don't have to use the post-processing workspace! Feel free to download your data and analyse it in your own programming environment if you prefer.
+You don't have to use the post-processing workspace. Feel free to download your data and analyse it in your own programming environment if you prefer.
 ```
 
 ```{nbgallery}
