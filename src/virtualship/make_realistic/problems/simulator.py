@@ -30,7 +30,6 @@ from virtualship.utils import (
     EXPEDITION_ORIGINAL,
     PROJECTION,
     _calc_sail_time,
-    _calc_wp_stationkeeping_time,
     _get_public_wp,
     _make_hash,
     _read_json,
@@ -379,7 +378,7 @@ class ProblemSimulator:
         )
 
         stationkeeping = (
-            _calc_wp_stationkeeping_time(curr_wp.instrument, self.expedition)
+            curr_wp.stationkeeping_time(self.expedition.instruments_config)
             if not isinstance(curr_wp, Port)
             else timedelta(0)
         )
