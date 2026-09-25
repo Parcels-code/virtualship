@@ -56,6 +56,6 @@ Your participation in this study is voluntary. You will not be paid for your par
 
 If you have questions, comments or concerns about this part of the course and/or research project, you can talk to one of the researchers of the VirtualShip Classroom or to the course coordinator. Please contact the VirtualShip Team ([virtualship@uu.nl](virtualship@uu.nl)) or Erik van Sebille ([e.vansebille.uu.nl](e.vansebille.uu.nl)).
 
-If you have questions about your rights while taking part in the study or have concerns about the treatment of other articipants, please write to the secretary of the ethical commission at UU ([etc-beta-geo@uu.nl](etc-beta-geo@uu.nl)).
+If you have questions about your rights while taking part in the study or have concerns about the treatment of other participants, please write to the secretary of the ethical commission at UU ([etc-beta-geo@uu.nl](etc-beta-geo@uu.nl)).
 
 If you have questions or concerns about your privacy while taking part in the study, please send an email to: [privacy-beta@uu.nl](privacy-beta@uu.nl) or [privacy-geo@uu.nl](privacy-geo@uu.nl).
