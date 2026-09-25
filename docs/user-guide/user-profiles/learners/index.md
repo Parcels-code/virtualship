@@ -60,6 +60,10 @@ The free tier of GitHub Codespaces gives each account a limited number of hours 
 
 #### Option 2: install the software locally
 
+```{note}
+The instructions below use the [conda package manager](https://docs.conda.io/en/latest/) to install the software. If you don't have conda installed, you can download it from [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html). Also, see [here](https://docs.conda.io/projects/conda/en/stable/user-guide/getting-started.html) for a guide to using conda.
+```
+
 If your instructor has asked you to install the software on your own computer (or an institutional server) instead, you can create a new conda environment with `VirtualShip` installed as follows:
 
 ```bash
