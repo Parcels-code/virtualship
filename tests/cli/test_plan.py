@@ -6,8 +6,16 @@ import pytest
 import yaml
 from textual.widgets import Button, Collapsible, Input, Switch
 
-from virtualship.cli._plan import ExpeditionEditor, PlanApp, _default_sensors
+from virtualship.cli._plan import (
+    ExpeditionEditor,
+    PlanApp,
+    QuitConfirmScreen,
+    WaypointWidget,
+    _default_sensors,
+    parse_waypoint_time,
+)
 from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     CTDConfig,
     Expedition,
@@ -73,6 +81,40 @@ async def _expand_instrument_configs(
                 break
 
 
+async def _expand_waypoint(expedition_editor, pilot, index: int) -> WaypointWidget:
+    """Expand the waypoint editor."""
+    waypoints_collapsible = expedition_editor.query_one("#waypoints", Collapsible)
+    if waypoints_collapsible.collapsed:
+        waypoints_collapsible.collapsed = False
+        await pilot.pause()
+    widget = expedition_editor.waypoint_widgets[index]
+    widget.query_one(Collapsible).collapsed = False
+    await pilot.pause()
+    return widget
+
+
+def _four_waypoint_schedule() -> list:
+    return [
+        Port(location=None, time=None),
+        Waypoint(
+            location=Location(0, 0),
+            time=datetime(2022, 1, 1, 0, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.01, 0.01),
+            time=datetime(2022, 1, 1, 1, 0, 0),
+            instrument=["CTD"],
+        ),
+        Waypoint(
+            location=Location(0.02, 0.02),
+            time=datetime(2022, 1, 1, 2, 0, 0),
+            instrument=["CTD"],
+        ),
+        Port(location=None, time=None),
+    ]
+
+
 @pytest.mark.asyncio
 async def test_UI_changes(tmp_path):
     """Test making changes to UI inputs and saving to YAML (simulated botton presses and typing inputs)."""
@@ -129,28 +171,22 @@ async def test_UI_changes(tmp_path):
         if waypoints_collapsible.collapsed:
             waypoints_collapsible.collapsed = False
             await pilot.pause()
-        wp_collapsible = waypoints_collapsible.query_one("#wp2", Collapsible)
-        if wp_collapsible.collapsed:
-            wp_collapsible.collapsed = False
-            await pilot.pause()
+        wp2 = await _expand_waypoint(expedition_editor, pilot, 2)
         lat_input, lon_input = (
-            wp_collapsible.query_one("#wp2_lat", Input),
-            wp_collapsible.query_one("#wp2_lon", Input),
+            wp2.query_one("#lat", Input),
+            wp2.query_one("#lon", Input),
         )
         await simulate_input(pilot, lat_input, NEW_LAT)
         await simulate_input(pilot, lon_input, NEW_LON)
 
-        # toggle CTD on first waypoint
-        await pilot.click("#wp1_CTD")
+        # toggle CTD and XBT on first waypoint
+        wp1 = await _expand_waypoint(expedition_editor, pilot, 1)
+        wp1.query_one("#CTD", Switch).toggle()
         await pilot.pause(0.1)
-
-        # toggle XBT on first waypoint
-        await pilot.click("#wp1_XBT")
+        wp1.query_one("#XBT", Switch).toggle()
         await pilot.pause(0.1)
 
         # re-collapse widget editors to make save button visible on screen
-        wp_collapsible.collapsed = True
-        await pilot.pause()
         waypoints_collapsible.collapsed = True
         await pilot.pause()
 
@@ -172,6 +208,11 @@ async def test_UI_changes(tmp_path):
             saved_expedition = yaml.safe_load(f)
 
         assert saved_expedition["ship_config"]["ship_speed_knots"] == float(NEW_SPEED)
+
+        saved_wps = Expedition.from_yaml(tmp_path / EXPEDITION).schedule.waypoints
+        assert saved_wps[2].location.lat == float(NEW_LAT)
+        assert saved_wps[2].location.lon == float(NEW_LON)
+        assert saved_wps[1].instrument == [InstrumentType.XBT]
 
         # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"
@@ -405,3 +446,240 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
         sal_switch = expedition_editor.query_one("#ctd_config_sensor_SALINITY", Switch)
         assert temp_switch.value is True, "TEMPERATURE should be ON"
         assert sal_switch.value is False, "SALINITY should be OFF (not in saved config)"
+
+
+@pytest.mark.asyncio
+async def test_adcp_type_always_exactly_one_selected(tmp_path):
+    """Switching one ADCP type off selects the other, so both can never be off/on together."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        deep = expedition_editor.query_one("#adcp_deep", Switch)
+        shallow = expedition_editor.query_one("#adcp_shallow", Switch)
+        assert expedition_editor.query_one("#has_adcp", Switch).value
+
+        for switch in (deep, shallow, deep, shallow):
+            switch.value = not switch.value
+            await pilot.pause()
+            assert deep.value != shallow.value
+
+        # whichever is selected is what gets saved
+        await plan_screen.run_action("save")
+        await pilot.pause(0.5)
+        saved = Expedition.from_yaml(tmp_path / EXPEDITION)
+        expected = -1000.0 if deep.value else -150.0
+        assert saved.instruments_config.adcp_config.max_depth_meter == expected
+
+
+@pytest.mark.asyncio
+async def test_collapse_all(tmp_path):
+    """The collapse-all button and Escape collapse every section and waypoint."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        for trigger in ("button", "escape"):
+            await _expand_instrument_configs(expedition_editor, pilot, "CTD")
+            await _expand_waypoint(expedition_editor, pilot, 1)
+            await _expand_waypoint(expedition_editor, pilot, 2)
+            assert any(not c.collapsed for c in plan_screen.query(Collapsible))
+
+            if trigger == "button":
+                plan_screen.query_one("#collapse_all_button", Button).press()
+            else:
+                await pilot.press("escape")
+            await pilot.pause()
+            assert all(c.collapsed for c in plan_screen.query(Collapsible))
+
+
+def test_parse_waypoint_time():
+    assert parse_waypoint_time("") is None
+    assert parse_waypoint_time("2023-06-15 10:30") == datetime(2023, 6, 15, 10, 30)
+    for invalid in ("2023-06-", "2023-02-30 10:00", "2023-06-15 25:00"):
+        with pytest.raises(ValueError):
+            parse_waypoint_time(invalid)
+
+
+@pytest.mark.asyncio
+async def test_waypoint_controls_built_lazily(tmp_path):
+    """Waypoint controls are only built when a waypoint is first expanded."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        expedition_editor = pilot.app.screen.query_one(ExpeditionEditor)
+
+        widgets = expedition_editor.waypoint_widgets
+        assert len(widgets) == 5
+        assert all(w.body is None for w in widgets)
+        assert not list(expedition_editor.query("#lat"))
+
+        wp2 = await _expand_waypoint(expedition_editor, pilot, 2)
+        assert wp2.body is not None
+        assert wp2.query_one("#lat", Input).value == "0.01"
+        assert wp2.query_one("#time", Input).value == "2022-01-01 01:00"
+        assert sum(w.body is not None for w in expedition_editor.waypoint_widgets) == 1
+
+
+@pytest.mark.asyncio
+async def test_add_and_remove_waypoints_renumber(tmp_path):
+    """Adding/removing waypoints updates the schedule and renumbers titles without rebuilding the others."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        schedule = expedition_editor.expedition.schedule
+
+        # an expanded waypoint keeps its controls through add/remove
+        wp3 = await _expand_waypoint(expedition_editor, pilot, 3)
+
+        await expedition_editor.add_waypoint()
+        await pilot.pause()
+        titles = [w.get_title() for w in expedition_editor.waypoint_widgets]
+        assert titles == [
+            "Port of Departure",
+            "Waypoint 1",
+            "Waypoint 2",
+            "Waypoint 3",
+            "Waypoint 4",
+            "Port of Arrival",
+        ]
+        assert len(schedule.waypoints) == 6
+        # new waypoint copies the last waypoint's time, just before the arrival port
+        assert schedule.waypoints[4].time == datetime(2022, 1, 1, 2, 0, 0)
+
+        # remove waypoint 1 via its remove button, confirming in the dialog
+        wp1 = await _expand_waypoint(expedition_editor, pilot, 1)
+        wp1.query_one("#remove", Button).press()
+        await pilot.pause()
+        await pilot.click("#confirm-yes")
+        await pilot.pause()
+
+        widgets = expedition_editor.waypoint_widgets
+        assert len(widgets) == 5
+        assert len(schedule.waypoints) == 5
+        assert [w.get_title() for w in widgets][1:4] == [
+            "Waypoint 1",
+            "Waypoint 2",
+            "Waypoint 3",
+        ]
+        # the previously-expanded waypoint 3 is now waypoint 2, with the same controls
+        assert widgets[2] is wp3
+        assert wp3.query_one(Collapsible).title == "Waypoint 2"
+        assert schedule.waypoints[1].location.lat == 0.01
+
+        # remove last waypoint
+        await expedition_editor.remove_waypoint()
+        await pilot.pause()
+        assert len(schedule.waypoints) == 4
+
+        # reset restores the schedule as loaded
+        await expedition_editor.reset_changes()
+        await pilot.pause()
+        assert len(expedition_editor.waypoint_widgets) == 5
+        assert expedition_editor.expedition.schedule.waypoints[1].location.lat == 0.0
+
+
+@pytest.mark.asyncio
+async def test_waypoint_time_entry_and_adjust(tmp_path):
+    """Typed times and the +/- buttons update the waypoint, and invalid times block saving."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+        wp = expedition_editor.expedition.schedule.waypoints
+
+        wp3 = await _expand_waypoint(expedition_editor, pilot, 3)
+        time_input = wp3.query_one("#time", Input)
+        await simulate_input(pilot, time_input, "202201011015")
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 10:15"
+        assert wp[3].time == datetime(2022, 1, 1, 10, 15)
+
+        wp3.query_one("#plus_one_hour", Button).press()
+        await pilot.pause()
+        wp3.query_one("#minus_thirty_minutes", Button).press()
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 10:45"
+        assert wp[3].time == datetime(2022, 1, 1, 10, 45)
+
+        # a non-existent date is flagged and blocks saving
+        await simulate_input(pilot, time_input, "202202301000")
+        await pilot.pause()
+        assert "time" in wp3.errors
+        await plan_screen.run_action("save")
+        await pilot.pause()
+        args, _ = plan_screen.notify.call_args
+        assert "*** Error saving changes ***" in args[0]
+        assert "Waypoint 3" in args[0]
+
+        # copy from previous copies time and instruments, not location
+        wp[2].instrument = [InstrumentType.XBT]
+        wp3.query_one("#copy", Button).press()
+        await pilot.pause()
+        assert time_input.value == "2022-01-01 01:00"
+        assert wp[3].time == datetime(2022, 1, 1, 1, 0)
+        assert wp[3].instrument == [InstrumentType.XBT]
+        assert wp3.query_one("#XBT", Switch).value is True
+        assert wp[3].location.lat == 0.02
+        assert not wp3.errors
+
+
+@pytest.mark.asyncio
+async def test_save_shortcut_and_unsaved_changes_prompt(tmp_path):
+    """ctrl+s saves, quitting with unsaved changes asks first, quitting after saving does not."""
+    _make_expedition(tmp_path, _four_waypoint_schedule())
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(120, 100)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        # opening/expanding alone is not an unsaved change
+        await _expand_waypoint(expedition_editor, pilot, 1)
+        assert not expedition_editor.has_unsaved_changes()
+
+        wp1 = expedition_editor.waypoint_widgets[1]
+        await simulate_input(pilot, wp1.query_one("#lat", Input), "0.005")
+        await pilot.pause()
+        assert expedition_editor.has_unsaved_changes()
+
+        await pilot.press("ctrl+q")
+        await pilot.pause()
+        assert isinstance(pilot.app.screen, QuitConfirmScreen)
+        await pilot.click("#confirm-no")
+        await pilot.pause()
+        assert pilot.app.screen is plan_screen
+
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.5)
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            for call in plan_screen.notify.call_args_list
+        )
+        assert not expedition_editor.has_unsaved_changes()
+        saved = Expedition.from_yaml(tmp_path / EXPEDITION)
+        assert saved.schedule.waypoints[1].location.lat == 0.005
+
+        # a ship/instrument config edit also counts as unsaved
+        await simulate_input(pilot, expedition_editor.query_one("#speed", Input), "9.0")
+        assert expedition_editor.has_unsaved_changes()

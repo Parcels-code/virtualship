@@ -65,7 +65,7 @@ For advanced users: it is also possible to run the expedition initialisation ste
 ## 3) Expedition scheduling & configuration
 
 ```{important}
-This section describes the process of finalising the expedition schedule and instrument selection using the `virtualship plan` application. This is the recommended way for most users but when expeditions become larger with many waypoints, it can become cumbersome to use the planning tool (note, using VirtualShip in a remote terminal / cloud-based environment can also introduce lag in the user-interface). **In this case, you may prefer to edit the `expedition.yaml` file directly (see [here](./tutorials/working_with_expedition_yaml.md) for more details on how to do so)**.
+This section describes the process of finalising the expedition schedule and instrument selection using the `virtualship plan` application. This is the recommended way for most users. For very large expeditions (with many waypoints), or when working over a slow remote connection, you may find it quicker to make bulk edits in the `expedition.yaml` file itself. **In this case, you may prefer to edit the `expedition.yaml` file directly (see [here](./tutorials/working_with_expedition_yaml.md) for more details on how to do so)**.
 ```
 
 The next step is to finalise the expedition schedule plan, including setting times and instrument selection choices for each waypoint, as well as configuring the ship (such as its speed and underway measurement instruments). The easiest way to do so is to use the bespoke VirtualShip planning tool via the following command:
@@ -114,7 +114,7 @@ VirtualShip supports simulating experiments in the years 1993 through to the pre
 
 If you provided a `--start-date` during initialisation from an MFP export, each waypoint's time will already be pre-filled, based on MFP's estimated travel and station durations relative to your start date. You can review and adjust these under _Schedule Editor_ > _Waypoints & Instrument Selection_ in the planning tool.
 
-Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be inputted. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
+Each waypoint has its own sub-panel for parameter inputs (click on it to expand the selection options). Here, the time for each waypoint can be edited. There is also an option to adjust the latitude/longitude coordinates and you can add or remove waypoints.
 
 ```{note}
 Your Port of Departure and Port of Arrival (if set in MFP) appear as special waypoints in this list. They have no instrument selection options and cannot be added or removed.
