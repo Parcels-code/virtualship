@@ -180,7 +180,7 @@ Depending on the power of the machine that you are running VirtualShip on, this 
 When you are happy with your ship configuration and schedule plan, press _Save Changes_ at the bottom of the planning tool.
 
 ```{note}
-On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them (for example, which waypoint has an incomplete time).
+On pressing _Save Changes_ the tool will check the selections are valid (for example that the ship will be able to reach each waypoint in time). If they are, the changes will be saved to the `expedition.yaml` file, ready for the next steps. If your selections are invalid you should be provided with information on how to fix them.
 ```
 
 ## 6) Run the expedition
