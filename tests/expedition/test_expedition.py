@@ -130,6 +130,17 @@ def test_stationkeeping_time_capped_by_sea_depth(expedition) -> None:
     )
 
 
+def test_stationkeeping_time_bathymetry_overrides_waypoint_estimate(expedition) -> None:
+    """A measured seabed depth (from simulation fieldset) is used in place of the waypoint's estimate from MFP."""
+    waypoint = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-100.0
+    )
+
+    assert expedition.stationkeeping_time(
+        waypoint, bathymetry=-800.0
+    ) > expedition.stationkeeping_time(waypoint)
+
+
 def test_stationkeeping_time_single_instrument(expedition) -> None:
     """A bare (non-list) InstrumentType value is handled the same as a single element list."""
     bare = Waypoint(

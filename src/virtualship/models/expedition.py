@@ -166,20 +166,26 @@ class Expedition(pydantic.BaseModel):
         # +1 to get next
         return f"waypoint {_get_public_wp(wp_i + 1, self.schedule.waypoints)}"
 
-    def stationkeeping_time(self, waypoint: Port | Waypoint) -> timedelta:
+    def stationkeeping_time(
+        self,
+        waypoint: Port | Waypoint,
+        bathymetry: float | None = None,
+    ) -> timedelta:
         """
         Calculate how long the ship is stationary at waypoint.
 
         Stationkeeping time = ship deceleration time + deployment time + ship acceleration time.
         Assumes insturments are deployed concurrently, so the longest deployment time is used.
         Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
+        Optional `bathymetry` (measured seabed depth from simulation fieldset) overrides the waypoint's sea_depth_meter (estimated from MFP).
         """
         instruments = self._wp_instruments(waypoint)
         if not instruments:
             return timedelta()
 
         deployment_time = max(
-            self._deployment_time(instrument, waypoint) for instrument in instruments
+            self._deployment_time(instrument, waypoint, bathymetry)
+            for instrument in instruments
         )
 
         return (
@@ -192,15 +198,16 @@ class Expedition(pydantic.BaseModel):
         self,
         instrument: InstrumentType,
         waypoint: Waypoint,
+        bathymetry: float | None = None,
     ) -> timedelta:
         """Time an instrument holds the ship on station."""
         config = self.instruments_config.config_for(instrument)
         if config is None:
             return timedelta()
 
-        return get_instrument_class(instrument).deployment_time(
-            config, waypoint.sea_depth_meter
-        )
+        # a measured seabed depth (from simulation fieldset), when given, stands in for the waypoint's own estimate
+        seabed = bathymetry if bathymetry is not None else waypoint.sea_depth_meter
+        return get_instrument_class(instrument).deployment_time(config, seabed)
 
     @staticmethod
     def _wp_instruments(waypoint: Port | Waypoint) -> list[InstrumentType]:
