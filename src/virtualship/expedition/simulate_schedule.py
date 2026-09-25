@@ -231,23 +231,8 @@ class _ScheduleSimulator:
         ]
 
     def _get_instrument_timescosts(self, waypoint: Waypoint | Port) -> timedelta:
-        # port stops have no instruments; if there are no instruments, there is no time cost
-        if isinstance(waypoint, Port):
-            return timedelta()
-
-        # if proper waypoint but there are no instruments, there is no time cost
-        if isinstance(waypoint, Waypoint) and waypoint.instrument is None:
-            return timedelta()
-
-        # make instruments a list even if it's only a single one
-        instruments = (
-            waypoint.instrument
-            if isinstance(waypoint.instrument, list)
-            else [waypoint.instrument]
-        )
-
-        # time costs of each measurement
-        time_costs = [timedelta()]
+        """Queue waypoint's deployments, report how long the ship is held there."""
+        instruments = self._expedition._wp_instruments(waypoint)
 
         for instrument in instruments:
             if instrument is InstrumentType.ARGO_FLOAT:
@@ -262,12 +247,6 @@ class _ScheduleSimulator:
                         drift_days=self._expedition.instruments_config.argo_float_config.drift_days,
                     )
                 )
-                # TODO: would be good to avoid having to twice make sure that stationkeeping time is factored in; i.e. in schedule validity checks and here (and for CTDs and Drifters)
-                # TODO: makes it easy to forget to update both...
-                # TODO: this is likely to fall under refactoring simulate_schedule.py (i.e. #236)
-                time_costs.append(
-                    self._expedition.instruments_config.argo_float_config.stationkeeping_time
-                )
 
             elif instrument is InstrumentType.CTD:
                 self._measurements_to_simulate.ctds.append(
@@ -277,9 +256,6 @@ class _ScheduleSimulator:
                         max_depth=self._expedition.instruments_config.ctd_config.max_depth_meter,
                     )
                 )
-                time_costs.append(
-                    self._expedition.instruments_config.ctd_config.stationkeeping_time
-                )
 
             elif instrument is InstrumentType.DRIFTER:
                 self._measurements_to_simulate.drifters.append(
@@ -288,9 +264,6 @@ class _ScheduleSimulator:
                         depth=self._expedition.instruments_config.drifter_config.depth_meter,
                         lifetime=self._expedition.instruments_config.drifter_config.lifetime,
                     )
-                )
-                time_costs.append(
-                    self._expedition.instruments_config.drifter_config.stationkeeping_time
                 )
 
             elif instrument is InstrumentType.XBT:
@@ -306,7 +279,4 @@ class _ScheduleSimulator:
             else:
                 raise NotImplementedError("Instrument type not supported.")
 
-        # measurements are done simultaneously onboard, so return time of longest one
-        # TODO: docs suggest that add individual instrument stationkeeping times are cumulative, which is at odds with measurements being done simultaneously onboard here
-        # TODO: update one or the other?
-        return max(time_costs)
+        return self._expedition.stationkeeping_time(waypoint)

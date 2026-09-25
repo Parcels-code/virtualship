@@ -82,51 +82,77 @@ def test_get_instruments(base_expedition) -> None:
     }
 
 
-def test_waypoint_stationkeeping_time(expedition) -> None:
-    """Waypoint.stationkeeping_time sums the stationkeeping time of each unique instrument config present and not duplicating repeated instruments (e.g. multiple drifters)."""
-    instruments_config = expedition.instruments_config
+def test_stationkeeping_time_uses_slowest_deployment(expedition) -> None:
+    """Deployments run concurrently while the ship is stopped, so the slowest one governs."""
+    ship_config = expedition.ship_config
+    ctd_config = expedition.instruments_config.ctd_config
 
     waypoint = Waypoint(
         location=Location(0, 0),
+        sea_depth_meter=-500.0,
         instrument=[
             InstrumentType.CTD,
             InstrumentType.ARGO_FLOAT,
-            InstrumentType.XBT,  # has no stationkeeping time, should be ignored
+            InstrumentType.XBT,
             InstrumentType.DRIFTER,
             InstrumentType.DRIFTER,  # two drifter deployments
         ],
     )
 
-    expected = (
-        instruments_config.ctd_config.stationkeeping_time
-        + instruments_config.argo_float_config.stationkeeping_time
-        + instruments_config.drifter_config.stationkeeping_time
+    # only the CTD holds the ship; it is winched to the seabed at 500 m and hauled back
+    cast = timedelta(
+        seconds=2
+        * abs(-500.0 - ctd_config.min_depth_meter)
+        / ctd_config.winch_speed_meter_per_second
     )
-    assert waypoint.stationkeeping_time(instruments_config) == expected
+    expected = ship_config.deceleration_time + cast + ship_config.acceleration_time
+
+    assert expedition.stationkeeping_time(waypoint) == expected
 
 
-def test_waypoint_stationkeeping_time_single_instrument(expedition) -> None:
-    """A bare (non-list) InstrumentType value on a waypoint is handled the same as a single element list."""
-    instruments_config = expedition.instruments_config
+def test_stationkeeping_time_capped_by_sea_depth(expedition) -> None:
+    """A CTD cannot be winched below the seabed, so a shallow waypoint is quicker."""
+    deep = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-3000.0
+    )
+    shallow = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-100.0
+    )
 
-    waypoint = Waypoint(location=Location(0, 0), instrument=InstrumentType.CTD)
+    # deep waypoint is limited by the CTD's own configured maximum, not the seabed
+    unbounded = Waypoint(location=Location(0, 0), instrument=InstrumentType.CTD)
 
-    assert (
-        waypoint.stationkeeping_time(instruments_config)
-        == instruments_config.ctd_config.stationkeeping_time
+    assert expedition.stationkeeping_time(shallow) < expedition.stationkeeping_time(
+        deep
+    )
+    assert expedition.stationkeeping_time(deep) == expedition.stationkeeping_time(
+        unbounded
     )
 
 
-def test_waypoint_stationkeeping_time_no_instruments(expedition) -> None:
-    """Waypoints with no instruments (None or empty list) have zero stationkeeping time."""
-    instruments_config = expedition.instruments_config
+def test_stationkeeping_time_single_instrument(expedition) -> None:
+    """A bare (non-list) InstrumentType value is handled the same as a single element list."""
+    bare = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-500.0
+    )
+    listed = Waypoint(
+        location=Location(0, 0), instrument=[InstrumentType.CTD], sea_depth_meter=-500.0
+    )
 
-    assert Waypoint(location=Location(0, 0), instrument=None).stationkeeping_time(
-        instruments_config
+    assert expedition.stationkeeping_time(bare) == expedition.stationkeeping_time(
+        listed
+    )
+
+
+def test_stationkeeping_time_no_instruments(expedition) -> None:
+    """The ship doesn't slows down where nothing is deployed, therefore ports and bare waypoints cost nothing."""
+    assert expedition.stationkeeping_time(
+        Waypoint(location=Location(0, 0), instrument=None)
     ) == timedelta(0)
-    assert Waypoint(location=Location(0, 0), instrument=[]).stationkeeping_time(
-        instruments_config
+    assert expedition.stationkeeping_time(
+        Waypoint(location=Location(0, 0), instrument=[])
     ) == timedelta(0)
+    assert expedition.stationkeeping_time(Port(location=Location(0, 0))) == timedelta(0)
 
 
 def test_verify_on_land(base_expedition):

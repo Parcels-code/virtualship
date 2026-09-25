@@ -15,11 +15,11 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    INSTRUMENT_CONFIG_MAP,
     _calc_sail_time,
     _get_bathy_data,
     _get_public_wp,
     _validate_numeric_to_timedelta,
+    get_instrument_class,
     get_supported_sensors,
     register_instrument_config,
 )
@@ -140,11 +140,7 @@ class Expedition(pydantic.BaseModel):
         for wp_i, (wp, wp_next) in enumerate(
             itertools.pairwise(wps_in_use), start=wps_in_use_offset
         ):
-            stationkeeping_time = (
-                wp.stationkeeping_time(self.instruments_config)
-                if isinstance(wp, Waypoint)
-                else timedelta()
-            )
+            stationkeeping_time = self.stationkeeping_time(wp)
 
             time_to_reach = _calc_sail_time(
                 wp.location,
@@ -170,6 +166,53 @@ class Expedition(pydantic.BaseModel):
             return "the final port of arrival"
         # +1 to get next
         return f"waypoint {_get_public_wp(wp_i + 1, self.schedule.waypoints)}"
+
+    def stationkeeping_time(self, waypoint: Port | Waypoint) -> timedelta:
+        """
+        Calculate how long the ship is stationary at waypoint.
+
+        Stationkeeping time = ship deceleration time + deployment time + ship acceleration time.
+        Assumes insturments are deployed concurrently, so the longest deployment time is used.
+        Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
+        """
+        instruments = self._wp_instruments(waypoint)
+        if not instruments:
+            return timedelta()
+
+        deployment_time = max(
+            self._deployment_time(instrument, waypoint) for instrument in instruments
+        )
+
+        return (
+            self.ship_config.deceleration_time
+            + deployment_time
+            + self.ship_config.acceleration_time
+        )
+
+    def _deployment_time(
+        self,
+        instrument: InstrumentType,
+        waypoint: Waypoint,
+    ) -> timedelta:
+        """Time an instrument holds the ship on station."""
+        config = self.instruments_config.config_for(instrument)
+        if config is None:
+            return timedelta()
+
+        return get_instrument_class(instrument).deployment_time(
+            config, waypoint.sea_depth_meter
+        )
+
+    @staticmethod
+    def _wp_instruments(waypoint: Port | Waypoint) -> list[InstrumentType]:
+        """Instruments deployed at a waypoint."""
+        if isinstance(waypoint, Port) or not waypoint.instrument:
+            return []
+        return (
+            waypoint.instrument
+            if isinstance(waypoint.instrument, list)
+            else [waypoint.instrument]
+        )
 
     def _annotate(self):
         """
@@ -390,39 +433,6 @@ class Waypoint(pydantic.BaseModel):
         if isinstance(instrument, list):
             return [inst.value for inst in instrument]
         return instrument.value if instrument else None
-
-    def stationkeeping_time(
-        self,
-        instruments_config: InstrumentsConfig,
-        instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
-    ) -> timedelta:
-        """Calculate how much time is required to carry out all instrument deployments at this waypoint."""
-        wp_instruments = (
-            self.instrument
-            if isinstance(self.instrument, list)
-            else ([self.instrument] if self.instrument else [])  # safe handling of None
-        )
-
-        valid_instrument_configs = [
-            iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
-        ]
-
-        wp_instrument_configs = []
-        for iconfig in valid_instrument_configs:
-            for instr in wp_instruments:
-                if (
-                    instrument_config_map.get(instr) == iconfig.__class__.__name__
-                    and iconfig
-                    not in wp_instrument_configs  # avoid duplicates (would happen when multiple drifter deployments at same wp)
-                ):
-                    wp_instrument_configs.append(iconfig)
-
-        cumulative_stationkeeping_time = timedelta()
-        for iconfig in wp_instrument_configs:
-            if hasattr(iconfig, "stationkeeping_time"):
-                cumulative_stationkeeping_time += iconfig.stationkeeping_time
-
-        return cumulative_stationkeeping_time
 
 
 ##
@@ -710,6 +720,21 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
+    _CONFIG_FIELDS: ClassVar[dict[InstrumentType, str]] = {
+        InstrumentType.ARGO_FLOAT: "argo_float_config",
+        InstrumentType.DRIFTER: "drifter_config",
+        InstrumentType.XBT: "xbt_config",
+        InstrumentType.CTD: "ctd_config",
+        InstrumentType.ADCP: "adcp_config",
+        InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
+    }
+
+    def config_for(
+        self, instrument_type: InstrumentType
+    ) -> _InstrumentConfigMixin | None:
+        """The configuration for an instrument type, or None if it is not configured."""
+        return getattr(self, self._CONFIG_FIELDS[instrument_type])
+
     def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
         Verify  instrument configurations against the instruments actually being deployed.
@@ -717,14 +742,7 @@ class InstrumentsConfig(pydantic.BaseModel):
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
         """
-        instrument_config_map = {
-            InstrumentType.ARGO_FLOAT: "argo_float_config",
-            InstrumentType.DRIFTER: "drifter_config",
-            InstrumentType.XBT: "xbt_config",
-            InstrumentType.CTD: "ctd_config",
-            InstrumentType.ADCP: "adcp_config",
-            InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
-        }
+        instrument_config_map = self._CONFIG_FIELDS
         # Remove configs for unused instruments
         for inst_type, config_attr in instrument_config_map.items():
             if (

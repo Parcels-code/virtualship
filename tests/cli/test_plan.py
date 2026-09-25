@@ -130,12 +130,12 @@ async def test_UI_changes(tmp_path):
         ),
         Waypoint(
             location=Location(0.01, 0.01),
-            time=datetime(2022, 1, 1, 1, 0, 0),
+            time=datetime(2022, 1, 1, 3, 0, 0),
             instrument=["CTD"],
         ),
         Waypoint(
             location=Location(0.02, 0.02),
-            time=datetime(2022, 1, 1, 2, 0, 0),
+            time=datetime(2022, 1, 1, 6, 0, 0),
             instrument=["CTD"],
         ),
         Port(
@@ -274,7 +274,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -325,7 +325,7 @@ async def test_deselecting_all_sensors_on_active_instrument_blocks_save(tmp_path
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -370,7 +370,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -428,7 +428,7 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
