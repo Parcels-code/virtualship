@@ -91,7 +91,7 @@ maxdepth: 1
 
 ## Assignments
 
-Your instructor will probably direct you to some of the assignments below as part of your course. You are welcome to browse them yourself here as well:
+Your instructor may direct you to some of the assignments below as part of your course. You are welcome to browse them yourself here as well:
 
 ```{nbgallery}
 ---
