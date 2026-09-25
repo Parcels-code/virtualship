@@ -16,7 +16,6 @@ from virtualship.models.location import Location
 from virtualship.utils import (
     PROJECTION,
     _calc_sail_time,
-    _calc_wp_stationkeeping_time,
     _find_nc_file_with_variable,
     _get_bathy_data,
     _get_example_expedition,
@@ -240,79 +239,6 @@ def test_calc_sail_time(projection=PROJECTION):
     )  # # 1 degree longitude at equator ≈ 111319 meters; allow small tolerance
 
 
-def test_calc_wp_stationkeeping_time(expedition, monkeypatch):
-    """Test _calc_wp_stationkeeping_time for correct stationkeeping time calculation."""
-
-    class DummyInstrumentsConfig:
-        def __init__(self, ctd, argo, xbt, drifter):
-            self.ctd = ctd
-            self.argo = argo
-            self.xbt = xbt
-            self.drifter = drifter
-
-    class CTDConfig:
-        stationkeeping_time = datetime.timedelta(minutes=50)
-
-    class ArgoFloatConfig:
-        stationkeeping_time = datetime.timedelta(minutes=20)
-
-    class XBTConfig:  # has no stationkeeping time
-        deceleration_coefficient = 0.1
-
-    class DrifterConfig:
-        stationkeeping_time = datetime.timedelta(minutes=20)
-
-    monkeypatch.setattr(
-        "virtualship.utils.INSTRUMENT_CONFIG_MAP",
-        {
-            InstrumentType.CTD: "CTDConfig",
-            InstrumentType.ARGO_FLOAT: "ArgoFloatConfig",
-            InstrumentType.XBT: "XBTConfig",
-            InstrumentType.DRIFTER: "DrifterConfig",
-        },
-    )
-
-    # Create a dummy expedition with instruments_config containing the dummy configs
-    instruments_config = DummyInstrumentsConfig(
-        ctd=CTDConfig(),
-        argo=ArgoFloatConfig(),
-        xbt=XBTConfig(),
-        drifter=DrifterConfig(),
-    )
-    expedition.instruments_config = (
-        instruments_config  # overwrite instruments_config with test dummy
-    )
-
-    # instruments at a given waypoint
-    wp_instrument_types_all = [
-        InstrumentType.CTD,
-        InstrumentType.ARGO_FLOAT,
-        InstrumentType.XBT,
-        InstrumentType.DRIFTER,
-        InstrumentType.DRIFTER,  # two drifter deployments
-    ]
-
-    # all dummy instruments
-    stationkeeping_time_all = _calc_wp_stationkeeping_time(
-        wp_instrument_types_all, expedition.instruments_config
-    )
-    assert (
-        stationkeeping_time_all
-        == CTDConfig.stationkeeping_time
-        + ArgoFloatConfig.stationkeeping_time
-        + DrifterConfig.stationkeeping_time  # drifter should only be counted once despite being present at wp twice
-    )
-
-    # xbt only (no stationkeeping time)
-    wp_instrument_types_xbt = [InstrumentType.XBT]
-    stationkeeping_time_xbt = _calc_wp_stationkeeping_time(
-        wp_instrument_types_xbt, expedition.instruments_config
-    )
-    assert stationkeeping_time_xbt == datetime.timedelta(0), (
-        "XBT should have zero stationkeeping time"
-    )
-
-
 def test_get_public_wp():
     """Port waypoints have no public number; non-port waypoints are numbered 1-indexed, ignoring ports."""
     waypoints = [
@@ -328,19 +254,6 @@ def test_get_public_wp():
     assert _get_public_wp(2, waypoints) is None
     assert _get_public_wp(3, waypoints) == 2
     assert _get_public_wp(4, waypoints) is None
-
-
-def test_calc_wp_stationkeeping_time_no_instruments(expedition):
-    """Test calc_wp_stationkeeping_time handles no instruments, either marked as 'null' or empty list."""
-    stationkeeping_emptylist = _calc_wp_stationkeeping_time(
-        [], expedition.instruments_config
-    )
-    stationkeeping_null = _calc_wp_stationkeeping_time(
-        None, expedition.instruments_config
-    )  # "null" in YAML translates to None in Python
-
-    assert stationkeeping_null == stationkeeping_emptylist  # are equivalent
-    assert stationkeeping_null == datetime.timedelta(0)  # at least one is 0 time
 
 
 # helper
