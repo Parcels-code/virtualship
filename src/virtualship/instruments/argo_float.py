@@ -68,13 +68,13 @@ def _argo_float_vertical_movement(particles, fieldset):
     ptcls4 = particles[particles.cycle_phase == 4]
 
     # Phase 0: Sinking with vertical_speed until depth is driftdepth
-    ptcls0.dz += particles.vertical_speed * ptcls0.dt
+    ptcls0.dz += ptcls0.vertical_speed * ptcls0.dt
     loc_bathy = fieldset.bathymetry.eval(ptcls0.t, ptcls0.z, ptcls0.y, ptcls0.x)
-    driftdepth_mask = ptcls0.z + ptcls0.dz <= particles.drift_depth  # noqa:has reached drift depth
+    driftdepth_mask = ptcls0.z + ptcls0.dz <= ptcls0.drift_depth  # noqa:has reached drift depth
     bathysafe_mask = ptcls0.z + ptcls0.dz >= loc_bathy  # noqa:has not reached bathymetry
     next_phase = np.logical_and(driftdepth_mask, bathysafe_mask)
     ptcls0.cycle_phase[next_phase] = 1
-    ptcls0.dz[next_phase] = particles.drift_depth - ptcls0.z[next_phase]  # noqa:avoid overshoot
+    ptcls0.dz[next_phase] = ptcls0.drift_depth[next_phase] - ptcls0.z[next_phase]  # noqa:avoid overshoot
 
     # Phase 0.5: Check for grounding at bathymetry and raise if necessary
     _handle_grounding(
@@ -88,18 +88,18 @@ def _argo_float_vertical_movement(particles, fieldset):
 
     # Phase 1: Drifting at depth for drifttime seconds
     ptcls1.drift_age += ptcls1.dt
-    next_phase = ptcls1.drift_age >= particles.drift_days * 86400  # [seconds]
+    next_phase = ptcls1.drift_age >= ptcls1.drift_days * 86400  # [seconds]
     ptcls1.cycle_phase[next_phase] = 2
     ptcls1.drift_age[next_phase] = 0  # reset drift_age for next cycle
 
     # Phase 2: Sinking further to maxdepth
-    ptcls2.dz += particles.vertical_speed * ptcls2.dt
+    ptcls2.dz += ptcls2.vertical_speed * ptcls2.dt
     loc_bathy = fieldset.bathymetry.eval(ptcls2.t, ptcls2.z, ptcls2.y, ptcls2.x)
-    maxdepth_mask = ptcls2.z + ptcls2.dz <= particles.max_depth  # noqa:has reached max depth
+    maxdepth_mask = ptcls2.z + ptcls2.dz <= ptcls2.max_depth  # noqa:has reached max depth
     bathysafe_mask = ptcls2.z + ptcls2.dz >= loc_bathy  # noqa:has not reached bathymetry
     next_phase = np.logical_and(maxdepth_mask, bathysafe_mask)
     ptcls2.cycle_phase[next_phase] = 3
-    ptcls2.dz[next_phase] = particles.max_depth - ptcls2.z[next_phase]  # noqa:avoid overshoot
+    ptcls2.dz[next_phase] = ptcls2.max_depth[next_phase] - ptcls2.z[next_phase]  # noqa:avoid overshoot
 
     # Phase 2.5: Check for grounding at bathymetry and raise if necessary
     _handle_grounding(
@@ -112,13 +112,13 @@ def _argo_float_vertical_movement(particles, fieldset):
     )
 
     # Phase 3: Rising with vertical_speed until at surface
-    ptcls3.dz -= particles.vertical_speed * ptcls3.dt
-    next_phase = ptcls3.z + ptcls3.dz >= particles.min_depth
+    ptcls3.dz -= ptcls3.vertical_speed * ptcls3.dt
+    next_phase = ptcls3.z + ptcls3.dz >= ptcls3.min_depth
     ptcls3.cycle_phase[next_phase] = 4
-    ptcls3.dz[next_phase] = particles.min_depth - ptcls3.z[next_phase]  # noqa:avoid overshoot
+    ptcls3.dz[next_phase] = ptcls3.min_depth[next_phase] - ptcls3.z[next_phase]  # noqa:avoid overshoot
 
     # Phase 4: Transmitting at surface until cycletime is reached
-    next_phase = ptcls4.cycle_age >= particles.cycle_days * 86400
+    next_phase = ptcls4.cycle_age >= ptcls4.cycle_days * 86400
     ptcls4.cycle_phase[next_phase] = 0
     ptcls4.cycle_age[next_phase] = 0  # reset cycle_age for next cycle
     ptcls4.temperature = np.nan  # no temperature measurement when at surface
