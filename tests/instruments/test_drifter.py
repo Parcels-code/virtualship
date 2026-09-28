@@ -161,6 +161,112 @@ def test_simulate_drifters(tmpdir) -> None:
         )
 
 
+def test_simulate_drifters_multiple_waypoints(tmpdir) -> None:
+    """Should handle multiple drifters deployed at different waypoints and times."""
+    fieldset = create_fieldset(
+        {
+            "V": np.full((2, 2, 2), 1.0),
+            "U": np.full((2, 2, 2), 1.0),
+            "T": np.full((2, 2, 2), 1.0),
+        }
+    )
+
+    # all drifters share the single lifetime from the expedition's drifter config
+    expedition = create_dummy_expedition(lifetime=datetime.timedelta(hours=12))
+    lifetime = expedition.instruments_config.drifter_config.lifetime
+
+    # staggered deployments (at multiples of the 5h output interval), so the first drifter
+    # reaches the end of its lifetime whilst others are still drifting
+    waypoints = [
+        (Location(latitude=1.0, longitude=1.0), datetime.timedelta(hours=0)),
+        (Location(latitude=2.0, longitude=2.0), datetime.timedelta(hours=5)),
+        (Location(latitude=3.0, longitude=3.0), datetime.timedelta(hours=10)),
+    ]
+    drifters = [
+        Drifter(
+            spacetime=Spacetime(location=location, time=BASE_TIME + offset),
+            depth=DEPLOY_DEPTH,
+            lifetime=lifetime,
+        )
+        for location, offset in waypoints
+    ]
+
+    drifter_instrument = DrifterInstrument(expedition, None)
+    out_path = tmpdir.join("out_multiple.parquet")
+    drifter_instrument.load_input_data = lambda: fieldset
+    drifter_instrument.simulate(drifters, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    pids = np.unique(results["particle_id"].to_numpy())
+    assert pids.size == len(drifters)
+
+    last_times = []
+    for drifter, pid in zip(drifters, pids, strict=True):
+        drifter_df = results.filter(pl.col("particle_id") == pid).drop_nulls("t")
+        first = drifter_df.sort("t")[0]
+        last_times.append(drifter_df["t"].max())
+
+        assert first["t"].item() == drifter.spacetime.time, (
+            f"Drifter {pid} should start at its deployment time"
+        )
+        assert np.isclose(first["y"].item(), drifter.spacetime.location.lat, atol=0.1)
+        assert np.isclose(first["x"].item(), drifter.spacetime.location.lon, atol=0.1)
+
+        assert last_times[-1] <= drifter.spacetime.time + lifetime, (
+            f"Drifter {pid} should stop at the end of its lifetime"
+        )
+
+    assert last_times == sorted(last_times) and len(set(last_times)) == len(
+        last_times
+    ), "With a shared lifetime, later-deployed drifters should stop later"
+
+
+def test_simulate_drifters_at_same_waypoint(tmpdir) -> None:
+    """Multiple drifters deployed at the same waypoint (same location, time and depth) are simulated as separate drifters."""
+    fieldset = create_fieldset(
+        {
+            "V": np.full((2, 2, 2), 1.0),
+            "U": np.full((2, 2, 2), 1.0),
+            "T": np.full((2, 2, 2), 1.0),
+        }
+    )
+
+    expedition = create_dummy_expedition()
+
+    n_drifters = 3
+    drifters = [
+        Drifter(
+            spacetime=Spacetime(
+                location=Location(latitude=1.0, longitude=1.0),
+                time=BASE_TIME,
+            ),
+            depth=DEPLOY_DEPTH,
+            lifetime=expedition.instruments_config.drifter_config.lifetime,
+        )
+        for _ in range(n_drifters)
+    ]
+
+    drifter_instrument = DrifterInstrument(expedition, None)
+    out_path = tmpdir.join("out_same_waypoint.parquet")
+    drifter_instrument.load_input_data = lambda: fieldset
+    drifter_instrument.simulate(drifters, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    pids = np.unique(results["particle_id"].to_numpy())
+    assert pids.size == n_drifters
+
+    # small random noise is added to release locations, so drifters at the same waypoint follow different trajectories
+    release_points = set()
+    for pid in pids:
+        first = results.filter(pl.col("particle_id") == pid).sort("t")[0]
+        assert np.isclose(first["y"].item(), 1.0, atol=0.1)
+        assert np.isclose(first["x"].item(), 1.0, atol=0.1)
+        release_points.add((first["y"].item(), first["x"].item()))
+    assert len(release_points) == n_drifters, (
+        "Drifters at the same waypoint should have distinct release locations"
+    )
+
+
 def test_drifter_depths(tmpdir) -> None:
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
     DEPTH_FACTOR = 3.0  # factor to multiply surface values by at depth for test
