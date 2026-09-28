@@ -221,6 +221,58 @@ def test_simulate_xbts(tmpdir, xbt_expedition) -> None:
                 )
 
 
+def test_simulate_xbts_multiple_waypoints(tmpdir, xbt_expedition) -> None:
+    """Should handle multiple XBTs dropped at different waypoints, all reach the bottom at their own locations."""
+    BATHYMETRY = -1000.0
+
+    # staggered drops
+    waypoints = [
+        (Location(latitude=0.0, longitude=0.0), datetime.timedelta(seconds=0)),
+        (Location(latitude=0.5, longitude=0.5), datetime.timedelta(seconds=60)),
+        (Location(latitude=1.0, longitude=1.0), datetime.timedelta(seconds=120)),
+    ]
+    xbts = [
+        XBT(
+            spacetime=Spacetime(location=location, time=BASE_TIME + offset),
+            min_depth=0,
+            max_depth=float("-inf"),
+            fall_speed=FALL_SPEED,
+            deceleration_coefficient=DECELERATION_COEFFICIENT,
+        )
+        for location, offset in waypoints
+    ]
+
+    fieldset = create_fieldset(
+        {
+            "V": np.zeros((2, 2, 2, 2)),
+            "U": np.zeros((2, 2, 2, 2)),
+            "T": np.full((2, 2, 2, 2), 5.0),
+        },
+        bathymetry_val=BATHYMETRY,
+    )
+
+    xbt_instrument = XBTInstrument(xbt_expedition, None)
+    out_path = tmpdir.join("out_multiple.parquet")
+    xbt_instrument.load_input_data = lambda: fieldset
+    xbt_instrument.simulate(xbts, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    pids = np.unique(results["particle_id"].to_numpy())
+    assert pids.size == len(xbts)
+
+    for xbt, pid in zip(xbts, pids, strict=True):
+        xbt_df = results.filter(pl.col("particle_id") == pid)
+        assert np.allclose(xbt_df["y"].to_numpy(), xbt.spacetime.location.lat), (
+            f"XBT {pid} should stay at its waypoint latitude"
+        )
+        assert np.allclose(xbt_df["x"].to_numpy(), xbt.spacetime.location.lon), (
+            f"XBT {pid} should stay at its waypoint longitude"
+        )
+        assert np.isclose(xbt_df["z"].min(), BATHYMETRY, atol=1.0), (
+            f"XBT {pid} should reach the bottom"
+        )
+
+
 def test_xbt_sensor_config_active_variables() -> None:
     """active_variables() only returns variables for enabled sensors."""
     config_with_temp = XBTConfig(
