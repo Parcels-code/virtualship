@@ -272,6 +272,59 @@ def test_simulate_ctds(tmpdir) -> None:
                 )  # rtol to handle interpolation differences at the extreme ends of the depth range
 
 
+def test_simulate_ctds_multiple_waypoints(tmpdir) -> None:
+    """Should handle multiple CTDs cast at different waypoints, overlapping in time (some lowering while others raise)."""
+    BATHYMETRY = -1000.0
+
+    # staggered casts
+    waypoints = [
+        (Location(latitude=0.0, longitude=0.0), datetime.timedelta(minutes=0)),
+        (Location(latitude=0.5, longitude=0.5), datetime.timedelta(minutes=10)),
+        (Location(latitude=1.0, longitude=1.0), datetime.timedelta(minutes=20)),
+    ]
+    ctds = [
+        CTD(
+            spacetime=Spacetime(location=location, time=BASE_TIME + offset),
+            min_depth=0,
+            max_depth=float("-inf"),
+        )
+        for location, offset in waypoints
+    ]
+
+    fieldset = create_fieldset(
+        {"T": np.full((2, 2, 2, 2), 5.0)},
+        time_range=[
+            np.datetime64(BASE_TIME),
+            np.datetime64(BASE_TIME + datetime.timedelta(hours=2)),
+        ],
+        bathymetry_val=BATHYMETRY,
+    )
+
+    expedition = create_dummy_expedition(
+        [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    )
+    ctd_instrument = CTDInstrument(expedition, None)
+    out_path = tmpdir.join("out_multiple.parquet")
+    ctd_instrument.load_input_data = lambda: fieldset
+    ctd_instrument.simulate(ctds, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    pids = np.unique(results["particle_id"].to_numpy())
+    assert pids.size == len(ctds)
+
+    for ctd, pid in zip(ctds, pids, strict=True):
+        ctd_df = results.filter(pl.col("particle_id") == pid)
+        assert np.allclose(ctd_df["y"].to_numpy(), ctd.spacetime.location.lat), (
+            f"CTD {pid} should stay at its waypoint latitude"
+        )
+        assert np.allclose(ctd_df["x"].to_numpy(), ctd.spacetime.location.lon), (
+            f"CTD {pid} should stay at its waypoint longitude"
+        )
+        assert np.isclose(ctd_df["z"].min(), BATHYMETRY, atol=1.0), (
+            f"CTD {pid} should reach the bottom"
+        )
+
+
 def test_ctd_sensor_config_active_variables() -> None:
     """active_variables() only returns variables for enabled sensors."""
     config_both = CTDConfig(

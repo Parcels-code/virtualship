@@ -70,7 +70,7 @@ def _xbt_cast(particles, fieldset):
 
     # set particle depth to max depth if it's too deep
     too_deep = particles.z + particles.dz < particles.max_depth
-    particles.dz[too_deep] = particles.max_depth - particles.z[too_deep]
+    particles.dz[too_deep] = particles.max_depth[too_deep] - particles.z[too_deep]
 
 
 # =====================================================

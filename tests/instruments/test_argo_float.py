@@ -183,6 +183,50 @@ def test_simulate_argo_floats(tmpdir) -> None:
         assert var in results, f"Results don't contain {var}"
 
 
+def test_simulate_argo_floats_different_phases(tmpdir) -> None:
+    """Handles multiple argo floats at different time steps, in differet phases."""
+    lifetime_days = 1
+    fieldset = create_fieldset(lifetime_days=lifetime_days)
+
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+    ]
+    expedition = create_dummy_expedition(
+        sensors, lifetime=timedelta(days=lifetime_days)
+    )
+
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+
+    # staggered deployments
+    deploy_offsets = [timedelta(hours=0), timedelta(hours=2), timedelta(hours=4)]
+    argo_floats = [
+        create_argo_float(
+            Waypoint(
+                location=Location(latitude=2 + i, longitude=1 + i),
+                time=BASE_TIME + offset,
+                instrument=[InstrumentType.ARGO_FLOAT],
+            )
+        )
+        for i, offset in enumerate(deploy_offsets)
+    ]
+
+    out_path = tmpdir.join("out_phases.parquet")
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    assert np.unique(results["particle_id"].to_numpy()).size == len(argo_floats)
+
+    # every float should have sunk to and stayed at drift depth without overshooting
+    for pid in np.unique(results["particle_id"].to_numpy()):
+        z = results.filter(pl.col("particle_id") == pid)["z"].to_numpy()
+        z = z[np.isfinite(z)]
+        assert np.isclose(z.min(), DRIFT_DEPTH), (
+            f"Float {pid} should reach drift depth without overshooting"
+        )
+
+
 def test_argo_float_disabled_sensor(tmpdir) -> None:
     """Variables for disabled sensors must not appear in the zarr output."""
     fieldset = create_fieldset(include_salinity=False)
