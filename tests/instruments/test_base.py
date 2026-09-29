@@ -293,6 +293,52 @@ def test_generate_fieldset_combines_fields(mock_expedition):
     fs_A.__add__.assert_called_once_with(fs_B)
 
 
+@pytest.mark.parametrize(
+    "depth_min, depth_max, expected_depths",
+    [
+        # when max depth is between levels, the next deeper level is kept (i.e. max depth is inside the fieldset)
+        (0.0, -2000.0, [-2225.1, -1941.9, -1684.3, -0.5]),
+        # min depth between levels means the next shallower level is kept
+        (-10.0, -1700.0, [-1941.9, -1684.3, -0.5]),
+        # bounds exactly on levels means no extra levels
+        (-1684.3, -1941.9, [-1941.9, -1684.3]),
+    ],
+)
+def test_get_local_ds_depth_selection_outside(
+    mock_expedition, tmp_path, depth_min, depth_max, expected_depths
+):
+    """Local depth selection keeps one level beyond each bound, like copernicusmarine's coordinates_selection_method='outside'."""
+    depths = np.array([0.5, 1684.3, 1941.9, 2225.1, 2533.3])  # inspired by GLORYS
+    ds = xr.Dataset(
+        data_vars={
+            "thetao": (
+                ["time", "depth", "latitude", "longitude"],
+                np.zeros((1, len(depths), 2, 2)),
+            )
+        },
+        coords={
+            "time": [np.datetime64("2026-01-01")],
+            "depth": ("depth", depths, {"positive": "down"}),
+            "latitude": [0.0, 30.0],
+            "longitude": [-30.0, 0.0],
+        },
+    )
+    file = tmp_path / "phys.nc"
+    ds.to_netcdf(file)
+
+    dummy = DummyInstrument(
+        expedition=mock_expedition,
+        variables={"T": "thetao"},
+        add_bathymetry=False,
+        verbose_progress=False,
+        fetch_spec=FetchSpec(depth_min=depth_min, depth_max=depth_max),
+        from_data=tmp_path,
+    )
+
+    result = dummy._get_local_ds([file])
+    np.testing.assert_allclose(result["depth"].values, expected_depths)
+
+
 def test_load_input_data_error(mock_expedition, monkeypatch):
     dummy = DummyInstrument(
         expedition=mock_expedition,
