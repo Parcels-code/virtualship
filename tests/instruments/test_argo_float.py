@@ -57,25 +57,32 @@ def create_fieldset(
     lat_range=(0.0, 10.0),
     include_salinity=True,
     lifetime_days=0.1,
+    depths=None,
 ):
-    """Create a test fieldset with optional salinity."""
-    v = np.full((2, 2, 2), 1.0)
-    u = np.full((2, 2, 2), 1.0)
-    t = np.full((2, 2, 2), 1.0)
+    """Create a test fieldset with optional salinity and optional depth levels."""
+    dims = ("time", "lat", "lon") if depths is None else ("time", "depth", "lat", "lon")
+    shape = (2, 2, 2) if depths is None else (2, len(depths), 2, 2)
     bathy = np.full((2, 2), -5000.0)
 
     data_vars = {
-        "V": (("time", "lat", "lon"), v),
-        "U": (("time", "lat", "lon"), u),
-        "T": (("time", "lat", "lon"), t),
+        "V": (dims, np.full(shape, 1.0)),
+        "U": (dims, np.full(shape, 1.0)),
+        "T": (dims, np.full(shape, 1.0)),
     }
 
     if include_salinity:
-        data_vars["S"] = (("time", "lat", "lon"), np.full((2, 2, 2), 1.0))
+        data_vars["S"] = (dims, np.full(shape, 1.0))
+
+    depth_coord = (
+        {}
+        if depths is None
+        else {"depth": (("depth"), np.array(depths), {"positive": "up"})}
+    )
 
     ds_fields = xr.Dataset(
         data_vars=data_vars,
         coords={
+            **depth_coord,
             "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
             "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
             "time": (
@@ -341,6 +348,63 @@ def test_argo_fieldoutofbounds_error(tmpdir) -> None:
     assert "ErrorOutOfBounds" in output_log, (
         "Expected 'ErrorOutOfBounds' message to be printed during simulation."
     )
+
+
+def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
+    """Argo float should reach its max depth and then ascends."""
+    lifetime_days = 1.0  # time enough for one descent to max depth + ascent
+    fieldset = create_fieldset(
+        lifetime_days=lifetime_days, depths=[-2225.1, -1941.9, -1000.0, -0.5]
+    )
+
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    expedition = create_dummy_expedition(
+        sensors, lifetime=timedelta(days=lifetime_days)
+    )
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+    wp = expedition.schedule.waypoints[0]
+    argo_float = ArgoFloat(
+        spacetime=Spacetime(location=wp.location, time=wp.time),
+        min_depth=0.0,
+        max_depth=MAX_DEPTH,
+        drift_depth=DRIFT_DEPTH,
+        vertical_speed=VERTICAL_SPEED,
+        cycle_days=1,
+        drift_days=0,
+    )
+
+    out_path = tmpdir.join("out.parquet")
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate([argo_float], out_path)
+
+    results = parcels.read_particlefile(out_path)
+    z = results["z"].to_numpy()
+    phase = results["cycle_phase"].to_numpy()
+
+    np.testing.assert_allclose(z.min(), MAX_DEPTH, atol=1e-3)
+    assert not results["grounded"].to_numpy().any()
+
+    # never sent back up early
+    phase2_dz = np.diff(z)[(phase[:-1] == 2) & (phase[1:] == 2)]
+    assert (phase2_dz <= 0).all()
+
+    # ascent (sampling) starts from max depth
+    assert np.isclose(z[phase == 3].min(), MAX_DEPTH, atol=1e-3)
+    assert np.isfinite(results["temperature"].to_numpy()[phase == 3]).any()
+
+
+def test_argo_max_depth_deeper_than_fieldset_error(tmpdir) -> None:
+    """A max depth deeper than the fieldset depth is rejected at setup."""
+    fieldset = create_fieldset(depths=[-1941.9, -1000.0, -0.5])
+
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    expedition = create_dummy_expedition(sensors)
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+    argo_floats = [create_argo_float(wp) for wp in expedition.schedule.waypoints]
+
+    argo_instrument.load_input_data = lambda: fieldset
+    with pytest.raises(ValueError, match="deeper than the deepest level"):
+        argo_instrument.simulate(argo_floats, tmpdir.join("out.parquet"))
 
 
 def test_argo_float_instrument_type():
