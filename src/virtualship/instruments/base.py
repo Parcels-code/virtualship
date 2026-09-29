@@ -346,20 +346,32 @@ class Instrument(abc.ABC):
         depth_max = self.fetch_spec.depth_max
         both_none = depth_min is None and depth_max is None
 
-        if depth_min == depth_max and not both_none:
-            depth_sel = {
-                "depth": [depth_min],
-                "method": "nearest",
-            }
-        else:
-            depth_sel = {"depth": slice(depth_max, depth_min)}
-
         ds = ds.sel(
             longitude=slice(min_lon, max_lon),
             latitude=slice(min_lat, max_lat),
         )
 
-        ds = ds.sel(**depth_sel)
+        if depth_min == depth_max and not both_none:
+            ds = ds.sel(depth=[depth_min], method="nearest")
+        else:
+            # mirror copernicusmarine's coordinates_selection_method="outside" (as in `_get_copernicus_ds`)
+            # i.e. keep one level beyond each requested bound, so that an instrument's max depth is always inside the fieldset
+            depths = ds["depth"].values
+            deep = (
+                0
+                if depth_max is None
+                else max(int(np.searchsorted(depths, depth_max, side="right")) - 1, 0)
+            )
+            shallow = (
+                len(depths)
+                if depth_min is None
+                else min(
+                    int(np.searchsorted(depths, depth_min, side="left")) + 1,
+                    len(depths),
+                )
+            )
+            ds = ds.isel(depth=slice(deep, shallow))
+
         return ds
 
     def _via_tmp_ds(self, ds: xr.Dataset) -> xr.Dataset:
