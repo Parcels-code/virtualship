@@ -8,7 +8,7 @@ Along the way you'll find out how challenging it can be to measure the ocean. Th
 
 ## Expedition proposal
 
-Start out by writing a short expedition research proposal. This will help you clarify your research question, and decide what instruments to deploy and where to sample. You can use the Research Proposal template below to get started.
+Start out by writing a short expedition research proposal. This will help you clarify your research question, decide what instruments to deploy and where to sample. You can use the Research Proposal template below to get started.
 
 ```{nbgallery}
 ---
