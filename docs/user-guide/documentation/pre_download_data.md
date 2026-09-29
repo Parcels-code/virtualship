@@ -78,6 +78,7 @@ The following assumptions are also made about the data:
    - Or these strings must appear as substrings within the variable names (e.g. `o2_glor` is acceptable for `o2`).
 4. Bathymetry data files must contain a variable named `deptho`.
 5. Pre-downloaded data files must have a `"positive"` attribute for the depth dimension (e.g. `"positive": "down"` or `"positive": "up"`) in order to ensure that the depth dimension is correctly interpreted under-the-hood.
+6. The depth levels in the pre-downloaded data must extend (at least) one level beyond the deepest depth your instruments are configured to (e.g. the Argo float `max_depth_meter`). For example, for data with depth levels at [..., 1684 m, 1942 m, 2225 m, ...] and an Argo float `max_depth_meter` of -2000, data must be downloaded down to (at least) the 2225 m level.
 
 #### Also of note
 
