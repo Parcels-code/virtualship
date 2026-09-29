@@ -307,7 +307,7 @@ class ArgoFloatInstrument(Instrument):
         deepest_target = min(min(m.max_depth, m.drift_depth) for m in measurements)
         if len(grid_depths) > 1 and deepest_target < grid_deepest:
             raise ValueError(
-                f"{self.__class__.__name__} max_depth/drift_depth ({deepest_target}m) is deeper than the deepest depth level "
+                f"{self.__class__.__name__} max_depth/drift_depth ({deepest_target}m) is deeper than the deepest level "
                 f"of the input data ({grid_deepest:.2f}m). If running with --from-data, ensure the data was downloaded to "
                 f"(at least) one depth level beyond the Argo float max_depth, or make max_depth shallower."
             )
