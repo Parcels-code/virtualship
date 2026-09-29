@@ -16,6 +16,7 @@ from virtualship.instruments.argo_float import (
     ArgoFloat,
     ArgoFloatInstrument,
     _handle_grounding,
+    _keep_at_surface,
 )
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
@@ -181,6 +182,50 @@ def test_simulate_argo_floats(tmpdir) -> None:
     assert np.unique(results["particle_id"].to_numpy()).size == len(argo_floats)
     for var in ["x", "y", "z", "temperature", "salinity"]:
         assert var in results, f"Results don't contain {var}"
+
+
+def test_simulate_argo_floats_different_phases(tmpdir) -> None:
+    """Handles multiple argo floats at different time steps, in differet phases."""
+    lifetime_days = 1
+    fieldset = create_fieldset(lifetime_days=lifetime_days)
+
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+    ]
+    expedition = create_dummy_expedition(
+        sensors, lifetime=timedelta(days=lifetime_days)
+    )
+
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+
+    # staggered deployments
+    deploy_offsets = [timedelta(hours=0), timedelta(hours=2), timedelta(hours=4)]
+    argo_floats = [
+        create_argo_float(
+            Waypoint(
+                location=Location(latitude=2 + i, longitude=1 + i),
+                time=BASE_TIME + offset,
+                instrument=[InstrumentType.ARGO_FLOAT],
+            )
+        )
+        for i, offset in enumerate(deploy_offsets)
+    ]
+
+    out_path = tmpdir.join("out_phases.parquet")
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    assert np.unique(results["particle_id"].to_numpy()).size == len(argo_floats)
+
+    # every float should have sunk to and stayed at drift depth without overshooting
+    for pid in np.unique(results["particle_id"].to_numpy()):
+        z = results.filter(pl.col("particle_id") == pid)["z"].to_numpy()
+        z = z[np.isfinite(z)]
+        assert np.isclose(z.min(), DRIFT_DEPTH), (
+            f"Float {pid} should reach drift depth without overshooting"
+        )
 
 
 def test_argo_float_disabled_sensor(tmpdir) -> None:
@@ -363,6 +408,54 @@ def test_handle_grounding():
         "Shallow bathymetry warning: Argo float grounded at bathymetry during descent"
         in output
     )
+
+
+def test_keep_at_surface_no_infinite_loop(tmpdir):
+    """_keep_at_surface kernel should not cause an infinite loop when particles are held at the surface after ErrorThroughSurface."""
+    fieldset = create_fieldset(lifetime_days=1)
+    pclass = parcels.Particle.add_variable(
+        [
+            parcels.Variable("min_depth", dtype=np.float32),
+            parcels.Variable("n_evals", dtype=np.int32, initial=0),
+        ]
+    )
+
+    # second float deployed after the first has been simulated for several output times
+    pset = parcels.ParticleSet(
+        fieldset=fieldset,
+        pclass=pclass,
+        x=[1.0, 1.0],
+        y=[2.0, 2.0],
+        z=[0.0, 0.0],
+        t=[
+            np.datetime64(BASE_TIME),
+            np.datetime64(BASE_TIME + timedelta(hours=2)),
+        ],
+        min_depth=[0.0, 0.0],
+    )
+
+    # force every float through the surface
+    # each float needs at most 36 steps of 5 minutes, so exceeding 100 evaluations means the kernel loop is stuck
+    def _through_surface(particles, fieldset):
+        particles.n_evals += 1
+        if np.any(particles.n_evals > 100):
+            raise RuntimeError("Infinite loop detected")
+        particles.state[:] = parcels.StatusCode.ErrorThroughSurface
+
+    out_file = parcels.ParticleFile(
+        path=tmpdir.join("out_surface.parquet"), outputdt=timedelta(minutes=5)
+    )
+    endtime = np.datetime64(BASE_TIME + timedelta(hours=3))
+    pset.execute(
+        [_through_surface, _keep_at_surface],
+        endtime=endtime,
+        dt=timedelta(minutes=5),
+        output_file=out_file,
+    )
+
+    # both floats reached endtime and were held at the surface
+    np.testing.assert_array_equal(pset.t, [timedelta(hours=3).total_seconds()] * 2)
+    np.testing.assert_array_equal(pset.z, [0.0, 0.0])
 
 
 def test_argo_no_initial_sampling(tmpdir):
