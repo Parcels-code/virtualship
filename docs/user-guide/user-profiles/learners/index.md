@@ -6,6 +6,17 @@ Welcome aboard the VirtualShip! Here you will conduct a research expedition in a
 
 Along the way you'll find out how challenging it can be to measure the ocean. The software uses a digital twin of the ocean from the [Copernicus Marine Data Store](https://data.marine.copernicus.eu/products) alongside simulated instruments which behave as in real life.
 
+## Expedition proposal
+
+Start out by writing a short expedition research proposal. This will help you clarify your research question, and decide what instruments to deploy and where to sample. You can use the Research Proposal template below to get started.
+
+```{nbgallery}
+---
+maxdepth: 1
+---
+../../assignments/Research_Proposal_only.ipynb
+```
+
 ## Sail the ship
 
 The **Sail the Ship** guide is the main guide for your expedition. It takes you step by step from planning your route and configuring your instruments, to running the simulation and reporting your results.
@@ -32,6 +43,10 @@ Sail the Ship
 ````
 
 ::::
+
+```{tip}
+If you have not already installed the VirtualShip sofrware, see the [Technical set up](#set-up-your-programming-environment) section below for instructions on how to set up your programming environment before you start.
+```
 
 ## Technical set up
 
