@@ -357,12 +357,12 @@ class Instrument(abc.ABC):
             # mirror copernicusmarine's coordinates_selection_method="outside" (as in `_get_copernicus_ds`)
             # i.e. keep one level beyond each requested bound, so that an instrument's max depth is always inside the fieldset
             depths = ds["depth"].values
-            deep = (
+            deep_idx = (
                 0
                 if depth_max is None
                 else max(int(np.searchsorted(depths, depth_max, side="right")) - 1, 0)
             )
-            shallow = (
+            shallow_idx = (
                 len(depths)
                 if depth_min is None
                 else min(
@@ -370,7 +370,7 @@ class Instrument(abc.ABC):
                     len(depths),
                 )
             )
-            ds = ds.isel(depth=slice(deep, shallow))
+            ds = ds.isel(depth=slice(deep_idx, shallow_idx))
 
         return ds
 
