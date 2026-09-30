@@ -121,7 +121,6 @@ def _argo_float_vertical_movement(particles, fieldset):
     next_phase = ptcls4.cycle_age >= ptcls4.cycle_days * 86400
     ptcls4.cycle_phase[next_phase] = 0
     ptcls4.cycle_age[next_phase] = 0  # reset cycle_age for next cycle
-    ptcls4.temperature = np.nan  # no temperature measurement when at surface
 
     particles.cycle_age += particles.dt  # update cycle_age
 
@@ -170,6 +169,7 @@ def _argo_sample_temperature(particles, fieldset):
         # TODO: tmp fix avoiding IndexError in Parcels' ChunkCachedArray vectorized indexing when sampling with an empty ParticleSet (Parcels issue: #2906)
         # TODO: can be removed when fixed upstream in Parcels
         return
+    particles.temperature[~mask] = np.nan  # no measurement outside the ascent
     sampling_particles = particles[mask]
     sampling_particles.temperature = fieldset.T[sampling_particles]
 
@@ -183,6 +183,7 @@ def _argo_sample_salinity(particles, fieldset):
         # TODO: tmp fix avoiding IndexError in Parcels' ChunkCachedArray vectorized indexing when sampling with an empty ParticleSet (Parcels issue: #2906)
         # TODO: can be removed when fixed upstream in Parcels
         return
+    particles.salinity[~mask] = np.nan  # no measurement outside the ascent
     sampling_particles = particles[mask]
     sampling_particles.salinity = fieldset.S[sampling_particles]
 
