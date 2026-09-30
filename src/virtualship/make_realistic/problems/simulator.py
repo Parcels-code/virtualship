@@ -285,7 +285,6 @@ class ProblemSimulator:
                 continue
 
             self._log_problem(problem, wp_i, problem_hash, hash_fpath, log_delay)
-            self._cache_original_expedition(self.expedition)
 
     def _log_problem(
         self,
@@ -360,6 +359,11 @@ class ProblemSimulator:
         )
 
         if not has_contingency:
+            # cache original expedition for reference before the user edits the schedule
+            # (checkpoint.yaml can be overwritten if multiple problems occur)
+            self._cache_original_expedition(self.expedition)
+
+            # exit simulation
             sys.exit(0)
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
