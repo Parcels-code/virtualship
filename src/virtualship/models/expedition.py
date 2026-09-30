@@ -234,7 +234,12 @@ class Schedule(pydantic.BaseModel):
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = wps_in_use[0].time
 
-        for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
+        # offset from wps_in_use indices to self.waypoints indices (a placeholder departure port is excluded from wps_in_use)
+        wps_in_use_offset = 0 if self.departure_port.is_in_use else 1
+
+        for wp_i, (wp, wp_next) in enumerate(
+            itertools.pairwise(wps_in_use), start=wps_in_use_offset
+        ):
             stationkeeping_time = (
                 wp.stationkeeping_time(instruments_config)
                 if isinstance(wp, Waypoint)

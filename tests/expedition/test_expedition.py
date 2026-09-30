@@ -235,6 +235,25 @@ def test_verify_on_land(base_expedition):
             r"Waypoint planning is not valid: would arrive too late at waypoint 2\.",
             id="NotEnoughTime",
         ),
+        pytest.param(
+            [
+                Port(location=Location(None, None), time=None),
+                Waypoint(
+                    location=Location(0, 0),
+                    time=datetime(2022, 1, 1, 1, 0, 0),
+                    instrument=[],
+                ),
+                Waypoint(
+                    location=Location(1, 0),
+                    time=datetime(2022, 1, 1, 1, 1, 0),
+                    instrument=[],
+                ),
+                Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
+            ],
+            ScheduleError,
+            r"Waypoint planning is not valid: would arrive too late at waypoint 2\.",
+            id="NotEnoughTimePlaceholderDeparturePort",
+        ),
     ],
 )
 def test_verify_schedule_errors(base_expedition, waypoints: list, error, match) -> None:
