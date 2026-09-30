@@ -1,6 +1,9 @@
 import json
 import random
+import time
 from datetime import datetime, timedelta
+
+import pytest
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
@@ -18,7 +21,7 @@ from virtualship.models import (
     ShipConfig,
     Waypoint,
 )
-from virtualship.utils import REPORT
+from virtualship.utils import CACHE, EXPEDITION_ORIGINAL, REPORT
 
 
 def _make_simple_expedition(
@@ -372,3 +375,26 @@ def test_instrument_not_present_doesnt_select_instrument_problem(tmp_path):
             # any incompatible waypoint x instrument problem combinations should have been replaced by a general problem
             else:
                 assert isinstance(problem, GeneralProblem)
+
+
+def test_original_expedition_cached_when_problem_halts_simulation(
+    tmp_path, monkeypatch
+):
+    """When a problem cannot be absorbed by contingency, the original expedition should be cached before the simulation exits."""
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+    expedition = _make_simple_expedition(num_waypoints=2)
+    (tmp_path / CACHE).mkdir()
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+
+    # no contingency for a pre-departure problem, so simulation should halt
+    with pytest.raises(SystemExit):
+        simulator._log_problem(
+            _get_pre_departure_problem(),
+            0,
+            "sample",
+            tmp_path / "problem_sample.json",
+            log_delay=0.0,
+        )
+
+    assert (tmp_path / CACHE / EXPEDITION_ORIGINAL).exists()
