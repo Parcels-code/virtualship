@@ -350,14 +350,12 @@ def test_argo_fieldoutofbounds_error(tmpdir) -> None:
     )
 
 
-def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
-    """Argo float should reach its max depth and then ascends."""
-    lifetime_days = 1.0  # time enough for one descent to max depth + ascent
+def _simulate_cycling_float(tmpdir, sensor_types, lifetime_days):
+    """Simulate a float with a one day cycle  (and no drift phase), which is enough time for one descent to max depth + ascent, with fieldset with depth levels."""
     fieldset = create_fieldset(
         lifetime_days=lifetime_days, depths=[-2225.1, -1941.9, -1000.0, -0.5]
     )
-
-    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    sensors = [SensorConfig(sensor_type=s) for s in sensor_types]
     expedition = create_dummy_expedition(
         sensors, lifetime=timedelta(days=lifetime_days)
     )
@@ -376,8 +374,14 @@ def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
     out_path = tmpdir.join("out.parquet")
     argo_instrument.load_input_data = lambda: fieldset
     argo_instrument.simulate([argo_float], out_path)
+    return parcels.read_particlefile(out_path)
 
-    results = parcels.read_particlefile(out_path)
+
+def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
+    """Argo float should reach its max depth and then ascends."""
+    results = _simulate_cycling_float(
+        tmpdir, [SensorType.TEMPERATURE], lifetime_days=1.0
+    )
     z = results["z"].to_numpy()
     phase = results["cycle_phase"].to_numpy()
 
@@ -391,6 +395,38 @@ def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
     # ascent (sampling) starts from max depth
     assert np.isclose(z[phase == 3].min(), MAX_DEPTH, atol=1e-3)
     assert np.isfinite(results["temperature"].to_numpy()[phase == 3]).any()
+
+
+def test_argo_no_sampling_outside_ascent(tmpdir) -> None:
+    """Temperature and salinity are only recorded during the ascent (phase 3), not carried over into other phases."""
+    # two day lifetime so that the float completes a cycle and starts the next one
+    results = _simulate_cycling_float(
+        tmpdir, [SensorType.TEMPERATURE, SensorType.SALINITY], lifetime_days=2.0
+    )
+    phase = results["cycle_phase"].to_numpy()
+
+    # the float should have gone through every phase and back into a second cycle
+    assert set(np.unique(phase)) == {0, 1, 2, 3, 4}
+
+    for var in ["temperature", "salinity"]:
+        values = results[var].to_numpy()
+        assert np.isfinite(values[phase == 3]).any(), (
+            f"{var} should be sampled on ascent"
+        )
+        assert np.isnan(values[phase != 3]).all(), (
+            f"{var} should be NaN outside the ascent"
+        )
+
+
+def test_argo_salinity_only_sensor(tmpdir) -> None:
+    """A float with a sensor removed (default is temperature and salinity) still simulates properly without crashing."""
+    results = _simulate_cycling_float(tmpdir, [SensorType.SALINITY], lifetime_days=2.0)
+    phase = results["cycle_phase"].to_numpy()
+    salinity = results["salinity"].to_numpy()
+
+    assert "temperature" not in results
+    assert np.isfinite(salinity[phase == 3]).any()
+    assert np.isnan(salinity[phase != 3]).all()
 
 
 def test_argo_max_depth_deeper_than_fieldset_error(tmpdir) -> None:
