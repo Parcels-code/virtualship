@@ -187,15 +187,24 @@ class Schedule(pydantic.BaseModel):
             raise ScheduleError(f"{wp_str} must have a specified time.")
 
         # check waypoint times are in ascending order
-        timed_waypoints = [wp for wp in self.waypoints if wp.time is not None]
-        checks = [
-            next.time >= cur.time for cur, next in itertools.pairwise(timed_waypoints)
+        # (indices kept relative to self.waypoints, so they can be converted to public waypoint numbers)
+        timed_waypoints = [
+            (wp_i, wp) for wp_i, wp in enumerate(self.waypoints) if wp.time is not None
         ]
-        if not all(checks):
-            invalid_i = [i for i, c in enumerate(checks) if c]
-            public_wps = [_get_public_wp(i, self.waypoints) for i in invalid_i]
+        invalid_i = [
+            next_i
+            for (_, cur), (next_i, next) in itertools.pairwise(timed_waypoints)
+            if next.time < cur.time
+        ]
+        if invalid_i:
+            invalid_labels = [
+                "Port of Arrival"
+                if _get_public_wp(i, self.waypoints) is None
+                else f"#{_get_public_wp(i, self.waypoints)}"
+                for i in invalid_i
+            ]
             raise ScheduleError(
-                f"Waypoint(s) {', '.join(f'#{i}' for i in public_wps)}: each waypoint should be timed after all previous waypoints",
+                f"Waypoint(s) {', '.join(invalid_labels)}: each waypoint should be timed after all previous waypoints",
             )
 
         # check if all non-port waypoints are in water using bathymetry data
@@ -234,7 +243,12 @@ class Schedule(pydantic.BaseModel):
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         time = wps_in_use[0].time
 
-        for wp_i, (wp, wp_next) in enumerate(itertools.pairwise(wps_in_use)):
+        # offset from wps_in_use indices to self.waypoints indices (a placeholder departure port is excluded from wps_in_use)
+        wps_in_use_offset = 0 if self.departure_port.is_in_use else 1
+
+        for wp_i, (wp, wp_next) in enumerate(
+            itertools.pairwise(wps_in_use), start=wps_in_use_offset
+        ):
             stationkeeping_time = (
                 wp.stationkeeping_time(instruments_config)
                 if isinstance(wp, Waypoint)

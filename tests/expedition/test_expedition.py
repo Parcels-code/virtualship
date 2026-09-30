@@ -213,8 +213,18 @@ def test_verify_on_land(base_expedition):
                 Port(location=Location(1, 0), time=datetime(2022, 1, 3, 0, 0, 0)),
             ],
             ScheduleError,
-            r"Waypoint\(s\).*?: each waypoint should be timed after all previous waypoints",
+            r"Waypoint\(s\) #3: each waypoint should be timed after all previous waypoints",
             id="SequentialWaypoints",
+        ),
+        pytest.param(
+            [
+                Port(location=Location(0, 0), time=datetime(2022, 1, 1, 0, 0, 0)),
+                Waypoint(location=Location(0, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
+                Port(location=Location(1, 0), time=datetime(2022, 1, 1, 12, 0, 0)),
+            ],
+            ScheduleError,
+            r"Waypoint\(s\) Port of Arrival: each waypoint should be timed after all previous waypoints",
+            id="SequentialWaypointsArrivalPort",
         ),
         pytest.param(
             [
@@ -234,6 +244,25 @@ def test_verify_on_land(base_expedition):
             ScheduleError,
             r"Waypoint planning is not valid: would arrive too late at waypoint 2\.",
             id="NotEnoughTime",
+        ),
+        pytest.param(
+            [
+                Port(location=Location(None, None), time=None),
+                Waypoint(
+                    location=Location(0, 0),
+                    time=datetime(2022, 1, 1, 1, 0, 0),
+                    instrument=[],
+                ),
+                Waypoint(
+                    location=Location(1, 0),
+                    time=datetime(2022, 1, 1, 1, 1, 0),
+                    instrument=[],
+                ),
+                Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
+            ],
+            ScheduleError,
+            r"Waypoint planning is not valid: would arrive too late at waypoint 2\.",
+            id="NotEnoughTimePlaceholderDeparturePort",
         ),
     ],
 )
