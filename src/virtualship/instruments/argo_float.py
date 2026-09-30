@@ -121,7 +121,6 @@ def _argo_float_vertical_movement(particles, fieldset):
     next_phase = ptcls4.cycle_age >= ptcls4.cycle_days * 86400
     ptcls4.cycle_phase[next_phase] = 0
     ptcls4.cycle_age[next_phase] = 0  # reset cycle_age for next cycle
-    ptcls4.temperature = np.nan  # no temperature measurement when at surface
 
     particles.cycle_age += particles.dt  # update cycle_age
 
@@ -165,7 +164,9 @@ def _argo_sample_temperature(particles, fieldset):
     # Phase 3: ascending — sample temperature
     phase_mask = particles.cycle_phase == 3
     depth_mask = particles.z < particles.min_depth  # still ascending
-    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    mask = np.logical_and(phase_mask, depth_mask)
+    particles.temperature[~mask] = np.nan  # no measurement outside the ascent
+    sampling_particles = particles[mask]
     sampling_particles.temperature = fieldset.T[sampling_particles]
 
 
@@ -173,7 +174,9 @@ def _argo_sample_salinity(particles, fieldset):
     # Phase 3: ascending — sample salinity
     phase_mask = particles.cycle_phase == 3
     depth_mask = particles.z < particles.min_depth  # still ascending
-    sampling_particles = particles[np.logical_and(phase_mask, depth_mask)]
+    mask = np.logical_and(phase_mask, depth_mask)
+    particles.salinity[~mask] = np.nan  # no measurement outside the ascent
+    sampling_particles = particles[mask]
     sampling_particles.salinity = fieldset.S[sampling_particles]
 
 
