@@ -419,7 +419,7 @@ def test_argo_no_sampling_outside_ascent(tmpdir) -> None:
 
 
 def test_argo_salinity_only_sensor(tmpdir) -> None:
-    """A float with only the salinity sensor enabled simulates full cycles without needing a temperature variable."""
+    """A float with a sensor removed (default is temperature and salinity) still simulates properly without crashing."""
     results = _simulate_cycling_float(tmpdir, [SensorType.SALINITY], lifetime_days=2.0)
     phase = results["cycle_phase"].to_numpy()
     salinity = results["salinity"].to_numpy()
