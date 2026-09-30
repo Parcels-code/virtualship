@@ -351,6 +351,9 @@ class ProblemSimulator:
         _save_checkpoint(checkpoint, self.expedition_dir)
         self.expedition.to_yaml(self.expedition_dir / CACHE / EXPEDITION_LATEST)
 
+        # cache original expedition for user reference
+        self._cache_original_expedition(self.expedition)
+
         self._tabular_outputter(
             problem_str=problem.message,
             impact_str=impact_str,
@@ -359,10 +362,6 @@ class ProblemSimulator:
         )
 
         if not has_contingency:
-            # cache original expedition for reference before the user edits the schedule
-            # (checkpoint.yaml can be overwritten if multiple problems occur)
-            self._cache_original_expedition(self.expedition)
-
             # exit simulation
             sys.exit(0)
 
