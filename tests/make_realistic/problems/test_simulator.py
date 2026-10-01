@@ -1,6 +1,9 @@
 import json
 import random
+import time
 from datetime import datetime, timedelta
+
+import pytest
 
 from virtualship.instruments.types import InstrumentType
 from virtualship.make_realistic.problems.scenarios import (
@@ -18,7 +21,7 @@ from virtualship.models import (
     ShipConfig,
     Waypoint,
 )
-from virtualship.utils import REPORT
+from virtualship.utils import CACHE, EXPEDITION_ORIGINAL, REPORT
 
 
 def _make_simple_expedition(
@@ -372,3 +375,38 @@ def test_instrument_not_present_doesnt_select_instrument_problem(tmp_path):
             # any incompatible waypoint x instrument problem combinations should have been replaced by a general problem
             else:
                 assert isinstance(problem, GeneralProblem)
+
+
+@pytest.mark.parametrize("halts_simulation", [True, False])
+def test_original_expedition_always_cached(tmp_path, monkeypatch, halts_simulation):
+    """The original expedition should be cached whenever a problem occurs."""
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+    if halts_simulation:
+        # no contingency for a pre-departure problem, so simulation should halt
+        expedition = _make_simple_expedition(num_waypoints=2)
+        problem, problem_wp_i = _get_pre_departure_problem(), 0
+    else:
+        # short distance between waypoints, so enough contingency to avoid the problem
+        expedition = _make_simple_expedition(num_waypoints=2, distance_scale=0.01)
+        problem = next(
+            c for c in GENERAL_PROBLEMS if not getattr(c, "pre_departure", False)
+        )
+        problem_wp_i = 1
+
+    (tmp_path / CACHE).mkdir()
+    simulator = ProblemSimulator(expedition, str(tmp_path))
+    log_problem_args = (
+        problem,
+        problem_wp_i,
+        "sample",
+        tmp_path / "problem_sample.json",
+    )
+
+    if halts_simulation:
+        with pytest.raises(SystemExit):
+            simulator._log_problem(*log_problem_args, log_delay=0.0)
+    else:
+        simulator._log_problem(*log_problem_args, log_delay=0.0)
+
+    assert (tmp_path / CACHE / EXPEDITION_ORIGINAL).exists()
