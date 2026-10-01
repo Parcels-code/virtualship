@@ -167,8 +167,8 @@ class _FakeFieldSet:
             setattr(self, name, value)
         self.fields = {}
 
-    def to_windowed_arrays(self):
-        """Mimic FieldSet.to_windowed_arrays."""
+    def to_chunk_cached_arrays(self, **kwargs):
+        """Mimic FieldSet.to_chunk_cached_arrays."""
         return self
 
 
@@ -195,7 +195,6 @@ def test_load_input_data(mock_expedition):
             return_value="dummy_product_id",
         ),
         patch("copernicusmarine.open_dataset"),
-        patch.object(dummy, "_via_tmp_ds", side_effect=lambda ds: ds),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch(
             "parcels.FieldSet.from_sgrid_conventions", return_value=fake_fieldset
@@ -269,50 +268,6 @@ def test_fetch_spec_applied_to_instrument(mock_expedition):
     assert dummy.fetch_spec.depth_max is None
 
 
-def test_via_tmp_ds_roundtrip(mock_expedition):
-    """_via_tmp_ds writes to a tmp file and re-opens it."""
-    with DummyInstrument(
-        expedition=mock_expedition,
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-
-        assert isinstance(result, xr.Dataset)
-        assert "temperature" in result
-        assert result is not ds
-
-        result.close()
-        ds.close()
-
-
-def test_instrument_context_manager(mock_expedition):
-    """Test context manager cleanup of temporary directories."""
-    with DummyInstrument(
-        expedition=mock_expedition,
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-        assert len(dummy._tmp_dirs) == 1
-        result.close()
-        ds.close()
-
-    assert len(dummy._tmp_dirs) == 0
-
-
 def test_generate_fieldset_combines_fields(mock_expedition):
     dummy = DummyInstrument(
         expedition=mock_expedition,
@@ -325,12 +280,11 @@ def test_generate_fieldset_combines_fields(mock_expedition):
     fs_A = MagicMock()
     fs_B = MagicMock()
 
-    fs_A.to_windowed_arrays.return_value = fs_A
-    fs_B.to_windowed_arrays.return_value = fs_B
+    fs_A.to_chunk_cached_arrays.return_value = fs_A
+    fs_B.to_chunk_cached_arrays.return_value = fs_B
 
     with (
         patch.object(dummy, "_get_copernicus_ds"),
-        patch.object(dummy, "_via_tmp_ds"),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch("parcels.FieldSet.from_sgrid_conventions", side_effect=[fs_A, fs_B]),
     ):
