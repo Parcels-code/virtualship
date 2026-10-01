@@ -285,7 +285,6 @@ class ProblemSimulator:
                 continue
 
             self._log_problem(problem, wp_i, problem_hash, hash_fpath, log_delay)
-            self._cache_original_expedition(self.expedition)
 
     def _log_problem(
         self,
@@ -352,6 +351,9 @@ class ProblemSimulator:
         _save_checkpoint(checkpoint, self.expedition_dir)
         self.expedition.to_yaml(self.expedition_dir / CACHE / EXPEDITION_LATEST)
 
+        # cache original expedition for user reference
+        self._cache_original_expedition(self.expedition)
+
         self._tabular_outputter(
             problem_str=problem.message,
             impact_str=impact_str,
@@ -360,6 +362,7 @@ class ProblemSimulator:
         )
 
         if not has_contingency:
+            # exit simulation
             sys.exit(0)
 
     def _has_contingency(self, problem: ProblemType, problem_wp_i: int | None) -> bool:
