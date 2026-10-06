@@ -579,8 +579,13 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     )
 
     sensors: list[SensorConfig] = pydantic.Field(
-        default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
-        description=("Sensors fitted to the drifter. Supported: TEMPERATURE. "),
+        default_factory=lambda: [
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+        description=(
+            "Sensors fitted to the drifter. Supported: TEMPERATURE, SALINITY. "
+        ),
     )
 
     model_config = pydantic.ConfigDict(populate_by_name=True)

@@ -11,7 +11,7 @@ import pytest
 import xarray as xr
 
 from virtualship.instruments.drifter import Drifter, DrifterInstrument
-from virtualship.instruments.sensors import SensorType
+from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import Location, Spacetime
 from virtualship.models.expedition import (
@@ -103,12 +103,14 @@ def create_fieldset(
 
 def test_simulate_drifters(tmpdir) -> None:
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
+    CONST_SALINITY = 35.0  # constant salinity in fieldset
 
     v = np.full((2, 2, 2), 1.0)
     u = np.full((2, 2, 2), 1.0)
     t = np.full((2, 2, 2), CONST_TEMPERATURE)
+    s = np.full((2, 2, 2), CONST_SALINITY)
 
-    fieldset = create_fieldset({"V": v, "U": u, "T": t})
+    fieldset = create_fieldset({"V": v, "U": u, "T": t, "S": s})
 
     drifters = [
         Drifter(
@@ -129,7 +131,12 @@ def test_simulate_drifters(tmpdir) -> None:
         ),
     ]
 
-    expedition = create_dummy_expedition()
+    expedition = create_dummy_expedition(
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ]
+    )
     from_data = None
 
     drifter_instrument = DrifterInstrument(expedition, from_data)
@@ -158,6 +165,12 @@ def test_simulate_drifters(tmpdir) -> None:
         temp = traj_df["temperature"].to_numpy()
         assert np.all(temp[np.isfinite(temp)] == CONST_TEMPERATURE), (
             f"measured temperature does not match {drifter_i=}"
+        )
+
+        sal = traj_df["salinity"].to_numpy()
+        assert np.isfinite(sal).any(), f"no salinity measured {drifter_i=}"
+        assert np.all(sal[np.isfinite(sal)] == CONST_SALINITY), (
+            f"measured salinity does not match {drifter_i=}"
         )
 
 
@@ -269,18 +282,21 @@ def test_simulate_drifters_at_same_waypoint(tmpdir) -> None:
 
 def test_drifter_depths(tmpdir) -> None:
     CONST_TEMPERATURE = 1.0  # constant temperature in fieldset
+    CONST_SALINITY = 35.0  # constant salinity in fieldset
     DEPTH_FACTOR = 3.0  # factor to multiply surface values by at depth for test
 
     v = np.full((2, 2, 2, 2), 1.0)
     u = np.full((2, 2, 2, 2), 1.0)
     t = np.full((2, 2, 2, 2), CONST_TEMPERATURE)
+    s = np.full((2, 2, 2, 2), CONST_SALINITY)
 
     v[:, -1, :, :] = 1.0 * DEPTH_FACTOR
     u[:, -1, :, :] = 1.0 * DEPTH_FACTOR
     t[:, -1, :, :] = CONST_TEMPERATURE * DEPTH_FACTOR
+    s[:, -1, :, :] = CONST_SALINITY * DEPTH_FACTOR
 
     fieldset = create_fieldset(
-        {"V": v, "U": u, "T": t},
+        {"V": v, "U": u, "T": t, "S": s},
         depth_range=(-10, 0),
     )
 
@@ -303,7 +319,12 @@ def test_drifter_depths(tmpdir) -> None:
         ),
     ]
 
-    expedition = create_dummy_expedition()
+    expedition = create_dummy_expedition(
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ]
+    )
     from_data = None
 
     drifter_instrument = DrifterInstrument(expedition, from_data)
@@ -336,9 +357,61 @@ def test_drifter_depths(tmpdir) -> None:
     assert drifter_surface["temperature"][0] != drifter_depth["temperature"][0], (
         "Surface and deeper drifter should have different temperature measurements"
     )
+    assert drifter_surface["salinity"][0] != drifter_depth["salinity"][0], (
+        "Surface and deeper drifter should have different salinity measurements"
+    )
 
 
-def test_drifter_disabled_sensor_absent_from_output(tmpdir) -> None:
+@pytest.mark.parametrize(
+    "enabled_sensor, absent_var",
+    [
+        (SensorType.TEMPERATURE, "salinity"),
+        (SensorType.SALINITY, "temperature"),
+    ],
+)
+def test_drifter_single_sensor(tmpdir, enabled_sensor, absent_var) -> None:
+    """A drifter with only one sensor simulates without the other's field, and only the enabled sensor's variable is in the output."""
+    present_var = SENSOR_REGISTRY()[enabled_sensor].particle_vars[0].name
+    fs_key = SENSOR_REGISTRY()[enabled_sensor].fs_key
+
+    # fieldset deliberately only contains the field for the enabled sensor
+    fieldset = create_fieldset(
+        {
+            "V": np.full((2, 2, 2), 1.0),
+            "U": np.full((2, 2, 2), 1.0),
+            fs_key: np.full((2, 2, 2), 1.0),
+        }
+    )
+
+    expedition = create_dummy_expedition(
+        sensors=[SensorConfig(sensor_type=enabled_sensor)]
+    )
+    drifters = [
+        Drifter(
+            spacetime=Spacetime(
+                location=Location(latitude=1.0, longitude=1.0), time=BASE_TIME
+            ),
+            depth=DEPLOY_DEPTH,
+            lifetime=expedition.instruments_config.drifter_config.lifetime,
+        )
+    ]
+
+    drifter_instrument = DrifterInstrument(expedition, None)
+    out_path = tmpdir.join(f"out_{present_var}_only.parquet")
+    drifter_instrument.load_input_data = lambda: fieldset
+    drifter_instrument.simulate(drifters, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    assert present_var in results, "Enabled sensor variable must be present"
+    assert np.isfinite(results[present_var].to_numpy()).any(), (
+        "Enabled sensor should record measurements"
+    )
+    assert absent_var not in results, (
+        "Disabled sensor variable must be absent from output"
+    )
+
+
+def test_drifter_config_no_enabled_sensors_rejected() -> None:
     """A DrifterConfig with no enabled sensors should be rejected at construction time."""
     with pytest.raises(pydantic.ValidationError, match="no enabled sensors"):
         DrifterConfig(
@@ -350,13 +423,14 @@ def test_drifter_disabled_sensor_absent_from_output(tmpdir) -> None:
 
 
 def test_drifter_config_default_sensors():
-    """DrifterConfig defaults to TEMPERATURE."""
+    """DrifterConfig defaults to TEMPERATURE + SALINITY."""
     config = DrifterConfig(
         lifetime=LIFETIME,
         depth_meter=DEPLOY_DEPTH,
         stationkeeping_time_minutes=10,
     )
-    assert config.sensors[0].sensor_type is SensorType.TEMPERATURE
+    types = {sc.sensor_type for sc in config.sensors}
+    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
 
 
 def test_drifter_config_unsupported_sensor_rejected():
