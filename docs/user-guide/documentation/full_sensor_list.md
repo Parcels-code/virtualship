@@ -27,4 +27,5 @@ Trying to add a sensor to an instrument that does not support it will result in 
 | **ARGO_FLOAT**                         | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
 |                                        | SALINITY           | Sea Water Salinity                                                                        | psu                                  | Physical       |
 | **DRIFTER**                            | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
+|                                        | SALINITY           | Sea Water Salinity                                                                        | psu                                  | Physical       |
 | **XBT**                                | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
