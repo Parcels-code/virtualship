@@ -208,3 +208,12 @@ def test_adcp_instrument_type(adcp_expedition):
     adcp_instrument = ADCPInstrument(adcp_expedition, from_data=None)
     assert adcp_instrument.instrument_type == InstrumentType.ADCP
     assert adcp_instrument.instrument_type.is_underway
+
+
+def test_adcp_fetch_spec_depths(adcp_expedition):
+    """ADCPInstrument fetches from the surface down to the configured max depth."""
+    adcp_instrument = ADCPInstrument(adcp_expedition, from_data=None)
+    assert (
+        adcp_instrument.fetch_spec.depth_min == 0
+    )  # 0 here, matching the hard-coded value in the ADCPInstrument class to ensure fetched correctly from copernicusmarine
+    assert adcp_instrument.fetch_spec.depth_max == MAX_DEPTH
