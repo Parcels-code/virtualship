@@ -51,13 +51,17 @@ class ADCPInstrument(UnderwayInstrument):
     def __init__(self, expedition, from_data):
         """Initialize ADCPInstrument."""
         variables = expedition.instruments_config.adcp_config.active_variables()
+        fetch_spec = FetchSpec(
+            depth_min=0,  # ensures copernicusmarine fetches properly
+            depth_max=expedition.instruments_config.adcp_config.max_depth_meter,
+        )
 
         super().__init__(
             expedition,
             variables,
             add_bathymetry=False,
             verbose_progress=False,
-            fetch_spec=FetchSpec(),
+            fetch_spec=fetch_spec,
             from_data=from_data,
         )
 

@@ -250,6 +250,8 @@ class ArgoFloatInstrument(Instrument):
             latlon_buffer=9.0,  # [degrees]
             time_buffer=expedition.instruments_config.argo_float_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
+            depth_min=expedition.instruments_config.argo_float_config.min_depth_meter,
+            depth_max=expedition.instruments_config.argo_float_config.max_depth_meter,
         )
 
         super().__init__(
