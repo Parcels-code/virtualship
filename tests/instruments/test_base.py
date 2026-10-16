@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import parcels
@@ -19,7 +19,7 @@ from virtualship.instruments.base import (
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import SensorConfig
-from virtualship.utils import get_instrument_class
+from virtualship.utils import MAX_CACHE_BYTES, get_instrument_class
 
 # =============================================================================
 # Fixtures
@@ -291,6 +291,46 @@ def test_generate_fieldset_combines_fields(mock_expedition):
         dummy._generate_fieldset()
 
     fs_A.__add__.assert_called_once_with(fs_B)
+
+
+@pytest.mark.parametrize(
+    "instrument_type", [InstrumentType.CTD, InstrumentType.ADCP], ids=lambda t: t.name
+)
+def test_generate_fieldset_chunk_caching_only_for_non_underway(
+    mock_expedition, instrument_type
+):
+    """Non-underway instruments convert to ChunkCachedArrays (with the memory cap), underway instruments do not."""
+    dummy = DummyInstrument(
+        expedition=mock_expedition,
+        variables={"A": "a"},
+        add_bathymetry=False,
+        verbose_progress=False,
+        from_data=None,
+    )
+
+    fs = MagicMock()
+    fs.to_chunk_cached_arrays.return_value = fs
+
+    with (
+        patch.object(
+            DummyInstrument,
+            "instrument_type",
+            new_callable=PropertyMock,
+            return_value=instrument_type,
+        ),
+        patch.object(dummy, "_get_copernicus_ds"),
+        patch("parcels.convert.copernicusmarine_to_sgrid"),
+        patch("parcels.FieldSet.from_sgrid_conventions", return_value=fs),
+    ):
+        result = dummy._generate_fieldset()
+
+    assert result is fs
+    if instrument_type.is_underway:
+        fs.to_chunk_cached_arrays.assert_not_called()
+    else:
+        fs.to_chunk_cached_arrays.assert_called_once_with(
+            max_cache_bytes=MAX_CACHE_BYTES
+        )
 
 
 @pytest.mark.parametrize(
