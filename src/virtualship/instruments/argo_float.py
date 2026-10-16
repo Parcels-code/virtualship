@@ -128,7 +128,7 @@ def _argo_float_vertical_movement(particles, fieldset):
 def _keep_at_surface(particles, fieldset):
     through_surface = particles.state == StatusCode.ErrorThroughSurface
     particles.z[through_surface] = particles.min_depth[through_surface]
-    particles.state[through_surface] = StatusCode.Evaluate
+    particles.state[through_surface] = StatusCode.Success
 
 
 def _check_error(particles, fieldset):
