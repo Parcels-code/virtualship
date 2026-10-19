@@ -163,7 +163,7 @@ Remember that MFP's default of 45 minutes per station may not be enough once you
 
 Deployments can take place side by side, so only the slowest one matters for the total stationkeeping time at each waypoint. Drifters, Argo floats and XBTs are simply released into the water and left behind, so they have no time cost apart from stopping the ship. A CTD is different, it has to be lowered and brought back up, so the ship waits for the full round trip, and a cast at a deep station can easily take longer than the MFP default
 
-If verification tells you that you would arrive somewhere too late, your waypoints with CTDs are the first place to look. See [here](../tutorials/working_with_expedition_yaml.md#how-long-the-ship-spends-at-each-waypoint) for exactly how this time is worked out.
+If verification tells you that you would arrive somewhere too late, your waypoints with CTDs are the first place to look.
 ```
 
 ### Instrument selection
