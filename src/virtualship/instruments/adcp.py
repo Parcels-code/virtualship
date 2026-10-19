@@ -52,7 +52,7 @@ class ADCPInstrument(UnderwayInstrument):
         """Initialize ADCPInstrument."""
         variables = expedition.instruments_config.adcp_config.active_variables()
         fetch_spec = FetchSpec(
-            depth_min=0,  # ensures copernicusmarine fetches properly
+            depth_min=0,  # ensures copernicusmarine fetches properly, copernicusmarine skips coordinates_selection_method="outside" if minimum_depth is None
             depth_max=expedition.instruments_config.adcp_config.max_depth_meter,
         )
 

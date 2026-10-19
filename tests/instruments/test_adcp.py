@@ -216,4 +216,5 @@ def test_adcp_fetch_spec_depths(adcp_expedition):
     assert (
         adcp_instrument.fetch_spec.depth_min == 0
     )  # 0 here, matching the hard-coded value in the ADCPInstrument class to ensure fetched correctly from copernicusmarine
+    # i.e. because copernicusmarine skips coordinates_selection_method="outside" if minimum_depth is None
     assert adcp_instrument.fetch_spec.depth_max == MAX_DEPTH
