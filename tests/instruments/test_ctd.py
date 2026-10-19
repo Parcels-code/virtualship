@@ -516,3 +516,13 @@ def test_ctd_instrument_type():
     ctd_instrument = CTDInstrument(expedition, from_data=None)
     assert ctd_instrument.instrument_type == InstrumentType.CTD
     assert not ctd_instrument.instrument_type.is_underway
+
+
+def test_ctd_fetch_spec_depths_from_config():
+    """CTDInstrument restricts data fetching to the configured depth range."""
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    expedition = create_dummy_expedition(sensors)
+
+    ctd_instrument = CTDInstrument(expedition, from_data=None)
+    assert ctd_instrument.fetch_spec.depth_min == MIN_DEPTH
+    assert ctd_instrument.fetch_spec.depth_max == MAX_DEPTH

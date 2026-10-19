@@ -31,6 +31,7 @@ from virtualship.models.expedition import (
 # Constants
 BASE_TIME = datetime.strptime("1950-01-01", "%Y-%m-%d")
 DRIFT_DEPTH = -1000
+MIN_DEPTH = 0.0
 MAX_DEPTH = -2000
 VERTICAL_SPEED = -0.10
 CYCLE_DAYS = 10
@@ -42,7 +43,7 @@ STATIONKEEPING_TIME = 10
 def argo_config_kwargs():
     """Common ArgoFloatConfig parameters."""
     return {
-        "min_depth_meter": 0.0,
+        "min_depth_meter": MIN_DEPTH,
         "max_depth_meter": MAX_DEPTH,
         "drift_depth_meter": DRIFT_DEPTH,
         "vertical_speed_meter_per_second": VERTICAL_SPEED,
@@ -125,7 +126,7 @@ def create_argo_float(waypoint):
             ),
             time=waypoint.time,
         ),
-        min_depth=0.0,
+        min_depth=MIN_DEPTH,
         max_depth=MAX_DEPTH,
         drift_depth=DRIFT_DEPTH,
         vertical_speed=VERTICAL_SPEED,
@@ -154,7 +155,7 @@ def create_dummy_expedition(sensors, lifetime=timedelta(days=1), location=(1, 2)
 
         instruments_config = InstrumentsConfig(
             argo_float_config=ArgoFloatConfig(
-                min_depth_meter=0.0,
+                min_depth_meter=MIN_DEPTH,
                 max_depth_meter=MAX_DEPTH,
                 drift_depth_meter=DRIFT_DEPTH,
                 vertical_speed_meter_per_second=VERTICAL_SPEED,
@@ -363,7 +364,7 @@ def _simulate_cycling_float(tmpdir, sensor_types, lifetime_days):
     wp = expedition.schedule.waypoints[0]
     argo_float = ArgoFloat(
         spacetime=Spacetime(location=wp.location, time=wp.time),
-        min_depth=0.0,
+        min_depth=MIN_DEPTH,
         max_depth=MAX_DEPTH,
         drift_depth=DRIFT_DEPTH,
         vertical_speed=VERTICAL_SPEED,
@@ -456,6 +457,16 @@ def test_argo_float_instrument_type():
     assert not argo_instrument.instrument_type.is_underway
 
 
+def test_argo_fetch_spec_depths_from_config():
+    """ArgoFloatInstrument restricts data fetching to the configured depth range."""
+    sensors = [SensorConfig(sensor_type=SensorType.TEMPERATURE)]
+    expedition = create_dummy_expedition(sensors)
+
+    argo_instrument = ArgoFloatInstrument(expedition, from_data=None)
+    assert argo_instrument.fetch_spec.depth_min == MIN_DEPTH
+    assert argo_instrument.fetch_spec.depth_max == MAX_DEPTH
+
+
 def test_handle_grounding():
     """Test that _handle_grounding sets grounded status, logs warnings, adjusts dz, and updates cycle phase."""
 
@@ -531,7 +542,7 @@ def test_keep_at_surface_no_infinite_loop(tmpdir):
             np.datetime64(BASE_TIME),
             np.datetime64(BASE_TIME + timedelta(hours=2)),
         ],
-        min_depth=[0.0, 0.0],
+        min_depth=[MIN_DEPTH, MIN_DEPTH],
     )
 
     # force every float through the surface
