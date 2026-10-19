@@ -93,7 +93,8 @@ async def _expand_waypoint(expedition_editor, pilot, index: int) -> WaypointWidg
     return widget
 
 
-def _four_waypoint_schedule() -> list:
+def _four_waypoint_schedule(hours_apart: int = 1) -> list:
+    """N.B. a full-depth CTD cast keeps the ship on station for ~1.5 h, so use hours_apart >= 2 for a schedule that passes verification (e.g. on save)."""
     return [
         Port(location=None, time=None),
         Waypoint(
@@ -103,12 +104,12 @@ def _four_waypoint_schedule() -> list:
         ),
         Waypoint(
             location=Location(0.01, 0.01),
-            time=datetime(2022, 1, 1, 1, 0, 0),
+            time=datetime(2022, 1, 1, hours_apart, 0, 0),
             instrument=["CTD"],
         ),
         Waypoint(
             location=Location(0.02, 0.02),
-            time=datetime(2022, 1, 1, 2, 0, 0),
+            time=datetime(2022, 1, 1, 2 * hours_apart, 0, 0),
             instrument=["CTD"],
         ),
         Port(location=None, time=None),
@@ -645,7 +646,7 @@ async def test_waypoint_time_entry_and_adjust(tmp_path):
 @pytest.mark.asyncio
 async def test_save_shortcut_and_unsaved_changes_prompt(tmp_path):
     """ctrl+s saves, quitting with unsaved changes asks first, quitting after saving does not."""
-    _make_expedition(tmp_path, _four_waypoint_schedule())
+    _make_expedition(tmp_path, _four_waypoint_schedule(hours_apart=3))
 
     app = PlanApp(path=tmp_path)
     async with app.run_test(size=(120, 100)) as pilot:
