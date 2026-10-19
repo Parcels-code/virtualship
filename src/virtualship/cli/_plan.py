@@ -352,24 +352,6 @@ class ExpeditionEditor(Static):
                     )
                 yield Label("", id="validation-failure-label-speed", classes="-hidden")
 
-                with Horizontal(classes="ship_speed"):
-                    for attr, label, input_id in (
-                        ("deceleration_time", "Decelerate (mins):", "deceleration"),
-                        ("acceleration_time", "Accelerate (mins):", "acceleration"),
-                    ):
-                        current = getattr(self.expedition.ship_config, attr, None)
-                        yield Label(f"[b]{label}[/b]")
-                        yield Input(
-                            id=input_id,
-                            type=type_to_textual(get_field_type(ShipConfig, attr)),
-                            validators=_field_validators(ShipConfig, attr),
-                            classes="ship_speed_input",
-                            placeholder="minutes",
-                            value=str(current.total_seconds() / 60.0)
-                            if current
-                            else "",
-                        )
-
                 with Horizontal(classes="ts-section"):
                     yield Label("[b]Onboard Temperature/Salinity:[/b]")
                     yield Switch(
@@ -559,24 +541,10 @@ class ExpeditionEditor(Static):
         attr = "ship_speed_knots"
         field_type = get_field_type(type(self.expedition.ship_config), attr)
         value = field_type(self.query_one("#speed").value)
-
-        # entered in minutes, stored as timedeltas
-        times = {
-            attr_name: datetime.timedelta(
-                minutes=float(self.query_one(f"#{input_id}").value)
-            )
-            for attr_name, input_id in (
-                ("deceleration_time", "deceleration"),
-                ("acceleration_time", "acceleration"),
-            )
-        }
-
         ShipConfig.model_validate(
-            {**self.expedition.ship_config.model_dump(), attr: value, **times}
+            {**self.expedition.ship_config.model_dump(), attr: value}
         )
         self.expedition.ship_config.ship_speed_knots = value
-        for attr_name, time_value in times.items():
-            setattr(self.expedition.ship_config, attr_name, time_value)
 
     def _update_instrument_configs(self):
         instruments_config = self.expedition.instruments_config
