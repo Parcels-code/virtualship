@@ -362,13 +362,7 @@ class ExpeditionEditor(Static):
                         yield Input(
                             id=input_id,
                             type=type_to_textual(get_field_type(ShipConfig, attr)),
-                            validators=[
-                                Function(
-                                    validator,
-                                    f"INVALID: value must be {validator.__doc__.lower()}",
-                                )
-                                for validator in group_validators(ShipConfig, attr)
-                            ],
+                            validators=_field_validators(ShipConfig, attr),
                             classes="ship_speed_input",
                             placeholder="minutes",
                             value=str(current.total_seconds() / 60.0)
