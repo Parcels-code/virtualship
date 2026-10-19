@@ -161,17 +161,3 @@ This section contains setting related to the ship itself, specifically:
 - **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
 - **Deceleration and acceleration times (`deceleration_time_minutes`, `acceleration_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy any instruments.
-
-### How long the ship spends at each waypoint
-
-When VirtualShip checks whether your schedule is achievable, it needs to know how long the ship is held stationary at each waypoint. That time is made up of three parts:
-
-```text
-time at waypoint  =  deceleration  +  slowest deployment  +  acceleration
-```
-
-A few consequences are worth understanding, because they determine whether your schedule passes verification:
-
-- **Waypoints with no instruments cost nothing.** If `instrument` is `null` or an empty list, the ship does not slow down at all and simply sails past.
-
-- **Deployments happen side by side, so only the slowest one counts.** Different teams onboard work in parallel, so the total time is taken as whichever deployment takes longest.
