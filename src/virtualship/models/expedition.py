@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import warnings
 from collections.abc import Collection
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -103,9 +102,8 @@ class Expedition(pydantic.BaseModel):
 
         self.schedule._check_structure(wps_in_use)
 
-        measured_depths = (
-            {} if ignore_land_test else self.schedule._check_in_water(from_data)
-        )
+        if not ignore_land_test:
+            self.schedule._check_in_water(from_data)
 
         # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
         overrun = self._first_overrun(wps_in_use, ship_speed)
@@ -122,29 +120,6 @@ class Expedition(pydantic.BaseModel):
                 "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
             )
 
-        # the schedule works using the planned depths (e.g. from MFP), check it would also hold against the measured seabed (e.g. from bathy fieldset)
-        # warn when bringing in the measured sea depth would break the schedule
-        if measured_depths:
-            measured_overrun = self._first_overrun(
-                wps_in_use, ship_speed, measured_depths
-            )
-            if measured_overrun is not None:
-                wp_i, wp_next, arrival_time = measured_overrun
-                # the deployment that overruns happens at the waypoint before the late arrival
-                wp = self.schedule.waypoints[wp_i]
-                wp_name = f"waypoint {_get_public_wp(wp_i, self.schedule.waypoints)}"
-                actual_depth = measured_depths[id(wp)]
-                warnings.warn(
-                    f"The planned sea depth at {wp_name} (sea_depth_meter: {wp.sea_depth_meter}) "
-                    f"does not match the actual sea depth at that location ({actual_depth:.1f}). "
-                    f"The water there is deeper than planned, so deployments take longer and "
-                    f"the ship would arrive too late at {self._describe_waypoint(wp_i, wp_next)} "
-                    f"(projected {arrival_time.replace(microsecond=0)}, due {wp_next.time}).\n\n"
-                    f"Please update 'sea_depth_meter' for {wp_name} to {actual_depth:.1f}, "
-                    f"then adjust the schedule timings if needed.",
-                    stacklevel=2,
-                )
-
         # mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
         self.schedule._verified = True
 
@@ -154,7 +129,6 @@ class Expedition(pydantic.BaseModel):
         self,
         wps_in_use: list[Port | Waypoint],
         ship_speed: float,
-        measured_depths: dict[int, float] | None = None,
     ) -> tuple[int, Port | Waypoint, datetime] | None:
         """Project the ship along the schedule and return the first waypoint it reaches late."""
         time = wps_in_use[0].time
@@ -165,8 +139,7 @@ class Expedition(pydantic.BaseModel):
         for wp_i, (wp, wp_next) in enumerate(
             itertools.pairwise(wps_in_use), start=wps_in_use_offset
         ):
-            bathymetry = measured_depths.get(id(wp)) if measured_depths else None
-            stationkeeping_time = self.stationkeeping_time(wp, bathymetry)
+            stationkeeping_time = self.stationkeeping_time(wp)
 
             time_to_reach = _calc_sail_time(
                 wp.location,
@@ -193,26 +166,20 @@ class Expedition(pydantic.BaseModel):
         # +1 to get next
         return f"waypoint {_get_public_wp(wp_i + 1, self.schedule.waypoints)}"
 
-    def stationkeeping_time(
-        self,
-        waypoint: Port | Waypoint,
-        bathymetry: float | None = None,
-    ) -> timedelta:
+    def stationkeeping_time(self, waypoint: Port | Waypoint) -> timedelta:
         """
         Calculate how long the ship is stationary at waypoint.
 
         Stationkeeping time = ship deceleration time + deployment time + ship acceleration time.
         Assumes insturments are deployed concurrently, so the longest deployment time is used.
         Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
-        Optional `bathymetry` (measured seabed depth from simulation fieldset) overrides the waypoint's sea_depth_meter (estimated from MFP).
         """
         instruments = self._wp_instruments(waypoint)
         if not instruments:
             return timedelta()
 
         deployment_time = max(
-            self._deployment_time(instrument, waypoint, bathymetry)
-            for instrument in instruments
+            self._deployment_time(instrument, waypoint) for instrument in instruments
         )
 
         return (
@@ -225,16 +192,15 @@ class Expedition(pydantic.BaseModel):
         self,
         instrument: InstrumentType,
         waypoint: Waypoint,
-        bathymetry: float | None = None,
     ) -> timedelta:
         """Time an instrument holds the ship on station."""
         config = self.instruments_config.config_for(instrument)
         if config is None:
             return timedelta()
 
-        # a measured seabed depth (from simulation fieldset), when given, stands in for the waypoint's own estimate
-        seabed = bathymetry if bathymetry is not None else waypoint.sea_depth_meter
-        return get_instrument_class(instrument).deployment_time(config, seabed)
+        return get_instrument_class(instrument).deployment_time(
+            config, waypoint.sea_depth_meter
+        )
 
     @staticmethod
     def _wp_instruments(waypoint: Port | Waypoint) -> list[InstrumentType]:
@@ -386,8 +352,8 @@ class Schedule(pydantic.BaseModel):
                 f"Waypoint(s) {', '.join(invalid_labels)}: each waypoint should be timed after all previous waypoints",
             )
 
-    def _check_in_water(self, from_data: Path | None = None) -> dict[int, float]:
-        """Check non-port waypoints sit in water rather than on land, return measured seabed depth at each (keyed by waypoint id)."""
+    def _check_in_water(self, from_data: Path | None = None) -> None:
+        """Check non-port waypoints sit in water rather than on land."""
         try:
             bathymetry_field = _get_bathy_data(from_data=from_data).bathymetry
         except Exception as e:
@@ -396,7 +362,6 @@ class Schedule(pydantic.BaseModel):
             ) from e
 
         land_waypoints = []
-        measured_depths: dict[int, float] = {}
 
         for wp_i, wp in enumerate(self.waypoints):
             if isinstance(wp, Port):
@@ -411,8 +376,6 @@ class Schedule(pydantic.BaseModel):
                 )
                 if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
                     land_waypoints.append((public_wp, wp))
-                else:
-                    measured_depths[id(wp)] = float(np.ravel(value)[0])
             except Exception as e:
                 raise ScheduleError(
                     f"Waypoint #{public_wp} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
@@ -422,8 +385,6 @@ class Schedule(pydantic.BaseModel):
             raise ScheduleError(
                 f"The following waypoint(s) throw(s) error(s): {['#' + str(public_wp) + ' ' + str(wp) for (public_wp, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
             )
-
-        return measured_depths
 
     def _get_wps_in_use(self) -> list[Port | Waypoint]:
         """Return waypoints that are in use (i.e., have a specified time and location), i.e. excluding placeholder departure/arrival ports."""
