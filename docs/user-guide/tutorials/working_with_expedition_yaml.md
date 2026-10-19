@@ -117,10 +117,10 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
-- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint, as a negative number of metres (e.g. `-1500.0` for a site with a depth of 1500 m).
+- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint, as a negative number of metres (e.g. `-1500.0` for a site with a depth of 1500 m). This is most relevant to CTDs where their deployment time has a depth dependence. It can be left as `null` if you don't know the depth, in which case e.g. CTD casts are assumed to reach the CTD's `max_depth_meter`, giving the slowest (worst-case) cast time.
 
-```{tip}
-Setting `sea_depth_meter` to a positive number will be rejected. Depths throughout `expedition.yaml` are written as negative numbers, measured downwards from the sea surface. Note this is the opposite sign convention to the MFP export, which reports sea depth as a positive number.
+```{note}
+Setting `sea_depth_meter` to a positive number will be rejected. Depths throughout `expedition.yaml` are written as negative numbers, measured downwards from the sea surface. This is the opposite sign convention to the MFP export, which reports sea depth as a positive number.
 ```
 
 ##### Comments
