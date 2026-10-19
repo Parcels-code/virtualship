@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
 
-from virtualship.cli._initialise import _load_mfp_export, _mfp_to_yaml
+from virtualship.cli._initialise import (
+    _load_mfp_export,
+    _mfp_to_yaml,
+    _parse_mfp_sea_depth,
+)
 from virtualship.models import Expedition, Port, Waypoint
 from virtualship.utils import _get_example_expedition
 
@@ -200,6 +204,51 @@ def test_mfp_sea_depth_absent_leaves_waypoint_depth_unset(tmp_path):
 
     assert waypoints, "expected the fixture to produce waypoints, but got none"
     assert all(wp.sea_depth_meter is None for wp in waypoints)
+
+
+def test_mfp_sea_depth_read_from_export_text_format(tmp_path):
+    """MFP exports write sea depth as text such as '~2865m', which is read as a negative depth."""
+    df = valid_mfp_data()
+    df["Sea Depth"] = [f"~{d}m" for d in df["Sea Depth"]]
+    mfp_file = tmp_path / "text_depths.xlsx"
+    df.to_excel(mfp_file, index=False)
+
+    yaml_output_path = tmp_path / "expedition.yaml"
+    _mfp_to_yaml(mfp_file, "2023-10-20 01:00:00", yaml_output_path)
+
+    expedition = Expedition.from_yaml(yaml_output_path)
+    waypoints = [wp for wp in expedition.schedule.waypoints if isinstance(wp, Waypoint)]
+    assert [wp.sea_depth_meter for wp in waypoints] == [-200.0, -300.0, -400.0]
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("~2865m", -2865.0),
+        ("~ 73 m", -73.0),
+        ("2865", -2865.0),
+        (2865, -2865.0),
+        (152.5, -152.5),
+        (None, None),
+    ],
+)
+def test_parse_mfp_sea_depth(value, expected):
+    assert _parse_mfp_sea_depth(value, "Waypoint 1") == expected
+
+
+@pytest.mark.parametrize(
+    "value,match",
+    [
+        ("~-9m", "at or above sea level"),
+        ("~0m", "at or above sea level"),
+        ("deep", "Could not read the sea depth"),
+    ],
+)
+def test_parse_mfp_sea_depth_unusable_left_unset_with_warning(value, match):
+    """Unreadable or non-positive (on/above sea level) depths are left unset, with a warning naming the waypoint."""
+    with pytest.warns(UserWarning, match=match) as record:
+        assert _parse_mfp_sea_depth(value, "Waypoint 1") is None
+    assert "Waypoint 1" in str(record[0].message)
 
 
 @pytest.mark.parametrize(

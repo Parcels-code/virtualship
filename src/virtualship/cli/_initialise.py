@@ -67,6 +67,37 @@ def _initialise(
     click.echo(f"Created '{expedition.name}' at {path}.")
 
 
+def _parse_mfp_sea_depth(value, waypoint_name: str) -> float | None:
+    """
+    Sea depth from an MFP export, as a negative elevation in metres.
+
+    MFP reports depth as a positive number of metres (usually with an "~").
+    Returns None (i.e. unknown depth) for blank, unreadable, or non-positive values.
+    """
+    if pd.isna(value):
+        return None
+
+    match = re.fullmatch(r"~?\s*(-?\d+(?:\.\d+)?)\s*m?", str(value).strip())
+    if match is None:
+        warnings.warn(
+            f"Could not read the sea depth '{value}' for {waypoint_name}, so it has been left unset. {ERR_SUPPLEMENT}",
+            stacklevel=2,
+        )
+        return None
+
+    depth = float(match.group(1))
+    if depth <= 0:
+        warnings.warn(
+            f"{waypoint_name} has a sea depth of '{value}' (at or above sea level, so possibly on land), so it has been left unset.",
+            stacklevel=2,
+        )
+        return None
+
+    return (
+        -depth
+    )  # MFP reports sea depth as positive, but here we use negative elevations
+
+
 def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
     """Generates an expedition.yaml file from MFP Excel export."""
     mfp_data = _validate_mfp_data(file_path)
@@ -102,9 +133,11 @@ def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
             has_latlon = lat is not None and lon is not None
             waypoints.append(Port(location=loc, time=time_val if has_latlon else None))
         else:
-            sea_depth = (
-                None if pd.isna(row["Sea Depth"]) else -abs(float(row["Sea Depth"]))
-            )  # MFP reports sea depth as positive, but here we use negative elevations
+            # numbered as in the generated expedition.yaml's '# Waypoint N' comments
+            waypoint_number = sum(isinstance(wp, Waypoint) for wp in waypoints) + 1
+            sea_depth = _parse_mfp_sea_depth(
+                row["Sea Depth"], f"Waypoint {waypoint_number}"
+            )
             waypoints.append(
                 Waypoint(
                     instrument=None,
