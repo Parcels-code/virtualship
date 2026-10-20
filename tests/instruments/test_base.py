@@ -153,6 +153,8 @@ class DummyInstrument(Instrument):
 
     sensor_kernels = {}  # noqa
 
+    requires_ship_to_stop = False
+
     @classmethod
     def deployment_time(cls, config, seabed_depth):
         """Dummy deployment time for test."""
@@ -420,6 +422,8 @@ def test_register_instrument_without_sensor_kernels_error(isolated_registry):
 
         @register_instrument(InstrumentType.CTD)
         class ErrorInstrument(Instrument):
+            requires_ship_to_stop = False
+
             @classmethod
             def deployment_time(cls, config, seabed_depth):
                 return timedelta()
@@ -435,6 +439,22 @@ def test_register_instrument_without_deployment_time_error(isolated_registry):
         @register_instrument(InstrumentType.CTD)
         class ErrorInstrument(Instrument):
             sensor_kernels = {}  # noqa
+
+            def simulate(self, measurements, out_path):
+                pass
+
+
+def test_register_instrument_without_requires_ship_to_stop_error(isolated_registry):
+    """Registering an instrument that leaves requires_ship_to_stop unimplemented raises TypeError."""
+    with pytest.raises(TypeError, match="requires_ship_to_stop"):
+
+        @register_instrument(InstrumentType.CTD)
+        class ErrorInstrument(Instrument):
+            sensor_kernels = {}  # noqa
+
+            @classmethod
+            def deployment_time(cls, config, seabed_depth):
+                return timedelta()
 
             def simulate(self, measurements, out_path):
                 pass

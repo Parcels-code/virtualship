@@ -231,6 +231,9 @@ def _format_log_metadata(ptcls_subset, mask, fieldset):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _argo_sample_temperature,
         SensorType.SALINITY: _argo_sample_salinity,

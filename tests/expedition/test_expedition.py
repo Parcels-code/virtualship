@@ -105,7 +105,9 @@ def test_stationkeeping_time_uses_slowest_deployment(expedition) -> None:
         * abs(-500.0 - ctd_config.min_depth_meter)
         / ctd_config.winch_speed_meter_per_second
     )
-    expected = ship_config.deceleration_time + cast + ship_config.acceleration_time
+    expected = (
+        ship_config.waypoint_slowdown_time + cast + ship_config.waypoint_speedup_time
+    )
 
     assert expedition.stationkeeping_time(waypoint) == expected
 
@@ -141,6 +143,22 @@ def test_stationkeeping_time_single_instrument(expedition) -> None:
 
     assert expedition.stationkeeping_time(bare) == expedition.stationkeeping_time(
         listed
+    )
+
+
+def test_stationkeeping_time_xbt_does_not_stop_ship(expedition) -> None:
+    """An XBT is launched from a moving ship, so alone it costs no stationkeeping time."""
+    ship_config = expedition.ship_config
+    xbt_only = Waypoint(location=Location(0, 0), instrument=InstrumentType.XBT)
+    xbt_and_drifter = Waypoint(
+        location=Location(0, 0),
+        instrument=[InstrumentType.XBT, InstrumentType.DRIFTER],
+    )
+
+    assert expedition.stationkeeping_time(xbt_only) == timedelta(0)
+    # another instrument at the same waypoint still makes the ship stop, and the XBT adds nothing on top
+    assert expedition.stationkeeping_time(xbt_and_drifter) == (
+        ship_config.waypoint_slowdown_time + ship_config.waypoint_speedup_time
     )
 
 

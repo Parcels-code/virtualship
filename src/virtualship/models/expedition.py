@@ -83,16 +83,15 @@ class Expedition(pydantic.BaseModel):
     def verify_schedule(
         self,
         ignore_land_test: bool = False,
-        *,
         ship_speed: float | None = None,
         from_data: Path | None = None,
     ) -> None:
         """
         Verify the feasibility and correctness of the expedition's schedule.
 
-        `ship_speed` overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
+        `ship_speed` (also in knots) overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
         """
-        print("\nVerifying route... ")
+        print("\nVerifying expedition... ")
 
         if ship_speed is None:
             ship_speed = self.ship_config.ship_speed_knots
@@ -170,12 +169,16 @@ class Expedition(pydantic.BaseModel):
         """
         Calculate how long the ship is stationary at waypoint.
 
-        Stationkeeping time = ship deceleration time + deployment time + ship acceleration time.
+        Stationkeeping time = slow-down time + deployment time + speed-up time.
         Assumes insturments are deployed concurrently, so the longest deployment time is used.
-        Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
+        The ship only slows down once, and only if at least one instrument needs it to stop.
+        Waypoints with no instruments, or only instruments which can be deployed without slowing (e.g. XBT), add no time at all.
         """
         instruments = self._wp_instruments(waypoint)
-        if not instruments:
+        if not any(
+            get_instrument_class(instrument).requires_ship_to_stop
+            for instrument in instruments
+        ):
             return timedelta()
 
         deployment_time = max(
@@ -183,9 +186,9 @@ class Expedition(pydantic.BaseModel):
         )
 
         return (
-            self.ship_config.deceleration_time
+            self.ship_config.waypoint_slowdown_time
             + deployment_time
-            + self.ship_config.acceleration_time
+            + self.ship_config.waypoint_speedup_time
         )
 
     def _deployment_time(
@@ -262,14 +265,14 @@ class ShipConfig(pydantic.BaseModel):
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
 
-    deceleration_time: timedelta = pydantic.Field(
-        serialization_alias="deceleration_time_minutes",
-        validation_alias="deceleration_time_minutes",
+    waypoint_slowdown_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_slowdown_time_minutes",
+        validation_alias="waypoint_slowdown_time_minutes",
         ge=timedelta(),
     )
-    acceleration_time: timedelta = pydantic.Field(
-        serialization_alias="acceleration_time_minutes",
-        validation_alias="acceleration_time_minutes",
+    waypoint_speedup_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_speedup_time_minutes",
+        validation_alias="waypoint_speedup_time_minutes",
         ge=timedelta(),
     )
 
@@ -277,11 +280,13 @@ class ShipConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid", populate_by_name=True)
 
-    @pydantic.field_serializer("deceleration_time", "acceleration_time")
+    @pydantic.field_serializer("waypoint_slowdown_time", "waypoint_speedup_time")
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
-    @pydantic.field_validator("deceleration_time", "acceleration_time", mode="before")
+    @pydantic.field_validator(
+        "waypoint_slowdown_time", "waypoint_speedup_time", mode="before"
+    )
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
@@ -713,7 +718,7 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
-        Verify  instrument configurations against the instruments actually being deployed.
+        Verify instrument configurations against the instruments actually being deployed.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.

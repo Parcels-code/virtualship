@@ -130,7 +130,7 @@ SUPPORTED_SENSORS_MAP: dict = {}
 
 
 def register_instrument(instrument_type):
-    """Register a concrete instrument class, refusing if doesn't meet the full Instrument contract."""
+    """Register an Instrument subclass (e.g. CTD, Argo Float etc.), refusing if doesn't meet the full Instrument parent class specifications."""
 
     def decorator(cls):
         if inspect.isabstract(cls):
@@ -139,6 +139,11 @@ def register_instrument(instrument_type):
         if "sensor_kernels" not in vars(cls):
             raise TypeError(
                 f"Instrument '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
+            )
+
+        if not isinstance(getattr(cls, "requires_ship_to_stop", None), bool):
+            raise TypeError(
+                f"Instrument '{cls.__name__}' must define 'requires_ship_to_stop' as a bool class attribute."
             )
 
         INSTRUMENT_CLASS_MAP[instrument_type] = cls

@@ -57,9 +57,8 @@ The `--start-date` should be set to your intended departure date/time. MFP's est
 ```
 
 ```{important}
-MFP usually allows a default of **45 minutes** at each station, and that default is what determines the waypoint times written into your `expedition.yaml`. That may well be enough for your expedition, but it may not be, so be prepared to adjust the times once you have chosen your instruments.
 
-Watch out in particular for **CTDs in deep water**. A CTD is winched all the way down and hauled back up, so the time it takes depends on the depth: a cast at a station in more than 2000 m of water takes over an hour on the winch alone, which does not fit inside a 45 minute allowance. VirtualShip will tell you if your schedule does not add up when you come to run it.
+MFP usually allows a default of **45 minutes** stationkeeping time at each station, and that default is what determines the waypoint times written into your `expedition.yaml`. That may well be enough for your expedition, but it may not be, so be prepared to adjust the times once you have chosen your instruments and come to [adjusting the waypoint datetimes](#waypoint-datetimes).
 ```
 
 This will create a folder/directory called `EXPEDITION_NAME` with a single file: `expedition.yaml` containing details on the ship and instrument configurations, as well as the expedition schedule based on the sampling site coordinates (and, if specified, ports of departure/arrival) from your MFP export. The `--from-mfp` flag indicates that the exported route will be used, and `--start-date` is required alongside it.
@@ -128,6 +127,13 @@ Your Port of Departure and Port of Arrival (if set in MFP) appear as special way
 
 ```{note}
 It is important to ensure that the timings for each station are realistic. There must be enough time for the ship to travel to each site at a realistic speed (~ 10 knots). The expedition schedule (and the ship's configuration) will be automatically verified when you press _Save Changes_ in the planning tool.
+
+Remember that MFP's default of 45 minutes per station may not be enough once your instruments are selected (see [below](#instrument-selection)). Time at a station is made up of slowing the ship down (15 minutes by default), carrying out the deployments (which depends on which instruments you deploy), and getting back up to speed again (15 minutes by default).
+
+Deployments can take place side by side, so only the slowest one matters for the total stationkeeping time at each waypoint. Drifters and Argo floats are simply released into the water and left behind, so they have no time cost apart from slowing down and speeding up the ship. A CTD is different. It takes longer because it has to be lowered and brought back up, so the ship waits for the full round trip, and a cast at a deep station can easily take longer than the MFP default. An XBT is different in the opposite way. It doesn't even need the ship to slow down, so it can be deployed while the ship is moving at full speed.
+
+**See [here](../assignments/Research_proposal_intro.ipynb) for more information on the times taken for each instrument deployment.**
+
 ```
 
 ### Instrument selection

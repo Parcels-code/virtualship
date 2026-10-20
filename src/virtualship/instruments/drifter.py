@@ -69,6 +69,9 @@ def _check_lifetime(particles, fieldset):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
     }

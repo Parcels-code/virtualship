@@ -92,6 +92,10 @@ class Instrument(abc.ABC):
     # (required of every registered instrument; checked by @register_instrument)
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
+    # all instruments declare whether the ship has to slow to a stop to deploy them (and so adds the waypoint slow-down and speed-up times)
+    # (required of every registered instrument; checked by @register_instrument)
+    requires_ship_to_stop: ClassVar[bool]
+
     def __init__(
         self,
         expedition: Expedition,
@@ -408,6 +412,9 @@ class UnderwayCoordinates:
 
 class UnderwayInstrument(Instrument):
     """Intermediate base class for underway instruments, which perform variable sampling without ParticleSets."""
+
+    # samples continuously while the ship is under way, so never needs it to stop
+    requires_ship_to_stop: ClassVar[bool] = False
 
     @classmethod
     def deployment_time(

@@ -44,8 +44,8 @@ def test_time_in_minutes_in_ship_schedule() -> None:
     assert instruments_config.ship_underwater_st_config.period == timedelta(minutes=5)
 
     ship_config = Expedition.from_yaml(TEST_EXPEDITION_YAML).ship_config
-    assert ship_config.deceleration_time == timedelta(minutes=15)
-    assert ship_config.acceleration_time == timedelta(minutes=15)
+    assert ship_config.waypoint_slowdown_time == timedelta(minutes=15)
+    assert ship_config.waypoint_speedup_time == timedelta(minutes=15)
 
 
 def test_ship_path_inside_domain() -> None:
