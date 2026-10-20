@@ -160,4 +160,4 @@ This section contains setting related to the ship itself, specifically:
 
 - **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
-- **Waypoint slow-down and speed-up times (`waypoint_slowdown_time_minutes`, `waypoint_speedup_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy any instruments.
+- **Waypoint slow-down and speed-up times (`waypoint_slowdown_time_minutes`, `waypoint_speedup_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy instruments which require the ship to slow down.
