@@ -117,7 +117,15 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
-- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint. This value matters because it determines how a long a deployment takes if there is a depth dependence, e.g. for a CTD that has to be lowered and raised. If you leave it as `null`, VirtualShip doesn't know how deep the water is and assumes the CTD descends all the way to its configured `max_depth_meter`. That is the slowest possible cast, so your schedule is verified against a worst case rather than an optimistic one in the simulations.
+- **Sea depth (`sea_depth_meter`, optional)**: The estimated water depth at the waypoint, as a negative number of metres (e.g. `-1500.0`). It is filled in automatically by `virtualship init --from-mfp`, and can otherwise be added by hand. It is only used to estimate how long depth-dependent deployments (e.g. CTD casts) hold the ship at the waypoint. If it is left empty, these are assumed to reach the instrument's configured maximum depth, so time taken at shallow-water waypoints could be overestimated if the configured max depth exceeds the actual depth. The simulated measurements are unaffected either way because the instruments will find and use the actual depth at simulation time.
+
+```{warning}
+Setting `sea_depth_meter` to a positive number will be rejected. Depths throughout `expedition.yaml` are written as negative numbers, measured downwards from the sea surface. This is the opposite sign convention to the MFP export, which reports sea depth as a positive number.
+```
+
+##### Comments
+
+You may notice comments such as `# Port of Departure`, `# Waypoint 1`, `# Waypoint 2`, etc. next to each entry in the `waypoints` list, as in the example above. These are added automatically whenever `virtualship init` or `virtualship plan` writes the file, purely to improve readability. They are not required when editing the file by hand and won't be automatically added/renumbered when doing so.
 
 #### 2. `instruments_config`
 

@@ -471,6 +471,47 @@ def test_annotate_no_duplicate_comments(base_expedition, waypoints) -> None:
     assert len(set(comments)) == len(comments)
 
 
+def test_sea_depth_only_written_when_known(tmp_path, base_expedition) -> None:
+    """An unknown sea depth is left out of expedition.yaml entirely (rather than written as null), and a known one is kept."""
+    known = Waypoint(
+        location=Location(0, 0),
+        time=datetime(2022, 1, 1),
+        instrument=[InstrumentType.CTD],
+        sea_depth_meter=-1500.0,
+    )
+    unknown = Waypoint(
+        location=Location(0, 0.01),
+        time=datetime(2022, 1, 2),
+        instrument=[InstrumentType.CTD],
+    )
+    expedition = _with_schedule(
+        base_expedition,
+        Schedule(
+            waypoints=[
+                Port(location=None, time=None),
+                known,
+                unknown,
+                Port(location=None, time=None),
+            ]
+        ),
+    )
+
+    out_path = tmp_path / EXPEDITION
+    expedition.to_yaml(out_path)
+    text = out_path.read_text()
+
+    assert text.count("sea_depth_meter") == 1
+    assert "sea_depth_meter: -1500.0" in text
+    # ports' null location/time are still written, so placeholders remain visible
+    assert "location: null" in text
+
+    reloaded = Expedition.from_yaml(out_path)
+    assert [wp.sea_depth_meter for wp in reloaded.schedule.waypoints[1:3]] == [
+        -1500.0,
+        None,
+    ]
+
+
 def test_wps_in_use(base_expedition):
     """Test that _get_wps_in_use() correctly returns waypoints excluding placeholder ports."""
     base_time = datetime.strptime("1950-01-01", "%Y-%m-%d")
