@@ -117,9 +117,9 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
-- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint, as a negative number of metres (e.g. `-1500.0` for a site with a depth of 1500 m). This is most relevant to CTDs where their deployment time has a depth dependence. It can be left as `null` if you don't know the depth, in which case e.g. CTD casts are assumed to reach the CTD's `max_depth_meter`, giving the slowest (worst-case) cast time. It will be automatically filled in by `virtualship init` if you use the `--from-mfp` flag.
+- **Sea depth (`sea_depth_meter`)**: The estimated depth of the water column at the waypoint. This value matters because it determines how a long a deployment takes if there is a depth dependence, e.g. for a CTD that has to be lowered and raised. If you leave it as `null`, VirtualShip doesn't know how deep the water is and assumes the CTD descends all the way to its configured `max_depth_meter`. That is the slowest possible cast, so your schedule is verified against a worst case rather than an optimistic one in the simulations. It will be automatically filled in by `virtualship init` if you use the `--from-mfp` flag.
 
-```{note}
+```{warning}
 Setting `sea_depth_meter` to a positive number will be rejected. Depths throughout `expedition.yaml` are written as negative numbers, measured downwards from the sea surface. This is the opposite sign convention to the MFP export, which reports sea depth as a positive number.
 ```
 
