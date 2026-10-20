@@ -68,12 +68,7 @@ def _initialise(
 
 
 def _parse_mfp_sea_depth(value, waypoint_name: str) -> float | None:
-    """
-    Sea depth from an MFP export, as a negative elevation in metres.
-
-    MFP reports depth as a positive number of metres (usually with an "~").
-    Returns None (i.e. unknown depth) for blank, unreadable, or non-positive values.
-    """
+    """Sea depth from an MFP export, as a negative elevation in metres."""
     if pd.isna(value):
         return None
 
