@@ -114,12 +114,12 @@ class Expedition(pydantic.BaseModel):
             raise ScheduleError(
                 f"Waypoint planning is not valid: would arrive too late at {self._describe_waypoint(wp_i, wp_next)}. "
                 f"Location: {wp_next.location} Time: {wp_next.time}. "
-                f"Currently projected to arrive at: {arrival_time.replace(microsecond=0)}."
+                f"Currently projected to arrive at: {arrival_time}."
                 "\n\nHint: adding instruments may increase the amount of time spent stationary at a waypoints. "
                 "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
             )
 
-        # mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
+        # finally, mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
         self.schedule._verified = True
 
         print("... All good to go!")
