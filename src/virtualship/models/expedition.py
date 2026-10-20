@@ -250,9 +250,10 @@ class Expedition(pydantic.BaseModel):
                 else:
                     waypoint_number += 1
                     annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
+
                     # only written when known (e.g. from an MFP export); omitted means unknown
-                    if wp_data.get("sea_depth_meter") is None:
-                        wp_data.pop("sea_depth_meter", None)
+                    if wp_data["sea_depth_meter"] is None:
+                        wp_data.pop("sea_depth_meter")
 
                 # dump the waypoint on its own so its block can be indented and inserted independently of the others
                 wp_lines = yaml.dump([wp_data], default_flow_style=False).splitlines(
