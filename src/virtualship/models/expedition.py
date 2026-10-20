@@ -92,7 +92,7 @@ class Expedition(pydantic.BaseModel):
 
         `ship_speed` overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
         """
-        print("\nVerifying route... ")
+        print("\nVerifying expedition... ")
 
         if ship_speed is None:
             ship_speed = self.ship_config.ship_speed_knots
