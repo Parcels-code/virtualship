@@ -106,7 +106,7 @@ def test_stationkeeping_time_uses_slowest_deployment(expedition) -> None:
         / ctd_config.winch_speed_meter_per_second
     )
     expected = (
-        ship_config.station_slowdown_time + cast + ship_config.station_speedup_time
+        ship_config.waypoint_slowdown_time + cast + ship_config.waypoint_speedup_time
     )
 
     assert expedition.stationkeeping_time(waypoint) == expected

@@ -51,5 +51,5 @@ instruments_config:
     period_minutes: 5.0
 ship_config:
   ship_speed_knots: 10.0
-  station_slowdown_time_minutes: 15.0
-  station_speedup_time_minutes: 15.0
+  waypoint_slowdown_time_minutes: 15.0
+  waypoint_speedup_time_minutes: 15.0

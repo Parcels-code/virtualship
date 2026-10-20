@@ -103,5 +103,5 @@ schedule:
       time: 1998-01-07 05:00:00
 ship_config:
   ship_speed_knots: 10.0
-  station_slowdown_time_minutes: 15.0
-  station_speedup_time_minutes: 15.0
+  waypoint_slowdown_time_minutes: 15.0
+  waypoint_speedup_time_minutes: 15.0

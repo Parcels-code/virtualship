@@ -183,9 +183,9 @@ class Expedition(pydantic.BaseModel):
         )
 
         return (
-            self.ship_config.station_slowdown_time
+            self.ship_config.waypoint_slowdown_time
             + deployment_time
-            + self.ship_config.station_speedup_time
+            + self.ship_config.waypoint_speedup_time
         )
 
     def _deployment_time(
@@ -262,14 +262,14 @@ class ShipConfig(pydantic.BaseModel):
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
 
-    station_slowdown_time: timedelta = pydantic.Field(
-        serialization_alias="station_slowdown_time_minutes",
-        validation_alias="station_slowdown_time_minutes",
+    waypoint_slowdown_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_slowdown_time_minutes",
+        validation_alias="waypoint_slowdown_time_minutes",
         ge=timedelta(),
     )
-    station_speedup_time: timedelta = pydantic.Field(
-        serialization_alias="station_speedup_time_minutes",
-        validation_alias="station_speedup_time_minutes",
+    waypoint_speedup_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_speedup_time_minutes",
+        validation_alias="waypoint_speedup_time_minutes",
         ge=timedelta(),
     )
 
@@ -277,12 +277,12 @@ class ShipConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid", populate_by_name=True)
 
-    @pydantic.field_serializer("station_slowdown_time", "station_speedup_time")
+    @pydantic.field_serializer("waypoint_slowdown_time", "waypoint_speedup_time")
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
     @pydantic.field_validator(
-        "station_slowdown_time", "station_speedup_time", mode="before"
+        "waypoint_slowdown_time", "waypoint_speedup_time", mode="before"
     )
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:

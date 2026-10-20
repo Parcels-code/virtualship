@@ -77,8 +77,8 @@ instruments_config: # <-- 2. instrument configuration section
 #
 ship_config: # <-- 3. ship configuration section
   ship_speed_knots: 10.0
-  station_slowdown_time_minutes: 15.0
-  station_speedup_time_minutes: 15.0
+  waypoint_slowdown_time_minutes: 15.0
+  waypoint_speedup_time_minutes: 15.0
 ```
 
 ```{note}
@@ -160,4 +160,4 @@ This section contains setting related to the ship itself, specifically:
 
 - **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
-- **Station slow-down and speed-up times (`station_slowdown_time_minutes`, `station_speedup_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy any instruments.
+- **Waypoint slow-down and speed-up times (`waypoint_slowdown_time_minutes`, `waypoint_speedup_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy any instruments.
