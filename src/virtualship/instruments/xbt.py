@@ -82,6 +82,9 @@ def _xbt_cast(particles, fieldset):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
+    # the ship can deploy this instrument whilst moving, so never needs to stop
+    requires_ship_to_stop: ClassVar[bool] = False
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
     }

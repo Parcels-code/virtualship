@@ -39,6 +39,8 @@ def dummy_instrument():
     class DummyInstrument(Instrument):
         sensor_kernels = {}  # noqa
 
+        requires_ship_to_stop = False
+
         @classmethod
         def deployment_time(cls, config, seabed_depth):
             return datetime.timedelta()

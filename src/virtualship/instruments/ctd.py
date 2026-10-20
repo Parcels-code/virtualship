@@ -119,6 +119,9 @@ def _ctd_cast(particles, fieldset):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
         SensorType.SALINITY: _sample_salinity,

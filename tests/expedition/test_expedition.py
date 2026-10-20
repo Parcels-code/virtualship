@@ -146,6 +146,22 @@ def test_stationkeeping_time_single_instrument(expedition) -> None:
     )
 
 
+def test_stationkeeping_time_xbt_does_not_stop_ship(expedition) -> None:
+    """An XBT is launched from a moving ship, so alone it costs no stationkeeping time."""
+    ship_config = expedition.ship_config
+    xbt_only = Waypoint(location=Location(0, 0), instrument=InstrumentType.XBT)
+    xbt_and_drifter = Waypoint(
+        location=Location(0, 0),
+        instrument=[InstrumentType.XBT, InstrumentType.DRIFTER],
+    )
+
+    assert expedition.stationkeeping_time(xbt_only) == timedelta(0)
+    # another instrument at the same waypoint still makes the ship stop, and the XBT adds nothing on top
+    assert expedition.stationkeeping_time(xbt_and_drifter) == (
+        ship_config.waypoint_slowdown_time + ship_config.waypoint_speedup_time
+    )
+
+
 def test_stationkeeping_time_no_instruments(expedition) -> None:
     """The ship doesn't slows down where nothing is deployed, therefore ports and bare waypoints cost nothing."""
     assert expedition.stationkeeping_time(

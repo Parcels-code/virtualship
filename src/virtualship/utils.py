@@ -141,6 +141,11 @@ def register_instrument(instrument_type):
                 f"Instrument '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
             )
 
+        if not isinstance(getattr(cls, "requires_ship_to_stop", None), bool):
+            raise TypeError(
+                f"Instrument '{cls.__name__}' must define 'requires_ship_to_stop' as a bool class attribute."
+            )
+
         INSTRUMENT_CLASS_MAP[instrument_type] = cls
         SUPPORTED_SENSORS_MAP[instrument_type] = frozenset(cls.sensor_kernels)
         return cls

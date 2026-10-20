@@ -172,10 +172,14 @@ class Expedition(pydantic.BaseModel):
 
         Stationkeeping time = slow-down time + deployment time + speed-up time.
         Assumes insturments are deployed concurrently, so the longest deployment time is used.
-        Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
+        The ship only slows down once, and only if at least one instrument needs it to stop.
+        Waypoints with no instruments, or only instruments which can be deployed without slowing (e.g. XBT), add no time at all.
         """
         instruments = self._wp_instruments(waypoint)
-        if not instruments:
+        if not any(
+            get_instrument_class(instrument).requires_ship_to_stop
+            for instrument in instruments
+        ):
             return timedelta()
 
         deployment_time = max(
