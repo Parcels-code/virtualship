@@ -62,6 +62,7 @@ schedule:
       location:
         latitude: 0.01
         longitude: 0.01
+      sea_depth_meter: null
       time: 1998-01-02 00:00:00
     # Waypoint 2
     - instrument:
@@ -70,6 +71,7 @@ schedule:
       location:
         latitude: 0.02
         longitude: 0.02
+      sea_depth_meter: null
       time: 1998-01-03 01:00:00
     # Waypoint 3
     - instrument:
@@ -77,6 +79,7 @@ schedule:
       location:
         latitude: 0.03
         longitude: 0.03
+      sea_depth_meter: null
       time: 1998-01-04 02:00:00
     # Waypoint 4
     - instrument:
@@ -84,12 +87,14 @@ schedule:
       location:
         latitude: 0.04
         longitude: 0.04
+      sea_depth_meter: null
       time: 1998-01-05 03:00:00
     # Waypoint 5
     - instrument: []
       location:
         latitude: 0.05
         longitude: 0.05
+      sea_depth_meter: null
       time: 1998-01-06 04:00:00
     # Port of Arrival
     - location:
