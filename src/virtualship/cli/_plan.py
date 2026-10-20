@@ -195,6 +195,9 @@ def _raise_logged_unexpected(e: Exception, path, context_message: str):
 
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
+# ship config timings, edited in minutes in their own (collapsed by default) section
+SHIP_TIME_ATTRS = ("waypoint_slowdown_time", "waypoint_speedup_time")
+
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
     "period_minutes": 5.0,
@@ -232,7 +235,7 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "max_depth_meter"},
             {"name": "min_depth_meter"},
-            {"name": "stationkeeping_time", "minutes": True},
+            {"name": "winch_speed_meter_per_second"},
         ],
     },
     "xbt_config": {
@@ -257,7 +260,6 @@ INSTRUMENT_FIELDS = {
             {"name": "vertical_speed_meter_per_second"},
             {"name": "cycle_days"},
             {"name": "drift_days"},
-            {"name": "stationkeeping_time", "minutes": True},
             {"name": "lifetime", "days": True},
         ],
     },
@@ -268,7 +270,6 @@ INSTRUMENT_FIELDS = {
         "attributes": [
             {"name": "depth_meter"},
             {"name": "lifetime", "days": True},
-            {"name": "stationkeeping_time", "minutes": True},
         ],
     },
 }
@@ -353,6 +354,27 @@ class ExpeditionEditor(Static):
                         value=str(ship_config.ship_speed_knots or ""),
                     )
                 yield Label("", id="validation-failure-label-speed", classes="-hidden")
+
+                # advanced settings, which most users can leave as the defaults
+                with Collapsible(
+                    title="Ship slow-down & speed-up times at waypoints",
+                    id="ship_advanced_collapsible",
+                    collapsed=True,
+                ):
+                    with Container(classes="instrument-config"):
+                        for attr in SHIP_TIME_ATTRS:
+                            yield Label(
+                                f"{attr.replace('_', ' ').capitalize()} (minutes):"
+                            )
+                            yield Input(
+                                id=attr,
+                                type=type_to_textual(get_field_type(ShipConfig, attr)),
+                                validators=_field_validators(ShipConfig, attr),
+                                value=_config_display_value(
+                                    ship_config, {"name": attr, "minutes": True}
+                                ),
+                            )
+                            yield _failure_label(attr)
 
                 with Horizontal(classes="ts-section"):
                     yield Label("[b]Onboard Temperature/Salinity:[/b]")
@@ -543,10 +565,21 @@ class ExpeditionEditor(Static):
         attr = "ship_speed_knots"
         field_type = get_field_type(type(self.expedition.ship_config), attr)
         value = field_type(self.query_one("#speed").value)
+
+        # entered in minutes, stored as timedeltas
+        times = {
+            time_attr: datetime.timedelta(
+                minutes=float(self.query_one(f"#{time_attr}").value)
+            )
+            for time_attr in SHIP_TIME_ATTRS
+        }
+
         ShipConfig.model_validate(
-            {**self.expedition.ship_config.model_dump(), attr: value}
+            {**self.expedition.ship_config.model_dump(), attr: value, **times}
         )
         self.expedition.ship_config.ship_speed_knots = value
+        for time_attr, time_value in times.items():
+            setattr(self.expedition.ship_config, time_attr, time_value)
 
     def _update_instrument_configs(self):
         instruments_config = self.expedition.instruments_config
@@ -1308,6 +1341,26 @@ class PlanApp(App):
     .ship_speed_input {
         width: 20;
         margin: 0 4;
+    }
+
+    #ship_advanced_collapsible {
+        margin: 2 0;
+        padding-left: 0;
+        padding-bottom: 0;
+        border-top: none;
+        background: transparent;
+    }
+
+    #ship_advanced_collapsible > CollapsibleTitle {
+        padding: 0;
+    }
+
+    #ship_advanced_collapsible > Contents {
+        padding-top: 0;
+    }
+
+    #ship_advanced_collapsible .instrument-config {
+        margin: 0 1;
     }
 
     .instrument-config {

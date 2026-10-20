@@ -69,6 +69,9 @@ def _check_lifetime(particles, fieldset):
 class DrifterInstrument(Instrument):
     """Drifter instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
     }
@@ -99,6 +102,11 @@ class DrifterInstrument(Instrument):
             fetch_spec=fetch_spec,
             from_data=from_data,
         )
+
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Released and left behind, so no additional stationkeeping time."""
+        return timedelta()
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate Drifter measurements."""

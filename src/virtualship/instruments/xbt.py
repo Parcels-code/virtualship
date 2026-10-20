@@ -82,6 +82,9 @@ def _xbt_cast(particles, fieldset):
 class XBTInstrument(Instrument):
     """XBT instrument class."""
 
+    # the ship can deploy this instrument whilst moving, so never needs to stop
+    requires_ship_to_stop: ClassVar[bool] = False
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
     }
@@ -102,6 +105,11 @@ class XBTInstrument(Instrument):
             fetch_spec=fetch_spec,
             from_data=from_data,
         )
+
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Dropped over the side and not recovered, so no additional stationkeeping times."""
+        return timedelta()
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate XBT measurements."""

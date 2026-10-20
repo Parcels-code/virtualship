@@ -119,6 +119,9 @@ def _ctd_cast(particles, fieldset):
 class CTDInstrument(Instrument):
     """CTD instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
         SensorType.SALINITY: _sample_salinity,
@@ -148,9 +151,24 @@ class CTDInstrument(Instrument):
             from_data=from_data,
         )
 
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Winched down to the seabed or its maximum depth, whichever is shallowest, and brought back up."""
+        # depths are negative elevations, so the greater value is the shallower one
+        max_depth = (
+            config.max_depth_meter
+            if seabed_depth is None
+            else max(config.max_depth_meter, seabed_depth)
+        )
+        cast_distance = abs(max_depth - config.min_depth_meter)
+        return timedelta(
+            seconds=2 * cast_distance / config.winch_speed_meter_per_second
+        )  # 2 * for up and down
+
     def simulate(self, measurements, out_path) -> None:
         """Simulate CTD measurements."""
-        WINCH_SPEED = 1.0  # sink and rise speed in m/s
+        ctd_config = self.expedition.instruments_config.ctd_config
+        winch_speed = ctd_config.winch_speed_meter_per_second  # sink/rise speed in m/s
         DT = 10.0  # dt of CTD simulation integrator
         OUTPUT_DT = timedelta(seconds=10)  # output dt for CTD simulation
 
@@ -180,13 +198,12 @@ class CTDInstrument(Instrument):
 
         # CTD depth can not be too shallow, because kernel would break.
         # This shallow is not useful anyway, no need to support.
-        if not all([max_depth <= -DT * WINCH_SPEED for max_depth in max_depths]):
+        if not all([max_depth <= -DT * winch_speed for max_depth in max_depths]):
             raise ValueError(
-                f"CTD max_depth or bathymetry shallower than maximum {-DT * WINCH_SPEED}"
+                f"CTD max_depth or bathymetry shallower than maximum {-DT * winch_speed}"
             )
 
         # build dynamic particle class from the active sensors
-        ctd_config = self.expedition.instruments_config.ctd_config
         _CTDParticle = build_particle_class_from_sensors(
             ctd_config.sensors, _CTD_NONSENSOR_VARIABLES
         )
@@ -201,7 +218,7 @@ class CTDInstrument(Instrument):
             t=[ctd.spacetime.time for ctd in measurements],
             max_depth=max_depths,
             min_depth=[ctd.min_depth for ctd in measurements],
-            winch_speed=[WINCH_SPEED for _ in measurements],
+            winch_speed=[winch_speed for _ in measurements],
         )
 
         # add initial conditions to sampling variables

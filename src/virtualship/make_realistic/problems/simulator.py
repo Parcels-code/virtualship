@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 import sys
 import time
-from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -380,11 +379,7 @@ class ProblemSimulator:
             self.waypoints[problem_wp_i + 1],
         )
 
-        stationkeeping = (
-            curr_wp.stationkeeping_time(self.expedition.instruments_config)
-            if not isinstance(curr_wp, Port)
-            else timedelta(0)
-        )
+        stationkeeping = self.expedition.stationkeeping_time(curr_wp)
         sail_time = _calc_sail_time(
             curr_wp.location,
             next_wp.location,

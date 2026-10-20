@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import inspect
 import itertools
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -35,7 +34,7 @@ from virtualship.utils import (
 
 if TYPE_CHECKING:
     from virtualship.instruments.sensors import SensorType
-    from virtualship.models import Expedition, Waypoint
+    from virtualship.models import Expedition, Waypoint, _InstrumentConfigMixin
 
 
 @dataclass(frozen=True)
@@ -90,18 +89,12 @@ class Instrument(abc.ABC):
     """Base class for instruments and their simulation."""
 
     # all instruments have sensor_kernels dict, mapping SensorType to sampling kernel
+    # (required of every registered instrument; checked by @register_instrument)
     sensor_kernels: ClassVar[dict[SensorType, collections.abc.Callable]]
 
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        """Ensure concrete instrument subclasses define required class attributes."""
-        super().__init_subclass__(**kwargs)
-        if inspect.isabstract(cls):
-            return
-
-        if "sensor_kernels" not in cls.__dict__:
-            raise TypeError(
-                f"Instrument subclass '{cls.__name__}' must define 'sensor_kernels' as a class attribute."
-            )
+    # all instruments declare whether the ship has to slow to a stop to deploy them (and so adds the waypoint slow-down and speed-up times)
+    # (required of every registered instrument; checked by @register_instrument)
+    requires_ship_to_stop: ClassVar[bool]
 
     def __init__(
         self,
@@ -170,6 +163,13 @@ class Instrument(abc.ABC):
             fieldset.UV = uv
 
         return fieldset
+
+    @classmethod
+    @abc.abstractmethod
+    def deployment_time(
+        cls, config: _InstrumentConfigMixin, seabed_depth: float | None
+    ) -> timedelta:
+        """How long one deployment holds the ship on station, beyond slowing down and speeding up."""
 
     @abc.abstractmethod
     def simulate(
@@ -412,6 +412,16 @@ class UnderwayCoordinates:
 
 class UnderwayInstrument(Instrument):
     """Intermediate base class for underway instruments, which perform variable sampling without ParticleSets."""
+
+    # samples continuously while the ship is under way, so never needs it to stop
+    requires_ship_to_stop: ClassVar[bool] = False
+
+    @classmethod
+    def deployment_time(
+        cls, config: _InstrumentConfigMixin, seabed_depth: float | None
+    ) -> timedelta:
+        """Samples continuously while the ship is under way, so never holds it at a waypoint."""
+        return timedelta()
 
     def _sample_underway(
         self,

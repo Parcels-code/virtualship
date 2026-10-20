@@ -54,7 +54,6 @@ def create_dummy_expedition(
             drifter_config=DrifterConfig(
                 lifetime=lifetime,
                 depth_meter=depth,
-                stationkeeping_time_minutes=10,
                 sensors=sensors,
             )
         )
@@ -344,7 +343,6 @@ def test_drifter_disabled_sensor_absent_from_output(tmpdir) -> None:
         DrifterConfig(
             lifetime=LIFETIME,
             depth_meter=DEPLOY_DEPTH,
-            stationkeeping_time_minutes=10,
             sensors=[],
         )
 
@@ -354,7 +352,6 @@ def test_drifter_config_default_sensors():
     config = DrifterConfig(
         lifetime=LIFETIME,
         depth_meter=DEPLOY_DEPTH,
-        stationkeeping_time_minutes=10,
     )
     assert config.sensors[0].sensor_type is SensorType.TEMPERATURE
 
@@ -365,7 +362,6 @@ def test_drifter_config_unsupported_sensor_rejected():
         DrifterConfig(
             lifetime=LIFETIME,
             depth_meter=DEPLOY_DEPTH,
-            stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
         )
 

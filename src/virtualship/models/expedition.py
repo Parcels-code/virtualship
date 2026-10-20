@@ -15,13 +15,12 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    INSTRUMENT_CONFIG_MAP,
     _calc_sail_time,
     _get_bathy_data,
     _get_public_wp,
     _validate_numeric_to_timedelta,
+    get_instrument_class,
     get_supported_sensors,
-    register_instrument_config,
 )
 
 from .location import Location
@@ -139,11 +138,7 @@ class Expedition(pydantic.BaseModel):
         for wp_i, (wp, wp_next) in enumerate(
             itertools.pairwise(wps_in_use), start=wps_in_use_offset
         ):
-            stationkeeping_time = (
-                wp.stationkeeping_time(self.instruments_config)
-                if isinstance(wp, Waypoint)
-                else timedelta()
-            )
+            stationkeeping_time = self.stationkeeping_time(wp)
 
             time_to_reach = _calc_sail_time(
                 wp.location,
@@ -169,6 +164,57 @@ class Expedition(pydantic.BaseModel):
             return "the final port of arrival"
         # +1 to get next
         return f"waypoint {_get_public_wp(wp_i + 1, self.schedule.waypoints)}"
+
+    def stationkeeping_time(self, waypoint: Port | Waypoint) -> timedelta:
+        """
+        Calculate how long the ship is stationary at waypoint.
+
+        Stationkeeping time = slow-down time + deployment time + speed-up time.
+        Assumes insturments are deployed concurrently, so the longest deployment time is used.
+        The ship only slows down once, and only if at least one instrument needs it to stop.
+        Waypoints with no instruments, or only instruments which can be deployed without slowing (e.g. XBT), add no time at all.
+        """
+        instruments = self._wp_instruments(waypoint)
+        if not any(
+            get_instrument_class(instrument).requires_ship_to_stop
+            for instrument in instruments
+        ):
+            return timedelta()
+
+        deployment_time = max(
+            self._deployment_time(instrument, waypoint) for instrument in instruments
+        )
+
+        return (
+            self.ship_config.waypoint_slowdown_time
+            + deployment_time
+            + self.ship_config.waypoint_speedup_time
+        )
+
+    def _deployment_time(
+        self,
+        instrument: InstrumentType,
+        waypoint: Waypoint,
+    ) -> timedelta:
+        """Time an instrument holds the ship on station."""
+        config = self.instruments_config.config_for(instrument)
+        if config is None:
+            return timedelta()
+
+        return get_instrument_class(instrument).deployment_time(
+            config, waypoint.sea_depth_meter
+        )
+
+    @staticmethod
+    def _wp_instruments(waypoint: Port | Waypoint) -> list[InstrumentType]:
+        """Instruments deployed at a waypoint."""
+        if isinstance(waypoint, Port) or not waypoint.instrument:
+            return []
+        return (
+            waypoint.instrument
+            if isinstance(waypoint.instrument, list)
+            else [waypoint.instrument]
+        )
 
     def _annotate(self):
         """
@@ -219,9 +265,31 @@ class ShipConfig(pydantic.BaseModel):
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
 
+    waypoint_slowdown_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_slowdown_time_minutes",
+        validation_alias="waypoint_slowdown_time_minutes",
+        ge=timedelta(),
+    )
+    waypoint_speedup_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_speedup_time_minutes",
+        validation_alias="waypoint_speedup_time_minutes",
+        ge=timedelta(),
+    )
+
     # TODO: room here for adding more ship config options in future PRs (e.g. max_days_at_sea)...
 
-    model_config = pydantic.ConfigDict(extra="forbid")
+    model_config = pydantic.ConfigDict(extra="forbid", populate_by_name=True)
+
+    @pydantic.field_serializer("waypoint_slowdown_time", "waypoint_speedup_time")
+    def _serialize_minutes(self, value: timedelta, _info) -> float:
+        return value.total_seconds() / 60.0
+
+    @pydantic.field_validator(
+        "waypoint_slowdown_time", "waypoint_speedup_time", mode="before"
+    )
+    @classmethod
+    def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class Schedule(pydantic.BaseModel):
@@ -359,6 +427,9 @@ class Waypoint(pydantic.BaseModel):
     location: Location
     time: datetime | None = None
     instrument: InstrumentType | list[InstrumentType] | None = None
+    sea_depth_meter: float | None = pydantic.Field(
+        default=None, le=0.0
+    )  # estimated depth from MFP, if available. If None, instrument deployment times costed against configured max depth, thus over-estimateing rather than under-estimating than under-estimating.
 
     @pydantic.field_serializer("instrument")
     def serialize_instrument(self, instrument):
@@ -366,39 +437,6 @@ class Waypoint(pydantic.BaseModel):
         if isinstance(instrument, list):
             return [inst.value for inst in instrument]
         return instrument.value if instrument else None
-
-    def stationkeeping_time(
-        self,
-        instruments_config: InstrumentsConfig,
-        instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
-    ) -> timedelta:
-        """Calculate how much time is required to carry out all instrument deployments at this waypoint."""
-        wp_instruments = (
-            self.instrument
-            if isinstance(self.instrument, list)
-            else ([self.instrument] if self.instrument else [])  # safe handling of None
-        )
-
-        valid_instrument_configs = [
-            iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
-        ]
-
-        wp_instrument_configs = []
-        for iconfig in valid_instrument_configs:
-            for instr in wp_instruments:
-                if (
-                    instrument_config_map.get(instr) == iconfig.__class__.__name__
-                    and iconfig
-                    not in wp_instrument_configs  # avoid duplicates (would happen when multiple drifter deployments at same wp)
-                ):
-                    wp_instrument_configs.append(iconfig)
-
-        cumulative_stationkeeping_time = timedelta()
-        for iconfig in wp_instrument_configs:
-            if hasattr(iconfig, "stationkeeping_time"):
-                cumulative_stationkeeping_time += iconfig.stationkeeping_time
-
-        return cumulative_stationkeeping_time
 
 
 ##
@@ -425,13 +463,11 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
         return SensorConfig.build_variables(self.sensors)
 
-    @pydantic.field_serializer("stationkeeping_time", "period", check_fields=False)
+    @pydantic.field_serializer("period", check_fields=False)
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
-    @pydantic.field_validator(
-        "stationkeeping_time", "period", mode="before", check_fields=False
-    )
+    @pydantic.field_validator("period", mode="before", check_fields=False)
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
@@ -446,7 +482,6 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "days")
 
 
-@register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for argos floats."""
 
@@ -465,12 +500,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         gt=timedelta(),
     )
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
@@ -481,7 +510,7 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     @pydantic.model_validator(mode="after")
     def _drift_days_less_than_cycle_days(self) -> ArgoFloatConfig:
@@ -493,7 +522,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return self
 
 
-@register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for ADCP instrument."""
 
@@ -516,7 +544,7 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     def active_variables(self) -> dict[str, str]:
         """
@@ -532,20 +560,15 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return variables
 
 
-@register_instrument_config(InstrumentType.CTD)
 class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for CTD instrument."""
 
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD
     _instrument_name: ClassVar[str] = "CTD"
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
+    winch_speed_meter_per_second: float = pydantic.Field(gt=0.0)
 
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
@@ -564,10 +587,9 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for underwater ST."""
 
@@ -590,10 +612,9 @@ class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.DRIFTER)
 class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for drifters."""
 
@@ -606,21 +627,14 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         validation_alias="lifetime_days",
         gt=timedelta(),
     )
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the drifter. Supported: TEMPERATURE. "),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.XBT)
 class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for xbt instrument."""
 
@@ -636,6 +650,8 @@ class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the XBT. Supported: TEMPERATURE. "),
     )
+
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class InstrumentsConfig(pydantic.BaseModel):
@@ -685,6 +701,21 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
+    _CONFIG_FIELDS: ClassVar[dict[InstrumentType, str]] = {
+        InstrumentType.ARGO_FLOAT: "argo_float_config",
+        InstrumentType.DRIFTER: "drifter_config",
+        InstrumentType.XBT: "xbt_config",
+        InstrumentType.CTD: "ctd_config",
+        InstrumentType.ADCP: "adcp_config",
+        InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
+    }
+
+    def config_for(
+        self, instrument_type: InstrumentType
+    ) -> _InstrumentConfigMixin | None:
+        """The configuration for an instrument type, or None if it is not configured."""
+        return getattr(self, self._CONFIG_FIELDS[instrument_type])
+
     def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
         Verify instrument configurations against the instruments actually being deployed.
@@ -692,14 +723,7 @@ class InstrumentsConfig(pydantic.BaseModel):
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
         """
-        instrument_config_map = {
-            InstrumentType.ARGO_FLOAT: "argo_float_config",
-            InstrumentType.DRIFTER: "drifter_config",
-            InstrumentType.XBT: "xbt_config",
-            InstrumentType.CTD: "ctd_config",
-            InstrumentType.ADCP: "adcp_config",
-            InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
-        }
+        instrument_config_map = self._CONFIG_FIELDS
         # Remove configs for unused instruments
         for inst_type, config_attr in instrument_config_map.items():
             if (

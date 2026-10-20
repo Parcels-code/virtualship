@@ -93,7 +93,8 @@ async def _expand_waypoint(expedition_editor, pilot, index: int) -> WaypointWidg
     return widget
 
 
-def _four_waypoint_schedule() -> list:
+def _four_waypoint_schedule(hours_apart: int = 1) -> list:
+    """N.B. a full-depth CTD cast keeps the ship on station for ~1.5 h, so use hours_apart >= 2 for a schedule that passes verification (e.g. on save)."""
     return [
         Port(location=None, time=None),
         Waypoint(
@@ -103,12 +104,12 @@ def _four_waypoint_schedule() -> list:
         ),
         Waypoint(
             location=Location(0.01, 0.01),
-            time=datetime(2022, 1, 1, 1, 0, 0),
+            time=datetime(2022, 1, 1, hours_apart, 0, 0),
             instrument=["CTD"],
         ),
         Waypoint(
             location=Location(0.02, 0.02),
-            time=datetime(2022, 1, 1, 2, 0, 0),
+            time=datetime(2022, 1, 1, 2 * hours_apart, 0, 0),
             instrument=["CTD"],
         ),
         Port(location=None, time=None),
@@ -130,12 +131,12 @@ async def test_UI_changes(tmp_path):
         ),
         Waypoint(
             location=Location(0.01, 0.01),
-            time=datetime(2022, 1, 1, 1, 0, 0),
+            time=datetime(2022, 1, 1, 3, 0, 0),
             instrument=["CTD"],
         ),
         Waypoint(
             location=Location(0.02, 0.02),
-            time=datetime(2022, 1, 1, 2, 0, 0),
+            time=datetime(2022, 1, 1, 6, 0, 0),
             instrument=["CTD"],
         ),
         Port(
@@ -214,7 +215,11 @@ async def test_UI_changes(tmp_path):
         assert saved_wps[2].location.lon == float(NEW_LON)
         assert saved_wps[1].instrument == [InstrumentType.XBT]
 
-        # check schedule.verify() methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
+        # the ship's slow-down / speed-up times survive a round trip through the UI, untouched
+        assert saved_expedition["ship_config"]["waypoint_slowdown_time_minutes"] == 15.0
+        assert saved_expedition["ship_config"]["waypoint_speedup_time_minutes"] == 15.0
+
+        # check verifiction methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"
         await simulate_input(pilot, ship_speed_input, invalid_speed)
         await pilot.click(save_button)
@@ -222,6 +227,72 @@ async def test_UI_changes(tmp_path):
 
         args, _ = plan_screen.notify.call_args
         assert "*** Error saving changes ***" in args[0]
+
+
+@pytest.mark.asyncio
+async def test_ship_decel_accel_editable_and_saved(tmp_path):
+    """The ship's waypoint slow-down and speed-up times sit in their own collapsed section, and can be edited there and saved."""
+    _make_expedition(
+        tmp_path,
+        [
+            Port(location=None, time=None),
+            Waypoint(
+                location=Location(0, 0),
+                time=datetime(2022, 1, 1, 0, 0, 0),
+                instrument=["CTD"],
+            ),
+            Waypoint(
+                location=Location(0.01, 0.01),
+                time=datetime(2022, 1, 1, 6, 0, 0),
+                instrument=None,
+            ),
+            Port(location=None, time=None),
+        ],
+    )
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(160, 140)) as pilot:
+        await pilot.pause(0.5)
+        plan_screen = pilot.app.screen
+        plan_screen.notify = MagicMock()
+        expedition_editor = plan_screen.query_one(ExpeditionEditor)
+
+        # collapsed by default
+        advanced = expedition_editor.query_one(
+            "#ship_advanced_collapsible", Collapsible
+        )
+        assert advanced.collapsed
+        assert (
+            expedition_editor.query_one("#waypoint_slowdown_time", Input).value
+            == "15.0"
+        )
+
+        advanced.collapsed = False
+        await pilot.pause()
+
+        await simulate_input(
+            pilot, expedition_editor.query_one("#waypoint_slowdown_time", Input), "20"
+        )
+        await simulate_input(
+            pilot, expedition_editor.query_one("#waypoint_speedup_time", Input), "25"
+        )
+        assert expedition_editor.has_unsaved_changes()
+
+        await pilot.click(plan_screen.query_one("#save_button", Button))
+        await pilot.pause(0.5)
+
+        calls = plan_screen.notify.call_args_list
+        assert any(
+            call[0][0] == "Changes saved successfully"
+            and call[1].get("severity") == "information"
+            for call in calls
+        )
+
+    with open(tmp_path / EXPEDITION) as f:
+        saved = yaml.safe_load(f)
+
+    assert saved["ship_config"]["waypoint_slowdown_time_minutes"] == 20.0
+    assert saved["ship_config"]["waypoint_speedup_time_minutes"] == 25.0
 
 
 @pytest.mark.asyncio
@@ -274,7 +345,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -282,7 +353,7 @@ async def test_sensor_toggle_saved_to_yaml(tmp_path):
     )
 
     app = PlanApp(path=tmp_path)
-    async with app.run_test(size=(160, 120)) as pilot:
+    async with app.run_test(size=(160, 140)) as pilot:
         await pilot.pause(0.5)
         plan_screen = pilot.app.screen
         plan_screen.notify = MagicMock()
@@ -325,7 +396,7 @@ async def test_deselecting_all_sensors_on_active_instrument_blocks_save(tmp_path
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -370,7 +441,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -407,7 +478,7 @@ async def test_deselecting_all_sensors_on_inactive_instrument(tmp_path):
 async def test_sensor_initial_state_reflects_config(tmp_path):
     """Sensor switches should reflect the enabled sensors already stored in the config."""
     ctd_config = CTDConfig(
-        stationkeeping_time_minutes=50,
+        winch_speed_meter_per_second=1.0,
         min_depth_meter=-11.0,
         max_depth_meter=-2000.0,
         sensors=[SensorConfig(sensor_type=SensorType.TEMPERATURE)],
@@ -427,7 +498,7 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
             ),
             Waypoint(
                 location=Location(0.01, 0.01),
-                time=datetime(2022, 1, 1, 1, 0, 0),
+                time=datetime(2022, 1, 1, 3, 0, 0),
                 instrument=None,
             ),
             Port(location=None, time=None),
@@ -645,7 +716,7 @@ async def test_waypoint_time_entry_and_adjust(tmp_path):
 @pytest.mark.asyncio
 async def test_save_shortcut_and_unsaved_changes_prompt(tmp_path):
     """ctrl+s saves, quitting with unsaved changes asks first, quitting after saving does not."""
-    _make_expedition(tmp_path, _four_waypoint_schedule())
+    _make_expedition(tmp_path, _four_waypoint_schedule(hours_apart=3))
 
     app = PlanApp(path=tmp_path)
     async with app.run_test(size=(120, 100)) as pilot:
