@@ -687,7 +687,7 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
-        Verify  instrument configurations against the instruments actually being deployed.
+        Verify instrument configurations against the instruments actually being deployed.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
