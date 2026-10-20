@@ -216,8 +216,8 @@ async def test_UI_changes(tmp_path):
         assert saved_wps[1].instrument == [InstrumentType.XBT]
 
         # the ship's slow-down / speed-up times survive a round trip through the UI, untouched
-        assert saved_expedition["ship_config"]["deceleration_time_minutes"] == 15.0
-        assert saved_expedition["ship_config"]["acceleration_time_minutes"] == 15.0
+        assert saved_expedition["ship_config"]["station_slowdown_time_minutes"] == 15.0
+        assert saved_expedition["ship_config"]["station_speedup_time_minutes"] == 15.0
 
         # check verifiction methods are working by purposefully making invalid schedule (i.e. ship speed too slow to reach waypoints)
         invalid_speed = "0.0001"
@@ -231,7 +231,7 @@ async def test_UI_changes(tmp_path):
 
 @pytest.mark.asyncio
 async def test_ship_decel_accel_editable_and_saved(tmp_path):
-    """The ship's deceleration and acceleration times sit in their own collapsed section, and can be edited there and saved."""
+    """The ship's station slow-down and speed-up times sit in their own collapsed section, and can be edited there and saved."""
     _make_expedition(
         tmp_path,
         [
@@ -262,16 +262,18 @@ async def test_ship_decel_accel_editable_and_saved(tmp_path):
             "#ship_advanced_collapsible", Collapsible
         )
         assert advanced.collapsed
-        assert expedition_editor.query_one("#deceleration_time", Input).value == "15.0"
+        assert (
+            expedition_editor.query_one("#station_slowdown_time", Input).value == "15.0"
+        )
 
         advanced.collapsed = False
         await pilot.pause()
 
         await simulate_input(
-            pilot, expedition_editor.query_one("#deceleration_time", Input), "20"
+            pilot, expedition_editor.query_one("#station_slowdown_time", Input), "20"
         )
         await simulate_input(
-            pilot, expedition_editor.query_one("#acceleration_time", Input), "25"
+            pilot, expedition_editor.query_one("#station_speedup_time", Input), "25"
         )
         assert expedition_editor.has_unsaved_changes()
 
@@ -288,8 +290,8 @@ async def test_ship_decel_accel_editable_and_saved(tmp_path):
     with open(tmp_path / EXPEDITION) as f:
         saved = yaml.safe_load(f)
 
-    assert saved["ship_config"]["deceleration_time_minutes"] == 20.0
-    assert saved["ship_config"]["acceleration_time_minutes"] == 25.0
+    assert saved["ship_config"]["station_slowdown_time_minutes"] == 20.0
+    assert saved["ship_config"]["station_speedup_time_minutes"] == 25.0
 
 
 @pytest.mark.asyncio

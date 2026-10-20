@@ -59,8 +59,8 @@ def _make_simple_expedition(
     instruments = InstrumentsConfig()
     ship = ShipConfig(
         ship_speed_knots=10.0,
-        deceleration_time_minutes=15.0,
-        acceleration_time_minutes=15.0,
+        station_slowdown_time_minutes=15.0,
+        station_speedup_time_minutes=15.0,
     )
     return Expedition(
         schedule=schedule, instruments_config=instruments, ship_config=ship

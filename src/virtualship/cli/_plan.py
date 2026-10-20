@@ -196,7 +196,7 @@ def _raise_logged_unexpected(e: Exception, path, context_message: str):
 DEFAULT_TS_CONFIG = {"period_minutes": 5.0}
 
 # ship config timings, edited in minutes in their own (collapsed by default) section
-SHIP_TIME_ATTRS = ("deceleration_time", "acceleration_time")
+SHIP_TIME_ATTRS = ("station_slowdown_time", "station_speedup_time")
 
 DEFAULT_ADCP_CONFIG = {
     "num_bins": 40,
@@ -357,7 +357,7 @@ class ExpeditionEditor(Static):
 
                 # advanced settings, which most users can leave as the defaults
                 with Collapsible(
-                    title="Ship deceleration & acceleration times",
+                    title="Station slow-down & speed-up times",
                     id="ship_advanced_collapsible",
                     collapsed=True,
                 ):

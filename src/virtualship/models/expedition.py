@@ -170,7 +170,7 @@ class Expedition(pydantic.BaseModel):
         """
         Calculate how long the ship is stationary at waypoint.
 
-        Stationkeeping time = ship deceleration time + deployment time + ship acceleration time.
+        Stationkeeping time = slow-down time + deployment time + speed-up time.
         Assumes insturments are deployed concurrently, so the longest deployment time is used.
         Empty waypoints (no instruments) cost nothing/ship sails through without slowing.
         """
@@ -183,9 +183,9 @@ class Expedition(pydantic.BaseModel):
         )
 
         return (
-            self.ship_config.deceleration_time
+            self.ship_config.station_slowdown_time
             + deployment_time
-            + self.ship_config.acceleration_time
+            + self.ship_config.station_speedup_time
         )
 
     def _deployment_time(
@@ -262,14 +262,14 @@ class ShipConfig(pydantic.BaseModel):
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
 
-    deceleration_time: timedelta = pydantic.Field(
-        serialization_alias="deceleration_time_minutes",
-        validation_alias="deceleration_time_minutes",
+    station_slowdown_time: timedelta = pydantic.Field(
+        serialization_alias="station_slowdown_time_minutes",
+        validation_alias="station_slowdown_time_minutes",
         ge=timedelta(),
     )
-    acceleration_time: timedelta = pydantic.Field(
-        serialization_alias="acceleration_time_minutes",
-        validation_alias="acceleration_time_minutes",
+    station_speedup_time: timedelta = pydantic.Field(
+        serialization_alias="station_speedup_time_minutes",
+        validation_alias="station_speedup_time_minutes",
         ge=timedelta(),
     )
 
@@ -277,11 +277,13 @@ class ShipConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid", populate_by_name=True)
 
-    @pydantic.field_serializer("deceleration_time", "acceleration_time")
+    @pydantic.field_serializer("station_slowdown_time", "station_speedup_time")
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
-    @pydantic.field_validator("deceleration_time", "acceleration_time", mode="before")
+    @pydantic.field_validator(
+        "station_slowdown_time", "station_speedup_time", mode="before"
+    )
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
