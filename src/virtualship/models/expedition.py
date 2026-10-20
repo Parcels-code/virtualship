@@ -90,7 +90,7 @@ class Expedition(pydantic.BaseModel):
         """
         Verify the feasibility and correctness of the expedition's schedule.
 
-        `ship_speed` overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
+        `ship_speed` (also in knots) overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
         """
         print("\nVerifying expedition... ")
 
