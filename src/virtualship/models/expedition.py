@@ -84,7 +84,6 @@ class Expedition(pydantic.BaseModel):
     def verify_schedule(
         self,
         ignore_land_test: bool = False,
-        *,
         ship_speed: float | None = None,
         from_data: Path | None = None,
     ) -> None:
