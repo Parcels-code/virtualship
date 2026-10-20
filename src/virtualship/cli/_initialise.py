@@ -133,7 +133,7 @@ def _mfp_to_yaml(file_path: Path, start_date: str, output_path: Path):
             has_latlon = lat is not None and lon is not None
             waypoints.append(Port(location=loc, time=time_val if has_latlon else None))
         else:
-            # numbered as in the generated expedition.yaml's '# Waypoint N' comments
+            # waypoint numbers for warning messages, same as the generated expedition.yaml's 'Waypoint #N' order
             waypoint_number = sum(isinstance(wp, Waypoint) for wp in waypoints) + 1
             sea_depth = _parse_mfp_sea_depth(
                 row["Sea Depth"], f"Waypoint {waypoint_number}"
