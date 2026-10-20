@@ -161,7 +161,7 @@ It is important to ensure that the timings for each station are realistic. There
 ```{important}
 Remember that MFP's default of 45 minutes per station may not be enough once your instruments are selected. Time at a station is made up of slowing the ship down (15 minutes by default), carrying out the deployments (which depends on which instruments you deploy), and getting back up to speed again (15 minutes by default).
 
-Deployments can take place side by side, so only the slowest one matters for the total stationkeeping time at each waypoint. Drifters, Argo floats and XBTs are simply released into the water and left behind, so they have no time cost apart from stopping the ship. A CTD is different, it has to be lowered and brought back up, so the ship waits for the full round trip, and a cast at a deep station can easily take longer than the MFP default
+Deployments can take place side by side, so only the slowest one matters for the total stationkeeping time at each waypoint. Drifters, Argo floats and XBTs are simply released into the water and left behind, so they have no time cost apart from slowing down and speeding up the ship. A CTD is different, it has to be lowered and brought back up, so the ship waits for the full round trip, and a cast at a deep station can easily take longer than the MFP default
 
 If verification tells you that you would arrive somewhere too late, your waypoints with CTDs are the first place to look.
 ```
