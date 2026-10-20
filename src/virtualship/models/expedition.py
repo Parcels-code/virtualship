@@ -83,16 +83,15 @@ class Expedition(pydantic.BaseModel):
     def verify_schedule(
         self,
         ignore_land_test: bool = False,
-        *,
         ship_speed: float | None = None,
         from_data: Path | None = None,
     ) -> None:
         """
         Verify the feasibility and correctness of the expedition's schedule.
 
-        `ship_speed` overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
+        `ship_speed` (also in knots) overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
         """
-        print("\nVerifying route... ")
+        print("\nVerifying expedition... ")
 
         if ship_speed is None:
             ship_speed = self.ship_config.ship_speed_knots
@@ -719,7 +718,7 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
-        Verify  instrument configurations against the instruments actually being deployed.
+        Verify instrument configurations against the instruments actually being deployed.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
