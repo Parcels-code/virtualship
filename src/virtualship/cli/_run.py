@@ -92,7 +92,7 @@ def _run(
     )
 
     # verify instruments_config file is consistent with schedule
-    expedition.instruments_config.verify(expedition)
+    expedition.verify_instruments_config()
 
     # load last checkpoint
     checkpoint = _load_checkpoint(expedition_dir)
@@ -103,9 +103,7 @@ def _run(
 
     print("\n---- WAYPOINT VERIFICATION ----")
 
-    schedule.verify(
-        expedition.ship_config.ship_speed_knots,
-        expedition.instruments_config,
+    expedition.verify_schedule(
         from_data=Path(from_data) if from_data else None,
     )
 
