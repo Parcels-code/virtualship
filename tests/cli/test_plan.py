@@ -12,11 +12,13 @@ from virtualship.cli._plan import (
     QuitConfirmScreen,
     WaypointWidget,
     _default_sensors,
+    _sensor_options,
     parse_waypoint_time,
 )
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
+    ArgoFloatConfig,
     CTDConfig,
     Expedition,
     InstrumentsConfig,
@@ -331,6 +333,28 @@ def test_default_sensors_returns_declared_defaults():
     assert SensorType.SALINITY in types
 
 
+def test_sensor_options_include_supported_sensors_off_by_default():
+    """_sensor_options() lists every supported sensor, with only the default sensors enabled."""
+    argo_options = _sensor_options(ArgoFloatConfig)
+    assert [sc.sensor_type for sc in argo_options if sc.enabled] == [
+        SensorType.TEMPERATURE,
+        SensorType.SALINITY,
+    ]
+    assert [sc.sensor_type for sc in argo_options if not sc.enabled] == [
+        SensorType.OXYGEN,
+        SensorType.CHLOROPHYLL,
+        SensorType.NITRATE,
+        SensorType.PH,
+    ]
+
+    # instruments where all supported sensors are on by default are unchanged
+    ctd_options = _sensor_options(CTDConfig)
+    assert all(sc.enabled for sc in ctd_options)
+    assert [sc.sensor_type for sc in ctd_options] == [
+        sc.sensor_type for sc in _default_sensors(CTDConfig)
+    ]
+
+
 @pytest.mark.asyncio
 async def test_sensor_toggle_saved_to_yaml(tmp_path):
     """Toggling a sensor switch off and saving should persist only the enabled sensors."""
@@ -517,6 +541,49 @@ async def test_sensor_initial_state_reflects_config(tmp_path):
         sal_switch = expedition_editor.query_one("#ctd_config_sensor_SALINITY", Switch)
         assert temp_switch.value is True, "TEMPERATURE should be ON"
         assert sal_switch.value is False, "SALINITY should be OFF (not in saved config)"
+
+
+@pytest.mark.asyncio
+async def test_sensor_initial_state_reflects_defaults_without_config(tmp_path):
+    """Without a stored config, sensor switches should follow the default on/off state (e.g. Argo BGC sensors listed but OFF)."""
+    instruments_config = InstrumentsConfig.model_validate(
+        yaml.safe_load(_get_example_expedition()).get("instruments_config")
+    )
+    instruments_config.argo_float_config = None
+    _make_expedition(
+        tmp_path,
+        [
+            Port(location=None, time=None),
+            Waypoint(
+                location=Location(0, 0),
+                time=datetime(2022, 1, 1, 0, 0, 0),
+                instrument=["CTD"],
+            ),
+            Waypoint(
+                location=Location(0.01, 0.01),
+                time=datetime(2022, 1, 1, 1, 0, 0),
+                instrument=None,
+            ),
+            Port(location=None, time=None),
+        ],
+        instruments_config,
+    )
+
+    app = PlanApp(path=tmp_path)
+    async with app.run_test(size=(160, 120)) as pilot:
+        await pilot.pause(0.5)
+        expedition_editor = pilot.app.screen.query_one(ExpeditionEditor)
+
+        for sensor in ["TEMPERATURE", "SALINITY"]:
+            switch = expedition_editor.query_one(
+                f"#argo_float_config_sensor_{sensor}", Switch
+            )
+            assert switch.value is True, f"{sensor} should be ON by default"
+        for sensor in ["OXYGEN", "CHLOROPHYLL", "NITRATE", "PH"]:
+            switch = expedition_editor.query_one(
+                f"#argo_float_config_sensor_{sensor}", Switch
+            )
+            assert switch.value is False, f"{sensor} should be OFF by default"
 
 
 @pytest.mark.asyncio
