@@ -74,7 +74,7 @@ The following assumptions are also made about the data:
 1. All pre-downloaded data files must be in NetCDF format (`.nc`).
 2. Physical data files must contain the following variables: `uo`, `vo`, `so`, `thetao`
    - Or these strings must appear as substrings within the variable names (e.g. `uo_glor` is acceptable for `uo`).
-3. If using BGC-enabled instruments (e.g. BGC variables on the `CTD`), the relevant biogeochemical data files must contain the following variables: `o2`, `chl`, `no3`, `po4`, `nppv`, `ph`, `phyc`.
+3. If using BGC-enabled instruments (e.g. BGC variables on the `CTD` or `ARGO_FLOAT`), the relevant biogeochemical data files must contain the following variables: `o2`, `chl`, `no3`, `po4`, `nppv`, `ph`, `phyc`.
    - Or these strings must appear as substrings within the variable names (e.g. `o2_glor` is acceptable for `o2`).
 4. Bathymetry data files must contain a variable named `deptho`.
 5. Pre-downloaded data files must have a `"positive"` attribute for the depth dimension (e.g. `"positive": "down"` or `"positive": "up"`) in order to ensure that the depth dimension is correctly interpreted under-the-hood.
