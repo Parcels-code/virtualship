@@ -52,6 +52,10 @@ def _sample_temperature(particles, fieldset):
     particles.temperature = fieldset.T[particles]
 
 
+def _sample_salinity(particles, fieldset):
+    particles.salinity = fieldset.S[particles]
+
+
 def _check_lifetime(particles, fieldset):
     particles_wlifetime = particles[particles.has_lifetime == 1]
 
@@ -74,6 +78,7 @@ class DrifterInstrument(Instrument):
 
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _sample_temperature,
+        SensorType.SALINITY: _sample_salinity,
     }
 
     def __init__(self, expedition, from_data):
