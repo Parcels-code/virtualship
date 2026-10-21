@@ -636,10 +636,11 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
-            SensorConfig(sensor_type=SensorType.SALINITY),
+            # SALINITY is supported but not on by default
         ],
         description=(
             "Sensors fitted to the drifter. Supported: TEMPERATURE, SALINITY. "
+            "SALINITY is off by default. "
         ),
     )
 

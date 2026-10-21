@@ -421,13 +421,30 @@ def test_drifter_config_no_enabled_sensors_rejected() -> None:
 
 
 def test_drifter_config_default_sensors():
-    """DrifterConfig defaults to TEMPERATURE + SALINITY."""
+    """DrifterConfig defaults to TEMPERATURE only, SALINITY is supported but off by default."""
     config = DrifterConfig(
         lifetime=LIFETIME,
         depth_meter=DEPLOY_DEPTH,
     )
     types = {sc.sensor_type for sc in config.sensors}
-    assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+    assert types == {SensorType.TEMPERATURE}
+    assert SensorType.SALINITY not in types
+
+
+def test_drifter_config_salinity_added():
+    """SALINITY can be added to a DrifterConfig."""
+    config = DrifterConfig(
+        lifetime=LIFETIME,
+        depth_meter=DEPLOY_DEPTH,
+        sensors=[
+            SensorConfig(sensor_type=SensorType.TEMPERATURE),
+            SensorConfig(sensor_type=SensorType.SALINITY),
+        ],
+    )
+    assert {sc.sensor_type for sc in config.sensors} == {
+        SensorType.TEMPERATURE,
+        SensorType.SALINITY,
+    }
 
 
 def test_drifter_config_unsupported_sensor_rejected():

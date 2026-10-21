@@ -37,7 +37,6 @@ instruments_config:
     lifetime_days: 42.0
     sensors:
       - TEMPERATURE
-      - SALINITY
   xbt_config:
     max_depth_meter: -285.0
     min_depth_meter: -2.0

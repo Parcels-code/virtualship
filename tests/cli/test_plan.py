@@ -20,6 +20,7 @@ from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     ArgoFloatConfig,
     CTDConfig,
+    DrifterConfig,
     Expedition,
     InstrumentsConfig,
     Location,
@@ -353,6 +354,13 @@ def test_sensor_options_include_supported_sensors_off_by_default():
     assert [sc.sensor_type for sc in ctd_options] == [
         sc.sensor_type for sc in _default_sensors(CTDConfig)
     ]
+
+
+def test_drifter_salinity_option_off_by_default():
+    """The drifter lists SALINITY as a sensor option, but only TEMPERATURE is on by default."""
+    options = _sensor_options(DrifterConfig)
+    assert [sc.sensor_type for sc in options if sc.enabled] == [SensorType.TEMPERATURE]
+    assert [sc.sensor_type for sc in options if not sc.enabled] == [SensorType.SALINITY]
 
 
 @pytest.mark.asyncio
