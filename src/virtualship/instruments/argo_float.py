@@ -160,29 +160,49 @@ def _check_error(particles, fieldset):
     particles.state[errors] = StatusCode.Delete
 
 
+## physical variables
+
+
 def _argo_sample_temperature(particles, fieldset):
-    # Phase 3: ascending — sample temperature
-    phase_mask = particles.cycle_phase == 3
-    depth_mask = particles.z < particles.min_depth  # still ascending
-    mask = np.logical_and(phase_mask, depth_mask)
-    particles.temperature[~mask] = np.nan  # no measurement outside the ascent
-    sampling_particles = particles[mask]
-    sampling_particles.temperature = fieldset.T[sampling_particles]
+    _sample_on_ascent(particles, fieldset.T, "temperature")
 
 
 def _argo_sample_salinity(particles, fieldset):
-    # Phase 3: ascending — sample salinity
-    phase_mask = particles.cycle_phase == 3
-    depth_mask = particles.z < particles.min_depth  # still ascending
-    mask = np.logical_and(phase_mask, depth_mask)
-    particles.salinity[~mask] = np.nan  # no measurement outside the ascent
-    sampling_particles = particles[mask]
-    sampling_particles.salinity = fieldset.S[sampling_particles]
+    _sample_on_ascent(particles, fieldset.S, "salinity")
+
+
+## bgc variables
+
+
+def _argo_sample_o2(particles, fieldset):
+    _sample_on_ascent(particles, fieldset.o2, "o2")
+
+
+def _argo_sample_chlorophyll(particles, fieldset):
+    _sample_on_ascent(particles, fieldset.chl, "chl")
+
+
+def _argo_sample_nitrate(particles, fieldset):
+    _sample_on_ascent(particles, fieldset.no3, "no3")
+
+
+def _argo_sample_ph(particles, fieldset):
+    _sample_on_ascent(particles, fieldset.ph, "ph")
 
 
 # =====================================================
 # SECTION: Helper Functions
 # =====================================================
+
+
+def _sample_on_ascent(particles, field, var):
+    """Sample `field` into particle variable `var` during the ascent (phase 3) only."""
+    phase_mask = particles.cycle_phase == 3
+    depth_mask = particles.z < particles.min_depth  # still ascending
+    mask = np.logical_and(phase_mask, depth_mask)
+    getattr(particles, var)[~mask] = np.nan  # no measurement outside the ascent
+    sampling_particles = particles[mask]
+    setattr(sampling_particles, var, field[sampling_particles])
 
 
 def _handle_grounding(
@@ -237,6 +257,10 @@ class ArgoFloatInstrument(Instrument):
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _argo_sample_temperature,
         SensorType.SALINITY: _argo_sample_salinity,
+        SensorType.OXYGEN: _argo_sample_o2,
+        SensorType.CHLOROPHYLL: _argo_sample_chlorophyll,
+        SensorType.NITRATE: _argo_sample_nitrate,
+        SensorType.PH: _argo_sample_ph,
     }
 
     def __init__(self, expedition, from_data):

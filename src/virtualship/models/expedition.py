@@ -508,9 +508,11 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
             SensorConfig(sensor_type=SensorType.SALINITY),
+            # BGC sensors are supported but not on by default
         ],
         description=(
-            "Sensors fitted to the Argo float. Supported: TEMPERATURE, SALINITY. "
+            "Sensors fitted to the Argo float. Supported: TEMPERATURE, SALINITY, OXYGEN, CHLOROPHYLL, NITRATE, PH. "
+            "BGC sensors (OXYGEN, CHLOROPHYLL, NITRATE, PH) are off by default. "
         ),
     )
 
