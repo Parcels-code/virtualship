@@ -31,11 +31,21 @@ Trying to add a sensor to an instrument that does not support it will result in 
 |                                        | NITRATE            | Mole Concentration of Nitrate in Sea Water (off by default)                               | mmol m<sup>-3</sup>                  | Biogeochemical |
 |                                        | PH                 | Sea Water pH (off by default)                                                             | -                                    | Biogeochemical |
 | **DRIFTER**                            | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
-|                                        | SALINITY           | Sea Water Salinity                                                                        | psu                                  | Physical       |
+|                                        | SALINITY           | Sea Water Salinity (off by default)                                                       | psu                                  | Physical       |
 | **XBT**                                | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
 
-```{note}
-The `ARGO_FLOAT` BGC sensors (oxygen, chlorophyll, nitrate, pH) are off by default. Each extra sensor adds another variable for the simulation to load and sample, which can make the already-computationally intensive Argo float simulations even more intensive. When needed though, they can be turned on in the `virtualship plan` tool or by adding them to the `sensors` list of `argo_float_config` in `expedition.yaml`.
+### Optional sensors
 
-Only BGC variables that real-life [BGC-Argo](https://biogeochemical-argo.org/) floats measure are available for the Argo floats in VirtualShip.
-```
+Some sensors are optional and are off by default (see the table above), because they are not standard on most deployments and/or they make simulations more computationally intensive. These optional sensors can be turned on in the `virtualship plan` tool or by adding them to the `sensors` list of the respective instrument configuration in `expedition.yaml`.
+
+The optional sensors for different instruments are:
+
+#### Argo floats
+
+- BGC sensors (oxygen, chlorophyll, nitrate, pH) are avaialble for the `ARGO_FLOAT` instrument but off by default.
+- Note, each extra sensor adds another variable for the simulation to load and sample, which can make the already-computationally intensive Argo float simulations even more intensive.
+- Only BGC variables that real-life [BGC-Argo](https://biogeochemical-argo.org/) floats measure are available for the Argo floats in VirtualShip.
+
+#### Drifters
+
+- A `salinity` sensor is available but off by default for the `DRIFTER` instrument.
