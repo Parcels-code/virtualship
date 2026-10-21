@@ -33,6 +33,7 @@ from virtualship.cli.validator_utils import (
     type_to_textual,
 )
 from virtualship.errors import UnexpectedError, UserError
+from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models import (
     ADCPConfig,
@@ -48,7 +49,7 @@ from virtualship.models import (
     XBTConfig,
 )
 from virtualship.models.expedition import Port
-from virtualship.utils import EXPEDITION, INCOMPLETE_PORT_MSG
+from virtualship.utils import EXPEDITION, INCOMPLETE_PORT_MSG, get_supported_sensors
 
 UNEXPECTED_MSG_ONSAVE = (
     "Please ensure that:\n"
@@ -89,6 +90,19 @@ def _default_sensors(config_class) -> list:
     if sensors_field is None or sensors_field.default_factory is None:
         return []
     return sensors_field.default_factory()
+
+
+def _sensor_options(config_class) -> list:
+    """SensorConfig for every sensor the config class's instrument supports (in SensorType order), enabled if on by default."""
+    on_by_default = {sc.sensor_type for sc in _default_sensors(config_class)}
+    if not on_by_default:
+        return []
+    supported = get_supported_sensors(config_class._instrument_type)
+    return [
+        SensorConfig(sensor_type=s, enabled=s in on_by_default)
+        for s in SensorType
+        if s in supported
+    ]
 
 
 WAYPOINT_TIME_FORMAT = "%Y-%m-%d %H:%M"
@@ -467,9 +481,9 @@ class ExpeditionEditor(Static):
                     value=_config_display_value(config_instance, attr_meta),
                 )
                 yield _failure_label(f"{instrument_name}_{attr}")
-            # sensor toggles, derived from the config class's sensors default_factory
-            default_sensor_configs = _default_sensors(config_class)
-            if default_sensor_configs:
+            # sensor toggles, one per sensor supported by the instrument
+            sensor_options = _sensor_options(config_class)
+            if sensor_options:
                 yield Label("[b]Sensors:[/b]", markup=True)
                 # which sensors are currently active
                 if config_instance and hasattr(config_instance, "sensors"):
@@ -477,11 +491,11 @@ class ExpeditionEditor(Static):
                         sc.sensor_type for sc in config_instance.sensors if sc.enabled
                     }
                 else:
-                    # if no config loaded yet, default all sensors on
+                    # if no config loaded yet, only the default sensors are on
                     active_sensor_types = {
-                        sc.sensor_type for sc in default_sensor_configs
+                        sc.sensor_type for sc in sensor_options if sc.enabled
                     }
-                for sc in default_sensor_configs:
+                for sc in sensor_options:
                     with Horizontal(classes="sensor-toggle-row"):
                         yield Label(
                             f"    {sc.sensor_type.value.replace('_', ' ').title()}:"
@@ -613,11 +627,11 @@ class ExpeditionEditor(Static):
                 kwargs["max_depth_meter"] = -1000.0 if is_deep else -150.0
 
             # collect sensor toggles
-            default_sensor_configs = _default_sensors(config_class)
-            if default_sensor_configs:
+            sensor_options = _sensor_options(config_class)
+            if sensor_options:
                 sensors = [
                     SensorConfig(sensor_type=sc.sensor_type)
-                    for sc in default_sensor_configs
+                    for sc in sensor_options
                     if self.query_one(
                         f"#{instrument_name}_sensor_{sc.sensor_type.value}", Switch
                     ).value
@@ -629,10 +643,7 @@ class ExpeditionEditor(Static):
                             f"At least one sensor must be enabled for each active instrument."
                         )
                     # fall back to the default sensors so pydantic validation passes
-                    sensors = [
-                        SensorConfig(sensor_type=sc.sensor_type)
-                        for sc in default_sensor_configs
-                    ]
+                    sensors = _default_sensors(config_class)
                 kwargs["sensors"] = sensors
 
             try:
