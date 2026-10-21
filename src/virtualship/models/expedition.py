@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Collection
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import ClassVar, cast
@@ -14,13 +15,12 @@ from virtualship.errors import InstrumentsConfigError, ScheduleError
 from virtualship.instruments.sensors import SENSOR_REGISTRY, SensorType, _Sensor
 from virtualship.instruments.types import InstrumentType
 from virtualship.utils import (
-    INSTRUMENT_CONFIG_MAP,
     _calc_sail_time,
     _get_bathy_data,
     _get_public_wp,
     _validate_numeric_to_timedelta,
+    get_instrument_class,
     get_supported_sensors,
-    register_instrument_config,
 )
 
 from .location import Location
@@ -51,7 +51,7 @@ class Expedition(pydantic.BaseModel):
             data = yaml.safe_load(file)
         return Expedition(**data)
 
-    def get_instruments(self) -> set[InstrumentType]:
+    def get_instruments(self) -> list[InstrumentType]:
         """Return a set of unique InstrumentType enums used in the expedition."""
         instruments_in_expedition = []
 
@@ -75,6 +75,146 @@ class Expedition(pydantic.BaseModel):
             raise InstrumentsConfigError(
                 "Underway instrument config attribute(s) are missing from YAML. Must be <Instrument>Config object or None."
             ) from e
+
+    def verify_instruments_config(self) -> None:
+        """Check the instrument configurations cover exactly the instruments this expedition deploys."""
+        self.instruments_config.verify(self.get_instruments())
+
+    def verify_schedule(
+        self,
+        ignore_land_test: bool = False,
+        ship_speed: float | None = None,
+        from_data: Path | None = None,
+    ) -> None:
+        """
+        Verify the feasibility and correctness of the expedition's schedule.
+
+        `ship_speed` (also in knots) overrides the configured speed, for checking a prospective speed that has not been saved yet (e.g. in `plan` app).
+        """
+        print("\nVerifying expedition... ")
+
+        if ship_speed is None:
+            ship_speed = self.ship_config.ship_speed_knots
+
+        # waypoints excluding any inactive placeholder departure/arrival ports
+        wps_in_use = self.schedule._get_wps_in_use()
+
+        self.schedule._check_structure(wps_in_use)
+
+        if not ignore_land_test:
+            self.schedule._check_in_water(from_data)
+
+        # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
+        overrun = self._first_overrun(wps_in_use, ship_speed)
+
+        if overrun is not None:
+            wp_i, wp_next, arrival_time = overrun
+
+            # TODO: add messaging of stationkeeping time to the error message, e.g. how much each instrument is taking...
+            raise ScheduleError(
+                f"Waypoint planning is not valid: would arrive too late at {self._describe_waypoint(wp_i, wp_next)}. "
+                f"Location: {wp_next.location} Time: {wp_next.time}. "
+                f"Currently projected to arrive at: {arrival_time}."
+                "\n\nHint: adding instruments may increase the amount of time spent stationary at a waypoints. "
+                "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
+            )
+
+        # finally, mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
+        self.schedule._verified = True
+
+        print("... All good to go!")
+
+    def _first_overrun(
+        self,
+        wps_in_use: list[Port | Waypoint],
+        ship_speed: float,
+    ) -> tuple[int, Port | Waypoint, datetime] | None:
+        """Project the ship along the schedule and return the first waypoint it reaches late."""
+        time = wps_in_use[0].time
+
+        # offset from wps_in_use indices to self.schedule.waypoints indices (a placeholder departure port is excluded from wps_in_use)
+        wps_in_use_offset = 0 if self.schedule.departure_port.is_in_use else 1
+
+        for wp_i, (wp, wp_next) in enumerate(
+            itertools.pairwise(wps_in_use), start=wps_in_use_offset
+        ):
+            stationkeeping_time = self.stationkeeping_time(wp)
+
+            time_to_reach = _calc_sail_time(
+                wp.location,
+                wp_next.location,
+                ship_speed,
+                projection,
+            )[0]
+
+            arrival_time = time + time_to_reach + stationkeeping_time
+
+            if wp_next.time is None:
+                time = arrival_time
+            elif arrival_time > wp_next.time:
+                return wp_i, wp_next, arrival_time
+            else:
+                time = wp_next.time
+
+        return None
+
+    def _describe_waypoint(self, wp_i: int, wp_next: Port | Waypoint) -> str:
+        """Name the waypoint reached after index `wp_i`, for use in user-facing messages."""
+        if isinstance(wp_next, Port):
+            return "the final port of arrival"
+        # +1 to get next
+        return f"waypoint {_get_public_wp(wp_i + 1, self.schedule.waypoints)}"
+
+    def stationkeeping_time(self, waypoint: Port | Waypoint) -> timedelta:
+        """
+        Calculate how long the ship is stationary at waypoint.
+
+        Stationkeeping time = slow-down time + deployment time + speed-up time.
+        Assumes insturments are deployed concurrently, so the longest deployment time is used.
+        The ship only slows down once, and only if at least one instrument needs it to stop.
+        Waypoints with no instruments, or only instruments which can be deployed without slowing (e.g. XBT), add no time at all.
+        """
+        instruments = self._wp_instruments(waypoint)
+        if not any(
+            get_instrument_class(instrument).requires_ship_to_stop
+            for instrument in instruments
+        ):
+            return timedelta()
+
+        deployment_time = max(
+            self._deployment_time(instrument, waypoint) for instrument in instruments
+        )
+
+        return (
+            self.ship_config.waypoint_slowdown_time
+            + deployment_time
+            + self.ship_config.waypoint_speedup_time
+        )
+
+    def _deployment_time(
+        self,
+        instrument: InstrumentType,
+        waypoint: Waypoint,
+    ) -> timedelta:
+        """Time an instrument holds the ship on station."""
+        config = self.instruments_config.config_for(instrument)
+        if config is None:
+            return timedelta()
+
+        return get_instrument_class(instrument).deployment_time(
+            config, waypoint.sea_depth_meter
+        )
+
+    @staticmethod
+    def _wp_instruments(waypoint: Port | Waypoint) -> list[InstrumentType]:
+        """Instruments deployed at a waypoint."""
+        if isinstance(waypoint, Port) or not waypoint.instrument:
+            return []
+        return (
+            waypoint.instrument
+            if isinstance(waypoint.instrument, list)
+            else [waypoint.instrument]
+        )
 
     def _annotate(self):
         """
@@ -111,6 +251,10 @@ class Expedition(pydantic.BaseModel):
                     waypoint_number += 1
                     annotated.append(f"{indent}# Waypoint {waypoint_number}\n")
 
+                    # only written when known (e.g. from an MFP export); omitted means unknown
+                    if wp_data["sea_depth_meter"] is None:
+                        wp_data.pop("sea_depth_meter")
+
                 # dump the waypoint on its own so its block can be indented and inserted independently of the others
                 wp_lines = yaml.dump([wp_data], default_flow_style=False).splitlines(
                     keepends=True
@@ -125,9 +269,31 @@ class ShipConfig(pydantic.BaseModel):
 
     ship_speed_knots: float = pydantic.Field(gt=0.0)
 
+    waypoint_slowdown_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_slowdown_time_minutes",
+        validation_alias="waypoint_slowdown_time_minutes",
+        ge=timedelta(),
+    )
+    waypoint_speedup_time: timedelta = pydantic.Field(
+        serialization_alias="waypoint_speedup_time_minutes",
+        validation_alias="waypoint_speedup_time_minutes",
+        ge=timedelta(),
+    )
+
     # TODO: room here for adding more ship config options in future PRs (e.g. max_days_at_sea)...
 
-    model_config = pydantic.ConfigDict(extra="forbid")
+    model_config = pydantic.ConfigDict(extra="forbid", populate_by_name=True)
+
+    @pydantic.field_serializer("waypoint_slowdown_time", "waypoint_speedup_time")
+    def _serialize_minutes(self, value: timedelta, _info) -> float:
+        return value.total_seconds() / 60.0
+
+    @pydantic.field_validator(
+        "waypoint_slowdown_time", "waypoint_speedup_time", mode="before"
+    )
+    @classmethod
+    def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
+        return _validate_numeric_to_timedelta(value, "minutes")
 
 
 class Schedule(pydantic.BaseModel):
@@ -159,20 +325,9 @@ class Schedule(pydantic.BaseModel):
         """Arrival port (always the last waypoint)."""
         return cast(Port, self.waypoints[-1])
 
-    def verify(
-        self,
-        ship_speed: float,
-        instruments_config: InstrumentsConfig,
-        ignore_land_test: bool = False,
-        *,
-        from_data: Path | None = None,
-    ) -> None:
-        """Verify the feasibility and correctness of the schedule's waypoints."""
-        print("\nVerifying route... ")
-
-        # waypoints excluding any inactive placeholder departure/arrival ports
-        wps_in_use = self._get_wps_in_use()
-
+    def _check_structure(self, wps_in_use: list[Port | Waypoint]) -> None:
+        """Check the schedule is structured properly: has waypoint(s) and times in order."""
+        # has wps in use
         if not wps_in_use:
             raise ScheduleError(
                 "Schedule has no active waypoints: at least one waypoint, or an "
@@ -180,7 +335,6 @@ class Schedule(pydantic.BaseModel):
                 "must be provided."
             )
 
-        # is the departure port in use or a placeholder (i.e. all None)?
         wp_str = "Departure port" if self.departure_port.is_in_use else "Waypoint 1"
 
         if wps_in_use[0].time is None:
@@ -207,87 +361,39 @@ class Schedule(pydantic.BaseModel):
                 f"Waypoint(s) {', '.join(invalid_labels)}: each waypoint should be timed after all previous waypoints",
             )
 
-        # check if all non-port waypoints are in water using bathymetry data
+    def _check_in_water(self, from_data: Path | None = None) -> None:
+        """Check non-port waypoints sit in water rather than on land."""
+        try:
+            bathymetry_field = _get_bathy_data(from_data=from_data).bathymetry
+        except Exception as e:
+            raise ScheduleError(
+                f"Problem loading bathymetry data (used to verify waypoints are in water) directly via copernicusmarine. \n\n original message: {e}"
+            ) from e
+
         land_waypoints = []
-        if not ignore_land_test:
+
+        for wp_i, wp in enumerate(self.waypoints):
+            if isinstance(wp, Port):
+                continue  # ports are in harbour; skip bathymetry land check
+            public_wp = _get_public_wp(wp_i, self.waypoints)
             try:
-                bathymetry_field = _get_bathy_data(from_data=from_data).bathymetry
+                value = bathymetry_field.eval(
+                    0,  # time
+                    0,  # depth (surface)
+                    wp.location.lat,
+                    wp.location.lon,
+                )
+                if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
+                    land_waypoints.append((public_wp, wp))
             except Exception as e:
                 raise ScheduleError(
-                    f"Problem loading bathymetry data (used to verify waypoints are in water) directly via copernicusmarine. \n\n original message: {e}"
+                    f"Waypoint #{public_wp} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
                 ) from e
 
-            for wp_i, wp in enumerate(self.waypoints):
-                if isinstance(wp, Port):
-                    continue  # ports are in harbour; skip bathymetry land check
-                public_wp = _get_public_wp(wp_i, self.waypoints)
-                try:
-                    value = bathymetry_field.eval(
-                        0,  # time
-                        0,  # depth (surface)
-                        wp.location.lat,
-                        wp.location.lon,
-                    )
-                    if value == 0.0 or (isinstance(value, float) and np.isnan(value)):
-                        land_waypoints.append((public_wp, wp))
-                except Exception as e:
-                    raise ScheduleError(
-                        f"Waypoint #{public_wp} at location {wp.location} could not be evaluated against bathymetry data. \n\n Original error: {e}"
-                    ) from e
-
-            if len(land_waypoints) > 0:
-                raise ScheduleError(
-                    f"The following waypoint(s) throw(s) error(s): {['#' + str(public_wp) + ' ' + str(wp) for (public_wp, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
-                )
-
-        # check that ship will arrive on time at each waypoint (in case no unexpected event happen)
-        time = wps_in_use[0].time
-
-        # offset from wps_in_use indices to self.waypoints indices (a placeholder departure port is excluded from wps_in_use)
-        wps_in_use_offset = 0 if self.departure_port.is_in_use else 1
-
-        for wp_i, (wp, wp_next) in enumerate(
-            itertools.pairwise(wps_in_use), start=wps_in_use_offset
-        ):
-            stationkeeping_time = (
-                wp.stationkeeping_time(instruments_config)
-                if isinstance(wp, Waypoint)
-                else timedelta()
+        if len(land_waypoints) > 0:
+            raise ScheduleError(
+                f"The following waypoint(s) throw(s) error(s): {['#' + str(public_wp) + ' ' + str(wp) for (public_wp, wp) in land_waypoints]}\n\nINFO: They are likely on land (bathymetry data cannot be interpolated to their location(s)).\n"
             )
-
-            time_to_reach = _calc_sail_time(
-                wp.location,
-                wp_next.location,
-                ship_speed,
-                projection,
-            )[0]
-
-            arrival_time = time + time_to_reach + stationkeeping_time
-
-            if wp_next.time is None:
-                time = arrival_time
-            elif arrival_time > wp_next.time:
-                affected = (
-                    f"waypoint {_get_public_wp(wp_i + 1, self.waypoints)}"  # +1 to get next
-                    if not isinstance(wp_next, Port)
-                    else "the final port of arrival"
-                )
-
-                # TODO: add messaging of stationkeeping time to the error message, e.g. how much each instrument is taking...
-                raise ScheduleError(
-                    f"Waypoint planning is not valid: would arrive too late at {affected}. "
-                    f"Location: {wp_next.location} Time: {wp_next.time}. "
-                    f"Currently projected to arrive at: {arrival_time}."
-                    "\n\nHint: adding instruments may increase the amount of time spent stationary at a waypoints. "
-                    "Have you ensured that your schedule includes sufficient time for taking measurements, e.g. CTD casts (in addition to the time it takes to sail between waypoints)?\n"
-                )
-            else:
-                time = wp_next.time
-
-        # finally, mark this schedule as verified (so that subsequent stages of the workflow can proceed without re-verifying)
-        self._verified = True
-
-        print("... All good to go!")
 
     def _get_wps_in_use(self) -> list[Port | Waypoint]:
         """Return waypoints that are in use (i.e., have a specified time and location), i.e. excluding placeholder departure/arrival ports."""
@@ -325,6 +431,9 @@ class Waypoint(pydantic.BaseModel):
     location: Location
     time: datetime | None = None
     instrument: InstrumentType | list[InstrumentType] | None = None
+    sea_depth_meter: float | None = pydantic.Field(
+        default=None, le=0.0
+    )  # estimated depth from MFP, if available. If None, instrument deployment times costed against configured max depth, thus over-estimateing rather than under-estimating than under-estimating.
 
     @pydantic.field_serializer("instrument")
     def serialize_instrument(self, instrument):
@@ -332,39 +441,6 @@ class Waypoint(pydantic.BaseModel):
         if isinstance(instrument, list):
             return [inst.value for inst in instrument]
         return instrument.value if instrument else None
-
-    def stationkeeping_time(
-        self,
-        instruments_config: InstrumentsConfig,
-        instrument_config_map: dict = INSTRUMENT_CONFIG_MAP,
-    ) -> timedelta:
-        """Calculate how much time is required to carry out all instrument deployments at this waypoint."""
-        wp_instruments = (
-            self.instrument
-            if isinstance(self.instrument, list)
-            else ([self.instrument] if self.instrument else [])  # safe handling of None
-        )
-
-        valid_instrument_configs = [
-            iconfig for _, iconfig in instruments_config.__dict__.items() if iconfig
-        ]
-
-        wp_instrument_configs = []
-        for iconfig in valid_instrument_configs:
-            for instr in wp_instruments:
-                if (
-                    instrument_config_map.get(instr) == iconfig.__class__.__name__
-                    and iconfig
-                    not in wp_instrument_configs  # avoid duplicates (would happen when multiple drifter deployments at same wp)
-                ):
-                    wp_instrument_configs.append(iconfig)
-
-        cumulative_stationkeeping_time = timedelta()
-        for iconfig in wp_instrument_configs:
-            if hasattr(iconfig, "stationkeeping_time"):
-                cumulative_stationkeeping_time += iconfig.stationkeeping_time
-
-        return cumulative_stationkeeping_time
 
 
 ##
@@ -391,13 +467,11 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         """FieldSet-key → Copernicus-variable mapping for enabled sensors."""
         return SensorConfig.build_variables(self.sensors)
 
-    @pydantic.field_serializer("stationkeeping_time", "period", check_fields=False)
+    @pydantic.field_serializer("period", check_fields=False)
     def _serialize_minutes(self, value: timedelta, _info) -> float:
         return value.total_seconds() / 60.0
 
-    @pydantic.field_validator(
-        "stationkeeping_time", "period", mode="before", check_fields=False
-    )
+    @pydantic.field_validator("period", mode="before", check_fields=False)
     @classmethod
     def _validate_minutes(cls, value: int | float | timedelta) -> timedelta:
         return _validate_numeric_to_timedelta(value, "minutes")
@@ -412,7 +486,6 @@ class _InstrumentConfigMixin(pydantic.BaseModel):
         return _validate_numeric_to_timedelta(value, "days")
 
 
-@register_instrument_config(InstrumentType.ARGO_FLOAT)
 class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for argos floats."""
 
@@ -431,12 +504,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         gt=timedelta(),
     )
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
@@ -447,7 +514,7 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     @pydantic.model_validator(mode="after")
     def _drift_days_less_than_cycle_days(self) -> ArgoFloatConfig:
@@ -459,7 +526,6 @@ class ArgoFloatConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return self
 
 
-@register_instrument_config(InstrumentType.ADCP)
 class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for ADCP instrument."""
 
@@ -482,7 +548,7 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
     def active_variables(self) -> dict[str, str]:
         """
@@ -498,20 +564,15 @@ class ADCPConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         return variables
 
 
-@register_instrument_config(InstrumentType.CTD)
 class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for CTD instrument."""
 
     _instrument_type: ClassVar[InstrumentType] = InstrumentType.CTD
     _instrument_name: ClassVar[str] = "CTD"
 
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
     min_depth_meter: float = pydantic.Field(le=0.0)
     max_depth_meter: float = pydantic.Field(le=0.0)
+    winch_speed_meter_per_second: float = pydantic.Field(gt=0.0)
 
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
@@ -530,10 +591,9 @@ class CTDConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.UNDERWATER_ST)
 class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for underwater ST."""
 
@@ -556,10 +616,9 @@ class ShipUnderwaterSTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.DRIFTER)
 class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for drifters."""
 
@@ -572,12 +631,6 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         validation_alias="lifetime_days",
         gt=timedelta(),
     )
-    stationkeeping_time: timedelta = pydantic.Field(
-        serialization_alias="stationkeeping_time_minutes",
-        validation_alias="stationkeeping_time_minutes",
-        gt=timedelta(),
-    )
-
     sensors: list[SensorConfig] = pydantic.Field(
         default_factory=lambda: [
             SensorConfig(sensor_type=SensorType.TEMPERATURE),
@@ -588,10 +641,9 @@ class DrifterConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         ),
     )
 
-    model_config = pydantic.ConfigDict(populate_by_name=True)
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
-@register_instrument_config(InstrumentType.XBT)
 class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
     """Configuration for xbt instrument."""
 
@@ -607,6 +659,8 @@ class XBTConfig(_InstrumentConfigMixin, pydantic.BaseModel):
         default_factory=lambda: [SensorConfig(sensor_type=SensorType.TEMPERATURE)],
         description=("Sensors fitted to the XBT. Supported: TEMPERATURE. "),
     )
+
+    model_config = pydantic.ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class InstrumentsConfig(pydantic.BaseModel):
@@ -656,22 +710,29 @@ class InstrumentsConfig(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(extra="forbid")
 
-    def verify(self, expedition: Expedition) -> None:
+    _CONFIG_FIELDS: ClassVar[dict[InstrumentType, str]] = {
+        InstrumentType.ARGO_FLOAT: "argo_float_config",
+        InstrumentType.DRIFTER: "drifter_config",
+        InstrumentType.XBT: "xbt_config",
+        InstrumentType.CTD: "ctd_config",
+        InstrumentType.ADCP: "adcp_config",
+        InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
+    }
+
+    def config_for(
+        self, instrument_type: InstrumentType
+    ) -> _InstrumentConfigMixin | None:
+        """The configuration for an instrument type, or None if it is not configured."""
+        return getattr(self, self._CONFIG_FIELDS[instrument_type])
+
+    def verify(self, instruments_in_expedition: Collection[InstrumentType]) -> None:
         """
-        Verify instrument configurations against the schedule.
+        Verify instrument configurations against the instruments actually being deployed.
 
         Removes instrument configs not present in the schedule and checks that all scheduled instruments are configured.
         Raises ConfigError if any scheduled instrument is missing a config.
         """
-        instruments_in_expedition = expedition.get_instruments()
-        instrument_config_map = {
-            InstrumentType.ARGO_FLOAT: "argo_float_config",
-            InstrumentType.DRIFTER: "drifter_config",
-            InstrumentType.XBT: "xbt_config",
-            InstrumentType.CTD: "ctd_config",
-            InstrumentType.ADCP: "adcp_config",
-            InstrumentType.UNDERWATER_ST: "ship_underwater_st_config",
-        }
+        instrument_config_map = self._CONFIG_FIELDS
         # Remove configs for unused instruments
         for inst_type, config_attr in instrument_config_map.items():
             if (

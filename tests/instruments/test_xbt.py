@@ -329,3 +329,10 @@ def test_xbt_instrument_type(xbt_expedition):
     xbt_instrument = XBTInstrument(xbt_expedition, from_data=None)
     assert xbt_instrument.instrument_type == InstrumentType.XBT
     assert not xbt_instrument.instrument_type.is_underway
+
+
+def test_xbt_fetch_spec_depths_from_config(xbt_expedition):
+    """XBTInstrument restricts data fetching to the configured depth range."""
+    xbt_instrument = XBTInstrument(xbt_expedition, from_data=None)
+    assert xbt_instrument.fetch_spec.depth_min == MIN_DEPTH
+    assert xbt_instrument.fetch_spec.depth_max == MAX_DEPTH

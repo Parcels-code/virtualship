@@ -54,7 +54,6 @@ def create_dummy_expedition(
             drifter_config=DrifterConfig(
                 lifetime=lifetime,
                 depth_meter=depth,
-                stationkeeping_time_minutes=10,
                 sensors=sensors,
             )
         )
@@ -417,7 +416,6 @@ def test_drifter_config_no_enabled_sensors_rejected() -> None:
         DrifterConfig(
             lifetime=LIFETIME,
             depth_meter=DEPLOY_DEPTH,
-            stationkeeping_time_minutes=10,
             sensors=[],
         )
 
@@ -427,7 +425,6 @@ def test_drifter_config_default_sensors():
     config = DrifterConfig(
         lifetime=LIFETIME,
         depth_meter=DEPLOY_DEPTH,
-        stationkeeping_time_minutes=10,
     )
     types = {sc.sensor_type for sc in config.sensors}
     assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
@@ -439,7 +436,6 @@ def test_drifter_config_unsupported_sensor_rejected():
         DrifterConfig(
             lifetime=LIFETIME,
             depth_meter=DEPLOY_DEPTH,
-            stationkeeping_time_minutes=10,
             sensors=[SensorConfig(sensor_type=SensorType.VELOCITY)],
         )
 

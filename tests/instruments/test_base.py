@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import ClassVar
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import parcels
@@ -19,7 +19,11 @@ from virtualship.instruments.base import (
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import SensorConfig
-from virtualship.utils import get_instrument_class
+from virtualship.utils import (
+    MAX_CACHE_BYTES,
+    get_instrument_class,
+    register_instrument,
+)
 
 # =============================================================================
 # Fixtures
@@ -149,6 +153,13 @@ class DummyInstrument(Instrument):
 
     sensor_kernels = {}  # noqa
 
+    requires_ship_to_stop = False
+
+    @classmethod
+    def deployment_time(cls, config, seabed_depth):
+        """Dummy deployment time for test."""
+        return timedelta()
+
     def simulate(self, measurements, out_path):
         """Dummy simulate implementation for test."""
         self.simulate_called = True
@@ -167,8 +178,8 @@ class _FakeFieldSet:
             setattr(self, name, value)
         self.fields = {}
 
-    def to_windowed_arrays(self):
-        """Mimic FieldSet.to_windowed_arrays."""
+    def to_chunk_cached_arrays(self, **kwargs):
+        """Mimic FieldSet.to_chunk_cached_arrays."""
         return self
 
 
@@ -195,7 +206,6 @@ def test_load_input_data(mock_expedition):
             return_value="dummy_product_id",
         ),
         patch("copernicusmarine.open_dataset"),
-        patch.object(dummy, "_via_tmp_ds", side_effect=lambda ds: ds),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch(
             "parcels.FieldSet.from_sgrid_conventions", return_value=fake_fieldset
@@ -269,50 +279,6 @@ def test_fetch_spec_applied_to_instrument(mock_expedition):
     assert dummy.fetch_spec.depth_max is None
 
 
-def test_via_tmp_ds_roundtrip(mock_expedition):
-    """_via_tmp_ds writes to a tmp file and re-opens it."""
-    with DummyInstrument(
-        expedition=mock_expedition,
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-
-        assert isinstance(result, xr.Dataset)
-        assert "temperature" in result
-        assert result is not ds
-
-        result.close()
-        ds.close()
-
-
-def test_instrument_context_manager(mock_expedition):
-    """Test context manager cleanup of temporary directories."""
-    with DummyInstrument(
-        expedition=mock_expedition,
-        variables={"A": "a"},
-        add_bathymetry=False,
-        verbose_progress=False,
-        from_data=None,
-    ) as dummy:
-        ds = xr.Dataset(
-            {"temperature": (["x", "y"], [[1.0, 2.0], [3.0, 4.0]])},
-            coords={"x": [0, 1], "y": [10, 20]},
-        )
-        result = dummy._via_tmp_ds(ds)
-        assert len(dummy._tmp_dirs) == 1
-        result.close()
-        ds.close()
-
-    assert len(dummy._tmp_dirs) == 0
-
-
 def test_generate_fieldset_combines_fields(mock_expedition):
     dummy = DummyInstrument(
         expedition=mock_expedition,
@@ -325,18 +291,57 @@ def test_generate_fieldset_combines_fields(mock_expedition):
     fs_A = MagicMock()
     fs_B = MagicMock()
 
-    fs_A.to_windowed_arrays.return_value = fs_A
-    fs_B.to_windowed_arrays.return_value = fs_B
+    fs_A.to_chunk_cached_arrays.return_value = fs_A
+    fs_B.to_chunk_cached_arrays.return_value = fs_B
 
     with (
         patch.object(dummy, "_get_copernicus_ds"),
-        patch.object(dummy, "_via_tmp_ds"),
         patch("parcels.convert.copernicusmarine_to_sgrid"),
         patch("parcels.FieldSet.from_sgrid_conventions", side_effect=[fs_A, fs_B]),
     ):
         dummy._generate_fieldset()
 
     fs_A.__add__.assert_called_once_with(fs_B)
+
+
+@pytest.mark.parametrize(
+    "instrument_type", [InstrumentType.CTD, InstrumentType.ADCP], ids=lambda t: t.name
+)
+def test_generate_fieldset_chunk_caching_only_for_non_underway(
+    mock_expedition, instrument_type
+):
+    """Non-underway instruments convert to ChunkCachedArrays (with the memory cap), underway instruments do not."""
+    dummy = DummyInstrument(
+        expedition=mock_expedition,
+        variables={"A": "a"},
+        add_bathymetry=False,
+        verbose_progress=False,
+        from_data=None,
+    )
+
+    fs = MagicMock()
+    fs.to_chunk_cached_arrays.return_value = fs
+
+    with (
+        patch.object(
+            DummyInstrument,
+            "instrument_type",
+            new_callable=PropertyMock,
+            return_value=instrument_type,
+        ),
+        patch.object(dummy, "_get_copernicus_ds"),
+        patch("parcels.convert.copernicusmarine_to_sgrid"),
+        patch("parcels.FieldSet.from_sgrid_conventions", return_value=fs),
+    ):
+        result = dummy._generate_fieldset()
+
+    assert result is fs
+    if instrument_type.is_underway:
+        fs.to_chunk_cached_arrays.assert_not_called()
+    else:
+        fs.to_chunk_cached_arrays.assert_called_once_with(
+            max_cache_bytes=MAX_CACHE_BYTES
+        )
 
 
 @pytest.mark.parametrize(
@@ -404,12 +409,54 @@ def test_load_input_data_error(mock_expedition, monkeypatch):
         dummy.load_input_data()
 
 
-def test_instrument_subclass_without_sensor_kernels_error():
-    """Defining a concrete Instrument subclass without sensor_kernels raises TypeError."""
+@pytest.fixture
+def isolated_registry(monkeypatch):
+    """Keep test registrations out of the real instrument registry."""
+    monkeypatch.setattr("virtualship.utils.INSTRUMENT_CLASS_MAP", {})
+    monkeypatch.setattr("virtualship.utils.SUPPORTED_SENSORS_MAP", {})
+
+
+def test_register_instrument_without_sensor_kernels_error(isolated_registry):
+    """Registering an instrument without sensor_kernels raises TypeError."""
     with pytest.raises(TypeError, match="sensor_kernels"):
 
+        @register_instrument(InstrumentType.CTD)
         class ErrorInstrument(Instrument):
-            def simulate(self, data_dir, measurements, out_path):
+            requires_ship_to_stop = False
+
+            @classmethod
+            def deployment_time(cls, config, seabed_depth):
+                return timedelta()
+
+            def simulate(self, measurements, out_path):
+                pass
+
+
+def test_register_instrument_without_deployment_time_error(isolated_registry):
+    """Registering an instrument that leaves deployment_time unimplemented raises TypeError."""
+    with pytest.raises(TypeError, match="deployment_time"):
+
+        @register_instrument(InstrumentType.CTD)
+        class ErrorInstrument(Instrument):
+            sensor_kernels = {}  # noqa
+
+            def simulate(self, measurements, out_path):
+                pass
+
+
+def test_register_instrument_without_requires_ship_to_stop_error(isolated_registry):
+    """Registering an instrument that leaves requires_ship_to_stop unimplemented raises TypeError."""
+    with pytest.raises(TypeError, match="requires_ship_to_stop"):
+
+        @register_instrument(InstrumentType.CTD)
+        class ErrorInstrument(Instrument):
+            sensor_kernels = {}  # noqa
+
+            @classmethod
+            def deployment_time(cls, config, seabed_depth):
+                return timedelta()
+
+            def simulate(self, measurements, out_path):
                 pass
 
 

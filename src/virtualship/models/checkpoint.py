@@ -10,7 +10,7 @@ import yaml
 
 from virtualship.errors import CheckpointError
 from virtualship.instruments.types import InstrumentType
-from virtualship.models.expedition import Expedition, Port, Schedule
+from virtualship.models.expedition import Expedition, Schedule
 from virtualship.utils import (
     EXPEDITION,
     PROJECTION,
@@ -100,11 +100,7 @@ class Checkpoint(pydantic.BaseModel):
         if has_problem_location:
             problem_waypoint = new_schedule.waypoints[problem_wp_i]
 
-            stationkeeping_time = (
-                problem_waypoint.stationkeeping_time(expedition.instruments_config)
-                if not isinstance(problem_waypoint, Port)
-                else timedelta(0)
-            )
+            stationkeeping_time = expedition.stationkeeping_time(problem_waypoint)
 
             sail_time = _calc_sail_time(
                 problem_waypoint.location,

@@ -40,6 +40,7 @@ schedule: # <-- 1. expedition schedule section
       location:
         latitude: 45.604174
         longitude: -43.886739
+      sea_depth_meter: -4400.0
       time: 1998-03-08 03:37:00
     # Waypoint 2
     - instrument:
@@ -49,6 +50,7 @@ schedule: # <-- 1. expedition schedule section
       location:
         latitude: 48.185988
         longitude: -32.988302
+      sea_depth_meter: -3200.0
       time: 1998-03-10 03:05:00
     # Port of Arrival
     - location:
@@ -75,6 +77,8 @@ instruments_config: # <-- 2. instrument configuration section
 #
 ship_config: # <-- 3. ship configuration section
   ship_speed_knots: 10.0
+  waypoint_slowdown_time_minutes: 15.0
+  waypoint_speedup_time_minutes: 15.0
 ```
 
 ```{note}
@@ -113,9 +117,15 @@ You can do multiple `DRIFTER` deployments at the same waypoint by adding multipl
 
 - **Time (`time`)**: The scheduled time for reaching the waypoint, specifically in YYYY-MM-DD HH:MM:SS format.
 
+- **Sea depth (`sea_depth_meter`, optional)**: The estimated water depth at the waypoint, as a negative number of metres (e.g. `-1500.0`). It is filled in automatically by `virtualship init --from-mfp`, and can otherwise be added by hand. It is only used to estimate how long depth-dependent deployments (e.g. CTD casts) hold the ship at the waypoint. If it is left empty, these are assumed to reach the instrument's configured maximum depth, so time taken at shallow-water waypoints could be overestimated if the configured max depth exceeds the actual depth. The simulated measurements are unaffected either way because the instruments will find and use the actual depth at simulation time.
+
+```{warning}
+Setting `sea_depth_meter` to a positive number will be rejected. Depths throughout `expedition.yaml` are written as negative numbers, measured downwards from the sea surface. This is the opposite sign convention to the MFP export, which reports sea depth as a positive number.
+```
+
 ##### Comments
 
-You may notice comments such as `# Port of Departure`, `# Waypoint 1`, `# Waypoint 2`, etc. next to each entry in the `waypoints` list, as in the example above. These are added automatically whenever `virtualship init` or `virtualship plan` writes the file, purely to aid readability. They are not required when editing the file by hand and won't be automatically added/renumbered by doing so.
+You may notice comments such as `# Port of Departure`, `# Waypoint 1`, `# Waypoint 2`, etc. next to each entry in the `waypoints` list, as in the example above. These are added automatically whenever `virtualship init` or `virtualship plan` writes the file, purely to improve readability. They are not required when editing the file by hand and won't be automatically added/renumbered when doing so.
 
 #### 2. `instruments_config`
 
@@ -129,7 +139,7 @@ For most users, the most important instrument configuration setting to consider 
 ctd_config:
   max_depth_meter: -2000.0
   min_depth_meter: -11.0
-  stationkeeping_time_minutes: 50.0
+  winch_speed_meter_per_second: 1.0
   sensors:
     - TEMPERATURE
     - SALINITY
@@ -158,4 +168,4 @@ This section contains setting related to the ship itself, specifically:
 
 - **Ship speed (`ship_speed_knots`)**: The speed of the ship in knots (nautical miles per hour; where 1 knot = 1.852 km/h). Note in most cases this should be left as the default value unless there is a specific reason to change it.
 
-<!-- TODO: more details on ship configuration if added in the future -->
+- **Waypoint slow-down and speed-up times (`waypoint_slowdown_time_minutes`, `waypoint_speedup_time_minutes`)**: How long the ship takes to slow to a stop before deployments begin at a waypoint, and to get back up to cruising speed afterwards, respectively. These are added once at every waypoint where you deploy instruments which require the ship to slow down.

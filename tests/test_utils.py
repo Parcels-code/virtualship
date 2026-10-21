@@ -9,6 +9,7 @@ import xarray as xr
 from parcels import FieldSet, ParticleClass, Variable
 
 import virtualship.utils
+from virtualship.instruments.base import Instrument
 from virtualship.instruments.sensors import SensorType
 from virtualship.instruments.types import InstrumentType
 from virtualship.models.expedition import Expedition, Port, SensorConfig, Waypoint
@@ -35,10 +36,19 @@ def expedition(tmp_file):
 
 @pytest.fixture
 def dummy_instrument():
-    class DummyInstrument:
-        pass
+    class DummyInstrument(Instrument):
+        sensor_kernels = {}  # noqa
 
-    return DummyInstrument()
+        requires_ship_to_stop = False
+
+        @classmethod
+        def deployment_time(cls, config, seabed_depth):
+            return datetime.timedelta()
+
+        def simulate(self, measurements, out_path):
+            pass
+
+    return DummyInstrument
 
 
 @pytest.fixture
@@ -69,9 +79,11 @@ def copernicus_no_download(monkeypatch):
     yield
 
 
-def test_instrument_registry_updates(dummy_instrument):
+def test_instrument_registry_updates(dummy_instrument, monkeypatch):
     from virtualship import utils
 
+    monkeypatch.setattr(utils, "INSTRUMENT_CLASS_MAP", {})
+    monkeypatch.setattr(utils, "SUPPORTED_SENSORS_MAP", {})
     utils.register_instrument("DUMMY_TYPE")(dummy_instrument)
 
     assert utils.INSTRUMENT_CLASS_MAP["DUMMY_TYPE"] is dummy_instrument

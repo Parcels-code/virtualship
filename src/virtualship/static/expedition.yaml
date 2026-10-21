@@ -14,7 +14,6 @@ instruments_config:
     max_depth_meter: -2000.0
     min_depth_meter: 0.0
     vertical_speed_meter_per_second: -0.1
-    stationkeeping_time_minutes: 20.0
     lifetime_days: 63.0
     sensors:
       - TEMPERATURE
@@ -22,7 +21,7 @@ instruments_config:
   ctd_config:
     max_depth_meter: -2000.0
     min_depth_meter: -11.0
-    stationkeeping_time_minutes: 50.0
+    winch_speed_meter_per_second: 1.0
     sensors:
       - TEMPERATURE
       - SALINITY
@@ -36,7 +35,6 @@ instruments_config:
   drifter_config:
     depth_meter: -1.0
     lifetime_days: 42.0
-    stationkeeping_time_minutes: 20.0
     sensors:
       - TEMPERATURE
       - SALINITY
@@ -65,6 +63,7 @@ schedule:
       location:
         latitude: 0.01
         longitude: 0.01
+      sea_depth_meter: null
       time: 1998-01-02 00:00:00
     # Waypoint 2
     - instrument:
@@ -73,6 +72,7 @@ schedule:
       location:
         latitude: 0.02
         longitude: 0.02
+      sea_depth_meter: null
       time: 1998-01-03 01:00:00
     # Waypoint 3
     - instrument:
@@ -80,6 +80,7 @@ schedule:
       location:
         latitude: 0.03
         longitude: 0.03
+      sea_depth_meter: null
       time: 1998-01-04 02:00:00
     # Waypoint 4
     - instrument:
@@ -87,12 +88,14 @@ schedule:
       location:
         latitude: 0.04
         longitude: 0.04
+      sea_depth_meter: null
       time: 1998-01-05 03:00:00
     # Waypoint 5
     - instrument: []
       location:
         latitude: 0.05
         longitude: 0.05
+      sea_depth_meter: null
       time: 1998-01-06 04:00:00
     # Port of Arrival
     - location:
@@ -101,3 +104,5 @@ schedule:
       time: 1998-01-07 05:00:00
 ship_config:
   ship_speed_knots: 10.0
+  waypoint_slowdown_time_minutes: 15.0
+  waypoint_speedup_time_minutes: 15.0

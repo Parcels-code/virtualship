@@ -117,6 +117,9 @@ ignore = [
     "D100", "D103"
 ]
 
+[tool.ruff.lint.flake8-import-conventions.aliases]
+datetime = "datetime"
+
 [tool.mypy]
 files = ['src']
 disable_error_code = "import-untyped"

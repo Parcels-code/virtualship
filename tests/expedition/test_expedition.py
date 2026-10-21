@@ -29,6 +29,15 @@ projection = pyproj.Geod(ellps="WGS84")
 expedition_dir = Path("expedition_dir")
 
 
+def _with_schedule(base_expedition, schedule) -> Expedition:
+    """An expedition using the given schedule, with the shared ship and instrument configs."""
+    return Expedition(
+        schedule=schedule,
+        instruments_config=base_expedition.instruments_config,
+        ship_config=base_expedition.ship_config,
+    )
+
+
 @pytest.fixture
 def base_expedition():
     """Shared expedition instance loaded directly from expedition_dir."""
@@ -51,11 +60,7 @@ def test_import_export_expedition(tmpdir, base_expedition) -> None:
 
 def test_verify_schedule(base_expedition) -> None:
     schedule = base_expedition.schedule
-    schedule.verify(
-        base_expedition.ship_config.ship_speed_knots,
-        base_expedition.instruments_config,
-        ignore_land_test=True,
-    )
+    base_expedition.verify_schedule(ignore_land_test=True)
 
     assert schedule._verified, (
         "Schedule should be marked as verified after successful verification."
@@ -77,51 +82,95 @@ def test_get_instruments(base_expedition) -> None:
     }
 
 
-def test_waypoint_stationkeeping_time(expedition) -> None:
-    """Waypoint.stationkeeping_time sums the stationkeeping time of each unique instrument config present and not duplicating repeated instruments (e.g. multiple drifters)."""
-    instruments_config = expedition.instruments_config
+def test_stationkeeping_time_uses_slowest_deployment(expedition) -> None:
+    """Deployments run concurrently while the ship is stopped, so the slowest one governs."""
+    ship_config = expedition.ship_config
+    ctd_config = expedition.instruments_config.ctd_config
 
     waypoint = Waypoint(
         location=Location(0, 0),
+        sea_depth_meter=-500.0,
         instrument=[
             InstrumentType.CTD,
             InstrumentType.ARGO_FLOAT,
-            InstrumentType.XBT,  # has no stationkeeping time, should be ignored
+            InstrumentType.XBT,
             InstrumentType.DRIFTER,
             InstrumentType.DRIFTER,  # two drifter deployments
         ],
     )
 
+    # only the CTD holds the ship; it is winched to the seabed at 500 m and hauled back
+    cast = timedelta(
+        seconds=2
+        * abs(-500.0 - ctd_config.min_depth_meter)
+        / ctd_config.winch_speed_meter_per_second
+    )
     expected = (
-        instruments_config.ctd_config.stationkeeping_time
-        + instruments_config.argo_float_config.stationkeeping_time
-        + instruments_config.drifter_config.stationkeeping_time
-    )
-    assert waypoint.stationkeeping_time(instruments_config) == expected
-
-
-def test_waypoint_stationkeeping_time_single_instrument(expedition) -> None:
-    """A bare (non-list) InstrumentType value on a waypoint is handled the same as a single element list."""
-    instruments_config = expedition.instruments_config
-
-    waypoint = Waypoint(location=Location(0, 0), instrument=InstrumentType.CTD)
-
-    assert (
-        waypoint.stationkeeping_time(instruments_config)
-        == instruments_config.ctd_config.stationkeeping_time
+        ship_config.waypoint_slowdown_time + cast + ship_config.waypoint_speedup_time
     )
 
+    assert expedition.stationkeeping_time(waypoint) == expected
 
-def test_waypoint_stationkeeping_time_no_instruments(expedition) -> None:
-    """Waypoints with no instruments (None or empty list) have zero stationkeeping time."""
-    instruments_config = expedition.instruments_config
 
-    assert Waypoint(location=Location(0, 0), instrument=None).stationkeeping_time(
-        instruments_config
+def test_stationkeeping_time_capped_by_sea_depth(expedition) -> None:
+    """A CTD cannot be winched below the seabed, so a shallow waypoint is quicker."""
+    deep = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-3000.0
+    )
+    shallow = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-100.0
+    )
+
+    # deep waypoint is limited by the CTD's own configured maximum, not the seabed
+    unbounded = Waypoint(location=Location(0, 0), instrument=InstrumentType.CTD)
+
+    assert expedition.stationkeeping_time(shallow) < expedition.stationkeeping_time(
+        deep
+    )
+    assert expedition.stationkeeping_time(deep) == expedition.stationkeeping_time(
+        unbounded
+    )
+
+
+def test_stationkeeping_time_single_instrument(expedition) -> None:
+    """A bare (non-list) InstrumentType value is handled the same as a single element list."""
+    bare = Waypoint(
+        location=Location(0, 0), instrument=InstrumentType.CTD, sea_depth_meter=-500.0
+    )
+    listed = Waypoint(
+        location=Location(0, 0), instrument=[InstrumentType.CTD], sea_depth_meter=-500.0
+    )
+
+    assert expedition.stationkeeping_time(bare) == expedition.stationkeeping_time(
+        listed
+    )
+
+
+def test_stationkeeping_time_xbt_does_not_stop_ship(expedition) -> None:
+    """An XBT is launched from a moving ship, so alone it costs no stationkeeping time."""
+    ship_config = expedition.ship_config
+    xbt_only = Waypoint(location=Location(0, 0), instrument=InstrumentType.XBT)
+    xbt_and_drifter = Waypoint(
+        location=Location(0, 0),
+        instrument=[InstrumentType.XBT, InstrumentType.DRIFTER],
+    )
+
+    assert expedition.stationkeeping_time(xbt_only) == timedelta(0)
+    # another instrument at the same waypoint still makes the ship stop, and the XBT adds nothing on top
+    assert expedition.stationkeeping_time(xbt_and_drifter) == (
+        ship_config.waypoint_slowdown_time + ship_config.waypoint_speedup_time
+    )
+
+
+def test_stationkeeping_time_no_instruments(expedition) -> None:
+    """The ship doesn't slows down where nothing is deployed, therefore ports and bare waypoints cost nothing."""
+    assert expedition.stationkeeping_time(
+        Waypoint(location=Location(0, 0), instrument=None)
     ) == timedelta(0)
-    assert Waypoint(location=Location(0, 0), instrument=[]).stationkeeping_time(
-        instruments_config
+    assert expedition.stationkeeping_time(
+        Waypoint(location=Location(0, 0), instrument=[])
     ) == timedelta(0)
+    assert expedition.stationkeeping_time(Port(location=Location(0, 0))) == timedelta(0)
 
 
 def test_verify_on_land(base_expedition):
@@ -167,11 +216,8 @@ def test_verify_on_land(base_expedition):
             ScheduleError,
             match=r"The following waypoint\(s\) throw\(s\) error\(s\):",
         ):
-            schedule.verify(
-                base_expedition.ship_config.ship_speed_knots,
-                base_expedition.instruments_config,
-                ignore_land_test=False,
-                from_data=None,
+            _with_schedule(base_expedition, schedule).verify_schedule(
+                ignore_land_test=False, from_data=None
             )
 
 
@@ -269,11 +315,7 @@ def test_verify_on_land(base_expedition):
 def test_verify_schedule_errors(base_expedition, waypoints: list, error, match) -> None:
     with pytest.raises(error, match=match):
         schedule = Schedule(waypoints=waypoints)
-        schedule.verify(
-            base_expedition.ship_config.ship_speed_knots,
-            base_expedition.instruments_config,
-            ignore_land_test=True,
-        )
+        _with_schedule(base_expedition, schedule).verify_schedule(ignore_land_test=True)
 
 
 def test_verify_schedule_ports_only(base_expedition) -> None:
@@ -284,11 +326,7 @@ def test_verify_schedule_ports_only(base_expedition) -> None:
             Port(location=Location(1, 0), time=datetime(2022, 1, 2, 0, 0, 0)),
         ]
     )
-    schedule.verify(
-        base_expedition.ship_config.ship_speed_knots,
-        base_expedition.instruments_config,
-        ignore_land_test=True,
-    )
+    _with_schedule(base_expedition, schedule).verify_schedule(ignore_land_test=True)
 
     assert schedule._verified, "Schedule with only active ports should be accepted."
 
@@ -344,11 +382,11 @@ def missing_instrument_config(request, expedition):
 
 
 def test_verify_instruments_config(expedition) -> None:
-    expedition.instruments_config.verify(expedition)
+    expedition.verify_instruments_config()
 
 
 def test_verify_instruments_config_no_instrument(expedition, expedition_no_xbt) -> None:
-    expedition.instruments_config.verify(expedition_no_xbt)
+    expedition.instruments_config.verify(expedition_no_xbt.get_instruments())
 
 
 def test_verify_instruments_config_errors(
@@ -356,7 +394,7 @@ def test_verify_instruments_config_errors(
 ) -> None:
     instruments_config, match = missing_instrument_config
     with pytest.raises(InstrumentsConfigError, match=match):
-        instruments_config.verify(expedition)
+        instruments_config.verify(expedition.get_instruments())
 
 
 def test_all_instrument_configs_use_mixin(expedition):
@@ -431,6 +469,47 @@ def test_annotate_no_duplicate_comments(base_expedition, waypoints) -> None:
     comments = [line.strip() for line in annotated if line.strip().startswith("#")]
 
     assert len(set(comments)) == len(comments)
+
+
+def test_sea_depth_only_written_when_known(tmp_path, base_expedition) -> None:
+    """An unknown sea depth is left out of expedition.yaml entirely (rather than written as null), and a known one is kept."""
+    known = Waypoint(
+        location=Location(0, 0),
+        time=datetime(2022, 1, 1),
+        instrument=[InstrumentType.CTD],
+        sea_depth_meter=-1500.0,
+    )
+    unknown = Waypoint(
+        location=Location(0, 0.01),
+        time=datetime(2022, 1, 2),
+        instrument=[InstrumentType.CTD],
+    )
+    expedition = _with_schedule(
+        base_expedition,
+        Schedule(
+            waypoints=[
+                Port(location=None, time=None),
+                known,
+                unknown,
+                Port(location=None, time=None),
+            ]
+        ),
+    )
+
+    out_path = tmp_path / EXPEDITION
+    expedition.to_yaml(out_path)
+    text = out_path.read_text()
+
+    assert text.count("sea_depth_meter") == 1
+    assert "sea_depth_meter: -1500.0" in text
+    # ports' null location/time are still written, so placeholders remain visible
+    assert "location: null" in text
+
+    reloaded = Expedition.from_yaml(out_path)
+    assert [wp.sea_depth_meter for wp in reloaded.schedule.waypoints[1:3]] == [
+        -1500.0,
+        None,
+    ]
 
 
 def test_wps_in_use(base_expedition):

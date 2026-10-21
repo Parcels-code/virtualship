@@ -52,10 +52,11 @@ def test_run(tmp_path, monkeypatch):
     monkeypatch.setattr("virtualship.cli._run.simulate_schedule", _simulate_schedule)
 
     monkeypatch.setattr(
-        "virtualship.models.InstrumentsConfig.verify", lambda self, expedition: None
+        "virtualship.models.InstrumentsConfig.verify", lambda self, instruments: None
     )
     monkeypatch.setattr(
-        "virtualship.models.Schedule.verify", lambda self, *args, **kwargs: None
+        "virtualship.models.Expedition.verify_schedule",
+        lambda self, *args, **kwargs: None,
     )
 
     monkeypatch.setattr(

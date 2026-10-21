@@ -128,7 +128,7 @@ def _argo_float_vertical_movement(particles, fieldset):
 def _keep_at_surface(particles, fieldset):
     through_surface = particles.state == StatusCode.ErrorThroughSurface
     particles.z[through_surface] = particles.min_depth[through_surface]
-    particles.state[through_surface] = StatusCode.Evaluate
+    particles.state[through_surface] = StatusCode.Success
 
 
 def _check_error(particles, fieldset):
@@ -231,6 +231,9 @@ def _format_log_metadata(ptcls_subset, mask, fieldset):
 class ArgoFloatInstrument(Instrument):
     """ArgoFloat instrument class."""
 
+    # the ship has to stop for this instrument
+    requires_ship_to_stop: ClassVar[bool] = True
+
     sensor_kernels: ClassVar[dict[SensorType, Callable]] = {
         SensorType.TEMPERATURE: _argo_sample_temperature,
         SensorType.SALINITY: _argo_sample_salinity,
@@ -250,6 +253,8 @@ class ArgoFloatInstrument(Instrument):
             latlon_buffer=9.0,  # [degrees]
             time_buffer=expedition.instruments_config.argo_float_config.lifetime.total_seconds()
             / (24 * 3600),  # [days]
+            depth_min=expedition.instruments_config.argo_float_config.min_depth_meter,
+            depth_max=expedition.instruments_config.argo_float_config.max_depth_meter,
         )
 
         super().__init__(
@@ -260,6 +265,11 @@ class ArgoFloatInstrument(Instrument):
             fetch_spec=fetch_spec,
             from_data=from_data,
         )
+
+    @classmethod
+    def deployment_time(cls, config, seabed_depth: float | None) -> timedelta:
+        """Released and left behind, so no additional stationkeeping time."""
+        return timedelta()
 
     def simulate(self, measurements, out_path) -> None:
         """Simulate Argo float measurements."""

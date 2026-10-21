@@ -11,13 +11,15 @@ from virtualship.expedition.simulate_schedule import (
 from virtualship.models import Expedition, Location, Schedule, Waypoint
 from virtualship.models.expedition import Port
 
+TEST_EXPEDITION_YAML = "expedition_dir/expedition.yaml"
+
 
 def test_simulate_schedule_feasible() -> None:
     """Test schedule with two waypoints that can be reached within time is OK."""
     base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
 
     projection = pyproj.Geod(ellps="WGS84")
-    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition = Expedition.from_yaml(TEST_EXPEDITION_YAML)
     expedition.ship_config.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
@@ -37,18 +39,13 @@ def test_simulate_schedule_feasible() -> None:
 
 def test_time_in_minutes_in_ship_schedule() -> None:
     """Test whether the pydantic serializer picks up the time *in minutes* in the ship schedule."""
-    instruments_config = Expedition.from_yaml(
-        "expedition_dir/expedition.yaml"
-    ).instruments_config
+    instruments_config = Expedition.from_yaml(TEST_EXPEDITION_YAML).instruments_config
     assert instruments_config.adcp_config.period == timedelta(minutes=5)
-    assert instruments_config.ctd_config.stationkeeping_time == timedelta(minutes=50)
-    assert instruments_config.argo_float_config.stationkeeping_time == timedelta(
-        minutes=20
-    )
-    assert instruments_config.drifter_config.stationkeeping_time == timedelta(
-        minutes=20
-    )
     assert instruments_config.ship_underwater_st_config.period == timedelta(minutes=5)
+
+    ship_config = Expedition.from_yaml(TEST_EXPEDITION_YAML).ship_config
+    assert ship_config.waypoint_slowdown_time == timedelta(minutes=15)
+    assert ship_config.waypoint_speedup_time == timedelta(minutes=15)
 
 
 def test_ship_path_inside_domain() -> None:
@@ -56,7 +53,7 @@ def test_ship_path_inside_domain() -> None:
     base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
 
     projection = pyproj.Geod(ellps="WGS84")
-    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition = Expedition.from_yaml(TEST_EXPEDITION_YAML)
     expedition.ship_config.ship_speed_knots = 10.0
 
     wp1 = Location(-63.0, -57.7)  # most southern
@@ -123,7 +120,7 @@ def test_does_not_simulate_unverified():
     base_time = datetime.strptime("2022-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
 
     projection = pyproj.Geod(ellps="WGS84")
-    expedition = Expedition.from_yaml("expedition_dir/expedition.yaml")
+    expedition = Expedition.from_yaml(TEST_EXPEDITION_YAML)
     expedition.ship_config.ship_speed_knots = 10.0
     expedition.schedule = Schedule(
         waypoints=[
