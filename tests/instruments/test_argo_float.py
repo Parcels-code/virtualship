@@ -27,6 +27,7 @@ from virtualship.models.expedition import (
     SensorConfig,
     Waypoint,
 )
+from virtualship.utils import get_supported_sensors
 
 # Constants
 BASE_TIME = datetime.strptime("1950-01-01", "%Y-%m-%d")
@@ -36,6 +37,14 @@ MAX_DEPTH = -2000
 VERTICAL_SPEED = -0.10
 CYCLE_DAYS = 10
 DRIFT_DAYS = 9
+
+ARGO_BGC_SENSORS = [
+    SensorType.OXYGEN,
+    SensorType.CHLOROPHYLL,
+    SensorType.NITRATE,
+    SensorType.PH,
+]
+ARGO_BGC_FS_KEYS = ["o2", "chl", "no3", "ph"]
 
 
 @pytest.fixture
@@ -55,10 +64,11 @@ def create_fieldset(
     lon_range=(0.0, 10.0),
     lat_range=(0.0, 10.0),
     include_salinity=True,
+    include_bgc=False,
     lifetime_days=0.1,
     depths=None,
 ):
-    """Create a test fieldset with optional salinity and optional depth levels."""
+    """Create a test fieldset with optional salinity, optional BGC variables and optional depth levels."""
     dims = ("time", "lat", "lon") if depths is None else ("time", "depth", "lat", "lon")
     shape = (2, 2, 2) if depths is None else (2, len(depths), 2, 2)
     bathy = np.full((2, 2), -5000.0)
@@ -71,6 +81,10 @@ def create_fieldset(
 
     if include_salinity:
         data_vars["S"] = (dims, np.full(shape, 1.0))
+
+    if include_bgc:
+        for var in ARGO_BGC_FS_KEYS:
+            data_vars[var] = (dims, np.full(shape, 1.0))
 
     depth_coord = (
         {}
@@ -255,19 +269,31 @@ def test_argo_float_disabled_sensor(tmpdir) -> None:
 
 
 def test_argo_config_default_sensors(argo_config_kwargs):
-    """ArgoFloatConfig defaults to TEMPERATURE + SALINITY."""
+    """ArgoFloatConfig defaults to TEMPERATURE + SALINITY, i.e. the BGC sensors are off by default."""
     config = ArgoFloatConfig(**argo_config_kwargs, lifetime=timedelta(days=30))
     types = {sc.sensor_type for sc in config.sensors}
     assert types == {SensorType.TEMPERATURE, SensorType.SALINITY}
+    assert set(ARGO_BGC_SENSORS) <= get_supported_sensors(InstrumentType.ARGO_FLOAT)
+
+    # BGC fields are not loaded by default
+    assert config.active_variables() == {"T": "thetao", "S": "so"}
 
 
-def test_argo_config_unsupported_sensor_rejected(argo_config_kwargs):
+@pytest.mark.parametrize(
+    "sensor_type",
+    [
+        SensorType.PHOSPHATE,
+        SensorType.PHYTOPLANKTON,
+        SensorType.PRIMARY_PRODUCTION,
+    ],
+)
+def test_argo_config_unsupported_sensor_rejected(argo_config_kwargs, sensor_type):
     """Unsupported sensor on ArgoFloat is rejected."""
     with pytest.raises(pydantic.ValidationError, match="does not support"):
         ArgoFloatConfig(
             **argo_config_kwargs,
             lifetime=timedelta(days=30),
-            sensors=[SensorConfig(sensor_type=SensorType.OXYGEN)],
+            sensors=[SensorConfig(sensor_type=sensor_type)],
         )
 
 
@@ -348,10 +374,12 @@ def test_argo_fieldoutofbounds_error(tmpdir) -> None:
     )
 
 
-def _simulate_cycling_float(tmpdir, sensor_types, lifetime_days):
+def _simulate_cycling_float(tmpdir, sensor_types, lifetime_days, include_bgc=False):
     """Simulate a float with a one day cycle  (and no drift phase), which is enough time for one descent to max depth + ascent, with fieldset with depth levels."""
     fieldset = create_fieldset(
-        lifetime_days=lifetime_days, depths=[-2225.1, -1941.9, -1000.0, -0.5]
+        include_bgc=include_bgc,
+        lifetime_days=lifetime_days,
+        depths=[-2225.1, -1941.9, -1000.0, -0.5],
     )
     sensors = [SensorConfig(sensor_type=s) for s in sensor_types]
     expedition = create_dummy_expedition(
@@ -395,18 +423,21 @@ def test_argo_float_reaches_max_depth_and_ascends(tmpdir) -> None:
     assert np.isfinite(results["temperature"].to_numpy()[phase == 3]).any()
 
 
-def test_argo_no_sampling_outside_ascent(tmpdir) -> None:
-    """Temperature and salinity are only recorded during the ascent (phase 3), not carried over into other phases."""
+def test_argo_sampling_only_on_ascent(tmpdir) -> None:
+    """All enabled sensor variables (T, S and BGC) are only recorded during the ascent (phase 3), not carried over into other phases."""
     # two day lifetime so that the float completes a cycle and starts the next one
     results = _simulate_cycling_float(
-        tmpdir, [SensorType.TEMPERATURE, SensorType.SALINITY], lifetime_days=2.0
+        tmpdir,
+        [SensorType.TEMPERATURE, SensorType.SALINITY, *ARGO_BGC_SENSORS],
+        lifetime_days=2.0,
+        include_bgc=True,
     )
     phase = results["cycle_phase"].to_numpy()
 
     # the float should have gone through every phase and back into a second cycle
     assert set(np.unique(phase)) == {0, 1, 2, 3, 4}
 
-    for var in ["temperature", "salinity"]:
+    for var in ["temperature", "salinity", *ARGO_BGC_FS_KEYS]:
         values = results[var].to_numpy()
         assert np.isfinite(values[phase == 3]).any(), (
             f"{var} should be sampled on ascent"
@@ -414,6 +445,31 @@ def test_argo_no_sampling_outside_ascent(tmpdir) -> None:
         assert np.isnan(values[phase != 3]).all(), (
             f"{var} should be NaN outside the ascent"
         )
+
+
+def test_argo_bgc_disabled_sensors_absent(tmpdir) -> None:
+    """Disabled BGC sensors (as in the default config) need no BGC fields and produce no output variables."""
+    fieldset = create_fieldset(include_bgc=False)
+
+    sensors = [
+        SensorConfig(sensor_type=SensorType.TEMPERATURE),
+        SensorConfig(sensor_type=SensorType.SALINITY),
+        *[SensorConfig(sensor_type=s, enabled=False) for s in ARGO_BGC_SENSORS],
+    ]
+    expedition = create_dummy_expedition(sensors)
+
+    argo_instrument = ArgoFloatInstrument(expedition, None)
+    assert set(argo_instrument.variables) == {"U", "V", "T", "S"}
+
+    argo_floats = [create_argo_float(wp) for wp in expedition.schedule.waypoints]
+    out_path = tmpdir.join("out_bgc_disabled.parquet")
+    argo_instrument.load_input_data = lambda: fieldset
+    argo_instrument.simulate(argo_floats, out_path)
+
+    results = parcels.read_particlefile(out_path)
+    assert "temperature" in results and "salinity" in results
+    for var in ARGO_BGC_FS_KEYS:
+        assert var not in results, f"Disabled sensor variable {var} must be absent"
 
 
 def test_argo_salinity_only_sensor(tmpdir) -> None:
