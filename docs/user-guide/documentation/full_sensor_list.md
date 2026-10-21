@@ -34,7 +34,7 @@ Trying to add a sensor to an instrument that does not support it will result in 
 | **XBT**                                | TEMPERATURE        | Sea Water Potential Temperature                                                           | °C                                   | Physical       |
 
 ```{note}
-The `ARGO_FLOAT` BGC sensors (oxygen, chlorophyll, nitrate, ph) are off by default. Each extra sensor adds another variable for the simulation to load and sample, which can make the already-computationally intensive Argo float simulations even more intensive. When needed though, they can be turned on in the `virtualship plan` tool or by adding them to the `sensors` list of `argo_float_config` in `expedition.yaml`.
+The `ARGO_FLOAT` BGC sensors (oxygen, chlorophyll, nitrate, pH) are off by default. Each extra sensor adds another variable for the simulation to load and sample, which can make the already-computationally intensive Argo float simulations even more intensive. When needed though, they can be turned on in the `virtualship plan` tool or by adding them to the `sensors` list of `argo_float_config` in `expedition.yaml`.
 
 Only BGC variables that real-life [BGC-Argo](https://biogeochemical-argo.org/) floats measure are available for the Argo floats in VirtualShip.
 ```
