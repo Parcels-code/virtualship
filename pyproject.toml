@@ -27,6 +27,8 @@ dependencies = [
     "sortedcontainers==2.4.0",
     "opensimplex==0.4.5",
     "numpy>=2.1.0",
+    "pandas",
+    "openpyxl",
     "pydantic>=2,<3",
     "pyyaml",
     "copernicusmarine>=2.2.2",
