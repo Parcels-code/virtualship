@@ -2,6 +2,8 @@
 .pixi/*
 !.pixi/config.toml
 pixi.lock
+ci/upstream/.pixi/
+output-upstream-dev-log.jsonl
 
 
 # Byte-compiled / optimized / DLL files
