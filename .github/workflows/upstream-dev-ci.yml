@@ -1,6 +1,6 @@
 # Test VirtualShip against the unreleased `main` branch of Parcels, to catch breaking changes.
 # Environment is defined in `ci/upstream/pixi.toml`. On scheduled runs, failures open (or update) a GitHub issue.
-name: CI Upstream
+name: CI (for upstream Parcels main)
 
 on:
   schedule:
@@ -108,3 +108,4 @@ jobs:
           log-path: output-upstream-dev-log.jsonl
           issue-title: "⚠️ CI against Parcels main failed ⚠️"
           issue-label: automated
+          assignees: erikvansebille
