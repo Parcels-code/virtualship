@@ -121,6 +121,7 @@ def create_fieldset(
 def test_simulate_ctds(tmpdir) -> None:
     """Test that CTDInstrument simulates measurements correctly, incuding sampling physical and bgc variables."""
     # where to cast CTDs
+    assert 1 == 0
     ctds = [
         CTD(
             spacetime=Spacetime(
