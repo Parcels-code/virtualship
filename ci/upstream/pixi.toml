@@ -1,0 +1,64 @@
+# Environment for testing VirtualShip against the unreleased `main` branch of Parcels (weekly)
+
+[workspace]
+name = "VirtualShip upstream"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+exclude-newer = "5d" # security pre-caution against compromised packages (does not apply to the git override)
+requires-pixi = ">=0.82.1"
+
+[dependencies]
+python = "3.14.*"
+# VirtualShip run dependencies, pre-installed as conda packages (keep in sync with `pyproject.toml`)
+click = "*"
+pyproj = ">=3,<4"
+sortedcontainers = "==2.4.0"
+opensimplex = "==0.4.5"
+numpy = ">=2.1.0"
+pydantic = ">=2,<3"
+pyyaml = "*"
+copernicusmarine = ">=2.2.2"
+yaspin = "*"
+textual = "*"
+# Parcels run dependencies, pre-installed as conda packages to avoid PyPI source builds
+# If Parcels `main` adds a dependency that isn't listed here, it is installed from PyPI
+cf_xarray = "*"
+cftime = "*"
+dask = "*"
+netcdf4 = "*"
+pandas = "*"
+polars = "*"
+pooch = "*"
+pyarrow = "*"
+tabulate = "*"
+tqdm = "*"
+uxarray = "*"
+xarray = "*"
+zarr = ">=3.0.0"
+# downstream uxarray deps (see root `pixi.toml`)
+numba = ">=0.59.0"
+healpix = "*"
+cartopy = "*"
+shapely = "*"
+geopandas = "*"
+scipy = "*"
+
+[pypi-dependencies]
+virtualship = { path = "../..", editable = true }
+
+[pypi-options.dependency-overrides]
+parcels = { git = "https://github.com/Parcels-code/Parcels", branch = "main" }
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+pytest-reportlog = "*" # required: issue-from-pytest-log-action consumes the pytest report log
+pytest-timeout = "*"
+seabird = "*"
+openpyxl = "*"
+
+[feature.test.tasks]
+tests-upstream = { cmd = "pytest -m 'not network'", cwd = "../..", description = "Run the test suite (excluding tests that call external services) against Parcels main" }
+
+[environments]
+default = { features = ["test"] }
