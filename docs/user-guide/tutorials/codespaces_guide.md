@@ -51,7 +51,7 @@ Where `A` is the file explorer, `B` is the main editor window and `C` is the Ter
 
 Otherwise, you may find the editor window (`B`) helpful for example to [edit the VirtualShip configuration files](../user-guide/user-profiles/tutorials/working-with-expedition-yaml.md) when you reach this stage of the course.
 
-The file explorer (`A`) will allow you to navigate the file structure of your Codespace, and you can also use it to upload/download files to/from your Codespace by right-clicking on a file or folder and selecting the appropriate option.
+The file explorer (`A`) will allow you to navigate the file structure of your Codespace, and you can also use it to upload/download files to/from your Codespace by right-clicking on a file or folder and selecting the appropriate option. When downloading files from your Codespace you may encounter a `github.dev cannot open this because it contains system files` error, particularly when downloading entire results folders. To avoid this, create a new folder on your local PC where you want to store your files and download the files directly there.
 
 ### Persistent storage
 
