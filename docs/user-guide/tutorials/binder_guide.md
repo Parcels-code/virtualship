@@ -47,7 +47,7 @@ When running any blocks of code the `python 3 (ipykernel)` in the bottom left of
 
 ## Non-persistent storage
 
-The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage and limited computing resourses. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results. 
+The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage and limited computing resourses. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results.
 
 If you want to do more extensive analysis or for larger expeditions with several instrument choices, we recommend that you download your data and results to your own computer, and run the analysis there. You will also need to install the required dependencies to your own computer.
 
@@ -57,6 +57,6 @@ A full list of dependencies is provided in the [environment.yml](https://github.
 
 **How to setup the post-processing environment on your own computer**
 
-Install [`conda`](https://anaconda.org/channels/anaconda/packages/conda/overview) if you don't have it already and download the [environment.yml](https://github.com/Parcels-code/virtualship-workspace/blob/main/.binder/environment.yml) file to a new folder on your computer. 
+Install [`conda`](https://anaconda.org/channels/anaconda/packages/conda/overview) if you don't have it already and download the [environment.yml](https://github.com/Parcels-code/virtualship-workspace/blob/main/.binder/environment.yml) file to a new folder on your computer.
 
-Open a terminal and navigate to that folder using `cd <folderpath>` and create the environment using `conda env create -f environment.yml`. You can activate the environment using `conda activate virtualship-postprocessing`. This installs all the required dependencies for running the [VirtualShip tutorials](../tutorials/index.md). Select `virtualship-postprocessing` as the kernel when running code from your notebook. 
+Open a terminal and navigate to that folder using `cd <folderpath>` and create the environment using `conda env create -f environment.yml`. You can activate the environment using `conda activate virtualship-postprocessing`. This installs all the required dependencies for running the [VirtualShip tutorials](../tutorials/index.md). Select `virtualship-postprocessing` as the kernel when running code from your notebook.
