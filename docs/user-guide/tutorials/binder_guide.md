@@ -4,7 +4,7 @@ This guide is supposed to be used once you have run VirtualShip simulations, whi
 
 The instructions below will guide you through the steps to access the VirtualShip post-processing workspace, upload your VirtualShip simulation output files, and run the example tutorials for analysis.
 
-Using this workspace saves you from having to install any dependencies on your own computer. Note, if you plan for extensive post-processing analysis, you may prefer to move onto your own machine and install the dependencies there, as the Binder workspace is not suitable for long-running analysis (see [below](#non-persistent-storage)).
+Using this workspace saves you from having to install any dependencies on your own computer. Note, if you plan for extensive post-processing analysis, you may prefer to move onto your own machine and install the dependencies there, as the Binder workspace is not suitable for long-running analysis or extensive expeditions with many instruments and sensors enabled (see [below](#non-persistent-storage)).
 
 ## Accessing the VirtualShip post-processing workspace
 
@@ -43,12 +43,20 @@ There is a pre-uploaded folder called `tutorials` in the workspace (see in the f
 
 You can open these in JupyterLab and run them as you would any other Jupyter Notebook. Simply click on them in the file explorer to open them and run through the cells. You can also edit the code in the notebooks to suit your own analysis needs.
 
+When running any blocks of code the `python 3 (ipykernel)` in the bottom left of the interface will change from `Idle` to `Busy`. To use the computing power more efficiently, only run the cells when the kernel returns to `Idle`. Loading the data may take some time especially for larger expeditions, and for Argo floats and CTD files. Wait for the command to execute and for the kernel to return to `Idle` before executing any further commands. For a CTD data file with several biogeochemical instruments, the server may run out of computing power and disconnect when loading the data. Try running the expedition with fewer waypoints and/or single instrument (sensor) selections to continue analysing the data on Binder or (see [below.](#non-persistent-storage))
+
 ## Non-persistent storage
 
-The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results.
+The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage and limited computing resourses. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results. 
 
-If you want to do more extensive analysis, we recommend that you download your data and results to your own computer, and run the analysis there. You will also need to install the required dependencies to your own computer.
+If you want to do more extensive analysis or for larger expeditions with several instrument choices, we recommend that you download your data and results to your own computer, and run the analysis there. You will also need to install the required dependencies to your own computer.
 
 ```{tip}
 A full list of dependencies is provided in the [environment.yml](https://github.com/Parcels-code/virtualship-workspace/blob/main/.binder/environment.yml) file in the VirtualShip Workspace repository. You can use this file to install the dependencies on your own computer (e.g. with the `conda` [package manager](https://anaconda.org/channels/anaconda/packages/conda/overview)).
 ```
+
+**How to setup the post-processing environment on your own computer**
+
+Install [`conda`](https://anaconda.org/channels/anaconda/packages/conda/overview) if you don't have it already and download the [environment.yml](https://github.com/Parcels-code/virtualship-workspace/blob/main/.binder/environment.yml) file to a new folder on your computer. 
+
+Open a terminal and navigate to that folder using `cd <folderpath>` and create the environment using `conda env create -f environment.yml`. You can activate the environment using `conda activate virtualship-postprocessing`. This installs all the required dependencies for running the [VirtualShip tutorials](../tutorials/index.md). Select `virtualship-postprocessing` as the kernel when running code from your notebook. 
