@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         pixi-environment: ["test-latest"]
-        runs-on: [ubuntu-latest, windows-latest, macos-14]
+        runs-on: [ubuntu-latest, windows-latest, macos-15]
         include:
           - pixi-environment: "test-py311"
             runs-on: ubuntu-latest
