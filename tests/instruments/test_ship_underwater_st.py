@@ -105,8 +105,8 @@ def test_simulate_ship_underwater_st(tmpdir, underwater_st_expedition) -> None:
         },
         coords={
             "time": ("time", times, {"axis": "T"}),
-            "lat": ("lat", lats, {"units": "degrees_north"}),
-            "lon": ("lon", lons, {"units": "degrees_east"}),
+            "lat": ("lat", lats, {"axis": "Y", "units": "degrees_north"}),
+            "lon": ("lon", lons, {"axis": "X", "units": "degrees_east"}),
         },
     )
 

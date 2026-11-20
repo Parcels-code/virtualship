@@ -188,8 +188,8 @@ def test_verify_on_land(base_expedition):
     ds_bathymetry = xr.Dataset(
         {"deptho": (("lat", "lon"), bathymetry)},
         coords={
-            "lon": (("lon"), lon, {"units": "degrees_east"}),
-            "lat": (("lat"), lat, {"units": "degrees_north"}),
+            "lon": (("lon"), lon, {"axis": "X", "units": "degrees_east"}),
+            "lat": (("lat"), lat, {"axis": "Y", "units": "degrees_north"}),
         },
     )
 

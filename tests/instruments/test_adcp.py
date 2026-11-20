@@ -111,8 +111,8 @@ def test_simulate_adcp(tmpdir, adcp_expedition) -> None:
         coords={
             "time": ("time", times, {"axis": "T"}),
             "depth": ("depth", [MAX_DEPTH, MIN_DEPTH], {"units": "m", "axis": "Z"}),
-            "lat": ("lat", lats, {"units": "degrees_north"}),
-            "lon": ("lon", lons, {"units": "degrees_east"}),
+            "lat": ("lat", lats, {"axis": "Y", "units": "degrees_north"}),
+            "lon": ("lon", lons, {"axis": "X", "units": "degrees_east"}),
         },
     )
 
