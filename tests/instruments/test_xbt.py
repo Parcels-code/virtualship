@@ -86,8 +86,16 @@ def create_fieldset(
     ds_fields = xr.Dataset(
         data_vars=data_vars,
         coords={
-            "lon": (("lon"), np.array(lon_range), {"axis": "X", "units": "degrees_east"}),
-            "lat": (("lat"), np.array(lat_range), {"axis": "Y", "units": "degrees_north"}),
+            "lon": (
+                ("lon"),
+                np.array(lon_range),
+                {"axis": "X", "units": "degrees_east"},
+            ),
+            "lat": (
+                ("lat"),
+                np.array(lat_range),
+                {"axis": "Y", "units": "degrees_north"},
+            ),
             "depth": (("depth"), np.array(depth_range)),
             "time": (
                 ("time"),
@@ -109,8 +117,16 @@ def create_fieldset(
             )
         },
         coords={
-            "lon": (("lon"), np.array(lon_range), {"axis": "X", "units": "degrees_east"}),
-            "lat": (("lat"), np.array(lat_range), {"axis": "Y", "units": "degrees_north"}),
+            "lon": (
+                ("lon"),
+                np.array(lon_range),
+                {"axis": "X", "units": "degrees_east"},
+            ),
+            "lat": (
+                ("lat"),
+                np.array(lat_range),
+                {"axis": "Y", "units": "degrees_north"},
+            ),
         },
     )
     ds_bathymetry_fset = parcels.convert.copernicusmarine_to_sgrid(
