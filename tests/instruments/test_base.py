@@ -67,8 +67,8 @@ def fieldset():
         data_vars={"temperature": (["time", "lat", "lon"], T, {"units": "degC"})},
         coords={
             "time": ("time", [t1, t2], {"axis": "T"}),
-            "lat": ("lat", [0.0], {"units": "degrees_north"}),
-            "lon": ("lon", [0.0], {"units": "degrees_east"}),
+            "lat": ("lat", [0.0], {"axis": "Y", "units": "degrees_north"}),
+            "lon": ("lon", [0.0], {"axis": "X", "units": "degrees_east"}),
         },
     )
 

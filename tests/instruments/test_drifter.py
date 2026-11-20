@@ -84,8 +84,8 @@ def create_fieldset(
             data_vars[key] = (("time", "lat", "lon"), val)
 
     coords = {
-        "lon": (("lon"), np.array(lon_range), {"units": "degrees_east"}),
-        "lat": (("lat"), np.array(lat_range), {"units": "degrees_north"}),
+        "lon": (("lon"), np.array(lon_range), {"axis": "X", "units": "degrees_east"}),
+        "lat": (("lat"), np.array(lat_range), {"axis": "Y", "units": "degrees_north"}),
         "time": (("time"), time_range, {"axis": "T"}),
     }
     if is_3d:

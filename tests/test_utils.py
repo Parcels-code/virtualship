@@ -128,8 +128,8 @@ def test_get_bathy_data_local(tmp_path):
             "deptho": (("lat", "lon"), data),
         },
         coords={
-            "lon": (("lon"), np.array([0, 1]), {"units": "degrees_east"}),
-            "lat": (("lat"), np.array([0, 1]), {"units": "degrees_north"}),
+            "lon": (("lon"), np.array([0, 1]), {"axis": "X", "units": "degrees_east"}),
+            "lat": (("lat"), np.array([0, 1]), {"axis": "Y", "units": "degrees_north"}),
         },
     )
 
