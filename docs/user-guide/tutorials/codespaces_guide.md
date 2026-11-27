@@ -53,6 +53,10 @@ Otherwise, you may find the editor window (`B`) helpful for example to [edit the
 
 The file explorer (`A`) will allow you to navigate the file structure of your Codespace, and you can also use it to upload/download files to/from your Codespace by right-clicking on a file or folder and selecting the appropriate option. When downloading files from your Codespace you may encounter a `github.dev cannot open this because it contains system files` error, particularly when downloading entire results folders. To avoid this, create a new folder on your local PC where you want to store your files and download the files directly there.
 
+```{tip}
+You can also **drag and drop** files from your computer straight into the file explorer (`A`) to upload them to your Codespace. Drop them onto a folder to put them there, or onto an empty area to put them in the main workspace folder. This works for individual files and entire folders and is a quick way to upload data 
+```
+
 ### Persistent storage
 
 Your instance of the VirtualShip simulation workspace is linked to your GitHub account. This means that any files which you create and/or modify (e.g. the output of your VirtualShip simulations) will be tied to your account and will persist between sessions. You can also download files to your own computer if you wish, or upload files from your computer to the workspace.
@@ -88,6 +92,24 @@ The process of stopping the workspace can take a few minutes, and you will see a
 It's good to know that by default the Codespace will automatically stop after 30 minutes of inactivity, these instructions are just for if you want to stop it manually before that time.
 
 ```
+
+## 4) Analysing your Virtualship Results
+
+You can also use the same Codespace environment to analyse results from your Virtualship simulation. In the File Explorer panel on the left, you will find a `tutorials` folder. This contains example analysis notebooks for each instrument offered by Virtualship. You can open a notebook by clicking on it. The first time you run a notebook, you need to select which Python environment to use:
+- Click `Select Kernel` in the top-right corner of the notebook.
+- Choose `Python Environments...` when prompted.
+- Select the environment called `venv` (`/opt/venv/bin/python`).
+
+After this, you can continue to run the notebook and begin analysing your results. Remember to set the working directory to the location where your VirtualShip results are stored when reading in your data in the notebook. 
+
+```{tip}
+
+Loading data from many instruments or sensors (for example CTD/Argo float data with several biogeochemical sensors) needs a lot of memory. On the standard Codespace (2 cores, 8 GB RAM), the notebook kernel may crash (resulting in "the kernel died"). If this happens, use a more powerful Codespace with 4 cores. Remember that this uses your free hours twice as fast.
+
+```
+
+If you run out of your monthly free GitHub Codespaces hours you can also analyse your results in the [Binder post-processing workspace](binder_guide.md) or [locally on your own laptop](binder_guide.md#non-persistent-storage). Analysis on the Binder workspace has no usage limits, but it has less memory and does not save your work.
+
 
 ### Collaboration within groups
 

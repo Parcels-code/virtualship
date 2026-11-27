@@ -96,7 +96,7 @@ There are broadly two ways to set up the `VirtualShip` software for teaching:
 Option 1) requires less preparation but can be more challenging for students to set up (especially if inexperienced) with frequent machine-dependent issues (and a lot of time spent on troubleshooting during lesson time!). Option 2) requires more preparation as the course convenor but is generally easier to support in-class, especially for larger groups. It also has the advantage that all students are working with the same resources, versions and infrastructure, which is beneficial for reproducibility and fairness.
 
 ```{important}
-At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for VirtualShip simualtions. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, up to 60 hours of usage* (per student/GitHub account).
+At present, for Option 2), we offer an _experimental_ pre-configured cloud-based environment solution via [GitHub Codespaces](https://github.com/features/codespaces) for both running VirtualShip simualtions and analysing the results. This is a central, free solution that we can support and maintain, but this approach also has some limitations. Namely, each student must sign up for a GitHub account and the monthly free tier is limited to, in effect, up to 60 hours of usage* (per student/GitHub account).
 
 This will be sufficient for _most_ courses, but could be insufficient if your planned teaching activities are longer or more intensive. We continually monitor the optimum solution for distributing the VirtualShip software to whole classrooms in the most accessible way possible, and we are open to [feedback/advice](#feedback-support) on this.
 
@@ -106,6 +106,8 @@ This will be sufficient for _most_ courses, but could be insufficient if your pl
 ```
 
 ```{note}
+Students can analyse their results in the same GitHub Codespaces workspace, which comes with the necessary dependencies and packages pre-installed to perform preliminary analysis of their results along with example tutorial notebooks.
+
 We also offer a [Binder workspace](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) for post-processing VirtualShip output files, which is a separate solution to the VirtualShip simulation workspace (GitHub Codespaces). See the [post-processing workspace section](#pre-configured-post-processing-workspace) later in this document for more information and why these are two separate solutions.
 ```
 
@@ -249,19 +251,21 @@ VirtualShip does not provide explicit tooling for analysis, as this will be depe
 
 ```
 
-#### Pre-configured post-processing workspace
+#### Pre-configured post-processing workspaces
 
-We also host a VirtualShip [post-processing environment](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) via [Binder](https://mybinder.org/), which is a cloud-based JupyterLab environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. All relevant dependencies are pre-installed in this environment, the example tutorials are directly available in the workspace, and the VirtualShip output files can be uploaded to the environment for analysis.
+Students have two pre-configured options for analysing their output. Both have all relevant dependencies pre-installed and the example [tutorials](../../../tutorials/index.md) directly available in the workspace. Using either is optional, but they are offered to make post-processing more accessible to students, with less time spent setting up their local environment.. However, students can also analyse their results locally if preferred.
 
-This is of course optional, but is offered as a means to make the post-processing analysis more accessible to students with less time spent setting up their local environment.
+- **GitHub Codespaces** (the same workspace used to run the simulations):  The workspace includes a `tutorials` folder with the example notebooks. Students need to select the `venv` kernel when they first run an example jupyter notebook, and edit the notebook file paths to point to their own results. This option has more memory than Binder and saves students' work between sessions. The advantage is that students can run and analyse their Virtualship simulations in the same environment. However, analysis time counts towards the limited monthly Codespaces allowance. Instructions can be found in the [Simulation Workspace Guide above](#option-2-pre-configured-environment-cloud-based).
+
+- **Binder**: We also host a separate VirtualShip [post-processing environment](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) via [Binder](https://mybinder.org/), which is a cloud-based JupyterLab environment. This can be used to run the example tutorials and any other analysis code that students may wish to write, without having to install anything on their own devices. It has no monthly usage limit and does not need creating an account, but it has limited RAM and non-persistent storage making it unsuitable for complex analyses or if students wish to save and return to their work.
 
 ```{note}
-This Binder workspace is a separate protocol to the GitHub Codespaces workspace used for running the VirtualShip simulations, and described [above](#option-2-pre-configured-environment-cloud-based). We made the decision to separate these two environments to minimise the amount of compute time on the Codespaces environment, which has a monthly limit per user.
+We made the decision to separate these two environments to minimise the amount of compute time on the Codespaces environment, which has a monthly limit per user.
 
 The Binder environment does not have monthly quotas, but is not suitable for running the VirtualShip simulations themselves (low, inconsistent RAM allocation and non-persistent storage). Hence the need (for now at least 🤞) to have these as two separate environments.
 ```
 
-See the "Post-processing Workspace" guide below for more information on how to use this environment. This can also be distributed to students as part of your course.
+See the "Post-processing Workspace" guide below for more information on how to use the Binder post-processing environment. This can also be distributed to students as part of your course.
 
 <!-- TODO: this documentation needs to be written! -->
 
