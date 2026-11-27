@@ -226,7 +226,7 @@ From here you can carry on your analysis. In general, we encourage you to use [P
 ```{tip}
 You can analyse your results in either of our pre-configured cloud-based workspaces, which have all the necessary post-processing tools pre-installed and example tutorials ready to use:
 
-- **GitHub Codespaces** (the workspace you may already be using for your Virtualship simulations) has a `tutorials` folder with example notebooks. Your results and analysis files are saved between sessions. However, it uses your monthly free Codespaces hours. See the Simulation Workspace Guide below for how for use it. 
+- **GitHub Codespaces** (the workspace you may already be using for your Virtualship simulations) has a `tutorials` folder with example notebooks. Your results and analysis files are saved between sessions. However, it uses your monthly free Codespaces hours. See the Simulation Workspace Guide below for how for use it.
 
 - **[Binder](https://mybinder.org/)** (a separate, browser-based JupyterLab environment). It has no usage limits and does not require creating an account, but it has less memory available and does not save your work. See the Binder Post-processing Workspace Guide below for how to use it.
 ```
