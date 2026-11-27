@@ -224,7 +224,19 @@ Upon successfully completing the simulation, results from the expedition will be
 From here you can carry on your analysis. In general, we encourage you to use [Parcels](https://Parcels-code.org/) (i.e. `parcels.read_particlefile()`) to read in VirtualShip output files, and tools such as [Polars](https://www.pola.rs/) and/or [Pandas](https://pandas.pydata.org/) for further data analysis. We also provide various further [VirtualShip tutorials](https://virtualship.readthedocs.io/en/latest/user-guide/tutorials/index.html) which provide examples of how to visualise data recorded by the VirtualShip instruments. Use these to help you get started!
 
 ```{tip}
-We also host a [Binder environment](https://mybinder.org/v2/gh/Parcels-code/virtualship-workspace/HEAD) (note this is separate to the GitHub Codespaces workspace you may be using) with all the necessary post-processing tools pre-installed and all the tutorials ready to use. This might be useful as a means to explore your data at first. See [here](../tutorials/binder_workspace.md) for more detail or await further instruction from your instructor.
+You can analyse your results in either of our pre-configured cloud-based workspaces, which have all the necessary post-processing tools pre-installed and example tutorials ready to use:
+
+- **GitHub Codespaces** (the workspace you may already be using for your Virtualship simulations) has a `tutorials` folder with example notebooks. Your results and analysis files are saved between sessions. However, it uses your monthly free Codespaces hours. See the Simulation Workspace Guide below for how for use it.
+
+- **[Binder](https://mybinder.org/)** (a separate, browser-based JupyterLab environment). It has no usage limits and does not require creating an account, but it has less memory available and does not save your work. See the Binder Post-processing Workspace Guide below for how to use it.
+```
+
+```{nbgallery}
+---
+maxdepth: 1
+---
+../tutorials/codespaces_guide.md
+../tutorials/binder_guide.md
 ```
 
 ## Reporting

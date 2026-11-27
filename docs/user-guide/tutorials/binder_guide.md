@@ -1,8 +1,10 @@
 # Post-processing Workspace Guide
 
-This guide is supposed to be used once you have run VirtualShip simulations, which you may have done either on your own computer or in the VirtualShip workspace [via GitHub Codespaces](../user-profiles/educators/train-the-teacher/codespaces_guide.md).
+This guide is supposed to be used once you have run VirtualShip simulations, which you may have done either on your own computer or in the VirtualShip workspace [via GitHub Codespaces](codespaces_guide.md).
 
-The instructions below will guide you through the steps to access the VirtualShip post-processing workspace, upload your VirtualShip simulation output files, and run the example tutorials for analysis.
+You can also analyse your results directly in the GitHub Codespaces workspace, which offers more memory than Binder and saves your work between sessions (see [Analysing your results on GitHub Codespaces](codespaces_guide.md#analysing-your-results)). This separate Binder workspace is provided as an alternative, because Codespaces has a monthly usage limit. Use Binder if you want to save or if you exhaust your monthly Codespaces hours.
+
+The instructions below will guide you through the steps to access the VirtualShip Binder post-processing workspace, upload your VirtualShip simulation output files, and run the example tutorials for analysis.
 
 Using this workspace saves you from having to install any dependencies on your own computer. Note, if you plan for extensive post-processing analysis, you may prefer to move onto your own machine and install the dependencies there, as the Binder workspace is not suitable for long-running analysis or extensive expeditions with many instruments and sensors enabled (see [below](#non-persistent-storage)).
 
@@ -10,7 +12,7 @@ Using this workspace saves you from having to install any dependencies on your o
 
 Navigate to the VirtualShip Workspace repository on GitHub: [https://github.com/Parcels-code/virtualship-workspace](https://github.com/Parcels-code/virtualship-workspace)
 
-From here, on the repo welcome page, you should a section labelled **Workspace for VirtualShip post-processing - Binder**. Click on the **Step on Board: VirtualShip** button (Figure 1) to launch the post-processing workspace.
+From here, on the repo welcome page, you should see a section labelled **Workspace for VirtualShip post-processing - Binder**. Click on the **Step on Board: VirtualShip** button (Figure 1) to launch the post-processing workspace.
 
 ```{figure} ../_images/binder_button.png
 :width: 200px
@@ -27,7 +29,7 @@ You can also launch Terminal sessions to run commands in the workspace, and open
 
 ## Upload your VirtualShip output files
 
-Before you can use the workspace to analyse your data, you will need to upload your VirtualShip simulation output files. You can do this via the file explorer in the JupyterLab environment. Simply navigate to the folder where you want to upload your files, and click the "Upload Files" button. Then select the files from your computer that you want to upload.
+Before you can use the workspace to analyse your data, you will need to upload your VirtualShip simulation output files. You can do this via the file explorer in the JupyterLab environment. Simply navigate to the folder where you want to upload your files, and click the "Upload Files" button. Then select the files from your computer that you want to upload. You can also simply **drag and drop** your output files from your laptop into the folder created in the file explorer panel.
 
 ```{tip}
 We suggest also making a new folder (called e.g. `data`) in the workspace to store your uploaded files, to keep things organised.
@@ -36,7 +38,7 @@ We suggest also making a new folder (called e.g. `data`) in the workspace to sto
 ## Running the example tutorials
 
 ```{important}
-The example tutorials are near-ready to be run 'out of the box'. However, you will have to adjust the file paths in the tutorial notebooks to point to your own data (e.g. in the `data` directory you may have created). As standard they have only have a place holder path, which will cause the code to fail.
+The example tutorials are near-ready to be run 'out of the box'. However, you will have to adjust the file paths in the tutorial notebooks to point to your own data (e.g. in the `data` directory you may have created). As standard they only have a place holder path, which will cause the code to fail.
 ```
 
 There is a pre-uploaded folder called `tutorials` in the workspace (see in the file explorer, or you can navigate there in the Terminal with `cd tutorials`), which contains the example notebooks. These are mirrors of the tutorials in the [VirtualShip User Guide](../tutorials/index.md), and are provided here so that they can be run straight away with your data. There is one notebook dedicated to each of the instruments currently supported in VirtualShip.
@@ -47,7 +49,7 @@ When running any blocks of code the `python 3 (ipykernel)` in the bottom left of
 
 ## Non-persistent storage
 
-The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage and limited computing resourses. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results.
+The Binder workspace is not suitable for long-running analysis, as it has non-persistent storage and limited computing resources. This means that any files you create or modify in the workspace will be lost when the workspace is closed and the notebook files will revert to the original version. Therefore it is intended as a space to run the example tutorials and do some quick analysis, but not for long-term storage of your data or results.
 
 If you want to do more extensive analysis or for larger expeditions with several instrument choices, we recommend that you download your data and results to your own computer, and run the analysis there. You will also need to install the required dependencies to your own computer.
 
